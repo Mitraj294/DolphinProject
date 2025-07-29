@@ -10,6 +10,10 @@ use App\Http\Controllers\LeadController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\StripeSubscriptionController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\GroupController;
+use App\Http\Controllers\MemberController;
+use App\Http\Controllers\OrganizationController;
+
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
 
@@ -54,6 +58,23 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/stripe/customer-portal', [StripeSubscriptionController::class, 'createCustomerPortal']);
     Route::get('/subscription', [SubscriptionController::class, 'getUserSubscription']);
     Route::get('/user/subscription', [SubscriptionController::class, 'getUserSubscription']);
+
+
+// Organization management
+    Route::get('/groups', [GroupController::class, 'index']);
+    Route::post('/groups', [GroupController::class, 'store']);
+    Route::get('/members', [MemberController::class, 'index']);
+    Route::post('/members', [MemberController::class, 'store']);
+
+
+// Organization CRUD
+    Route::get('/organizations', [OrganizationController::class, 'index']);
+    Route::get('/organizations/{id}', [OrganizationController::class, 'show']);
+    Route::post('/organizations', [OrganizationController::class, 'store']);
+    Route::put('/organizations/{id}', [OrganizationController::class, 'update']);
+    Route::delete('/organizations/{id}', [OrganizationController::class, 'destroy']);
+
+
     // New endpoint for subscription status
     Route::get('/subscription/status', [SubscriptionController::class, 'subscriptionStatus']);
 

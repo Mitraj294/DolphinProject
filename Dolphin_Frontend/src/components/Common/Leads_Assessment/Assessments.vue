@@ -19,11 +19,13 @@ export default {
   components: { MainLayout, OrganizationAdminAssessmentsCard, UserAssessment },
   computed: {
     isOrganizationAdmin() {
-      const role = localStorage.getItem('role') || 'user';
+      const storage = require('@/services/storage').default;
+      const role = storage.get('role') || 'user';
       return role === 'organizationadmin';
     },
     isUser() {
-      const role = localStorage.getItem('role') || 'user';
+      const storage = require('@/services/storage').default;
+      const role = storage.get('role') || 'user';
       return role === 'user';
     },
   },

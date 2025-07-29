@@ -137,6 +137,7 @@
 <script>
 import authMiddleware from '@/middleware/authMiddleware';
 import '@/assets/global.css';
+import storage from '@/services/storage';
 
 export default {
   name: 'Navbar',
@@ -229,7 +230,8 @@ export default {
       return this.$route.name || '';
     },
     displayName() {
-      return localStorage.getItem('userName') || this.roleName;
+      const storage = require('@/services/storage').default;
+      return storage.get('userName') || this.roleName;
     },
     role() {
       return authMiddleware.getRole();
@@ -255,23 +257,20 @@ export default {
     },
     handleLogoutYes() {
       // If impersonating, revert to superadmin instead of full logout
-      if (localStorage.getItem('superAuthToken')) {
-        localStorage.setItem(
-          'authToken',
-          localStorage.getItem('superAuthToken')
-        );
-        localStorage.setItem('role', localStorage.getItem('superRole'));
-        localStorage.setItem('userName', localStorage.getItem('superUserName'));
-        localStorage.setItem('userId', localStorage.getItem('superUserId'));
-        localStorage.removeItem('superAuthToken');
-        localStorage.removeItem('superRole');
-        localStorage.removeItem('superUserName');
-        localStorage.removeItem('superUserId');
+      if (storage.get('superAuthToken')) {
+        storage.set('authToken', storage.get('superAuthToken'));
+        storage.set('role', storage.get('superRole'));
+        storage.set('userName', storage.get('superUserName'));
+        storage.set('userId', storage.get('superUserId'));
+        storage.remove('superAuthToken');
+        storage.remove('superRole');
+        storage.remove('superUserName');
+        storage.remove('superUserId');
         this.showLogoutConfirm = false;
         this.$router.push('/user-permission');
       } else {
         // Normal logout
-        localStorage.clear();
+        storage.clear();
         this.showLogoutConfirm = false;
         this.$router.push({ name: 'Login' });
       }
@@ -287,7 +286,7 @@ export default {
       this.isVerySmallScreen = window.innerWidth <= 420;
     },
     updateNotificationCount() {
-      const count = Number(localStorage.getItem('notificationCount'));
+      const count = Number(storage.get('notificationCount'));
       this.notificationCount = isNaN(count) ? 0 : count;
     },
     goToProfile() {

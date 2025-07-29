@@ -159,7 +159,8 @@ export default {
     // Fetch questions, answers, and subscription status from backend
     const fetchQuestionsAndAnswers = async () => {
       try {
-        const authToken = localStorage.getItem('authToken');
+        const storage = require('@/services/storage').default;
+        const authToken = storage.get('authToken');
         const headers = {};
         if (authToken) {
           headers['Authorization'] = `Bearer ${authToken}`;
@@ -231,7 +232,8 @@ export default {
     // Submit
     const handleSubmit = async () => {
       if (!canProceed.value) return;
-      const authToken = localStorage.getItem('authToken');
+      const storage = require('@/services/storage').default;
+      const authToken = storage.get('authToken');
       if (!authToken) {
         alert('You must be logged in to submit an assessment.');
         router.push('/login');

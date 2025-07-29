@@ -207,6 +207,7 @@ import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
+import storage from '@/services/storage';
 
 export default {
   name: 'Profile',
@@ -257,7 +258,7 @@ export default {
     async fetchProfile() {
       try {
         // Use the same token key for all requests
-        const token = localStorage.getItem('authToken');
+        const token = storage.get('authToken');
         if (!token) {
           this.profileError = 'No auth token found. Please login.';
           this.toast.add({
@@ -324,7 +325,7 @@ export default {
       }
       try {
         // Use the same token key for all requests
-        const token = localStorage.getItem('authToken');
+        const token = storage.get('authToken');
         if (!token) {
           this.message = 'Not authenticated.';
           this.toast.add({
@@ -394,7 +395,7 @@ export default {
       this.editMessage = '';
       try {
         // Use the same token key for all requests
-        const token = localStorage.getItem('authToken');
+        const token = storage.get('authToken');
         if (!token) {
           this.editMessage = 'Not authenticated.';
           this.toast.add({
@@ -422,15 +423,15 @@ export default {
             },
           }
         );
-        // Update local user data and localStorage
+        // Update local user data and encrypted storage
         this.user.name = response.data.user.name;
         this.user.email = response.data.user.email;
         this.user.phone = response.data.user.phone;
         this.user.country = response.data.user.country;
-        localStorage.setItem('name', this.user.name);
-        localStorage.setItem('email', this.user.email);
-        localStorage.setItem('phone', this.user.phone);
-        localStorage.setItem('country', this.user.country);
+        storage.set('name', this.user.name);
+        storage.set('email', this.user.email);
+        storage.set('phone', this.user.phone);
+        storage.set('country', this.user.country);
         this.editMessage = 'Profile updated successfully!';
         this.toast.add({
           severity: 'success',
@@ -467,7 +468,7 @@ export default {
         return;
       }
       try {
-        const token = localStorage.getItem('authToken');
+        const token = storage.get('authToken');
         if (!token) {
           this.toast.add({
             severity: 'error',
@@ -491,9 +492,9 @@ export default {
           detail: 'Account deleted successfully.',
           life: 3000,
         });
-        // Optionally clear localStorage and redirect to login
+        // Optionally clear encrypted storage and redirect to login
         setTimeout(() => {
-          localStorage.clear();
+          storage.clear();
           window.location.href = '/login';
         }, 1200);
       } catch (error) {

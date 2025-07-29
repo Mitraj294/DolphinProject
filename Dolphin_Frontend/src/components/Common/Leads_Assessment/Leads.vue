@@ -239,7 +239,8 @@ export default {
       this.loading = true;
       this.errorMessage = '';
       try {
-        const token = localStorage.getItem('authToken');
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
         if (!token) {
           this.errorMessage = 'Authentication token not found. Please log in.';
           this.loading = false;

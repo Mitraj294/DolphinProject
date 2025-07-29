@@ -180,8 +180,9 @@ export default {
   },
   computed: {
     role() {
-      // Get role from localStorage for consistency
-      return localStorage.getItem('role') || '';
+      // Get role from encrypted storage for consistency
+      const storage = require('@/services/storage').default;
+      return storage.get('role') || '';
     },
     menuOptions() {
       if (this.hideMenu) return [];

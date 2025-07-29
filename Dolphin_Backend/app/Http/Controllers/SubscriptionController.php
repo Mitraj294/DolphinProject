@@ -67,6 +67,54 @@ class SubscriptionController extends Controller
             'nextBill' => $nextBill,
         ]);
     }
+    /**
+     * Create organization when user subscribes
+     */
+    public function subscribe(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // ...existing subscription logic...
+
+        // Get subscription start/end from request or set defaults
+        $contractStart = $request->input('subscription_start') ?? now();
+        $contractEnd = $request->input('subscription_end') ?? now()->addYear();
+
+        // Only create organization if one does not already exist for this user/email
+        $existingOrg = \App\Models\Organization::where('admin_email', $user->email)->first();
+        if (!$existingOrg) {
+            $organization = \App\Models\Organization::create([
+                'name' => $user->name, // Organization name = user name
+                'size' => null,
+                'source' => null,
+                'address1' => null,
+                'address2' => null,
+                'city' => null,
+                'state' => null,
+                'zip' => null,
+                'country' => null,
+                'contract_start' => $contractStart, // Subscription start
+                'contract_end' => $contractEnd,     // Subscription end
+                'main_contact' => $user->name,      // Admin name = user name
+                'admin_email' => $user->email,
+                'admin_phone' => $user->phone ?? null,
+                'sales_person' => null,
+                'last_contacted' => now(), // Use current timestamp
+                'certified_staff' => null,
+            ]);
+        }
+
+        // Optionally, assign user as organization admin (if you have such logic)
+        // $user->organization_id = $organization->id;
+        // $user->role = 'organizationadmin';
+        // $user->save();
+
+        // ...rest of your subscription logic...
+        return response()->json(['message' => 'Organization created on subscription', 'organization' => $organization]);
+    }
 
     /**
      * Get all subscriptions (history) for the authenticated user
@@ -76,12 +124,30 @@ class SubscriptionController extends Controller
         $user = $request->user();
         $subs = $user->subscriptions()->orderByDesc('created_at')->get();
         $history = $subs->map(function($sub) {
+            // Try to extract payment method details for display
+            $paymentMethod = $sub->payment_method ?? '';
+            $paymentEmail = '';
+            $cardLast4 = '';
+            if ($paymentMethod && stripos($paymentMethod, 'paypal') !== false) {
+                $paymentEmail = $sub->customer_email ?? '';
+            } elseif ($paymentMethod && stripos($paymentMethod, 'card') !== false) {
+                // Try to get last4 from meta or description if available
+                if (!empty($sub->meta) && is_array($sub->meta) && isset($sub->meta['card_last4'])) {
+                    $cardLast4 = $sub->meta['card_last4'];
+                } elseif (isset($sub->description) && preg_match('/\d{4}/', $sub->description, $m)) {
+                    $cardLast4 = $m[0];
+                }
+            }
             return [
-                'paymentMethod' => $sub->payment_method ?? '',
+                'paymentMethod' => $paymentMethod,
+                'paymentEmail' => $paymentEmail,
+                'cardLast4' => $cardLast4,
                 'paymentDate' => $sub->payment_date ?? $sub->created_at,
                 'subscriptionEnd' => $sub->subscription_end ?? '',
                 'amount' => $sub->amount ?? '',
                 'pdfUrl' => $sub->receipt_url ?? '',
+                'description' => $sub->description ?? '',
+                'invoiceNumber' => $sub->invoice_number ?? '',
             ];
         });
         return response()->json($history);

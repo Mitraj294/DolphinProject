@@ -1,19 +1,22 @@
-import axios from 'axios';
 
-const AUTH_TOKEN_KEY = 'auth_token';
+import axios from 'axios';
+import storage from './storage';
+
+const AUTH_TOKEN_KEY = 'authToken';
 
 const authService = {
+
     setToken(token) {
-        localStorage.setItem(AUTH_TOKEN_KEY, token);
+        storage.set(AUTH_TOKEN_KEY, token);
         this.setAxiosAuthHeader(token);
     },
 
     getToken() {
-        return localStorage.getItem(AUTH_TOKEN_KEY);
+        return storage.get(AUTH_TOKEN_KEY);
     },
 
     removeToken() {
-        localStorage.removeItem(AUTH_TOKEN_KEY);
+        storage.remove(AUTH_TOKEN_KEY);
         this.setAxiosAuthHeader(null);
     },
 

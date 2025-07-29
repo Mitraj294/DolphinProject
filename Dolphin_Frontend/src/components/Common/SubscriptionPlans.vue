@@ -257,6 +257,7 @@
 <script>
 import MainLayout from '@/components/layout/MainLayout.vue';
 import axios from 'axios';
+import storage from '@/services/storage';
 export default {
   name: 'SubscriptionPlans',
   components: { MainLayout },
@@ -267,8 +268,8 @@ export default {
       isAnnually: true,
       isLoading: false,
       stripePriceIds: {
-        monthly: 'price_1RoLKdPnfSZSgS1XrqDakYeT',
-        annually: 'price_1RoLJ2PnfSZSgS1XrMcveB3N',
+        monthly: 'price_1RqAOwPnfSZSgS1X7vLNRdmX',
+        annually: 'price_1RqAPlPnfSZSgS1X2zY3qP4K',
       },
       userPlan: null, // will hold user's current plan amount (250 or 2500)
     };
@@ -305,7 +306,7 @@ export default {
   methods: {
     async fetchUserPlan() {
       try {
-        const authToken = localStorage.getItem('authToken');
+        const authToken = storage.get('authToken');
         const API_BASE_URL = 'http://127.0.0.1:8000';
         const res = await axios.get(`${API_BASE_URL}/api/user/subscription`, {
           headers: { Authorization: `Bearer ${authToken}` },
@@ -321,7 +322,7 @@ export default {
       try {
         const priceId =
           this.stripePriceIds[period] || this.stripePriceIds.annually;
-        const authToken = localStorage.getItem('authToken');
+        const authToken = storage.get('authToken');
         const API_BASE_URL = 'http://127.0.0.1:8000';
         const res = await axios.post(
           `${API_BASE_URL}/api/stripe/checkout-session`,

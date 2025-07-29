@@ -28,12 +28,13 @@ import Toast from 'primevue/toast';
 app.component('Toast', Toast); // Register Toast globally
 
 
-// Sync localStorage role with backend user role on app start
+// Sync encrypted storage role with backend user role on app start
+import storage from './services/storage';
 fetchCurrentUser().then(user => {
   if (user && user.role) {
-    const localRole = localStorage.getItem('role');
+    const localRole = storage.get('role');
     if (user.role !== localRole) {
-      localStorage.setItem('role', user.role);
+      storage.set('role', user.role);
     }
   }
 }).finally(() => {

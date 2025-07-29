@@ -10,7 +10,8 @@ use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\Customer;
 use App\Models\Subscription;
-use App\Models\User;       
+use App\Models\User;
+use App\Models\Organization;
 use Illuminate\Support\Facades\Log; 
 
 class StripeSubscriptionController extends Controller
@@ -90,8 +91,26 @@ class StripeSubscriptionController extends Controller
             $plan = $session->display_items[0]->plan->id ?? null;
             $status = 'active';
             $paymentMethod = $session->payment_method_types[0] ?? null;
-            // ADDED: Log payment method from checkout session types
-            Log::info('Payment method from checkout session types (before DB save): ' . ($paymentMethod ?? 'NULL')); 
+            $paymentMethodReadable = $paymentMethod;
+            // Try to get more details from payment_intent if available
+            if (!empty($session->payment_intent)) {
+                try {
+                    $intent = \Stripe\PaymentIntent::retrieve($session->payment_intent);
+                    if (!empty($intent->payment_method)) {
+                        $pm = \Stripe\PaymentMethod::retrieve($intent->payment_method);
+                        if ($pm->type === 'card' && $pm->card) {
+                            $brand = $pm->card->brand ?? '';
+                            $last4 = $pm->card->last4 ?? '';
+                            $paymentMethodReadable = ucfirst($brand) . ' ****' . $last4;
+                        } else {
+                            $paymentMethodReadable = $pm->type;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for checkout.session.completed: ' . $e->getMessage(), ['session_id' => $session->id]);
+                }
+            }
+            Log::info('Payment method for checkout.session.completed (before DB save): ' . ($paymentMethodReadable ?? 'NULL'));
             $paymentDate = now();
             $subscriptionStart = null;
             $subscriptionEnd = null;
@@ -161,7 +180,7 @@ class StripeSubscriptionController extends Controller
                     'stripe_customer_id' => $stripeCustomerId,
                     'plan' => $plan,
                     'status' => $status,
-                    'payment_method' => $paymentMethod,
+                    'payment_method' => $paymentMethodReadable,
                     'payment_date' => $paymentDate,
                     'subscription_start' => $subscriptionStart,
                     'subscription_end' => $subscriptionEnd,
@@ -177,6 +196,35 @@ class StripeSubscriptionController extends Controller
                     $sub->update($subscriptionData);
                 } else {
                     Subscription::create($subscriptionData);
+                }
+
+                // --- ORGANIZATION CREATION LOGIC ---
+                if ($customerEmail) {
+                    $existingOrg = Organization::where('admin_email', $customerEmail)->first();
+                    if (!$existingOrg) {
+                        $organization = Organization::create([
+                            'name' => $customerName ?? $user->name,
+                            'size' => null,
+                            'source' => null,
+                            'address1' => null,
+                            'address2' => null,
+                            'city' => null,
+                            'state' => null,
+                            'zip' => null,
+                            'country' => $customerCountry ?? null,
+                            'contract_start' => $subscriptionStart,
+                            'contract_end' => $subscriptionEnd,
+                            'main_contact' => $customerName ?? $user->name,
+                            'admin_email' => $customerEmail,
+                            'admin_phone' => $user->phone ?? null,
+                            'sales_person' => null,
+                            'last_contacted' => now(),
+                            'certified_staff' => null,
+                        ]);
+                        Log::info('Organization created from Stripe webhook for email: ' . $customerEmail);
+                    } else {
+                        Log::info('Organization already exists for email: ' . $customerEmail);
+                    }
                 }
             }
         }
@@ -228,28 +276,37 @@ class StripeSubscriptionController extends Controller
 
               // First attempt: Try to get payment method details from payment intent
             if ($invoice->payment_intent) {
-       
-                
-                Log::info('Invoice has payment_intent: ' . $invoice->payment_intent); 
+                Log::info('Invoice has payment_intent: ' . $invoice->payment_intent);
                 try {
                     $paymentIntent = \Stripe\PaymentIntent::retrieve($invoice->payment_intent);
-                    if ($paymentIntent->charges->data && count($paymentIntent->charges->data) > 0) {
+                    if ($paymentIntent->charges && $paymentIntent->charges->data && count($paymentIntent->charges->data) > 0) {
                         $charge = $paymentIntent->charges->data[0];
                         if ($charge->payment_method_details) {
                             $type = $charge->payment_method_details->type;
                             if ($type === 'card' && $charge->payment_method_details->card) {
-                                $paymentMethod = $charge->payment_method_details->card->brand . ' ****' . $charge->payment_method_details->card->last4;
+                                $brand = $charge->payment_method_details->card->brand ?? '';
+                                $last4 = $charge->payment_method_details->card->last4 ?? '';
+                                $paymentMethod = ucfirst($brand) . ' ****' . $last4;
                             } else {
                                 $paymentMethod = $type;
                             }
                         }
                     }
-                } catch (\Stripe\Exception\ApiErrorException $e) {
-                    \Log::error('Stripe API error retrieving PaymentIntent for invoice.paid (payment method): ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+                    // Fallback: If not found, try PaymentIntent->payment_method
+                    if (empty($paymentMethod) && !empty($paymentIntent->payment_method)) {
+                        $pm = \Stripe\PaymentMethod::retrieve($paymentIntent->payment_method);
+                        if ($pm->type === 'card' && $pm->card) {
+                            $brand = $pm->card->brand ?? '';
+                            $last4 = $pm->card->last4 ?? '';
+                            $paymentMethod = ucfirst($brand) . ' ****' . $last4;
+                        } else {
+                            $paymentMethod = $pm->type;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for invoice.paid: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
                 }
-         
-                
-                Log::info('Payment method after payment_intent attempt: ' . ($paymentMethod ?? 'NULL')); 
+                Log::info('Payment method after payment_intent attempt: ' . ($paymentMethod ?? 'NULL'));
             }
 
 
@@ -352,6 +409,35 @@ class StripeSubscriptionController extends Controller
                     $sub->update($subscriptionData);
                 } else {
                     Subscription::create($subscriptionData);
+                }
+
+                // --- ORGANIZATION CREATION LOGIC ---
+                if ($customerEmail) {
+                    $existingOrg = Organization::where('admin_email', $customerEmail)->first();
+                    if (!$existingOrg) {
+                        $organization = Organization::create([
+                            'name' => $customerName ?? $user->name,
+                            'size' => null,
+                            'source' => null,
+                            'address1' => null,
+                            'address2' => null,
+                            'city' => null,
+                            'state' => null,
+                            'zip' => null,
+                            'country' => $customerCountry ?? null,
+                            'contract_start' => $subscriptionStart,
+                            'contract_end' => $subscriptionEnd,
+                            'main_contact' => $customerName ?? $user->name,
+                            'admin_email' => $customerEmail,
+                            'admin_phone' => $user->phone ?? null,
+                            'sales_person' => null,
+                            'last_contacted' => now(),
+                            'certified_staff' => null,
+                        ]);
+                        Log::info('Organization created from Stripe webhook for email: ' . $customerEmail);
+                    } else {
+                        Log::info('Organization already exists for email: ' . $customerEmail);
+                    }
                 }
             }
         }

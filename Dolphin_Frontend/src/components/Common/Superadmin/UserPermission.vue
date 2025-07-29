@@ -1,4 +1,5 @@
 <template>
+  <Toast />
   <MainLayout>
     <div class="page">
       <div class="table-outer">
@@ -155,12 +156,6 @@
         <i class="fas fa-save"></i> Save
       </button>
     </template>
-    <div
-      v-if="editMessage"
-      style="margin-top: 12px; color: #2e7d32; font-weight: 500"
-    >
-      {{ editMessage }}
-    </div>
   </CommonModal>
 </template>
 
@@ -172,6 +167,8 @@ import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 export default {
   name: 'UserPermission',
   components: {
@@ -182,12 +179,12 @@ export default {
     FormRow,
     FormLabel,
     FormInput,
+    Toast,
   },
   data() {
     return {
       users: [],
       loading: false,
-      error: '',
       currentPage: 1,
       pageSize: 10,
       pageSizes: [10, 25, 100],
@@ -201,8 +198,11 @@ export default {
         email: '',
         role: '',
       },
-      editMessage: '',
     };
+  },
+  setup() {
+    const toast = useToast();
+    return { toast };
   },
 
   created() {
@@ -233,21 +233,25 @@ export default {
       return users.slice(start, start + this.pageSize);
     },
     isSuperAdmin() {
-      return localStorage.getItem('role') === 'superadmin';
+      const storage = require('@/services/storage').default;
+      return storage.get('role') === 'superadmin';
     },
     isImpersonating() {
-      return !!localStorage.getItem('superAuthToken');
+      const storage = require('@/services/storage').default;
+      return !!storage.get('superAuthToken');
     },
   },
   methods: {
     getAuthHeaders() {
-      const token = localStorage.getItem('authToken');
+      const storage = require('@/services/storage').default;
+      const token = storage.get('authToken');
       return token ? { Authorization: `Bearer ${token}` } : {};
     },
 
     canImpersonate(user) {
       // Only superadmins can impersonate, not themselves or other superadmins
-      const myId = parseInt(localStorage.getItem('userId') || '0');
+      const storage = require('@/services/storage').default;
+      const myId = parseInt(storage.get('userId') || '0');
       return (
         this.isSuperAdmin && user.role !== 'superadmin' && user.id !== myId
       );
@@ -269,18 +273,16 @@ export default {
         }
         const data = await res.json();
         // Store superadmin's original token and info
-        localStorage.setItem(
-          'superAuthToken',
-          localStorage.getItem('authToken')
-        );
-        localStorage.setItem('superRole', localStorage.getItem('role'));
-        localStorage.setItem('superUserName', localStorage.getItem('userName'));
-        localStorage.setItem('superUserId', localStorage.getItem('userId'));
+        const storage = require('@/services/storage').default;
+        storage.set('superAuthToken', storage.get('authToken'));
+        storage.set('superRole', storage.get('role'));
+        storage.set('superUserName', storage.get('userName'));
+        storage.set('superUserId', storage.get('userId'));
         // Set impersonated user's info
-        localStorage.setItem('authToken', data.impersonated_token);
-        localStorage.setItem('role', data.impersonated_role);
-        localStorage.setItem('userName', data.impersonated_name);
-        localStorage.setItem('userId', data.user_id);
+        storage.set('authToken', data.impersonated_token);
+        storage.set('role', data.impersonated_role);
+        storage.set('userName', data.impersonated_name);
+        storage.set('userId', data.user_id);
         // Reload to apply new context
         this.$router.go(0);
       } catch (e) {
@@ -291,21 +293,21 @@ export default {
     revertImpersonation() {
       if (!this.isImpersonating) return;
       // Restore superadmin's info
-      localStorage.setItem('authToken', localStorage.getItem('superAuthToken'));
-      localStorage.setItem('role', localStorage.getItem('superRole'));
-      localStorage.setItem('userName', localStorage.getItem('superUserName'));
-      localStorage.setItem('userId', localStorage.getItem('superUserId'));
-      // Remove impersonation keys
-      localStorage.removeItem('superAuthToken');
-      localStorage.removeItem('superRole');
-      localStorage.removeItem('superUserName');
-      localStorage.removeItem('superUserId');
+      const storage = require('@/services/storage').default;
+      storage.set('authToken', storage.get('superAuthToken'));
+      storage.set('role', storage.get('superRole'));
+      storage.set('userName', storage.get('superUserName'));
+      storage.set('userId', storage.get('superUserId'));
+      // Remove impersonation keys using encrypted storage
+      storage.remove('superAuthToken');
+      storage.remove('superRole');
+      storage.remove('superUserName');
+      storage.remove('superUserId');
       this.$router.go(0);
     },
 
     async fetchUsers() {
       this.loading = true;
-      this.error = '';
       try {
         const baseUrl =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -314,7 +316,6 @@ export default {
         });
         if (!res.ok) throw new Error('Failed to fetch users');
         const data = await res.json();
-        // Map backend fields to frontend fields
         this.users = (data.users || data || []).map((u) => ({
           id: u.id,
           name: u.name || u.full_name || '',
@@ -322,26 +323,45 @@ export default {
           role: u.role || 'user',
         }));
       } catch (e) {
-        this.error = e.message || 'Error fetching users';
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: e.message || 'Error fetching users',
+          life: 4000,
+        });
       } finally {
         this.loading = false;
       }
     },
 
     async deleteUser(user) {
+      if (this.isDeleting) return;
       if (!confirm(`Are you sure you want to delete ${user.name}?`)) return;
+      this.isDeleting = true;
       try {
         const baseUrl =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        // Use PATCH for soft delete
         const res = await fetch(`${baseUrl}/api/users/${user.id}/soft-delete`, {
           method: 'PATCH',
           headers: this.getAuthHeaders(),
         });
         if (!res.ok) throw new Error('Failed to delete user');
         this.users = this.users.filter((u) => u.id !== user.id);
+        this.toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'User deleted successfully!',
+          life: 3000,
+        });
       } catch (e) {
-        alert(e.message || 'Error deleting user');
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: e.message || 'Error deleting user',
+          life: 4000,
+        });
+      } finally {
+        this.isDeleting = false;
       }
     },
 
@@ -360,8 +380,19 @@ export default {
         });
         if (!res.ok) throw new Error('Failed to change role');
         user.role = newRole;
+        this.toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Role changed successfully!',
+          life: 3000,
+        });
       } catch (e) {
-        alert(e.message || 'Error changing role');
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: e.message || 'Error changing role',
+          life: 4000,
+        });
       }
     },
 
@@ -384,17 +415,20 @@ export default {
     },
     openEditModal(user) {
       this.editUser = { ...user };
-      this.editMessage = '';
       this.showEditModal = true;
     },
-    async saveEditUser() {
-      this.editMessage = '';
+    async saveEditUser(event) {
+      if (event && event.preventDefault) event.preventDefault();
+      if (this.isSaving) return;
+      this.isSaving = true;
       const idx = this.users.findIndex((u) => u.id === this.editUser.id);
-      if (idx === -1) return;
+      if (idx === -1) {
+        this.isSaving = false;
+        return;
+      }
       try {
         const baseUrl =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        // Update role in backend
         const res = await fetch(
           `${baseUrl}/api/users/${this.editUser.id}/role`,
           {
@@ -403,21 +437,42 @@ export default {
               ...this.getAuthHeaders(),
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ role: this.editUser.role }),
+            body: JSON.stringify({
+              name: this.editUser.name,
+              email: this.editUser.email,
+              role: this.editUser.role,
+            }),
           }
         );
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          throw new Error(err.message || 'Failed to update role');
+          this.toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: err.message || 'Failed to update user',
+            life: 4000,
+          });
+          this.isSaving = false;
+          return;
         }
-        // Update local user
-        this.users[idx] = { ...this.editUser };
-        this.editMessage = 'User updated successfully!';
-        setTimeout(() => {
-          this.showEditModal = false;
-        }, 1000);
+        const updated = await res.json();
+        this.users[idx] = { ...this.editUser, ...updated };
+        this.showEditModal = false;
+        this.toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'User updated successfully!',
+          life: 3000,
+        });
       } catch (e) {
-        this.editMessage = e.message || 'Failed to update user.';
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: e.message || 'Failed to update user.',
+          life: 4000,
+        });
+      } finally {
+        this.isSaving = false;
       }
     },
   },

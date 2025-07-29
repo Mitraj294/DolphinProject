@@ -46,6 +46,7 @@ import ToastService from 'primevue/toastservice';
 import Toast from 'primevue/toast';
 
 import authMiddleware from '../../middleware/authMiddleware.js';
+import storage from '@/services/storage';
 
 export default {
   name: 'MainLayout',
@@ -70,11 +71,11 @@ export default {
   methods: {
     toggleSidebar() {
       this.sidebarExpanded = !this.sidebarExpanded;
-      localStorage.setItem('sidebarExpanded', this.sidebarExpanded ? '1' : '0');
+      storage.set('sidebarExpanded', this.sidebarExpanded ? '1' : '0');
     },
     collapseSidebar() {
       this.sidebarExpanded = false;
-      localStorage.setItem('sidebarExpanded', '0');
+      storage.set('sidebarExpanded', '0');
     },
     handleResize() {
       this.windowWidth = window.innerWidth;
@@ -82,8 +83,8 @@ export default {
   },
   mounted() {
     window.addEventListener('resize', this.handleResize);
-    // Restore sidebar state from localStorage
-    const saved = localStorage.getItem('sidebarExpanded');
+    // Restore sidebar state from encrypted storage
+    const saved = storage.get('sidebarExpanded');
     if (saved === '1') {
       this.sidebarExpanded = true;
     } else {

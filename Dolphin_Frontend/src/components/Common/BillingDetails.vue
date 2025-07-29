@@ -9,22 +9,50 @@
           <div class="billing-plan-box">
             <div>
               <div class="plan-name">
-                {{
-                  currentPlan?.price === 250
-                    ? 'Basic'
-                    : currentPlan?.price === 2500
-                    ? 'Standard'
-                    : currentPlan?.name || 'Basic'
-                }}
+                <span
+                  v-if="
+                    currentPlan &&
+                    (Number(currentPlan.price) === 2500 ||
+                      Number(currentPlan.amount) === 2500)
+                  "
+                  >Standard</span
+                >
+                <span
+                  v-else-if="
+                    currentPlan &&
+                    (Number(currentPlan.price) === 250 ||
+                      Number(currentPlan.amount) === 250)
+                  "
+                  >Basic</span
+                >
+                <span v-else>{{ currentPlan?.name || '' }}</span>
               </div>
               <div class="plan-price">
-                {{
-                  currentPlan?.price
-                    ? `$${currentPlan.price}/${currentPlan.interval | B | ''}`
-                    : currentPlan?.amount
-                    ? `$${currentPlan.amount}`
-                    : ''
-                }}
+                <span
+                  v-if="
+                    currentPlan &&
+                    (Number(currentPlan.price) === 2500 ||
+                      Number(currentPlan.amount) === 2500)
+                  "
+                  >$2500/Annual</span
+                >
+                <span
+                  v-else-if="
+                    currentPlan &&
+                    (Number(currentPlan.price) === 250 ||
+                      Number(currentPlan.amount) === 250)
+                  "
+                  >$250/Month</span
+                >
+                <span v-else>
+                  {{
+                    currentPlan?.price
+                      ? `$${currentPlan.price}`
+                      : currentPlan?.amount
+                      ? `$${currentPlan.amount}`
+                      : ''
+                  }}
+                </span>
               </div>
             </div>
             <div class="plan-meta">
@@ -55,7 +83,8 @@
                   { label: 'Payment Date', key: 'paymentDate' },
                   { label: 'Subscription End', key: 'subscriptionEnd' },
                   { label: 'Amount', key: 'amount' },
-                  { label: 'PDF', key: 'pdf' },
+                  { label: 'Download', key: 'invoice' },
+                  { label: 'Description', key: 'description' },
                 ]"
               />
               <tbody>
@@ -63,11 +92,8 @@
                   v-for="(item, idx) in billingHistory"
                   :key="idx"
                 >
-                  <td>
-                    {{ item.paymentMethod }}<br />{{
-                      item.paymentEmail || item.cardLast4 || ''
-                    }}
-                  </td>
+                  <td>{{ item.paymentMethod }}</td>
+
                   <td>
                     {{ item.paymentDate ? formatDate(item.paymentDate) : '' }}
                   </td>
@@ -86,6 +112,7 @@
                       class="receipt-link"
                       target="_blank"
                       rel="noopener"
+                      style="margin-left: 8px"
                     >
                       <svg
                         width="16"
@@ -112,6 +139,7 @@
                       View Receipt
                     </a>
                   </td>
+                  <td>{{ item.description }}</td>
                 </tr>
               </tbody>
             </table>
@@ -126,6 +154,7 @@
 import MainLayout from '@/components/layout/MainLayout.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import axios from 'axios';
+import storage from '@/services/storage';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
 
@@ -141,7 +170,7 @@ export default {
   methods: {
     async fetchBillingDetails() {
       try {
-        const authToken = localStorage.getItem('authToken');
+        const authToken = storage.get('authToken');
         const headers = {};
         if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
         // Fetch current plan

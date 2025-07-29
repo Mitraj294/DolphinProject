@@ -43,23 +43,25 @@
           />
           <span class="pagination-btn-text prev-text">Previous</span>
         </button>
-        <button
-          v-for="page in computedPaginationPages"
-          :key="page + '-page'"
-          v-if="page !== '...'"
-          :class="[
-            'notifications-pagination-page',
-            { selected: page === currentPage },
-          ]"
-          @click="$emit('goToPage', page)"
-        >
-          {{ page }}
-        </button>
-        <span
-          v-else
-          class="notifications-pagination-page"
-          >...</span
-        >
+        <template v-for="pageItem in computedPaginationPages">
+          <button
+            v-if="pageItem !== '...'"
+            :key="pageItem + '-page'"
+            :class="[
+              'notifications-pagination-page',
+              { selected: pageItem === currentPage },
+            ]"
+            @click="$emit('goToPage', pageItem)"
+          >
+            {{ pageItem }}
+          </button>
+          <span
+            v-else
+            :key="'ellipsis-' + Math.random()"
+            class="notifications-pagination-page"
+            >...</span
+          >
+        </template>
         <button
           class="notifications-pagination-btn next"
           :disabled="currentPage === totalPages"

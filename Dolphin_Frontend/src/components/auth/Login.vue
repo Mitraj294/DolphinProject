@@ -84,9 +84,11 @@
 
 <script>
 import axios from 'axios';
+
 import { ROLES } from '@/permissions';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+import storage from '@/services/storage';
 
 const API_BASE_URL =
   process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -140,12 +142,12 @@ export default {
         const role = response.data.user.role;
         const name = response.data.user.name;
 
-        localStorage.setItem('authToken', token);
-        localStorage.setItem('role', role);
-        localStorage.setItem('userName', name);
+        storage.set('authToken', token);
+        storage.set('role', role);
+        storage.set('userName', name);
 
         // Set login success flag for dashboard toast
-        localStorage.setItem('showDashboardWelcome', '1');
+        storage.set('showDashboardWelcome', '1');
 
         this.toast.add({
           severity: 'success',

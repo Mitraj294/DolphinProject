@@ -80,6 +80,7 @@
 
 <script>
 import Pagination from '@/components/layout/Pagination.vue';
+import storage from '@/services/storage';
 export default {
   name: 'GetNotification',
   components: { Pagination },
@@ -162,7 +163,7 @@ export default {
       this.showPageDropdown = !this.showPageDropdown;
     },
     updateNotificationCount() {
-      localStorage.setItem('notificationCount', this.notifications.length);
+      storage.set('notificationCount', this.notifications.length);
       window.dispatchEvent(new Event('storage'));
     },
   },
@@ -182,7 +183,7 @@ export default {
     },
   },
   mounted() {
-    localStorage.setItem('notificationCount', '7');
+    storage.set('notificationCount', '7');
     this.updateNotificationCount();
   },
 };

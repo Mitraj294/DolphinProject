@@ -38,6 +38,14 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
             $roleName = $request->input('role');
+            $name = $request->input('name');
+            $email = $request->input('email');
+            $updates = [];
+            if ($name) $updates['name'] = $name;
+            if ($email) $updates['email'] = $email;
+            if (!empty($updates)) {
+                $user->update($updates);
+            }
             $role = Role::where('name', $roleName)->first();
             if (!$role) {
                 \Log::error('Role not found in updateRole', ['roleName' => $roleName, 'userId' => $id]);
@@ -45,17 +53,23 @@ class UserController extends Controller
             }
             // Remove all roles and assign the new one (single role per user)
             $user->roles()->sync([$role->id]);
-            // Optionally update user_roles denormalized fields
-            UserRole::where('user_id', $user->id)->update(['user_name' => $user->name, 'role_name' => $role->name]);
-            return response()->json(['message' => 'Role updated', 'role' => $role->name]);
+            // Also update the 'role' column in users table to keep in sync
+            $user->role = $role->name;
+            $user->save();
+            // Reload user with roles to return updated info
+            $user = User::with('roles')->find($user->id);
+            return response()->json([
+                'message' => 'User updated',
+                'user' => $user
+            ]);
         } catch (\Exception $e) {
-            \Log::error('Error updating user role', [
+            \Log::error('Error updating user', [
                 'userId' => $id,
                 'request' => $request->all(),
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['message' => 'Error updating user role', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Error updating user', 'error' => $e->getMessage()], 500);
         }
     }
 

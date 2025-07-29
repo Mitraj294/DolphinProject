@@ -1,23 +1,23 @@
-import { canAccess, ROLES } from '@/permissions.js'
 
-// Always allow login: set a default role and name for any credentials
+import { canAccess, ROLES } from '@/permissions.js';
+import storage from '../services/storage';
+
 const authMiddleware = {
   loginAny(email, role = 'superadmin') {
-    // Set role and name in localStorage
-    localStorage.setItem('role', role);
-    localStorage.setItem('name', email.split('@')[0] || 'User');
-    localStorage.setItem('email', email);
+    storage.set('role', role);
+    storage.set('name', email.split('@')[0] || 'User');
+    storage.set('email', email);
     return true;
   },
   isAuthenticated() {
-    const role = localStorage.getItem('role');
+    const role = storage.get('role');
     return !!role && Object.values(ROLES).includes(role);
   },
   getRole() {
-    return localStorage.getItem('role') || '';
+    return storage.get('role') || '';
   },
   canAccess(type, name) {
-    const role = localStorage.getItem('role');
+    const role = storage.get('role');
     return canAccess(role, type, name);
   }
 };

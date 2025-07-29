@@ -4,9 +4,9 @@
 HOST="127.0.0.1"
 
 # Start Laravel backend
-cd Dolphin_backend
+cd Dolphin_Backend
 php artisan serve --host=$HOST &
 
 # Start Vue frontend
-cd ../Dolphin_frontend
+cd ../Dolphin_Frontend
 npm run serve -- --host $HOST

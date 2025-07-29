@@ -18,6 +18,7 @@ import UserPermission from '@/components/Common/Superadmin/UserPermission.vue'
 import ForgotPassword from '@/components/auth/ForgotPassword.vue'
 import Profile from '@/components/Common/Profile.vue'
 import { ROLES, PERMISSIONS, canAccess } from '@/permissions.js'
+import storage from '../services/storage';
 
 const routes = [
   {
@@ -202,8 +203,8 @@ router.beforeEach((to, from, next) => {
     return next();
   }
 
-  // Get user role from localStorage 
-  const role = localStorage.getItem('role');
+  // Get user role from encrypted storage
+  const role = storage.get('role');
 
   // login / thank you / register for everyone
   if (to.path === '/' || to.path === '/thankyou' || to.path === '/register') {

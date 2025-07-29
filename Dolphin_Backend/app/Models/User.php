@@ -1,8 +1,5 @@
 <?php
-
 namespace App\Models;
-
-
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Passport\HasApiTokens;
@@ -11,6 +8,21 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, SoftDeletes, Notifiable;
+
+    /**
+     * Get the organization where this user is the admin (by email).
+     */
+
+    use HasApiTokens, HasFactory, SoftDeletes, Notifiable;
+
+    /**
+     * Get the organization where this user is the admin (by email).
+     */
+    public function organization()
+    {
+        return Organization::where('admin_email', $this->email)->first();
+    }
+
     protected $fillable = [
         'name',
         'email',

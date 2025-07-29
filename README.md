@@ -26,3 +26,9 @@ Dolphin_frontend/  # Vue.js frontend
 
 ## About
 This project is a full-stack web application for assessment and lead management, built with Laravel and Vue.js.
+
+
+
+git add .
+git commit -m "daily update"
+git push

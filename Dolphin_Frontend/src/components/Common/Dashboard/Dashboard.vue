@@ -28,7 +28,8 @@ export default {
   },
   computed: {
     isOrgAdmin() {
-      const role = localStorage.getItem('role');
+      const storage = require('@/services/storage').default;
+      const role = storage.get('role');
       return (
         role === 'organizationadmin' ||
         role === 'superadmin' ||
@@ -36,7 +37,8 @@ export default {
       );
     },
     isUser() {
-      const role = localStorage.getItem('role');
+      const storage = require('@/services/storage').default;
+      const role = storage.get('role');
       return role === 'user' || role === 'salesperson';
     },
   },
