@@ -1,0 +1,6 @@
+// Register Toast component globally for PrimeVue
+import Toast from 'primevue/toast';
+
+// ...existing code...
+app.component('Toast', Toast);
+// ...existing code...

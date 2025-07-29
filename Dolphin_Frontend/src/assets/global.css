@@ -1,0 +1,380 @@
+.page {
+    padding: 0 32px 32px 32px;
+    display: flex;
+    background-color: #fff;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+@media (max-width: 1400px) {
+    .page {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 900px) {
+    .page {
+        padding: 4px;
+    }
+}
+
+.btn-view {
+    background: #fff;
+    color: #0074c2;
+    border: 1.5px solid #0074c2;
+    font-weight: 500;
+}
+
+.btn-view:hover {
+    background: #ffffff;
+
+    border-color: #82817f;
+}
+
+
+.btn-add {
+    background: #fff;
+    color: #222;
+    border: 1.5px dashed #0074c2;
+    font-weight: 500;
+}
+
+.btn-add:hover {
+    background: #e6f0fa;
+    color: #005fa3;
+    border-color: #005fa3;
+}
+
+/* Global button styles */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 24px;
+    padding: 10px 32px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border 0.2s;
+    background: #f5f5f5;
+    color: #222;
+    min-height: 44px;
+    margin-right: 16px;
+    gap: 8px;
+}
+
+.btn:last-child {
+    margin-right: 0;
+}
+
+.btn:hover {
+    background: #e6f0fa;
+}
+
+.btn-primary {
+    background: #0074c2;
+    color: #fff;
+}
+
+.btn-primary:hover {
+    background: #005fa3;
+    color: #fff;
+}
+
+.btn-danger {
+    background: #e53935;
+    color: #fff;
+}
+
+.btn-danger:hover {
+    background: #b71c1c;
+    color: #fff;
+}
+
+.btn-secondary {
+    background: #fff;
+    color: #222;
+    border: 1px solid #e0e0e0;
+}
+
+.btn-secondary:hover {
+    background: #f5f5f5;
+    color: #222;
+}
+
+/* View Detail Button (Reusable) */
+.btn-view {
+    background: #F6F6F6;
+    border: 1px solid #DCDCDC;
+    border-radius: 23.7px;
+    padding: 5px 14px;
+    font-size: 13px;
+    color: #222;
+    cursor: pointer;
+    transition: border 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 1px 4px 0 rgba(33, 150, 243, 0.04);
+}
+
+.btn-view:hover {
+    border-color: #bcbcbc;
+}
+
+.btn-view-icon {
+    width: 15px;
+    height: 15px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+/* Logout confirmation dialog styles (global) */
+.logout-confirm-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    width: 100vw;
+    height: 100vh;
+}
+
+.logout-confirm-dialog {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
+    padding: 32px 32px 24px 32px;
+    min-width: 280px;
+    min-height: 120px;
+    max-width: 90vw;
+    max-height: 90vh;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.logout-confirm-title {
+    font-size: 1.1rem;
+    margin-bottom: 20px;
+    color: #222;
+}
+
+.logout-confirm-actions {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+}
+
+.logout-btn,
+.cancel-btn {
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.logout-btn {
+    background: #0164A5;
+    color: #fff;
+}
+
+.cancel-btn {
+    background: #f5f5f5;
+    color: #222;
+}
+
+/* Sidebar styles */
+.sidebar.sidebar-disabled {
+    pointer-events: none !important;
+    user-select: none !important;
+    opacity: 0.6;
+    filter: blur(1px);
+}
+
+/* Custom Dropdown Radio Styles (OrgAdminGraphs) */
+.dropdown-radio {
+    position: relative;
+    display: inline-block;
+    width: 220px;
+    font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
+}
+
+.dropdown-radio-btn {
+    background: #f0f0f0;
+    border: 1px solid #e6e6e6;
+    border-radius: 12px;
+
+    padding: 12px 18px;
+    width: 220px;
+    min-width: 0;
+    font-size: 1rem;
+    color: #222;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    transition: border 0.15s, box-shadow 0.15s;
+    outline: none;
+}
+
+.dropdown-radio-btn.open {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: 6px 6px 12px 0px #00000022;
+    background: #f0f0f0;
+    border: 1px solid #e6e6e6;
+}
+
+.dropdown-radio-arrow {
+    width: 18px;
+    height: 18px;
+    margin-left: 8px;
+    transition: transform 0.12s linear;
+}
+
+.dropdown-radio-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 220px;
+    background: #fff;
+    border-radius: 0 0 12px 12px;
+    box-shadow: 6px 6px 12px 0px #00000014;
+    z-index: 2000;
+    /* Increased to ensure overlay */
+    padding: 8px 0;
+    margin-top: -2px;
+    animation: dropdown-fade-in 0.18s;
+}
+
+.dropdown-radio-option {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    font-size: 1rem;
+    color: #222;
+    cursor: pointer;
+    transition: background 0.13s;
+    background: transparent;
+    border: none;
+    width: 100%;
+    text-align: left;
+    gap: 12px;
+}
+
+.dropdown-radio-option:hover {
+    background: #f5f5f5;
+}
+
+.dropdown-radio-circle {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #0164a5;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    margin-left: auto;
+    transition: border 0.15s;
+}
+
+.dropdown-radio-circle.selected {
+    background: #0164a5;
+    border-color: #0164a5;
+}
+
+.dropdown-radio-circle.selected::after {
+    content: '';
+    display: block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #fff;
+}
+
+@keyframes dropdown-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+
+@media (max-width: 1400px) {
+
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+        font-size: 15px;
+        padding: 8px 24px;
+        min-height: 40px;
+    }
+
+    .btn-view {
+        font-size: 12px;
+        padding: 4px 10px;
+    }
+
+    .btn-add {
+        font-size: 13px;
+        padding: 7px 18px;
+    }
+}
+
+@media (max-width: 900px) {
+
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+        font-size: 13px;
+        padding: 6px 14px;
+        min-height: 32px;
+    }
+
+    .btn-view {
+        font-size: 11px;
+        padding: 3px 7px;
+    }
+
+    .btn-add {
+        font-size: 12px;
+        padding: 5px 12px;
+    }
+}
+
+@media (max-width: 600px) {
+
+    .btn,
+    .btn-primary,
+    .btn-secondary,
+    .btn-danger {
+        font-size: 11px;
+        padding: 4px 8px;
+        min-height: 24px;
+    }
+
+    .btn-view {
+        font-size: 10px;
+        padding: 2px 4px;
+    }
+
+    .btn-add {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+}
