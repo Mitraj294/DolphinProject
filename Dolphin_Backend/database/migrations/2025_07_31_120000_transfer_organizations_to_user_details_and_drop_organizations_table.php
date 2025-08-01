@@ -27,7 +27,7 @@ return new class extends Migration
                 'updated_at' => now(),
             ]);
         }
-        Schema::dropIfExists('organizations');
+        // Schema::dropIfExists('organizations');
     }
 
     /**

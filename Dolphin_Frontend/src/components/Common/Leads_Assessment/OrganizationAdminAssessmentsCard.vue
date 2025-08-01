@@ -5,9 +5,9 @@
       <div class="assessments-header-actions">
         <button
           class="sent-assessments-btn"
-          @click="goToSendAssessment"
+          @click="goToSummary"
         >
-          Sent Assessments
+          Assessments Summary
         </button>
         <button
           class="btn btn-primary"
@@ -29,40 +29,25 @@
     </div>
     <div class="table-container">
       <table class="table">
-        <thead>
-          <tr>
-            <th>Assessments</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
+        <TableHeader
+          :columns="[
+            { label: 'Assessment Name', key: 'name' },
+
+            { label: 'Actions', key: 'actions' },
+          ]"
+        />
         <tbody>
           <tr
             v-for="item in paginatedAssessments"
             :key="item.id"
           >
-            <td class="assessment-name-cell">
+            <td>
               <button
                 class="assessment-link"
                 @click="goToSummary(item)"
               >
                 {{ item.name }}
               </button>
-              <ul
-                v-if="item.questions && item.questions.length"
-                style="
-                  margin: 6px 0 0 0;
-                  padding-left: 18px;
-                  font-size: 14px;
-                  color: #555;
-                "
-              >
-                <li
-                  v-for="(q, qidx) in item.questions"
-                  :key="q.id || qidx"
-                >
-                  {{ q.text }}
-                </li>
-              </ul>
             </td>
             <td>
               <button
@@ -105,7 +90,15 @@
           @submit.prevent="submitAssessment"
         >
           <div class="modal-form-row">
-            <div class="modal-form-group">
+            <div
+              class="modal-form-group"
+              style="
+                padding: 0 0;
+                background: none;
+                border-radius: 0;
+                height: auto;
+              "
+            >
               <input
                 v-model="newAssessment.name"
                 type="text"
@@ -113,9 +106,14 @@
                 required
                 style="
                   width: 100%;
-                  background: transparent;
-                  border: none;
-                  font-size: 17px;
+                  background: #f6f6f6;
+                  border-radius: 9px;
+                  border: 1.5px solid #e0e0e0;
+                  font-size: 20px;
+                  padding: 16px 20px;
+                  box-sizing: border-box;
+                  font-weight: 500;
+                  color: #222;
                 "
               />
             </div>
@@ -124,57 +122,59 @@
             class="modal-form-row"
             style="flex-direction: column; align-items: stretch; gap: 10px"
           >
-            <label style="font-weight: 500; margin-bottom: 4px"
-              >Questions</label
-            >
-            <div
-              v-for="(q, idx) in newAssessment.questions"
-              :key="idx"
-              style="display: flex; gap: 8px; align-items: center"
-            >
-              <input
-                v-model="q.text"
-                type="text"
-                :placeholder="`Question ${idx + 1}`"
-                required
-                style="
-                  flex: 1;
-                  background: #f6f6f6;
-                  border-radius: 7px;
-                  border: none;
-                  padding: 8px 12px;
-                  font-size: 15px;
-                "
-              />
-              <button
-                type="button"
-                @click="removeQuestion(idx)"
-                style="
-                  background: none;
-                  border: none;
-                  color: #e74c3c;
-                  font-size: 20px;
-                  cursor: pointer;
-                "
-              >
-                &times;
-              </button>
-            </div>
-            <button
-              type="button"
-              @click="addQuestion"
+            <label
               style="
-                margin-top: 6px;
-                background: #f5f5f5;
-                border: none;
-                border-radius: 7px;
-                padding: 6px 18px;
-                font-size: 15px;
-                cursor: pointer;
+                font-weight: 600;
+                margin-bottom: 16px;
+                font-size: 22px;
+                text-align: left;
+                display: block;
+                align-self: flex-start;
               "
             >
-              + Add Question
-            </button>
+              Questions
+            </label>
+            <div
+              v-for="q in questions"
+              :key="q.id"
+              style="width: 100%; margin-bottom: 8px"
+            >
+              <label
+                :for="'q-' + q.id"
+                class="user-assessment-checkbox-label"
+                :class="{
+                  checked: newAssessment.selectedQuestionIds.includes(q.id),
+                }"
+                style="
+                  justify-content: flex-start;
+                  font-size: 18px;
+                  padding: 18px 24px;
+                  background: #f8f9fb;
+                  border-radius: 12px;
+                  margin-bottom: 0;
+                  width: 100%;
+                  text-align: left;
+                "
+              >
+                <span class="user-assessment-checkbox-custom"></span>
+                <input
+                  type="checkbox"
+                  :id="'q-' + q.id"
+                  :value="q.id"
+                  v-model="newAssessment.selectedQuestionIds"
+                />
+                <span
+                  style="
+                    flex: 1;
+                    text-align: left;
+                    font-size: 18px;
+                    font-weight: 500;
+                    color: #222;
+                  "
+                  >{{ q.text }}</span
+                >
+              </label>
+            </div>
           </div>
           <div class="modal-form-actions">
             <button
@@ -203,7 +203,7 @@
       <ScheduleAssessmentModal
         :assessmentName="selectedAssessment && selectedAssessment.name"
         @close="closeScheduleModal"
-        @schedule="closeScheduleModal"
+        @schedule="handleScheduleAssessment"
       />
     </div>
   </div>
@@ -222,11 +222,13 @@
 <script>
 import Pagination from '@/components/layout/Pagination.vue';
 import ScheduleAssessmentModal from '@/components/Common/MyOrganization/ScheduleAssessmentModal.vue';
+import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import axios from 'axios';
 import storage from '@/services/storage';
+import { useToast } from 'primevue/usetoast';
 export default {
   name: 'OrganizationAdminAssessmentsCard',
-  components: { Pagination, ScheduleAssessmentModal },
+  components: { Pagination, ScheduleAssessmentModal, TableHeader },
   data() {
     return {
       assessments: [],
@@ -235,8 +237,9 @@ export default {
       showCreateModal: false,
       newAssessment: {
         name: '',
-        questions: [{ text: '' }],
+        selectedQuestionIds: [],
       },
+      questions: [],
       // Pagination state
       pageSize: 10,
       currentPage: 1,
@@ -245,7 +248,11 @@ export default {
       showGroupsDropdown: false,
       showMembersDropdown: false,
       loading: false,
+      toast: null,
     };
+  },
+  created() {
+    this.toast = useToast();
   },
   computed: {
     paginatedAssessments() {
@@ -273,9 +280,7 @@ export default {
         params: { assessmentId: item.id },
       });
     },
-    goToSendAssessment() {
-      this.$router.push({ name: 'SendAssessment' });
-    },
+
     goToPage(page) {
       if (page >= 1 && page <= this.totalPages) {
         this.currentPage = page;
@@ -286,20 +291,19 @@ export default {
       this.currentPage = 1;
       this.showPageDropdown = false;
     },
-    addQuestion() {
-      this.newAssessment.questions.push({ text: '' });
-    },
-    removeQuestion(idx) {
-      if (this.newAssessment.questions.length > 1) {
-        this.newAssessment.questions.splice(idx, 1);
-      }
-    },
     closeCreateModal() {
       this.showCreateModal = false;
-      this.newAssessment = { name: '', questions: [{ text: '' }] };
+      this.newAssessment = { name: '', selectedQuestionIds: [] };
     },
-    async submitAssessment() {
-      this.loading = true;
+    submitAssessment: async function () {
+      // Use real questions from backend and store in DB
+      const selectedQuestions = this.questions.filter((q) =>
+        this.newAssessment.selectedQuestionIds.includes(q.id)
+      );
+      if (!this.newAssessment.name || selectedQuestions.length === 0) {
+        alert('Please enter a name and select at least one question.');
+        return;
+      }
       try {
         const authToken = storage.get('authToken');
         const res = await axios.post(
@@ -307,7 +311,7 @@ export default {
             '/api/assessments',
           {
             name: this.newAssessment.name,
-            questions: this.newAssessment.questions,
+            question_ids: this.newAssessment.selectedQuestionIds,
           },
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
@@ -317,34 +321,86 @@ export default {
         this.closeCreateModal();
       } catch (e) {
         alert('Failed to create assessment.');
-      } finally {
-        this.loading = false;
       }
     },
-    async mounted() {
-      // Fetch assessments from backend
-      this.loading = true;
+    async handleScheduleAssessment({ date, time, groupIds, memberIds }) {
+      if (!this.selectedAssessment || !date || !time) {
+        this.toast.add({
+          severity: 'warn',
+          summary: 'Missing Data',
+          detail: 'Please select assessment, date, and time.',
+          life: 3500,
+        });
+        return;
+      }
       try {
         const authToken = storage.get('authToken');
-        const res = await axios.get(
+        await axios.post(
           (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/assessments',
+            '/api/assessment-schedules',
+          {
+            assessment_id: this.selectedAssessment.id,
+            date,
+            time,
+            group_ids: groupIds,
+            member_ids: memberIds,
+          },
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
-        // If backend returns an array of assessments
-        if (Array.isArray(res.data.assessments)) {
-          this.assessments = res.data.assessments;
-        } else if (Array.isArray(res.data)) {
-          this.assessments = res.data;
-        } else {
-          this.assessments = [];
-        }
+        this.closeScheduleModal();
+        this.toast.add({
+          severity: 'success',
+          summary: 'Scheduled',
+          detail: 'Assessment scheduled successfully!',
+          life: 3500,
+        });
       } catch (e) {
-        this.assessments = [];
-      } finally {
-        this.loading = false;
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to schedule assessment.',
+          life: 3500,
+        });
       }
     },
+  },
+  mounted: async function () {
+    // Fetch assessments and questions from backend
+    this.loading = true;
+    try {
+      const authToken = storage.get('authToken');
+      // Fetch assessments
+      const res = await axios.get(
+        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+          '/api/assessments',
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      if (Array.isArray(res.data.assessments)) {
+        this.assessments = res.data.assessments;
+      } else if (Array.isArray(res.data)) {
+        this.assessments = res.data;
+      } else {
+        this.assessments = [];
+      }
+      // Fetch questions
+      const qres = await axios.get(
+        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+          '/api/organization-assessment-questions',
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      if (Array.isArray(qres.data.questions)) {
+        this.questions = qres.data.questions;
+      } else if (Array.isArray(qres.data)) {
+        this.questions = qres.data;
+      } else {
+        this.questions = [];
+      }
+    } catch (e) {
+      this.assessments = [];
+      this.questions = [];
+    } finally {
+      this.loading = false;
+    }
   },
 };
 </script>
@@ -397,6 +453,32 @@ export default {
 }
 .sent-assessments-btn:hover {
   background: #e6f0fa;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.table th,
+.table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid #ebebeb;
+}
+.table th {
+  background: #f9f9f9;
+  color: #333;
+  font-weight: 600;
+}
+.table td {
+  color: #555;
+  font-weight: 500;
 }
 
 .assessment-name-cell {
@@ -569,6 +651,59 @@ export default {
   color: #005fa3;
   text-decoration: underline;
 }
+
+/* --- UserAssessment style import --- */
+.user-assessment-checkbox-label {
+  display: flex;
+  align-items: center;
+  background: #f8f9fb;
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #222;
+  cursor: pointer;
+  border: 2px solid #f8f9fb;
+  transition: border 0.18s, background 0.18s;
+  width: 100%;
+  user-select: none;
+  text-align: left;
+}
+.user-assessment-checkbox-label.checked {
+  background: #e6f0fa;
+  border: 2px solid #0074c2;
+}
+.user-assessment-checkbox-label input[type='checkbox'] {
+  display: none;
+}
+.user-assessment-checkbox-custom {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid #bbb;
+  background: #fff;
+  margin-right: 12px;
+  display: inline-block;
+  position: relative;
+}
+.user-assessment-checkbox-label.checked .user-assessment-checkbox-custom {
+  border: 2px solid #0074c2;
+  background: #0074c2;
+}
+.user-assessment-checkbox-label.checked .user-assessment-checkbox-custom:after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 6px;
+  top: 2px;
+  width: 6px;
+  height: 12px;
+  border: solid #fff;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+/* --- End UserAssessment style import --- */
 @media (max-width: 1400px) {
   .assessments-card {
     border-radius: 14px;

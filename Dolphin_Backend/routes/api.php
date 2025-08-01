@@ -13,6 +13,7 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\OrganizationController;
+use App\Http\Controllers\OrganizationAssessmentQuestionController;
 
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Hash;
@@ -34,6 +35,8 @@ Route::post('/password/reset', [AuthController::class, 'resetPassword']);
     Route::get('/users', [UserController::class, 'index']);
 // Public prefill endpoint for registration form (by lead_id or email)
     Route::get('/leads/prefill', [LeadController::class, 'prefill']);
+    // Organization assessment questions
+    Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
     Route::middleware('auth:api')->group(function () {
     // Endpoint to get current authenticated user (for frontend role sync)
     Route::get('/user', function (Request $request) {
@@ -69,10 +72,14 @@ Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 // Organization management
     Route::get('/groups', [GroupController::class, 'index']);
     Route::post('/groups', [GroupController::class, 'store']);
+
     Route::get('/members', [MemberController::class, 'index']);
     Route::post('/members', [MemberController::class, 'store']);
     Route::put('/members/{id}', [MemberController::class, 'update']);
     Route::delete('/members/{id}', [MemberController::class, 'destroy']);
+
+    // Assessment scheduling
+    Route::post('/assessment-schedules', [\App\Http\Controllers\AssessmentScheduleController::class, 'store']);
 
 
 // Organization CRUD

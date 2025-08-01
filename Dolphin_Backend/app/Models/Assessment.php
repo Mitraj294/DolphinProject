@@ -4,22 +4,20 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Assessment extends Model
 {
-    use HasFactory, SoftDeletes;
-    protected $fillable = ['name', 'user_id'];
+    use HasFactory;
 
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    protected $fillable = [
+        'name',
+    ];
 
     public function questions()
     {
-        return $this->hasMany(AssessmentQuestion::class);
+        return $this->belongsToMany(OrganizationAssessmentQuestion::class, 'assessment_question', 'assessment_id', 'question_id');
     }
 }
+
 
 

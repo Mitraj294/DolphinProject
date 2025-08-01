@@ -7,15 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // Assessments table
-        Schema::create('assessments', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-       
+        // Questions table
         Schema::create('questions', function (Blueprint $table) {
             $table->id();
             $table->string('text');
@@ -25,7 +17,7 @@ return new class extends Migration {
         });
 
      
-   Schema::create('answers', function (Blueprint $table) {
+     Schema::create('answers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
             $table->string('question');
@@ -41,7 +33,6 @@ return new class extends Migration {
     {
         Schema::dropIfExists('answers');
         Schema::dropIfExists('questions');
-        Schema::dropIfExists('assessments');
     }
 };
 

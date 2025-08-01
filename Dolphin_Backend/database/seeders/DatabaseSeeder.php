@@ -31,6 +31,9 @@ class DatabaseSeeder extends Seeder
 
         // Seed member roles
         $this->call(MemberRoleSeeder::class);
+
+        // Seed organization assessment questions
+        $this->call(\Database\Seeders\OrganizationAssessmentQuestionSeeder::class);
         if (!User::where('email', 'sdolphin632@gmail.com')->exists()) {
             $user = User::factory()->create([
                 'name' => 'Super Admin',

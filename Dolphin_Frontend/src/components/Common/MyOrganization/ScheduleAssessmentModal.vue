@@ -9,7 +9,7 @@
     <h2 class="modal-title">Schedule {{ assessmentName }}</h2>
     <form
       class="modal-form"
-      @submit.prevent="$emit('schedule')"
+      @submit.prevent="emitSchedule"
     >
       <div class="modal-form-row">
         <FormDateTime
@@ -65,22 +65,89 @@ export default {
       time: '',
       selectedGroups: [],
       selectedMembers: [],
-      groups: [
-        { id: 1, name: 'Flexi-Finders' },
-        { id: 2, name: 'Interim Solutions' },
-        { id: 3, name: 'Talent on Demand' },
-        { id: 4, name: 'QuickStaff' },
-      ],
-      members: [
-        { id: 1, name: 'John Doe' },
-        { id: 2, name: 'Jane Smith' },
-        { id: 3, name: 'Alice Johnson' },
-        { id: 4, name: 'Bob Brown' },
-        { id: 5, name: 'Charlie White' },
-        { id: 6, name: 'Diana Green' },
-        { id: 7, name: 'Ethan Blue' },
-      ],
+      groups: [],
+      members: [],
+      loadingGroups: false,
+      loadingMembers: false,
     };
+  },
+
+  mounted: async function () {
+    // Fetch groups and members from backend
+    this.loadingGroups = true;
+    this.loadingMembers = true;
+    try {
+      const storage = (await import('@/services/storage')).default;
+      const axios = (await import('axios')).default;
+      const authToken = storage.get('authToken');
+      // Fetch groups
+      const groupRes = await axios.get(
+        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+          '/api/groups',
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      if (Array.isArray(groupRes.data)) {
+        this.groups = groupRes.data.map((g) => ({ id: g.id, name: g.name }));
+      } else if (Array.isArray(groupRes.data.groups)) {
+        this.groups = groupRes.data.groups.map((g) => ({
+          id: g.id,
+          name: g.name,
+        }));
+      } else {
+        this.groups = [];
+      }
+      this.loadingGroups = false;
+      // Fetch members
+      const memberRes = await axios.get(
+        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+          '/api/members',
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      if (Array.isArray(memberRes.data)) {
+        this.members = memberRes.data.map((m) => ({
+          id: m.id,
+          name:
+            m.first_name && m.last_name
+              ? `${m.first_name} ${m.last_name}`
+              : m.name || m.email || 'Unknown',
+        }));
+      } else if (Array.isArray(memberRes.data.members)) {
+        this.members = memberRes.data.members.map((m) => ({
+          id: m.id,
+          name:
+            m.first_name && m.last_name
+              ? `${m.first_name} ${m.last_name}`
+              : m.name || m.email || 'Unknown',
+        }));
+      } else {
+        this.members = [];
+      }
+      this.loadingMembers = false;
+    } catch (e) {
+      this.groups = [];
+      this.members = [];
+      this.loadingGroups = false;
+      this.loadingMembers = false;
+    }
+  },
+  watch: {
+    // Reset modal fields when opened/closed
+    assessmentName() {
+      this.date = '';
+      this.time = '';
+      this.selectedGroups = [];
+      this.selectedMembers = [];
+    },
+  },
+  methods: {
+    emitSchedule() {
+      this.$emit('schedule', {
+        date: this.date,
+        time: this.time,
+        groupIds: this.selectedGroups.map((g) => g.id),
+        memberIds: this.selectedMembers.map((m) => m.id),
+      });
+    },
   },
 };
 </script>
