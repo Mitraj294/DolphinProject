@@ -9,7 +9,10 @@
         >
           Sent Assessments
         </button>
-        <button class="btn btn-primary">
+        <button
+          class="btn btn-primary"
+          @click="showCreateModal = true"
+        >
           <img
             src="@/assets/images/Add.svg"
             alt="Add"
@@ -44,6 +47,22 @@
               >
                 {{ item.name }}
               </button>
+              <ul
+                v-if="item.questions && item.questions.length"
+                style="
+                  margin: 6px 0 0 0;
+                  padding-left: 18px;
+                  font-size: 14px;
+                  color: #555;
+                "
+              >
+                <li
+                  v-for="(q, qidx) in item.questions"
+                  :key="q.id || qidx"
+                >
+                  {{ q.text }}
+                </li>
+              </ul>
             </td>
             <td>
               <button
@@ -67,6 +86,114 @@
           </tr>
         </tbody>
       </table>
+    </div>
+    <!-- Create Assessment Modal -->
+    <div
+      v-if="showCreateModal"
+      class="modal-overlay"
+    >
+      <div class="modal-card">
+        <button
+          class="modal-close"
+          @click="closeCreateModal"
+        >
+          &times;
+        </button>
+        <div class="modal-title">Create Assessment</div>
+        <form
+          class="modal-form"
+          @submit.prevent="submitAssessment"
+        >
+          <div class="modal-form-row">
+            <div class="modal-form-group">
+              <input
+                v-model="newAssessment.name"
+                type="text"
+                placeholder="Assessment Name"
+                required
+                style="
+                  width: 100%;
+                  background: transparent;
+                  border: none;
+                  font-size: 17px;
+                "
+              />
+            </div>
+          </div>
+          <div
+            class="modal-form-row"
+            style="flex-direction: column; align-items: stretch; gap: 10px"
+          >
+            <label style="font-weight: 500; margin-bottom: 4px"
+              >Questions</label
+            >
+            <div
+              v-for="(q, idx) in newAssessment.questions"
+              :key="idx"
+              style="display: flex; gap: 8px; align-items: center"
+            >
+              <input
+                v-model="q.text"
+                type="text"
+                :placeholder="`Question ${idx + 1}`"
+                required
+                style="
+                  flex: 1;
+                  background: #f6f6f6;
+                  border-radius: 7px;
+                  border: none;
+                  padding: 8px 12px;
+                  font-size: 15px;
+                "
+              />
+              <button
+                type="button"
+                @click="removeQuestion(idx)"
+                style="
+                  background: none;
+                  border: none;
+                  color: #e74c3c;
+                  font-size: 20px;
+                  cursor: pointer;
+                "
+              >
+                &times;
+              </button>
+            </div>
+            <button
+              type="button"
+              @click="addQuestion"
+              style="
+                margin-top: 6px;
+                background: #f5f5f5;
+                border: none;
+                border-radius: 7px;
+                padding: 6px 18px;
+                font-size: 15px;
+                cursor: pointer;
+              "
+            >
+              + Add Question
+            </button>
+          </div>
+          <div class="modal-form-actions">
+            <button
+              type="submit"
+              class="modal-save-btn"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              @click="closeCreateModal"
+              style="margin-left: 12px"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
     <!-- Schedule Modal -->
     <div
@@ -95,17 +222,21 @@
 <script>
 import Pagination from '@/components/layout/Pagination.vue';
 import ScheduleAssessmentModal from '@/components/Common/MyOrganization/ScheduleAssessmentModal.vue';
+import axios from 'axios';
+import storage from '@/services/storage';
 export default {
   name: 'OrganizationAdminAssessmentsCard',
   components: { Pagination, ScheduleAssessmentModal },
   data() {
     return {
-      assessments: Array.from({ length: 10 }, (_, i) => ({
-        id: i + 1,
-        name: `Assessment ${i + 1}`,
-      })),
+      assessments: [],
       showScheduleModal: false,
       selectedAssessment: null,
+      showCreateModal: false,
+      newAssessment: {
+        name: '',
+        questions: [{ text: '' }],
+      },
       // Pagination state
       pageSize: 10,
       currentPage: 1,
@@ -113,6 +244,7 @@ export default {
       // Dropdown state for modal (future use)
       showGroupsDropdown: false,
       showMembersDropdown: false,
+      loading: false,
     };
   },
   computed: {
@@ -153,6 +285,65 @@ export default {
       this.pageSize = size;
       this.currentPage = 1;
       this.showPageDropdown = false;
+    },
+    addQuestion() {
+      this.newAssessment.questions.push({ text: '' });
+    },
+    removeQuestion(idx) {
+      if (this.newAssessment.questions.length > 1) {
+        this.newAssessment.questions.splice(idx, 1);
+      }
+    },
+    closeCreateModal() {
+      this.showCreateModal = false;
+      this.newAssessment = { name: '', questions: [{ text: '' }] };
+    },
+    async submitAssessment() {
+      this.loading = true;
+      try {
+        const authToken = storage.get('authToken');
+        const res = await axios.post(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/assessments',
+          {
+            name: this.newAssessment.name,
+            questions: this.newAssessment.questions,
+          },
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        if (res.data && res.data.assessment) {
+          this.assessments.unshift(res.data.assessment);
+        }
+        this.closeCreateModal();
+      } catch (e) {
+        alert('Failed to create assessment.');
+      } finally {
+        this.loading = false;
+      }
+    },
+    async mounted() {
+      // Fetch assessments from backend
+      this.loading = true;
+      try {
+        const authToken = storage.get('authToken');
+        const res = await axios.get(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/assessments',
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        // If backend returns an array of assessments
+        if (Array.isArray(res.data.assessments)) {
+          this.assessments = res.data.assessments;
+        } else if (Array.isArray(res.data)) {
+          this.assessments = res.data;
+        } else {
+          this.assessments = [];
+        }
+      } catch (e) {
+        this.assessments = [];
+      } finally {
+        this.loading = false;
+      }
     },
   },
 };

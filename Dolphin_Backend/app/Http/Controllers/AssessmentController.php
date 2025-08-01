@@ -14,14 +14,33 @@ class AssessmentController extends Controller
     public function show()
     {
         $user = Auth::user();
-        $answers = Answer::where('user_id', $user->id)->get();
-        return response()->json(['answers' => $answers]);
+        // Return all assessments created by this user, with their questions
+        $assessments = \App\Models\Assessment::with('questions')->where('user_id', $user->id)->orderByDesc('id')->get();
+        return response()->json(['assessments' => $assessments]);
     }
 
-    // Store answers for both questions
+    // Store answers for both questions (legacy)
     public function store(Request $request)
     {
         $user = Auth::user();
+        // If this is a create assessment request
+        if ($request->has('name') && $request->has('questions')) {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'questions' => 'required|array|min:1',
+                'questions.*.text' => 'required|string|max:1000',
+            ]);
+            $assessment = \App\Models\Assessment::create([
+                'name' => $request->name,
+                'user_id' => $user->id,
+            ]);
+            foreach ($request->questions as $q) {
+                $assessment->questions()->create(['text' => $q['text']]);
+            }
+            return response()->json(['success' => true, 'assessment' => $assessment->load('questions')], 201);
+        }
+
+        // Otherwise, treat as answer submission (legacy)
         $data = $request->validate([
             'answers' => 'required|array',
             'answers.*.question' => 'required|string',

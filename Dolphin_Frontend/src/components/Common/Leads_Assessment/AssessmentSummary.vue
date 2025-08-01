@@ -1,7 +1,7 @@
 <template>
   <MainLayout>
     <div class="page">
-      <div class="assessment-zztable-outer">
+      <div class="table-outer">
         <div class="assessment-table-card">
           <div class="assessment-summary-cards">
             <div class="assessment-summary-card">
@@ -109,7 +109,7 @@
           @click.self="closeModal"
         >
           <div class="assessment-modal-content">
-            <div class="assessment-modal-header-row">
+            <div class="assessment-modal-header-row sticky-modal-header">
               <h2>{{ selectedMember.name }}’s Assessments</h2>
               <button
                 class="btn modal-close-btn"
@@ -118,15 +118,17 @@
                 &times;
               </button>
             </div>
-            <div
-              v-for="(q, idx) in selectedMember.assessment || []"
-              :key="idx"
-              class="assessment-question-block"
-            >
-              <div class="assessment-question">
-                Q.{{ idx + 1 }} {{ q.question }}
+            <div class="assessment-modal-scrollable">
+              <div
+                v-for="(q, idx) in selectedMember.assessment || []"
+                :key="idx"
+                class="assessment-question-block"
+              >
+                <div class="assessment-question">
+                  Q.{{ idx + 1 }} {{ q.question }}
+                </div>
+                <div class="assessment-answer">{{ q.answer }}</div>
               </div>
-              <div class="assessment-answer">{{ q.answer }}</div>
             </div>
           </div>
         </div>
@@ -437,7 +439,7 @@ export default {
 .assessment-modal-content {
   background: #fff;
   border-radius: 12px;
-  padding: 32px 32px 24px 32px;
+  padding: 0;
   min-width: 480px;
   max-width: 600px;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
@@ -446,7 +448,7 @@ export default {
   align-items: stretch;
   position: relative;
   max-height: 65vh;
-  overflow-y: auto;
+  overflow: hidden;
 }
 .assessment-modal-header-row {
   display: flex;
@@ -454,7 +456,18 @@ export default {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 32px;
+  margin-bottom: 0;
+  padding: 16px 32px 10px 32px;
+  background: #fff;
+  z-index: 2;
+}
+.sticky-modal-header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 .assessment-modal-header-row h2 {
   font-size: 1.45rem;
@@ -479,6 +492,12 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.assessment-modal-scrollable {
+  overflow-y: auto;
+  padding: 24px 32px 24px 32px;
+  flex: 1 1 auto;
+  max-height: calc(65vh - 80px);
 }
 .assessment-question-block {
   margin-bottom: 24px;
@@ -572,14 +591,21 @@ export default {
 }
 @media (max-width: 600px) {
   .assessment-modal-content {
-    padding: 8px 1vw 8px 1vw;
+    padding: 0;
     font-size: 0.92rem;
     min-width: 0;
     max-width: 98vw;
     border-radius: 12px;
   }
+  .assessment-modal-header-row {
+    padding: 8px;
+  }
   .assessment-modal-header-row h2 {
     font-size: 1rem;
+  }
+  .assessment-modal-scrollable {
+    padding: 12px 8px 12px 8px;
+    max-height: calc(65vh - 48px);
   }
   .assessment-summary-cards {
     flex-direction: column;

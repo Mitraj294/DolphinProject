@@ -153,21 +153,23 @@ class StripeSubscriptionController extends Controller
             }
 
             // Find user by email
-            $user = User::where('email', $customerEmail)->first(); // Using imported User model
+            $user = User::where('email', $customerEmail)->first();
             if ($user) {
-                // Update user with Stripe customer and subscription IDs
-                $user->stripe_customer_id = $stripeCustomerId;
-                $user->stripe_subscription_id = $stripeSubscriptionId;
-                // Set role to organization admin if not already
+                // Set role to organizationadmin in users table and roles table
                 if ($user->role !== 'organizationadmin') {
                     $user->role = 'organizationadmin';
+                    $user->save();
                 }
-                $user->save();
-
+                if (!$user->roles()->where('name', 'organizationadmin')->exists()) {
+                    $orgAdminRole = \App\Models\Role::where('name', 'organizationadmin')->first();
+                    if ($orgAdminRole) {
+                        $user->roles()->attach($orgAdminRole->id);
+                    }
+                }
                 // Update or create subscription record (try by subscription_id, then by customer_id+user_id)
                 $sub = null;
                 if ($stripeSubscriptionId) {
-                    $sub = Subscription::where('stripe_subscription_id', $stripeSubscriptionId)->first(); // Using imported Subscription model
+                    $sub = Subscription::where('stripe_subscription_id', $stripeSubscriptionId)->first();
                 }
                 if (!$sub && $stripeCustomerId) {
                     $sub = Subscription::where('stripe_customer_id', $stripeCustomerId)
@@ -197,35 +199,7 @@ class StripeSubscriptionController extends Controller
                 } else {
                     Subscription::create($subscriptionData);
                 }
-
-                // --- ORGANIZATION CREATION LOGIC ---
-                if ($customerEmail) {
-                    $existingOrg = Organization::where('admin_email', $customerEmail)->first();
-                    if (!$existingOrg) {
-                        $organization = Organization::create([
-                            'name' => $customerName ?? $user->name,
-                            'size' => null,
-                            'source' => null,
-                            'address1' => null,
-                            'address2' => null,
-                            'city' => null,
-                            'state' => null,
-                            'zip' => null,
-                            'country' => $customerCountry ?? null,
-                            'contract_start' => $subscriptionStart,
-                            'contract_end' => $subscriptionEnd,
-                            'main_contact' => $customerName ?? $user->name,
-                            'admin_email' => $customerEmail,
-                            'admin_phone' => $user->phone ?? null,
-                            'sales_person' => null,
-                            'last_contacted' => now(),
-                            'certified_staff' => null,
-                        ]);
-                        Log::info('Organization created from Stripe webhook for email: ' . $customerEmail);
-                    } else {
-                        Log::info('Organization already exists for email: ' . $customerEmail);
-                    }
-                }
+         
             }
         }
 
@@ -365,22 +339,23 @@ class StripeSubscriptionController extends Controller
                 $customerEmail = $customer->email ?? null;
                 $customerCountry = $customer->address->country ?? null;
             }
-            // Find user by Stripe customer ID
-            $user = User::where('stripe_customer_id', $stripeCustomerId)->first(); // Using imported User model
+            // Find user by email (from subscription record)
+            $user = null;
+            if ($customerEmail) {
+                $user = User::where('email', $customerEmail)->first();
+            }
             if ($user) {
-                // Update user with Stripe subscription ID if missing or different
-                if (empty($user->stripe_subscription_id) || $user->stripe_subscription_id !== $stripeSubscriptionId) {
-                    $user->stripe_subscription_id = $stripeSubscriptionId;
+                // Set role to organizationadmin if not already (using roles table)
+                if (!$user->roles()->where('name', 'organizationadmin')->exists()) {
+                    $orgAdminRole = \App\Models\Role::where('name', 'organizationadmin')->first();
+                    if ($orgAdminRole) {
+                        $user->roles()->attach($orgAdminRole->id);
+                    }
                 }
-                // Set role to organizationadmin if not already
-                if ($user->role !== 'organizationadmin') {
-                    $user->role = 'organizationadmin';
-                }
-                $user->save();
                 // Update or create subscription record (try by subscription_id, then by customer_id+user_id)
                 $sub = null;
                 if ($stripeSubscriptionId) {
-                    $sub = Subscription::where('stripe_subscription_id', $stripeSubscriptionId)->first(); // Using imported Subscription model
+                    $sub = Subscription::where('stripe_subscription_id', $stripeSubscriptionId)->first();
                 }
                 if (!$sub && $stripeCustomerId) {
                     $sub = Subscription::where('stripe_customer_id', $stripeCustomerId)
@@ -410,35 +385,7 @@ class StripeSubscriptionController extends Controller
                 } else {
                     Subscription::create($subscriptionData);
                 }
-
-                // --- ORGANIZATION CREATION LOGIC ---
-                if ($customerEmail) {
-                    $existingOrg = Organization::where('admin_email', $customerEmail)->first();
-                    if (!$existingOrg) {
-                        $organization = Organization::create([
-                            'name' => $customerName ?? $user->name,
-                            'size' => null,
-                            'source' => null,
-                            'address1' => null,
-                            'address2' => null,
-                            'city' => null,
-                            'state' => null,
-                            'zip' => null,
-                            'country' => $customerCountry ?? null,
-                            'contract_start' => $subscriptionStart,
-                            'contract_end' => $subscriptionEnd,
-                            'main_contact' => $customerName ?? $user->name,
-                            'admin_email' => $customerEmail,
-                            'admin_phone' => $user->phone ?? null,
-                            'sales_person' => null,
-                            'last_contacted' => now(),
-                            'certified_staff' => null,
-                        ]);
-                        Log::info('Organization created from Stripe webhook for email: ' . $customerEmail);
-                    } else {
-                        Log::info('Organization already exists for email: ' . $customerEmail);
-                    }
-                }
+         
             }
         }
 

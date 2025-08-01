@@ -15,7 +15,10 @@
               ever since the 1500s.
             </div>
             <div class="subscription-plans-options">
-              <div class="plan-card">
+              <div
+                class="plan-card"
+                :class="{ 'plan-card--current': userPlan === 250 }"
+              >
                 <div class="plan-card-header">
                   <span class="plan-card-name">Basic</span>
                 </div>
@@ -36,7 +39,10 @@
                   <span v-else>{{ basicBtnText }}</span>
                 </button>
               </div>
-              <div class="plan-card">
+              <div
+                class="plan-card"
+                :class="{ 'plan-card--current': userPlan === 2500 }"
+              >
                 <span class="plan-card-badge">Save 2 Months</span>
                 <div class="plan-card-header">
                   <span class="plan-card-name">Standard</span>
@@ -433,7 +439,7 @@ export default {
 .plan-card {
   background: #fff;
   border-radius: 12px;
-  border: 2.5px solid #e3eaf3; /* set border thickness to match hover */
+  border: 2.5px solid #e3eaf3;
   min-width: 260px;
   min-height: 260px;
   width: 260px;
@@ -447,6 +453,12 @@ export default {
   padding: 0;
   margin: 0;
   overflow: hidden;
+  transition: background 0.18s, border 0.18s;
+}
+.plan-card--current {
+  background: #f5faff;
+  border: 2.5px solid #0074c2;
+  z-index: 2;
 }
 .plan-card:hover,
 .plan-card:focus-within {
@@ -548,9 +560,11 @@ export default {
 }
 .plan-card-btn--current:hover,
 .plan-card-btn--current:focus {
-  background: #e3eaf3;
-  color: #0074c2;
-  border: 2px solid #e3eaf3;
+  background: #e3eaf3 !important;
+  color: #0074c2 !important;
+  border: 2px solid #e3eaf3 !important;
+
+  box-shadow: none !important;
 }
 .subscription-plans-footer {
   font-size: 0.95rem;

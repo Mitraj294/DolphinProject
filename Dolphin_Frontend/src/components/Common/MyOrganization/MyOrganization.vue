@@ -32,13 +32,21 @@ import MainLayout from '../../layout/MainLayout.vue';
 import MemberTable from './MemberTable.vue';
 import OrgActionButtons from './OrgActionButtons.vue';
 import Pagination from '../../layout/Pagination.vue';
+import axios from 'axios';
+import storage from '@/services/storage';
 
 export default {
   name: 'MyOrganization',
-  components: { MainLayout, MemberTable, OrgActionButtons, Pagination },
+  components: {
+    MainLayout,
+    MemberTable,
+    OrgActionButtons,
+    Pagination,
+  },
   data() {
     return {
       groups: [],
+      members: [],
       pageSize: 10,
       pageSizes: [10, 25, 100],
       currentPage: 1,
@@ -55,6 +63,36 @@ export default {
     },
   },
   methods: {
+    async loadGroups() {
+      const authToken = storage.get('authToken');
+      const headers = {};
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      try {
+        const response = await axios.get(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/groups',
+          { headers }
+        );
+        this.groups = response.data;
+      } catch (e) {
+        this.groups = [];
+      }
+    },
+    async loadMembers() {
+      const authToken = storage.get('authToken');
+      const headers = {};
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      try {
+        const response = await axios.get(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/members',
+          { headers }
+        );
+        this.members = response.data;
+      } catch (e) {
+        this.members = [];
+      }
+    },
     togglePageDropdown() {
       this.showPageDropdown = !this.showPageDropdown;
     },
@@ -71,6 +109,10 @@ export default {
     viewGroup(group) {
       alert(`Viewing group: ${group.name}`);
     },
+  },
+  mounted() {
+    this.loadGroups();
+    this.loadMembers();
   },
 };
 </script>

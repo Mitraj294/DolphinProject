@@ -45,13 +45,6 @@
                 />
               </div>
               <div>
-                <FormLabel>Password</FormLabel>
-                <FormPassword
-                  v-model="form.password"
-                  placeholder="Type here"
-                />
-              </div>
-              <div>
                 <FormLabel>How did you find us?</FormLabel>
                 <FormDropdown
                   v-model="form.findUs"
@@ -68,6 +61,7 @@
                   <option>Other</option>
                 </FormDropdown>
               </div>
+              <div></div>
             </FormRow>
             <FormRow>
               <div>

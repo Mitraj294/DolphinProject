@@ -3,35 +3,39 @@
 namespace App\Http\Controllers;
 
 use App\Models\Group;
+
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 
 class GroupController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Group::with('members')->get());
+        $user = $request->user();
+        $role = $user->roles()->first();
+        if (!$role || $role->name !== 'organizationadmin') {
+            return response()->json(['error' => 'Unauthorized. Only organizationadmin can access groups.'], 403);
+        }
+        $userId = $user->id;
+        $groups = Group::with('members')->where('user_id', $userId)->get();
+        return response()->json($groups);
     }
 
     public function store(Request $request)
     {
         $user = $request->user();
+        $role = $user->roles()->first();
+        if (!$role || $role->name !== 'organizationadmin') {
+            return response()->json(['error' => 'Unauthorized. Only organizationadmin can create groups.'], 403);
+        }
+        $userId = $user->id;
         $rules = [
             'name' => 'required|string|max:255',
             'member_ids' => 'array',
             'member_ids.*' => 'exists:members,id',
         ];
-        // Only require organization_id if not an org admin
-        if (!$user || $user->role !== 'organizationadmin') {
-            $rules['organization_id'] = 'required|exists:organizations,id';
-        }
         $validated = $request->validate($rules);
-        // If org admin, set organization_id automatically
-        if ($user && $user->role === 'organizationadmin') {
-            $org = $user->organization();
-            if ($org) {
-                $validated['organization_id'] = $org->id;
-            }
-        }
+        $validated['user_id'] = $userId;
         $memberIds = $request->input('member_ids', []);
         $group = Group::create($validated);
         if (!empty($memberIds)) {

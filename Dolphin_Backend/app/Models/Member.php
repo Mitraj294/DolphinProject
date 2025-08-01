@@ -8,15 +8,20 @@ use Illuminate\Database\Eloquent\Model;
 class Member extends Model
 {
     use HasFactory;
-    protected $fillable = ['first_name', 'last_name', 'email', 'phone', 'member_role', 'organization_id'];
+    protected $fillable = ['first_name', 'last_name', 'email', 'phone', 'member_role', 'user_id'];
 
-    public function organization()
+    public function user()
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(User::class);
     }
 
     public function groups()
     {
-        return $this->belongsToMany(Group::class, 'group_member');
+        return $this->belongsToMany(Group::class, 'group_member')->withTimestamps();
+    }
+
+    public function memberRoles()
+    {
+        return $this->belongsToMany(MemberRole::class, 'member_member_role');
     }
 }

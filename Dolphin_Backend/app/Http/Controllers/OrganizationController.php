@@ -21,7 +21,7 @@ class OrganizationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'org_name' => 'required|string|max:255',
             'size' => 'nullable|string',
             'source' => 'nullable|string',
             'address1' => 'nullable|string',
@@ -47,7 +47,7 @@ class OrganizationController extends Controller
     {
         $org = Organization::findOrFail($id);
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
+            'org_name' => 'sometimes|required|string|max:255',
             'size' => 'nullable|string',
             'source' => 'nullable|string',
             'address1' => 'nullable|string',

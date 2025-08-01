@@ -33,7 +33,15 @@
                   v-for="user in paginatedUsers"
                   :key="user.id"
                 >
-                  <td>{{ user.name }}</td>
+                  <td>
+                    <span v-if="user.first_name || user.last_name">
+                      {{ user.first_name || ''
+                      }}{{ user.last_name ? ' ' + user.last_name : '' }}
+                    </span>
+                    <span v-else>
+                      {{ user.name }}
+                    </span>
+                  </td>
                   <td>{{ user.email }}</td>
                   <td>
                     {{ user.role.charAt(0).toUpperCase() + user.role.slice(1) }}
@@ -112,9 +120,17 @@
   >
     <template #title>Edit User</template>
     <FormRow>
-      <FormLabel>Name</FormLabel>
+      <FormLabel>First Name</FormLabel>
       <FormInput
-        v-model="editUser.name"
+        v-model="editUser.first_name"
+        type="text"
+        required
+      />
+    </FormRow>
+    <FormRow>
+      <FormLabel>Last Name</FormLabel>
+      <FormInput
+        v-model="editUser.last_name"
         type="text"
         required
       />
@@ -194,7 +210,8 @@ export default {
       showEditModal: false,
       editUser: {
         id: null,
-        name: '',
+        first_name: '',
+        last_name: '',
         email: '',
         role: '',
       },
@@ -258,7 +275,18 @@ export default {
     },
 
     async impersonateUser(user) {
-      if (!confirm(`Are you sure you want to impersonate ${user.name}?`))
+      // Build a clear display name for confirmation
+      const impersonatdisplayName =
+        user.first_name || user.last_name
+          ? `${user.first_name || ''}${
+              user.last_name ? ' ' + user.last_name : ''
+            }`.trim()
+          : user.name || user.email || 'this user';
+      if (
+        !confirm(
+          `Are you sure you want to impersonate ${impersonatdisplayName}?`
+        )
+      )
         return;
       try {
         const baseUrl =
@@ -272,17 +300,33 @@ export default {
           throw new Error(err.message || 'Failed to impersonate user');
         }
         const data = await res.json();
-        // Store superadmin's original token and info
         const storage = require('@/services/storage').default;
+        // Move all current user keys to super* keys
         storage.set('superAuthToken', storage.get('authToken'));
         storage.set('superRole', storage.get('role'));
-        storage.set('superUserName', storage.get('userName'));
         storage.set('superUserId', storage.get('userId'));
-        // Set impersonated user's info
+        storage.set('superFirstName', storage.get('first_name') || '');
+        storage.set('superLastName', storage.get('last_name') || '');
+        storage.set('superUserName', storage.get('userName') || '');
+
+        // Set impersonated user's info as normal keys
         storage.set('authToken', data.impersonated_token);
         storage.set('role', data.impersonated_role);
-        storage.set('userName', data.impersonated_name);
         storage.set('userId', data.user_id);
+        storage.set('first_name', data.impersonated_first_name || '');
+        storage.set('last_name', data.impersonated_last_name || '');
+        if (data.impersonated_first_name || data.impersonated_last_name) {
+          storage.set(
+            'userName',
+            `${data.impersonated_first_name || ''}${
+              data.impersonated_last_name
+                ? ' ' + data.impersonated_last_name
+                : ''
+            }`.trim()
+          );
+        } else {
+          storage.set('userName', data.impersonated_name);
+        }
         // Reload to apply new context
         this.$router.go(0);
       } catch (e) {
@@ -292,17 +336,21 @@ export default {
 
     revertImpersonation() {
       if (!this.isImpersonating) return;
-      // Restore superadmin's info
+      // Restore all super* keys to normal keys
       const storage = require('@/services/storage').default;
       storage.set('authToken', storage.get('superAuthToken'));
       storage.set('role', storage.get('superRole'));
-      storage.set('userName', storage.get('superUserName'));
       storage.set('userId', storage.get('superUserId'));
-      // Remove impersonation keys using encrypted storage
+      storage.set('first_name', storage.get('superFirstName') || '');
+      storage.set('last_name', storage.get('superLastName') || '');
+      storage.set('userName', storage.get('superUserName') || '');
+      // Remove all super* keys
       storage.remove('superAuthToken');
       storage.remove('superRole');
-      storage.remove('superUserName');
       storage.remove('superUserId');
+      storage.remove('superFirstName');
+      storage.remove('superLastName');
+      storage.remove('superUserName');
       this.$router.go(0);
     },
 
@@ -318,9 +366,14 @@ export default {
         const data = await res.json();
         this.users = (data.users || data || []).map((u) => ({
           id: u.id,
-          name: u.name || u.full_name || '',
+          first_name: u.first_name || '',
+          last_name: u.last_name || '',
           email: u.email || '',
           role: u.role || 'user',
+          name:
+            u.first_name || u.last_name
+              ? `${u.first_name || ''}${u.last_name ? ' ' + u.last_name : ''}`
+              : u.name || u.full_name || '',
         }));
       } catch (e) {
         this.toast.add({
@@ -438,7 +491,8 @@ export default {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              name: this.editUser.name,
+              first_name: this.editUser.first_name,
+              last_name: this.editUser.last_name,
               email: this.editUser.email,
               role: this.editUser.role,
             }),
@@ -563,5 +617,25 @@ export default {
   .page {
     padding: 4px;
   }
+}
+/* Custom: Increase label width and font size in edit profile modal only */
+.common-modal-card .form-row {
+  display: grid !important;
+  grid-template-columns: 120px 1fr !important;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+.common-modal-card .form-label {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 180px;
+  text-align: left;
+  white-space: normal;
+  margin-bottom: 0 !important;
+  font-size: 1.08rem !important;
+  font-weight: 500 !important;
+  color: #1a1a1a !important;
 }
 </style>

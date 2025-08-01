@@ -29,15 +29,22 @@ app.component('Toast', Toast); // Register Toast globally
 
 
 // Sync encrypted storage role with backend user role on app start
+
 import storage from './services/storage';
-fetchCurrentUser().then(user => {
-  if (user && user.role) {
-    const localRole = storage.get('role');
-    if (user.role !== localRole) {
-      storage.set('role', user.role);
+const authToken = storage.get('authToken');
+if (authToken) {
+  fetchCurrentUser().then(user => {
+    if (user && user.role) {
+      const localRole = storage.get('role');
+      if (user.role !== localRole) {
+        storage.set('role', user.role);
+      }
     }
-  }
-}).finally(() => {
+  }).finally(() => {
+    app.use(router);
+    app.mount('#app');
+  });
+} else {
   app.use(router);
   app.mount('#app');
-});
+}

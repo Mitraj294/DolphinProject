@@ -14,9 +14,20 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'nullable|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
+            'confirm_password' => 'required|string|same:password',
+            'phone' => 'nullable|string|max:32',
+            'find_us' => 'nullable|string|max:255',
+            'org_name' => 'nullable|string|max:255',
+            'org_size' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'zip' => 'nullable|string|max:32',
         ]);
 
         if ($validator->fails()) {
@@ -24,21 +35,37 @@ class AuthController extends Controller
         }
 
         $user = User::create([
-            'name' => $request->name,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => 'user',
+            'phone' => $request->phone,
+        ]);
+
+        // Create user_details record
+        \App\Models\UserDetail::create([
+            'user_id' => $user->id,
+            'first_name' => $request->first_name,
+            'last_name' => $request->last_name,
+            'email' => $request->email,
+            'phone' => $request->phone,
+            'find_us' => $request->find_us,
+            'org_name' => $request->org_name,
+            'org_size' => $request->org_size,
+            'address' => $request->address,
+            'country' => $request->country,
+            'state' => $request->state,
+            'city' => $request->city,
+            'zip' => $request->zip,
         ]);
 
         // Assign default role in user_roles table
         $role = \App\Models\Role::where('name', 'user')->first();
         if ($role) {
-            \App\Models\UserRole::create([
-                'user_id' => $user->id,
-                'role_id' => $role->id,
-                'user_name' => $user->name,
-                'role_name' => $role->name,
-            ]);
+            \App\Models\UserRole::updateOrCreate(
+                ['user_id' => $user->id],
+                ['role_id' => $role->id]
+            );
         }
 
         return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
@@ -66,11 +93,27 @@ class AuthController extends Controller
         $token = $tokenResult->accessToken;
         $expiresAt = $tokenResult->token->expires_at;
 
+        // Eager load userDetails and roles for frontend
+        $user = User::with(['userDetails', 'roles'])->find($user->id);
+        // For convenience, also provide top-level role and userDetails fields
+        $role = $user->roles->first()->name ?? 'user';
+        $details = $user->userDetails;
         return response()->json([
             'message' => 'Login successful',
-            'user' => $user,
             'token' => $token,
-            'expires_at' => $expiresAt
+            'expires_at' => $expiresAt,
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'role' => $role,
+                'roles' => $user->roles,
+                'first_name' => $details->first_name ?? '',
+                'last_name' => $details->last_name ?? '',
+                'phone' => $details->phone ?? '',
+                'country' => $details->country ?? '',
+                'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+                'userDetails' => $details,
+            ],
         ], 200);
     }
 
@@ -78,7 +121,22 @@ class AuthController extends Controller
         public function profile(Request $request)
     {
         $user = $request->user();
-        return response()->json($user);
+        // Eager load userDetails and roles
+        $user = User::with(['userDetails', 'roles'])->find($user->id);
+        $role = $user->roles->first()->name ?? 'user';
+        $details = $user->userDetails;
+        return response()->json([
+            'id' => $user->id,
+            'email' => $user->email,
+            'role' => $role,
+            'roles' => $user->roles,
+            'first_name' => $details->first_name ?? '',
+            'last_name' => $details->last_name ?? '',
+            'phone' => $details->phone ?? '',
+            'country' => $details->country ?? '',
+            'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+            'userDetails' => $details,
+        ]);
     }
 
     public function updateProfile(Request $request)

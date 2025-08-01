@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Lead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\LeadAssessmentRegistrationMail;
 
 class LeadController extends Controller
 {
@@ -19,7 +21,6 @@ class LeadController extends Controller
             'last_name' => 'sometimes|string',
             'email' => 'sometimes|email',
             'phone' => 'nullable|string',
-            'password' => 'nullable|string|min:6',
             'find_us' => 'nullable|string',
             'org_name' => 'nullable|string',
             'org_size' => 'nullable|string',
@@ -29,11 +30,6 @@ class LeadController extends Controller
             'city' => 'nullable|string',
             'zip' => 'nullable|string',
         ]);
-        if (isset($data['password']) && $data['password'] !== '') {
-            $data['password'] = Hash::make($data['password']);
-        } else {
-            unset($data['password']);
-        }
         $lead->update($data);
         return response()->json(['message' => 'Lead updated successfully', 'lead' => $lead]);
     }
@@ -44,7 +40,6 @@ class LeadController extends Controller
             'last_name' => 'required|string',
             'email' => 'required|email',
             'phone' => 'nullable|string',
-            'password' => 'required|string|min:6',
             'find_us' => 'nullable|string',
             'org_name' => 'nullable|string',
             'org_size' => 'nullable|string',
@@ -54,13 +49,42 @@ class LeadController extends Controller
             'city' => 'nullable|string',
             'zip' => 'nullable|string',
         ]);
-        $data['password'] = Hash::make($data['password']);
         $lead = Lead::create($data);
+
+
         return response()->json(['message' => 'Lead saved successfully', 'lead' => $lead], 201);
     }
 
     public function index()
     {
         return response()->json(Lead::all());
+    }
+    /**
+     * Prefill endpoint for registration form: returns all lead data by lead_id or email
+     */
+    public function prefill(Request $request)
+    {
+        $lead = null;
+        if ($request->has('lead_id')) {
+            $lead = Lead::find($request->input('lead_id'));
+        } elseif ($request->has('email')) {
+            $lead = Lead::where('email', $request->input('email'))->first();
+        }
+        if (!$lead) {
+            return response()->json(['message' => 'Lead not found'], 404);
+        }
+        return response()->json(['lead' => [
+            'first_name' => $lead->first_name,
+            'last_name' => $lead->last_name,
+            'email' => $lead->email,
+            'phone' => $lead->phone,
+            'organization_name' => $lead->org_name ?? '',
+            'organization_size' => $lead->org_size ?? '',
+            'organization_address' => $lead->address ?? '',
+            'organization_city' => $lead->city ?? '',
+            'organization_state' => $lead->state ?? '',
+            'organization_zip' => $lead->zip ?? '',
+            'country' => $lead->country ?? '',
+        ]]);
     }
 }

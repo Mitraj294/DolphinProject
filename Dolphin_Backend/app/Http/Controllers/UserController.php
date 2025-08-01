@@ -27,8 +27,23 @@ class UserController extends Controller
     // Return all users except superadmin
     public function index()
     {
-        $users = User::with('roles')->get();
-   
+        $users = User::with(['userDetails', 'roles'])->get();
+        $users = $users->map(function ($user) {
+            $details = $user->userDetails;
+            $role = $user->roles->first()->name ?? 'user';
+            return [
+                'id' => $user->id,
+                'email' => $user->email,
+                'role' => $role,
+                'roles' => $user->roles,
+                'first_name' => $details->first_name ?? '',
+                'last_name' => $details->last_name ?? '',
+                'phone' => $details->phone ?? '',
+                'country' => $details->country ?? '',
+                'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+                'userDetails' => $details,
+            ];
+        });
         return response()->json(['users' => $users]);
     }
 
@@ -38,13 +53,33 @@ class UserController extends Controller
         try {
             $user = User::findOrFail($id);
             $roleName = $request->input('role');
-            $name = $request->input('name');
             $email = $request->input('email');
+            $first_name = $request->input('first_name');
+            $last_name = $request->input('last_name');
             $updates = [];
-            if ($name) $updates['name'] = $name;
             if ($email) $updates['email'] = $email;
             if (!empty($updates)) {
                 $user->update($updates);
+            }
+            // Update user_details
+            $details = $user->userDetails;
+            if ($details) {
+                $detailsUpdates = [];
+                if ($first_name !== null) $detailsUpdates['first_name'] = $first_name;
+                if ($last_name !== null) $detailsUpdates['last_name'] = $last_name;
+                if ($request->has('org_name')) {
+                    $detailsUpdates['org_name'] = $request->input('org_name');
+                }
+                if (!empty($detailsUpdates)) {
+                    $details->update($detailsUpdates);
+                }
+                // Sync org_name to organizations table
+                if (isset($detailsUpdates['org_name'])) {
+                    \App\Models\Organization::updateOrCreate(
+                        ['user_id' => $user->id],
+                        ['org_name' => $detailsUpdates['org_name']]
+                    );
+                }
             }
             $role = Role::where('name', $roleName)->first();
             if (!$role) {
@@ -53,14 +88,21 @@ class UserController extends Controller
             }
             // Remove all roles and assign the new one (single role per user)
             $user->roles()->sync([$role->id]);
-            // Also update the 'role' column in users table to keep in sync
-            $user->role = $role->name;
-            $user->save();
-            // Reload user with roles to return updated info
-            $user = User::with('roles')->find($user->id);
+            // Reload user with roles and userDetails to return updated info
+            $user = User::with(['roles', 'userDetails'])->find($user->id);
+            $details = $user->userDetails;
+            $role = $user->roles->first()->name ?? 'user';
             return response()->json([
-                'message' => 'User updated',
-                'user' => $user
+                'id' => $user->id,
+                'email' => $user->email,
+                'role' => $role,
+                'roles' => $user->roles,
+                'first_name' => $details->first_name ?? '',
+                'last_name' => $details->last_name ?? '',
+                'phone' => $details->phone ?? '',
+                'country' => $details->country ?? '',
+                'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+                'userDetails' => $details,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error updating user', [

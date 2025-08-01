@@ -9,8 +9,9 @@ return new class extends Migration {
     {
         Schema::create('groups', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade');
             $table->string('name');
-            $table->foreignId('organization_id')->constrained('organizations')->onDelete('cascade');
+      
             $table->timestamps();
         });
     }

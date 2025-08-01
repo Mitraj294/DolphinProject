@@ -141,10 +141,22 @@ export default {
         const token = response.data.token;
         const role = response.data.user.role;
         const name = response.data.user.name;
+        const firstName = response.data.user.first_name || '';
+        const lastName = response.data.user.last_name || '';
 
         storage.set('authToken', token);
         storage.set('role', role);
-        storage.set('userName', name);
+        storage.set('first_name', firstName);
+        storage.set('last_name', lastName);
+        // Set userName as 'first_name last_name' if available, else fallback to name
+        if (firstName || lastName) {
+          storage.set(
+            'userName',
+            `${firstName}${lastName ? ' ' + lastName : ''}`.trim()
+          );
+        } else {
+          storage.set('userName', name);
+        }
 
         // Set login success flag for dashboard toast
         storage.set('showDashboardWelcome', '1');
@@ -152,7 +164,9 @@ export default {
         this.toast.add({
           severity: 'success',
           summary: 'Login Successful',
-          detail: `Welcome, ${name}!`,
+          detail: `Welcome, ${firstName || ''}${
+            lastName ? ' ' + lastName : !firstName ? name : ''
+          }!`,
           life: 3000,
         });
 

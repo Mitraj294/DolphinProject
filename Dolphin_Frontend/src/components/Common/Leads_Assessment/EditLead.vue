@@ -44,13 +44,7 @@
                   placeholder="Type here"
                 />
               </div>
-              <div>
-                <FormLabel>Password</FormLabel>
-                <FormPassword
-                  v-model="form.password"
-                  placeholder="Type here (leave blank to keep current)"
-                />
-              </div>
+
               <div>
                 <FormLabel>How did you find us?</FormLabel>
                 <FormDropdown
@@ -68,6 +62,7 @@
                   <option>Other</option>
                 </FormDropdown>
               </div>
+              <div></div>
             </FormRow>
             <FormRow>
               <div>
@@ -202,7 +197,6 @@ import {
   FormInput,
   FormDropdown,
   FormBox,
-  FormPassword,
 } from '@/components/Common/Common_UI/Form';
 import axios from 'axios';
 
@@ -215,7 +209,6 @@ export default {
     FormInput,
     FormDropdown,
     FormBox,
-    FormPassword,
   },
   data() {
     return {
@@ -224,7 +217,6 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        password: '', // Kept as empty string, will be deleted from payload if not changed
         find_us: '',
         org_name: '',
         org_size: '',
@@ -239,22 +231,62 @@ export default {
       errorMessage: '', // Still used internally for toast detail
     };
   },
-  created() {
-    // Prefill form from route query params
+  async created() {
+    // Prefill form from backend if id is present, else from query params
     const q = this.$route.query;
-    this.form.first_name = q.first_name || q.contact?.split(' ')[0] || '';
-    this.form.last_name = q.last_name || q.contact?.split(' ')[1] || '';
-    this.form.email = q.email || '';
-    this.form.phone = q.phone || '';
-    this.form.find_us = q.source || q.find_us || '';
-    this.form.org_name = q.organization || q.org_name || '';
-    this.form.org_size = q.size || q.org_size || '';
-    this.form.address = q.address || '';
-    this.form.country = q.country || '';
-    this.form.state = q.state || '';
-    this.form.city = q.city || '';
-    this.form.zip = q.zip || '';
-    // Password is not prefilled for security reasons and because it's hashed
+    const leadId = q.id;
+    if (leadId) {
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
+        const res = await axios.get(`${API_BASE_URL}/api/leads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const found = Array.isArray(res.data)
+          ? res.data.find((l) => l.id == leadId)
+          : null;
+        if (found) {
+          this.form.first_name = found.first_name || '';
+          this.form.last_name = found.last_name || '';
+          this.form.email = found.email || '';
+          this.form.phone = found.phone || '';
+          this.form.find_us = found.find_us || '';
+          this.form.org_name = found.org_name || '';
+          this.form.org_size = found.org_size || '';
+          this.form.address = found.address || '';
+          this.form.country = found.country || '';
+          this.form.state = found.state || '';
+          this.form.city = found.city || '';
+          this.form.zip = found.zip || '';
+          return;
+        }
+      } catch (e) {
+        // fallback to query params
+      }
+    }
+    // fallback to query params if no id or fetch failed
+    const lead = q.lead
+      ? typeof q.lead === 'string'
+        ? JSON.parse(q.lead)
+        : q.lead
+      : {};
+    this.form.first_name =
+      q.first_name || q.contact?.split(' ')[0] || lead.first_name || '';
+    this.form.last_name =
+      q.last_name || q.contact?.split(' ')[1] || lead.last_name || '';
+    this.form.email = q.email || lead.email || '';
+    this.form.phone = q.phone || lead.phone || '';
+    this.form.find_us = q.source || q.find_us || lead.find_us || '';
+    this.form.org_name = q.organization || q.org_name || lead.org_name || '';
+    this.form.org_size = q.size || q.org_size || lead.org_size || '';
+    this.form.address =
+      q.address || q.address_line || lead.address || lead.address_line || '';
+    this.form.country = q.country || lead.country || '';
+    this.form.state = q.state || lead.state || '';
+    this.form.city = q.city || lead.city || '';
+    this.form.zip = q.zip || lead.zip || '';
   },
   methods: {
     async handleUpdateLead() {
@@ -293,12 +325,7 @@ export default {
           return;
         }
 
-        // Create payload and conditionally add password
         const payload = { ...this.form };
-        if (payload.password === '') {
-          // Only delete if explicitly empty string
-          delete payload.password;
-        }
 
         const response = await axios.patch(
           `${API_BASE_URL}/api/leads/${leadId}`,

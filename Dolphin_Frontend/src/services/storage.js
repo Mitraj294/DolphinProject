@@ -1,4 +1,4 @@
-// src/services/storage.js
+
 import CryptoJS from 'crypto-js';
 
 const STORAGE_KEY = process.env.VUE_APP_STORAGE_KEY || 'dolphin_secret_key';

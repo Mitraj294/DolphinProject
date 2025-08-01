@@ -67,54 +67,8 @@ class SubscriptionController extends Controller
             'nextBill' => $nextBill,
         ]);
     }
-    /**
-     * Create organization when user subscribes
-     */
-    public function subscribe(Request $request)
-    {
-        $user = Auth::user();
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
+  
 
-        // ...existing subscription logic...
-
-        // Get subscription start/end from request or set defaults
-        $contractStart = $request->input('subscription_start') ?? now();
-        $contractEnd = $request->input('subscription_end') ?? now()->addYear();
-
-        // Only create organization if one does not already exist for this user/email
-        $existingOrg = \App\Models\Organization::where('admin_email', $user->email)->first();
-        if (!$existingOrg) {
-            $organization = \App\Models\Organization::create([
-                'name' => $user->name, // Organization name = user name
-                'size' => null,
-                'source' => null,
-                'address1' => null,
-                'address2' => null,
-                'city' => null,
-                'state' => null,
-                'zip' => null,
-                'country' => null,
-                'contract_start' => $contractStart, // Subscription start
-                'contract_end' => $contractEnd,     // Subscription end
-                'main_contact' => $user->name,      // Admin name = user name
-                'admin_email' => $user->email,
-                'admin_phone' => $user->phone ?? null,
-                'sales_person' => null,
-                'last_contacted' => now(), // Use current timestamp
-                'certified_staff' => null,
-            ]);
-        }
-
-        // Optionally, assign user as organization admin (if you have such logic)
-        // $user->organization_id = $organization->id;
-        // $user->role = 'organizationadmin';
-        // $user->save();
-
-        // ...rest of your subscription logic...
-        return response()->json(['message' => 'Organization created on subscription', 'organization' => $organization]);
-    }
 
     /**
      * Get all subscriptions (history) for the authenticated user

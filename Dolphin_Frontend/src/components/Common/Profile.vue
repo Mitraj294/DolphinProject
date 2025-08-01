@@ -25,24 +25,40 @@
             {{ profileError }}
           </div>
           <div class="profile-info-row">
-            <div class="profile-label">Name</div>
-            <div class="profile-value">{{ user.name }}</div>
+            <div class="profile-label">First Name</div>
+            <div class="profile-value">
+              {{ user.userDetails?.first_name || '' }}
+            </div>
+          </div>
+          <div class="profile-info-row">
+            <div class="profile-label">Last Name</div>
+            <div class="profile-value">
+              {{ user.userDetails?.last_name || '' }}
+            </div>
           </div>
           <div class="profile-info-row">
             <div class="profile-label">Email</div>
-            <div class="profile-value">{{ user.email }}</div>
+            <div class="profile-value">
+              {{ user.email || user.userDetails?.email || '' }}
+            </div>
           </div>
           <div class="profile-info-row">
             <div class="profile-label">Role</div>
-            <div class="profile-value">{{ user.role }}</div>
+            <div class="profile-value">
+              <span v-if="user.roles && user.roles.length">
+                {{ user.roles.map((r) => r.name).join(', ') }}
+              </span>
+            </div>
           </div>
           <div class="profile-info-row">
             <div class="profile-label">Country</div>
-            <div class="profile-value">{{ user.country }}</div>
+            <div class="profile-value">
+              {{ user.userDetails?.country || '' }}
+            </div>
           </div>
           <div class="profile-info-row">
             <div class="profile-label">Phone</div>
-            <div class="profile-value">{{ user.phone }}</div>
+            <div class="profile-value">{{ user.userDetails?.phone || '' }}</div>
           </div>
         </div>
         <div class="profile-actions">
@@ -63,9 +79,17 @@
       >
         <template #title>Edit Profile</template>
         <FormRow>
-          <FormLabel>Name</FormLabel>
+          <FormLabel>First Name</FormLabel>
           <FormInput
-            v-model="editForm.name"
+            v-model="editForm.first_name"
+            type="text"
+            required
+          />
+        </FormRow>
+        <FormRow>
+          <FormLabel>Last Name</FormLabel>
+          <FormInput
+            v-model="editForm.last_name"
             type="text"
             required
           />
@@ -226,11 +250,15 @@ export default {
   data() {
     return {
       user: {
-        name: '',
+        userDetails: {
+          first_name: '',
+          last_name: '',
+          email: '',
+          phone: '',
+          country: '',
+        },
+        roles: [],
         email: '',
-        role: '',
-        country: '',
-        phone: '',
       },
       currentPassword: '',
       newPassword: '',
@@ -241,7 +269,8 @@ export default {
       showConfirmPassword: false,
       showEditModal: false,
       editForm: {
-        name: '',
+        first_name: '',
+        last_name: '',
         email: '',
         phone: '',
         country: '',
@@ -257,7 +286,6 @@ export default {
   methods: {
     async fetchProfile() {
       try {
-        // Use the same token key for all requests
         const token = storage.get('authToken');
         if (!token) {
           this.profileError = 'No auth token found. Please login.';
@@ -277,20 +305,12 @@ export default {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        // Log response for debugging
-        console.log('Profile API response:', response.data);
-        this.user = {
-          name: response.data.name || '',
-          email: response.data.email || '',
-          role: response.data.role || '',
-          country: response.data.country || '',
-          phone: response.data.phone || '',
-        };
+        // Expect userDetails and roles in response
+        this.user = response.data;
         this.profileError = '';
         this.profileRaw = JSON.stringify(response.data, null, 2);
       } catch (error) {
-        // If error, keep fields blank and show error
-        this.user = { name: '', email: '', role: '', country: '', phone: '' };
+        this.user = { userDetails: {}, roles: [], email: '' };
         if (error.response && error.response.data) {
           this.profileError = 'Error: ' + JSON.stringify(error.response.data);
           this.toast.add({
@@ -384,10 +404,11 @@ export default {
     },
     editAccount() {
       // Prefill modal form with current user data
-      this.editForm.name = this.user.name;
+      this.editForm.first_name = this.user.userDetails.first_name;
+      this.editForm.last_name = this.user.userDetails.last_name;
       this.editForm.email = this.user.email;
-      this.editForm.phone = this.user.phone;
-      this.editForm.country = this.user.country;
+      this.editForm.phone = this.user.userDetails.phone;
+      this.editForm.country = this.user.userDetails.country;
       this.editMessage = '';
       this.showEditModal = true;
     },
@@ -411,7 +432,8 @@ export default {
             process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
           }/api/profile`,
           {
-            name: this.editForm.name,
+            first_name: this.editForm.first_name,
+            last_name: this.editForm.last_name,
             email: this.editForm.email,
             phone: this.editForm.phone,
             country: this.editForm.country,
@@ -424,24 +446,35 @@ export default {
           }
         );
         // Update local user data and encrypted storage
-        this.user.name = response.data.user.name;
+        this.user.userDetails.first_name = response.data.user.first_name;
+        this.user.userDetails.last_name = response.data.user.last_name;
         this.user.email = response.data.user.email;
-        this.user.phone = response.data.user.phone;
-        this.user.country = response.data.user.country;
-        storage.set('name', this.user.name);
+        this.user.userDetails.phone = response.data.user.phone;
+        this.user.userDetails.country = response.data.user.country;
+        storage.set('first_name', this.user.userDetails.first_name);
+        storage.set('last_name', this.user.userDetails.last_name);
         storage.set('email', this.user.email);
-        storage.set('phone', this.user.phone);
-        storage.set('country', this.user.country);
-        this.editMessage = 'Profile updated successfully!';
-        this.toast.add({
-          severity: 'success',
-          summary: 'Profile Updated',
-          detail: 'Profile updated successfully!',
-          life: 3000,
+        storage.set('phone', this.user.userDetails.phone);
+        storage.set('country', this.user.userDetails.country);
+        // Also update the full user object for Navbar
+        storage.set('user', {
+          first_name: this.user.userDetails.first_name,
+          last_name: this.user.userDetails.last_name,
+          email: this.user.email,
+          role: this.user.role,
+          country: this.user.userDetails.country,
+          phone: this.user.userDetails.phone,
         });
+        this.showEditModal = false;
+        // Only show toast after modal is closed, do not set editMessage
         setTimeout(() => {
-          this.showEditModal = false;
-        }, 1200);
+          this.toast.add({
+            severity: 'success',
+            summary: 'Profile Updated',
+            detail: 'Profile updated successfully!',
+            life: 3000,
+          });
+        }, 350);
       } catch (error) {
         let msg = 'Failed to update profile.';
         if (error.response && error.response.data) {
@@ -705,5 +738,25 @@ export default {
   .profile-section-title {
     margin-left: 12px;
   }
+}
+/* Custom: Increase label width and font size in edit profile modal only */
+.common-modal-card .form-row {
+  display: grid !important;
+  grid-template-columns: 120px 1fr !important;
+  align-items: center;
+  gap: 18px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+.common-modal-card .form-label {
+  width: 120px !important;
+  min-width: 120px !important;
+  max-width: 180px;
+  text-align: left;
+  white-space: normal;
+  margin-bottom: 0 !important;
+  font-size: 1.08rem !important;
+  font-weight: 500 !important;
+  color: #1a1a1a !important;
 }
 </style>

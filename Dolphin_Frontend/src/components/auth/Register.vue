@@ -14,22 +14,32 @@
     <div class="login-card">
       <h2 class="login-title">Create Account</h2>
       <p class="login-subtitle">Register a new account</p>
-      <form @submit.prevent="handleRegister">
+      <!-- Step 1: Basic Info -->
+      <form
+        v-if="step === 1"
+        @submit.prevent="goToStep2"
+      >
         <div class="input-group name-group">
-          <span class="icon">
-            <i class="fas fa-user"></i>
-          </span>
+          <span class="icon"><i class="fas fa-user"></i></span>
           <input
             type="text"
-            v-model="name"
-            placeholder="Name"
+            v-model="first_name"
+            placeholder="First Name"
+            ref="firstNameInput"
+            required
+          />
+        </div>
+        <div class="input-group name-group">
+          <span class="icon"><i class="fas fa-user"></i></span>
+          <input
+            type="text"
+            v-model="last_name"
+            placeholder="Last Name"
             required
           />
         </div>
         <div class="input-group email-group">
-          <span class="icon">
-            <i class="fas fa-envelope"></i>
-          </span>
+          <span class="icon"><i class="fas fa-envelope"></i></span>
           <input
             type="email"
             v-model="email"
@@ -37,10 +47,159 @@
             required
           />
         </div>
+        <div class="input-group phone-group">
+          <span class="icon"><i class="fas fa-phone"></i></span>
+          <input
+            type="tel"
+            v-model="phone"
+            placeholder="Phone Number"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          class="login-btn"
+        >
+          Next
+        </button>
+      </form>
+
+      <!-- Step 2: Organization Info -->
+      <form
+        v-else-if="step === 2"
+        @submit.prevent="goToStep3"
+      >
+        <div class="input-group org-name-group">
+          <span class="icon"><i class="fas fa-building"></i></span>
+          <input
+            type="text"
+            v-model="organization_name"
+            placeholder="Organization Name"
+            ref="orgNameInput"
+            required
+          />
+        </div>
+        <div class="input-group org-size-group styled-select">
+          <span class="icon"><i class="fas fa-users"></i></span>
+          <select
+            v-model="organization_size"
+            required
+          >
+            <option
+              disabled
+              value=""
+            >
+              Select Organization Size
+            </option>
+            <option>250+ Employees (Large)</option>
+            <option>100-249 Employees (Medium)</option>
+            <option>1-99 Employees (Small)</option>
+          </select>
+          <span class="icon right"><i class="fas fa-chevron-down"></i></span>
+        </div>
+        <div class="input-group org-address-group">
+          <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
+          <input
+            type="text"
+            v-model="organization_address"
+            placeholder="Organization Address"
+            required
+          />
+        </div>
+        <div class="input-group org-city-group styled-select">
+          <span class="icon"><i class="fas fa-city"></i></span>
+          <select
+            v-model="organization_city"
+            required
+          >
+            <option
+              disabled
+              value=""
+            >
+              Select City
+            </option>
+            <option>A'bad</option>
+            <option>Baroda</option>
+            <option>Surat</option>
+          </select>
+          <span class="icon right"><i class="fas fa-chevron-down"></i></span>
+        </div>
+        <div class="input-group org-state-group styled-select">
+          <span class="icon"><i class="fas fa-flag"></i></span>
+          <select
+            v-model="organization_state"
+            required
+          >
+            <option
+              disabled
+              value=""
+            >
+              Select State
+            </option>
+            <option>Gujarat</option>
+            <option>UP</option>
+            <option>MP</option>
+          </select>
+          <span class="icon right"><i class="fas fa-chevron-down"></i></span>
+        </div>
+        <div class="input-group org-country-group styled-select">
+          <span class="icon"><i class="fas fa-globe"></i></span>
+          <select
+            v-model="country"
+            required
+          >
+            <option
+              disabled
+              value=""
+            >
+              Select Country
+            </option>
+            <option>India</option>
+            <option>United States</option>
+            <option>Canada</option>
+          </select>
+          <span class="icon right"><i class="fas fa-chevron-down"></i></span>
+        </div>
+        <div class="input-group org-findus-group">
+          <span class="icon"><i class="fas fa-question-circle"></i></span>
+          <input
+            type="text"
+            v-model="find_us"
+            placeholder="How did you find us?"
+          />
+        </div>
+        <div class="input-group org-zip-group">
+          <span class="icon"><i class="fas fa-mail-bulk"></i></span>
+          <input
+            type="text"
+            v-model="organization_zip"
+            placeholder="Zip Code"
+            required
+          />
+        </div>
+        <button
+          type="button"
+          class="login-btn"
+          @click="goToStep1"
+          style="margin-bottom: 8px"
+        >
+          Back
+        </button>
+        <button
+          type="submit"
+          class="login-btn"
+        >
+          Next
+        </button>
+      </form>
+
+      <!-- Step 3: Password -->
+      <form
+        v-else-if="step === 3"
+        @submit.prevent="handleRegister"
+      >
         <div class="input-group password-group">
-          <span class="icon">
-            <i class="fas fa-lock"></i>
-          </span>
+          <span class="icon"><i class="fas fa-lock"></i></span>
           <input
             :type="showPassword ? 'text' : 'password'"
             v-model="password"
@@ -49,30 +208,38 @@
           />
           <span
             class="icon right"
-            @click="togglePassword"
+            @click="showPassword = !showPassword"
+            style="user-select: none"
           >
-            <i :class="showPassword ? 'fas fa-eye' : 'fas fa-eye-slash'"></i>
+            <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
           </span>
         </div>
         <div class="input-group password-group">
-          <span class="icon">
-            <i class="fas fa-lock"></i>
-          </span>
+          <span class="icon"><i class="fas fa-lock"></i></span>
           <input
-            :type="showPasswordConfirm ? 'text' : 'password'"
-            v-model="password_confirmation"
+            :type="showConfirmPassword ? 'text' : 'password'"
+            v-model="confirm_password"
             placeholder="Confirm Password"
             required
           />
           <span
             class="icon right"
-            @click="togglePasswordConfirm"
+            @click="showConfirmPassword = !showConfirmPassword"
+            style="user-select: none"
           >
             <i
-              :class="showPasswordConfirm ? 'fas fa-eye' : 'fas fa-eye-slash'"
+              :class="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
             ></i>
           </span>
         </div>
+        <button
+          type="button"
+          class="login-btn"
+          @click="goToStep2"
+          style="margin-bottom: 8px"
+        >
+          Back
+        </button>
         <button
           type="submit"
           class="login-btn"
@@ -119,43 +286,74 @@ export default {
   },
   data() {
     return {
-      name: '',
+      step: 1,
+      first_name: '',
+      last_name: '',
       email: '',
+      phone: '',
       password: '',
-      password_confirmation: '',
-      showPassword: false,
-      showPasswordConfirm: false,
+      confirm_password: '',
+      organization_name: '',
+      organization_size: '',
+      organization_address: '',
+      organization_city: '',
+      organization_state: '',
+      organization_zip: '',
+      country: '',
       currentYear: new Date().getFullYear(),
+      find_us: '',
+      showPassword: false,
+      showConfirmPassword: false,
     };
   },
   methods: {
-    togglePassword() {
-      this.showPassword = !this.showPassword;
+    goToStep3() {
+      this.step = 3;
     },
-    togglePasswordConfirm() {
-      this.showPasswordConfirm = !this.showPasswordConfirm;
+    goToStep2() {
+      this.step = 2;
+      this.$nextTick(() => {
+        setTimeout(() => {
+          if (this.$refs.orgNameInput) this.$refs.orgNameInput.focus();
+        }, 50);
+      });
+    },
+    goToStep1() {
+      this.step = 1;
+      this.$nextTick(() => {
+        setTimeout(() => {
+          if (this.$refs.firstNameInput) this.$refs.firstNameInput.focus();
+        }, 50);
+      });
     },
     async handleRegister() {
       try {
         const response = await axios.post(`${API_BASE_URL}/api/register`, {
-          name: this.name,
+          first_name: this.first_name,
+          last_name: this.last_name,
           email: this.email,
+          phone: this.phone,
           password: this.password,
-          password_confirmation: this.password_confirmation,
+          confirm_password: this.confirm_password,
+          org_name: this.organization_name,
+          org_size: this.organization_size,
+          address: this.organization_address,
+          city: this.organization_city,
+          state: this.organization_state,
+          zip: this.organization_zip,
+          country: this.country,
+          find_us: this.find_us,
         });
-
         if (response.status === 201) {
-          // No toast here, Login.vue will display it
           this.$router.push({
             name: 'Login',
             query: {
               email: this.email,
-              registrationSuccess: true, // <-- ADD THIS FLAG
+              registrationSuccess: true,
             },
           });
         }
       } catch (error) {
-        // ... (error handling remains the same)
         console.error('Registration failed:', error);
         let errorMessage = 'Registration failed. Please try again.';
         if (
@@ -180,11 +378,123 @@ export default {
         });
       }
     },
+    async prefillFromLead() {
+      // Try to get lead data from query params or API
+      const params = this.$route.query;
+      // If all data is in query params, use them (fallback)
+      let prefilled = false;
+      if (
+        params.first_name ||
+        params.last_name ||
+        params.phone ||
+        params.organization_name ||
+        params.find_us
+      ) {
+        if (params.first_name) this.first_name = params.first_name;
+        if (params.last_name) this.last_name = params.last_name;
+        if (params.email) this.email = params.email;
+        if (params.phone) this.phone = params.phone;
+        if (params.organization_name)
+          this.organization_name = params.organization_name;
+        if (params.organization_size)
+          this.organization_size = params.organization_size;
+        if (params.organization_address)
+          this.organization_address = params.organization_address;
+        if (params.organization_city)
+          this.organization_city = params.organization_city;
+        if (params.organization_state)
+          this.organization_state = params.organization_state;
+        if (params.organization_zip)
+          this.organization_zip = params.organization_zip;
+        if (params.find_us) this.find_us = params.find_us;
+        prefilled = true;
+      }
+      // Always try backend prefill if email, lead_id, or token is present
+      if (params.lead_id || params.token || params.email) {
+        try {
+          const res = await axios.get(`${API_BASE_URL}/api/leads/prefill`, {
+            params: {
+              lead_id: params.lead_id,
+              token: params.token,
+              email: params.email,
+            },
+          });
+          if (res.data && res.data.lead) {
+            const lead = res.data.lead;
+            this.first_name = lead.first_name || '';
+            this.last_name = lead.last_name || '';
+            this.email = lead.email || '';
+            this.phone = lead.phone || '';
+            this.organization_name = lead.organization_name || '';
+            this.organization_size = lead.organization_size || '';
+            this.organization_address = lead.organization_address || '';
+            this.organization_city = lead.organization_city || '';
+            this.organization_state = lead.organization_state || '';
+            this.organization_zip = lead.organization_zip || '';
+            this.find_us = lead.find_us || '';
+            prefilled = true;
+          }
+        } catch (e) {
+          // fallback to query params if API fails
+        }
+      }
+      // Fallback: prefill from query params if backend prefill did not work
+      if (!prefilled) {
+        if (params.first_name) this.first_name = params.first_name;
+        if (params.last_name) this.last_name = params.last_name;
+        if (params.email) this.email = params.email;
+        if (params.phone) this.phone = params.phone;
+        if (params.organization_name)
+          this.organization_name = params.organization_name;
+        if (params.organization_size)
+          this.organization_size = params.organization_size;
+        if (params.organization_address)
+          this.organization_address = params.organization_address;
+        if (params.organization_city)
+          this.organization_city = params.organization_city;
+        if (params.organization_state)
+          this.organization_state = params.organization_state;
+        if (params.organization_zip)
+          this.organization_zip = params.organization_zip;
+        if (params.find_us) this.find_us = params.find_us;
+      }
+    },
+  },
+  mounted() {
+    this.prefillFromLead();
+    this.$nextTick(() => {
+      setTimeout(() => {
+        if (this.$refs.firstNameInput) this.$refs.firstNameInput.focus();
+      }, 50);
+    });
   },
 };
 </script>
 
 <style scoped>
+select {
+  width: 100%;
+  padding: 12px 12px 12px 48px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 1rem;
+  color: #222;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.18s;
+  background: #fff;
+  appearance: none;
+  margin-bottom: 0;
+}
+.styled-select {
+  position: relative;
+}
+.styled-select .icon {
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
 .login-bg {
   position: relative;
   width: 100vw;

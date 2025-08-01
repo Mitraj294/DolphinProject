@@ -56,7 +56,42 @@
                 </div>
                 <div class="lead-detail-list-row">
                   <span>Address</span>
-                  <b>153 Maggie Loop<br />Pottsville, Arkansas(AR), 72858</b>
+                  <b>
+                    <template
+                      v-if="
+                        [
+                          leadData.address,
+                          leadData.city,
+                          leadData.state,
+                          leadData.zip,
+                          leadData.country,
+                        ].some(
+                          (f) =>
+                            f !== undefined &&
+                            f !== null &&
+                            String(f).trim().length > 0
+                        )
+                      "
+                    >
+                      {{
+                        [
+                          leadData.address,
+                          leadData.city,
+                          leadData.state,
+                          leadData.zip,
+                          leadData.country,
+                        ]
+                          .filter(
+                            (f) =>
+                              f !== undefined &&
+                              f !== null &&
+                              String(f).trim().length > 0
+                          )
+                          .join(', ')
+                      }}
+                    </template>
+                    <template v-else>N/A</template>
+                  </b>
                 </div>
               </div>
             </div>
@@ -83,6 +118,11 @@ export default {
         status: '',
         organization: '',
         size: '',
+        address: '',
+        city: '',
+        state: '',
+        zip: '',
+        country: '',
       }),
     },
   },
@@ -108,8 +148,49 @@ export default {
       return this.localLead;
     },
   },
-  created() {
-    // Only update localLead if query params exist and are not empty
+  async created() {
+    // If id is present, fetch lead details from backend
+    const id = this.$route.query.id || this.lead.id;
+    if (id) {
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
+        const res = await this.$axios.get(`${API_BASE_URL}/api/leads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const found = Array.isArray(res.data)
+          ? res.data.find((l) => l.id == id)
+          : null;
+        if (found) {
+          this.localLead = {
+            contact:
+              (found.first_name || '') +
+              (found.last_name ? ' ' + found.last_name : ''),
+            email: found.email || '',
+            phone: found.phone || '',
+            source: found.find_us || '',
+            status: found.status || '',
+            organization: found.org_name || '',
+            size: found.org_size || '',
+            address: found.address !== undefined ? found.address : '',
+            city: found.city !== undefined ? found.city : '',
+            state: found.state !== undefined ? found.state : '',
+            zip: found.zip !== undefined ? found.zip : '',
+            country: found.country !== undefined ? found.country : '',
+          };
+          // Defensive: ensure all fields are present
+          ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
+            if (this.localLead[f] === undefined) this.localLead[f] = '';
+          });
+          return;
+        }
+      } catch (e) {
+        // fallback to query params
+      }
+    }
+    // fallback to query params if no id or fetch failed
     if (
       this.$route &&
       this.$route.query &&
@@ -123,7 +204,23 @@ export default {
         status: this.$route.query.status || '',
         organization: this.$route.query.organization || '',
         size: this.$route.query.size || '',
+        address:
+          this.$route.query.address !== undefined
+            ? this.$route.query.address
+            : '',
+        city:
+          this.$route.query.city !== undefined ? this.$route.query.city : '',
+        state:
+          this.$route.query.state !== undefined ? this.$route.query.state : '',
+        zip: this.$route.query.zip !== undefined ? this.$route.query.zip : '',
+        country:
+          this.$route.query.country !== undefined
+            ? this.$route.query.country
+            : '',
       };
+      ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
+        if (this.localLead[f] === undefined) this.localLead[f] = '';
+      });
     }
   },
   watch: {
@@ -138,7 +235,15 @@ export default {
             status: newQuery.status || '',
             organization: newQuery.organization || '',
             size: newQuery.size || '',
+            address: newQuery.address !== undefined ? newQuery.address : '',
+            city: newQuery.city !== undefined ? newQuery.city : '',
+            state: newQuery.state !== undefined ? newQuery.state : '',
+            zip: newQuery.zip !== undefined ? newQuery.zip : '',
+            country: newQuery.country !== undefined ? newQuery.country : '',
           };
+          ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
+            if (this.localLead[f] === undefined) this.localLead[f] = '';
+          });
         }
       },
       deep: true,

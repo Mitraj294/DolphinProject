@@ -230,8 +230,20 @@ export default {
       return this.$route.name || '';
     },
     displayName() {
-      const storage = require('@/services/storage').default;
-      return storage.get('userName') || this.roleName;
+      // Always show the CURRENT (impersonated or real) user's info
+      const firstName = storage.get('first_name');
+      const lastName = storage.get('last_name');
+      if ((firstName && firstName.trim()) || (lastName && lastName.trim())) {
+        return `${firstName ? firstName.trim() : ''}${
+          lastName && lastName.trim() ? ' ' + lastName.trim() : ''
+        }`.trim();
+      }
+      const userName = storage.get('userName');
+      if (userName && userName.trim()) return userName.trim();
+      // Fallback: try email if available
+      const email = storage.get('email');
+      if (email && email.trim()) return email.trim();
+      return 'User';
     },
     role() {
       return authMiddleware.getRole();
@@ -262,10 +274,16 @@ export default {
         storage.set('role', storage.get('superRole'));
         storage.set('userName', storage.get('superUserName'));
         storage.set('userId', storage.get('superUserId'));
+        // Restore first_name and last_name from superFirstName/superLastName
+        storage.set('first_name', storage.get('superFirstName') || '');
+        storage.set('last_name', storage.get('superLastName') || '');
+        // Remove superadmin impersonation keys
         storage.remove('superAuthToken');
         storage.remove('superRole');
         storage.remove('superUserName');
         storage.remove('superUserId');
+        storage.remove('superFirstName');
+        storage.remove('superLastName');
         this.showLogoutConfirm = false;
         this.$router.push('/user-permission');
       } else {

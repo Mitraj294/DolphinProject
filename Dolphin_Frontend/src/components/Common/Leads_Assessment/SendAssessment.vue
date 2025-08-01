@@ -13,7 +13,10 @@
             Lorem Ipsum is simply dummy text of the printing and typesetting
             industry.
           </div>
-          <form class="send-assessment-form">
+          <form
+            class="send-assessment-form"
+            @submit.prevent="handleSendAssessment"
+          >
             <FormRow>
               <div class="send-assessment-field">
                 <FormLabel>To</FormLabel>
@@ -31,35 +34,33 @@
                   placeholder="Type here"
                 />
               </div>
-              <div class="send-assessment-field">
-                <FormLabel>Template</FormLabel>
-                <FormDropdown v-model="template">
-                  <option value="">Select Template</option>
-                  <!-- Add more options here -->
-                </FormDropdown>
-              </div>
             </FormRow>
             <div class="send-assessment-label">Editable Template</div>
             <div class="send-assessment-template-box">
-              <!-- Render dummy data as HTML above the editor -->
-              <div
-                v-html="templateContent"
-                class="dummy-template-preview"
-              />
-              <!-- Editor below the preview -->
-              <quill-editor
+              <QuillEditor
                 v-model="templateContent"
                 :options="editorOptions"
                 class="editor-below"
               />
+              <div style="margin-top: 10px; color: #888; font-size: 14px">
+                <b>Note:</b> The email will be sent exactly as shown above. You
+                can edit the content and the registration link.
+              </div>
+              <div style="margin-top: 18px">
+                <div
+                  class="dummy-template-preview"
+                  v-html="templateContent"
+                ></div>
+              </div>
             </div>
             <div class="send-assessment-label">Assessment Link</div>
             <div class="send-assessment-link-actions-row">
               <div class="send-assessment-link-box">
                 <a
-                  href="#"
+                  :href="registrationLink"
                   class="send-assessment-link"
-                  >Lorem Ipsum is simply dummy</a
+                  target="_blank"
+                  >Complete Registration</a
                 >
               </div>
               <div class="send-assessment-actions">
@@ -89,6 +90,8 @@ import {
 // Import Quill editor and styles
 import { QuillEditor } from '@vueup/vue-quill';
 import '@vueup/vue-quill/dist/vue-quill.snow.css';
+
+import axios from 'axios';
 import Quill from 'quill';
 
 export default {
@@ -104,33 +107,121 @@ export default {
   data() {
     return {
       to: '',
-      subject: '',
-      template: '',
+      subject: 'Complete Your Registration ',
+      defaultTemplate:
+        '<p>Hello, {{name}}</p><p>You have been invited to complete your registration.</p><p>Please click the link below to register:</p><p><a href="{{registrationLink}}" target="_blank">Complete Registration</a></p><p>If you did not request this, you can ignore this email.</p><br /><p>Thank you,<br />Dolphin Team</p>',
       templateContent: '',
+
       editorOptions: {
         theme: 'snow',
         modules: {
           toolbar: [
-            [{ size: ['small', false, 'large', 'huge'] }], // font size option
+            [{ size: ['small', false, 'large', 'huge'] }],
             [{ color: [] }],
             ['bold', 'italic', 'underline'],
             [{ list: 'ordered' }, { list: 'bullet' }],
             ['link'],
             [
-              { align: '' }, // left
-              { align: 'center' }, // center
-              { align: 'right' }, // right
-              { align: 'justify' }, // justify
+              { align: '' },
+              { align: 'center' },
+              { align: 'right' },
+              { align: 'justify' },
             ],
             ['clean'],
           ],
         },
       },
+      sending: false,
+      registrationLink: '',
     };
   },
   mounted() {
-    // Pre-fill from query params
     this.to = this.$route.query.email || '';
+    this.updateRegistrationLink();
+    // Get name from query or fallback
+    const name = this.$route.query.contact || this.$route.query.name || '';
+    // Prefill template with registration link and name
+    this.templateContent = this.defaultTemplate
+      .replace(/{{registrationLink}}/g, this.registrationLink)
+      .replace(/{{name}}/g, name);
+  },
+  watch: {},
+  methods: {
+    updateRegistrationLink() {
+      if (this.to) {
+        this.registrationLink = `${
+          window.location.origin
+        }/register?email=${encodeURIComponent(this.to)}`;
+      } else {
+        this.registrationLink = '';
+      }
+      // Update templateContent registration link if already filled
+      if (this.templateContent) {
+        this.templateContent = this.templateContent.replace(
+          /href="[^"]*"/g,
+          `href="${this.registrationLink}"`
+        );
+      }
+    },
+    async handleSendAssessment() {
+      let contentToSend = this.templateContent;
+      if (
+        !contentToSend ||
+        contentToSend.replace(/<(.|\n)*?>/g, '').trim() === ''
+      ) {
+        // Use default template with replacements if editor is empty
+        const name = this.$route.query.contact || this.$route.query.name || '';
+        contentToSend = this.defaultTemplate
+          .replace(/{{registrationLink}}/g, this.registrationLink)
+          .replace(/{{name}}/g, name);
+      }
+      this.sending = true;
+      try {
+        // Get name from query or fallback
+        const name = this.$route.query.contact || this.$route.query.name || '';
+        await axios.post(
+          `${
+            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+          }/api/leads/send-assessment`,
+          {
+            to: this.to,
+            subject: this.subject,
+            body: contentToSend,
+            registration_link: this.registrationLink,
+            name: name,
+          }
+        );
+        this.$toast.add({
+          severity: 'success',
+          summary: 'Assessment Sent',
+          detail: 'Assessment email sent successfully!',
+          life: 3500,
+        });
+      } catch (error) {
+        let detail = 'Failed to send assessment email.';
+        if (error && error.response && error.response.data) {
+          if (typeof error.response.data === 'string') {
+            detail += ' ' + error.response.data;
+          } else if (error.response.data.error) {
+            detail += ' ' + error.response.data.error;
+          } else if (error.response.data.message) {
+            detail += ' ' + error.response.data.message;
+          }
+        } else if (error && error.message) {
+          detail += ' ' + error.message;
+        }
+        // Also log to console for debugging
+        console.error('Send Assessment Error:', error);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Send Error',
+          detail,
+          life: 3500,
+        });
+      } finally {
+        this.sending = false;
+      }
+    },
   },
 };
 </script>
@@ -228,20 +319,21 @@ export default {
   margin-top: 18px;
   text-align: left;
 }
+/* Improved editor box styling for better containment and appearance */
 .send-assessment-template-box {
   background: #fafafa;
   border-radius: 12px;
-  border: 1px solid #e0e0e0;
-  padding: 18px 18px 48px 18px;
+  border: 1.5px solid #e0e0e0;
+  box-shadow: 0 1px 8px 0 rgba(33, 150, 243, 0.06);
+  padding: 18px 18px 32px 18px;
   margin-bottom: 18px;
-  min-height: 0;
+  min-height: 180px;
   height: auto;
   position: relative;
-  /* Optionally, adjust .send-assessment-template-box for editor styling */
-  min-height: 180px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  overflow: hidden;
 }
 .dummy-template-preview {
   margin-bottom: 12px;

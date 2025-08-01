@@ -9,27 +9,17 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, SoftDeletes, Notifiable;
 
-    /**
-     * Get the organization where this user is the admin (by email).
-     */
-
-    use HasApiTokens, HasFactory, SoftDeletes, Notifiable;
-
-    /**
-     * Get the organization where this user is the admin (by email).
-     */
-    public function organization()
-    {
-        return Organization::where('admin_email', $this->email)->first();
-    }
 
     protected $fillable = [
-        'name',
+        
         'email',
         'password',
-        'phone',
-        'country',
     ];
+
+    public function userDetails()
+    {
+        return $this->hasOne(UserDetail::class, 'user_id');
+    }
 
     /**
      * Get all subscriptions for the user.
@@ -44,7 +34,7 @@ class User extends Authenticatable
      */
     public function roles()
     {
-        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id');
+        return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id')->withTimestamps();
     }
 
     /**

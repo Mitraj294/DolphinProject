@@ -22,7 +22,7 @@
       </button>
       <button
         class="my-org-primary"
-        @click="showAddGroupModal = true"
+        @click="openAddGroupModal"
       >
         <img
           src="@/assets/images/Add.svg"
@@ -38,7 +38,7 @@
       </button>
       <button
         class="my-org-primary"
-        @click="showAddMemberModal = true"
+        @click="openAddMemberModal"
       >
         <img
           src="@/assets/images/Add.svg"
@@ -181,12 +181,17 @@
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
 import MultiSelectDropdown from '@/components/Common/Common_UI/Form/MultiSelectDropdown.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
+import axios from 'axios';
+import storage from '@/services/storage';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 export default {
   name: 'OrgActionButtons',
   components: {
     FormInput,
     MultiSelectDropdown,
     FormRow,
+    Toast,
   },
   data() {
     return {
@@ -210,26 +215,123 @@ export default {
         { id: 3, name: 'Owner' },
         { id: 4, name: 'Support' },
       ],
-      groups: [
-        { id: 1, name: 'Flexi-Finders' },
-        { id: 2, name: 'Interim Solutions' },
-        { id: 3, name: 'Talent on Demand' },
-        { id: 4, name: 'QuickStaff' },
-      ],
-      availableMembers: [
-        { id: 1, name: 'John Doe' },
-        { id: 2, name: 'Jane Smith' },
-        { id: 3, name: 'Alice Johnson' },
-        { id: 4, name: 'Bob Brown' },
-        { id: 5, name: 'Charlie White' },
-        { id: 6, name: 'Diana Green' },
-        { id: 7, name: 'Ethan Blue' },
-      ],
+      groups: [],
+      availableMembers: [],
+      toast: null,
     };
   },
+  mounted() {
+    this.toast = useToast();
+  },
   methods: {
-    saveMember() {
+    async openAddMemberModal() {
+      // Fetch groups for this organization
+      try {
+        const authToken = storage.get('authToken');
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await axios.get(`${API_BASE_URL}/api/groups`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        this.groups = Array.isArray(res.data) ? res.data : [];
+      } catch (e) {
+        this.groups = [];
+      }
+      this.showAddMemberModal = true;
+    },
+
+    openAddGroupModal() {
+      // Fetch members for this organization
+      this.availableMembers = [];
+      const authToken = storage.get('authToken');
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      axios
+        .get(`${API_BASE_URL}/api/members`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        })
+        .then((res) => {
+          if (Array.isArray(res.data)) {
+            this.availableMembers = res.data.map((m) => ({
+              ...m,
+              id: m.id || m.value || m,
+              name: `${m.first_name || m.firstName || ''} ${
+                m.last_name || m.lastName || ''
+              }`.trim(),
+            }));
+          } else {
+            this.availableMembers = [];
+          }
+        })
+        .catch(() => {
+          this.availableMembers = [];
+        })
+        .finally(() => {
+          this.showAddGroupModal = true;
+        });
+    },
+
+    async saveMember() {
+      try {
+        // Require at least one role
+        if (
+          !Array.isArray(this.newMember.roles) ||
+          this.newMember.roles.length === 0
+        ) {
+          this.toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Please select a role for the member.',
+            life: 4000,
+          });
+          return;
+        }
+        const payload = {
+          first_name: this.newMember.firstName,
+          last_name: this.newMember.lastName,
+          email: this.newMember.email,
+          phone: this.newMember.phone,
+          member_role: this.newMember.roles[0].name || this.newMember.roles[0],
+          group_ids: Array.isArray(this.newMember.groups)
+            ? this.newMember.groups.map((g) => g.id || g.value || g)
+            : [],
+        };
+        const authToken = storage.get('authToken');
+        const headers = {};
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        await axios.post(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/members',
+          payload,
+          { headers }
+        );
+        this.toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Member added successfully!',
+          life: 3000,
+        });
+        this.$emit('member-added');
+      } catch (e) {
+        let msg = 'Failed to add member.';
+        if (e.response && e.response.data && e.response.data.message) {
+          msg = e.response.data.message;
+        } else if (
+          e.response &&
+          e.response.data &&
+          typeof e.response.data === 'string'
+        ) {
+          msg = e.response.data;
+        }
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: msg,
+          life: 4000,
+        });
+      }
       this.showAddMemberModal = false;
+      this.groups = [];
       this.newMember = {
         firstName: '',
         lastName: '',
@@ -239,8 +341,51 @@ export default {
         groups: [],
       };
     },
-    saveGroup() {
+
+    async saveGroup() {
+      try {
+        const payload = {
+          name: this.newGroup.name,
+          member_ids: Array.isArray(this.newGroup.members)
+            ? this.newGroup.members.map((m) => m.id || m.value || m)
+            : [],
+        };
+        const authToken = storage.get('authToken');
+        const headers = {};
+        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        await axios.post(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/groups',
+          payload,
+          { headers }
+        );
+        this.toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Group added successfully!',
+          life: 3000,
+        });
+        this.$emit('group-added');
+      } catch (e) {
+        let msg = 'Failed to add group.';
+        if (e.response && e.response.data && e.response.data.message) {
+          msg = e.response.data.message;
+        } else if (
+          e.response &&
+          e.response.data &&
+          typeof e.response.data === 'string'
+        ) {
+          msg = e.response.data;
+        }
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: msg,
+          life: 4000,
+        });
+      }
       this.showAddGroupModal = false;
+      this.availableMembers = [];
       this.newGroup = { name: '', members: [] };
     },
   },
