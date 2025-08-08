@@ -4,12 +4,6 @@
       <div></div>
       <div class="assessments-header-actions">
         <button
-          class="sent-assessments-btn"
-          @click="goToSummary"
-        >
-          Assessments Summary
-        </button>
-        <button
           class="btn btn-primary"
           @click="showCreateModal = true"
         >

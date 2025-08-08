@@ -150,54 +150,35 @@ export default {
   setup() {
     const route = useRoute();
     const assessmentId = route.params.assessmentId;
-
-    // Example assessment data for each member
-    const rows = [
-      {
-        name: 'Emily Carter',
-        result: 'Submitted',
-        assessment: [
-          {
-            question: 'What is the primary goal of a for-profit business?',
-            answer:
-              'The primary goal is to maximize profits while providing value to customers.',
-          },
-          {
-            question: 'What does SWOT stand for in business analysis?',
-            answer:
-              'SWOT stands for Strengths, Weaknesses, Opportunities, and Threats.',
-          },
-          {
-            question:
-              'What is the difference between leadership and management?',
-            answer:
-              'Leadership focuses on inspiring and guiding people toward a vision, while management is about organizing, planning, and ensuring tasks are completed efficiently.',
-          },
-          {
-            question: 'What is a mission statement?',
-            answer:
-              "A mission statement is a brief statement that defines an organization's purpose, core values, and overall goals.",
-          },
-          {
-            question: 'What is the 80/20 rule (Pareto Principle) in business?',
-            answer:
-              'The 80/20 rule states that 80% of results come from 20% of efforts or customers. It helps businesses focus on the most impactful activities.',
-          },
-          {
-            question: 'What is the difference between revenue and profit?',
-            answer:
-              'Revenue is the total income a business generates from sales, while profit is what remains after deducting expenses from revenue.',
-          },
-        ],
-      },
-      // ...other members, add assessment data as needed...
-      { name: 'James Parker', result: 'Submitted', assessment: [] },
-      { name: 'Sophia Mitchell', result: 'Submitted', assessment: [] },
-      { name: 'Mason Walker', result: 'Submitted', assessment: [] },
-      { name: 'Olivia Bennett', result: 'Submitted', assessment: [] },
-      { name: 'Benjamin Hayes', result: 'Submitted', assessment: [] },
-      { name: 'Ava Richardson', result: 'Submitted', assessment: [] },
-    ];
+    const rows = ref([]);
+    // Fetch summary data from backend
+    async function fetchSummary() {
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await fetch(
+          `${API_BASE_URL}/api/assessment/${assessmentId}/summary`
+        );
+        const data = await res.json();
+        // Transform backend data to frontend rows
+        rows.value = (data.members || []).map((member) => ({
+          name:
+            member.name ||
+            (member.member_id ? `Member #${member.member_id}` : 'Unknown'),
+          result:
+            member.answers && member.answers.length > 0
+              ? 'Submitted'
+              : 'Pending',
+          assessment: (member.answers || []).map((a) => ({
+            question: a.question,
+            answer: a.answer,
+          })),
+        }));
+      } catch (e) {
+        rows.value = [];
+      }
+    }
+    fetchSummary();
 
     // Table columns for TableHeader
     const tableColumns = [
@@ -213,12 +194,12 @@ export default {
     const showPageDropdown = ref(false);
 
     const totalPages = computed(() =>
-      Math.max(1, Math.ceil(rows.length / pageSize.value))
+      Math.max(1, Math.ceil(rows.value.length / pageSize.value))
     );
 
     const paginatedRows = computed(() => {
       const start = (currentPage.value - 1) * pageSize.value;
-      return rows.slice(start, start + pageSize.value);
+      return rows.value.slice(start, start + pageSize.value);
     });
 
     // Modal state

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Mail\AssessmentAnswerLinkMail;
 use App\Models\Assessment;
 use App\Models\AssessmentAnswerToken;
+use App\Models\AssessmentQuestion;
 use App\Models\Member;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
@@ -53,9 +54,27 @@ class AssessmentAnswerLinkController extends Controller
             ->where('expires_at', '>', Carbon::now())
             ->firstOrFail();
 
-        $assessment = Assessment::with('questions')->findOrFail($tokenRow->assessment_id);
+        // Get assessment questions with assessment_question.id
+        $assessment = Assessment::findOrFail($tokenRow->assessment_id);
+        $assessmentQuestions = \App\Models\AssessmentQuestion::where('assessment_id', $assessment->id)
+            ->get();
+
+        $questions = $assessmentQuestions->map(function($aq) {
+            $orgQuestion = \DB::table('organization_assessment_questions')->where('id', $aq->question_id)->first();
+            $label = $orgQuestion ? $orgQuestion->text : null;
+            return [
+                'assessment_question_id' => $aq->id,
+                'question_id' => $aq->question_id,
+                'text' => $label
+            ];
+        });
+
         return response()->json([
-            'assessment' => $assessment,
+            'assessment' => [
+                'id' => $assessment->id,
+                'name' => $assessment->name,
+                'questions' => $questions
+            ],
             'member_id' => $tokenRow->member_id,
         ]);
     }
@@ -68,26 +87,36 @@ class AssessmentAnswerLinkController extends Controller
             ->where('expires_at', '>', Carbon::now())
             ->firstOrFail();
 
+
         $request->validate([
             'answers' => 'required|array',
         ]);
 
-        \Log::info('Assessment answer submission', [
-            'token' => $token,
-            'tokenRow' => $tokenRow,
-            'answers' => $request->answers
-        ]);
+        $assessmentQuestionIds = AssessmentQuestion::where('assessment_id', $tokenRow->assessment_id)
+            ->pluck('id')->toArray();
+
+        $invalid = [];
         foreach ($request->answers as $answer) {
-            \Log::info('Inserting answer', [
-                'assessment_id' => $tokenRow->assessment_id,
-                'question_id' => $answer['question_id'],
-                'member_id' => $tokenRow->member_id,
-                'group_id' => $tokenRow->group_id,
-                'answer' => $answer['answer'],
-            ]);
+            if (!in_array($answer['assessment_question_id'], $assessmentQuestionIds)) {
+                $invalid[] = $answer['assessment_question_id'];
+            }
+        }
+
+        if (count($invalid) > 0) {
+            return response()->json([
+                'message' => 'Some assessment_question_ids are invalid for this assessment.',
+                'invalid_assessment_question_ids' => $invalid
+            ], 422);
+        }
+
+        foreach ($request->answers as $answer) {
+            // Get organization_assessment_question_id from assessment_question
+            $assessmentQuestion = \App\Models\AssessmentQuestion::find($answer['assessment_question_id']);
+            $organizationAssessmentQuestionId = $assessmentQuestion ? $assessmentQuestion->question_id : null;
             \DB::table('assessment_question_answers')->insert([
                 'assessment_id' => $tokenRow->assessment_id,
-                'question_id' => $answer['question_id'],
+                'organization_assessment_question_id' => $organizationAssessmentQuestionId,
+                'assessment_question_id' => $answer['assessment_question_id'],
                 'member_id' => $tokenRow->member_id,
                 'group_id' => $tokenRow->group_id,
                 'answer' => $answer['answer'],
@@ -99,6 +128,9 @@ class AssessmentAnswerLinkController extends Controller
         $tokenRow->used = true;
         $tokenRow->save();
 
-        return response()->json(['message' => 'Answers submitted successfully.']);
+        return response()->json([
+            'message' => 'Answers submitted successfully.',
+            'inserted' => count($request->answers)
+        ]);
     }
 }

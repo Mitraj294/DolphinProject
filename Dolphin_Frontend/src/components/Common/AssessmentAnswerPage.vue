@@ -1,21 +1,22 @@
 <template>
   <div class="assessment-answer-page">
     <div class="assessment-card">
+      <Toast />
       <h2 class="assessment-title">{{ assessment?.name }}</h2>
       <form @submit.prevent="submitAnswers">
         <div
           v-for="q in assessment?.questions || []"
-          :key="q.id"
+          :key="q.assessment_question_id"
           class="question-block"
         >
           <label
-            :for="'q-' + q.id"
+            :for="'q-' + q.assessment_question_id"
             class="question-label"
             >{{ q.text }}</label
           >
           <input
-            v-model="answers[q.id]"
-            :id="'q-' + q.id"
+            v-model="answers[q.assessment_question_id]"
+            :id="'q-' + q.assessment_question_id"
             type="text"
             class="question-input"
             required
@@ -29,18 +30,7 @@
           <span v-if="loading">Submitting...</span>
           <span v-else>Submit</span>
         </button>
-        <div
-          v-if="success"
-          class="success"
-        >
-          Thank you for your submission!
-        </div>
-        <div
-          v-if="error"
-          class="error"
-        >
-          {{ error }}
-        </div>
+        <!-- Toast notifications will be used for success/error messages -->
       </form>
     </div>
   </div>
@@ -48,15 +38,21 @@
 
 <script>
 import axios from 'axios';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
+
 export default {
   name: 'AssessmentAnswerPage',
+  components: { Toast },
+  setup() {
+    const toast = useToast();
+    return { toast };
+  },
   data() {
     return {
       assessment: null,
       answers: {},
       loading: false,
-      success: false,
-      error: '',
     };
   },
   async created() {
@@ -69,33 +65,45 @@ export default {
       );
       this.assessment = res.data.assessment;
       for (const q of this.assessment.questions) {
-        this.answers[q.id] = '';
+        this.answers[q.assessment_question_id] = '';
       }
     } catch (e) {
-      this.error = 'Invalid or expired link.';
+      this.toast.add({
+        severity: 'error',
+        summary: 'Invalid or expired link.',
+        life: 3500,
+      });
     }
   },
   methods: {
     async submitAnswers() {
       this.loading = true;
-      this.error = '';
       const token = this.$route.params.token;
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
       try {
-        const payload = {
-          answers: Object.entries(this.answers).map(
-            ([question_id, answer]) => ({
-              question_id,
-              answer,
-            })
-          ),
-        };
-        await axios.post(
+        // Map answers to include organization_assessment_question_id
+        const answersPayload = this.assessment.questions.map((q) => ({
+          assessment_question_id: q.assessment_question_id,
+          organization_assessment_question_id: q.question_id, // question_id is org_assessment_question_id from backend
+          answer: this.answers[q.assessment_question_id],
+        }));
+        const payload = { answers: answersPayload };
+        const res = await axios.post(
           `${API_BASE_URL}/api/assessment/answer/${token}`,
           payload
         );
-        this.success = true;
+        this.toast.add({
+          severity: 'success',
+          summary: 'Thank you for your submission!',
+          life: 3500,
+        });
       } catch (e) {
-        this.error = 'Submission failed.';
+        this.toast.add({
+          severity: 'error',
+          summary: 'Submission failed.',
+          life: 3500,
+        });
       } finally {
         this.loading = false;
       }
@@ -136,6 +144,7 @@ export default {
 }
 .question-label {
   font-weight: 500;
+  text-align: left;
   margin-bottom: 0.5rem;
   color: #333;
 }
@@ -170,16 +179,5 @@ export default {
   background: #b0bec5;
   cursor: not-allowed;
 }
-.success {
-  color: #388e3c;
-  margin-top: 1.5rem;
-  text-align: center;
-  font-weight: 500;
-}
-.error {
-  color: #d32f2f;
-  margin-top: 1.5rem;
-  text-align: center;
-  font-weight: 500;
-}
+/* Removed unused success/error classes. Toast notifications are now used. */
 </style>

@@ -8,7 +8,8 @@ class AssessmentQuestionAnswer extends Model
     protected $table = 'assessment_question_answers';
     protected $fillable = [
         'assessment_id',
-        'question_id',
+        'organization_assessment_question_id',
+        'assessment_question_id',
         'member_id',
         'group_id',
         'answer',

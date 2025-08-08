@@ -40,7 +40,12 @@ Route::post('/leads/send-assessment', [\App\Http\Controllers\SendAssessmentContr
 // Assessment answer link routes
 Route::post('/assessment/send-link', [AssessmentAnswerLinkController::class, 'sendLink']);
 Route::get('/assessment/answer/{token}', [AssessmentAnswerLinkController::class, 'getAssessmentByToken']);
-Route::post('/assessment/answer/{token}', [AssessmentAnswerLinkController::class, 'submitAnswers']);
+
+Route::post('/assessment/answer/{token}', [AssessmentAnswerLinkController::class, 'submitAnswers'])
+    ->withoutMiddleware([
+        'auth:api', 'auth',
+        \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class
+    ]);
 
 
     Route::post('/stripe/webhook', [StripeSubscriptionController::class, 'handleWebhook']);
@@ -57,6 +62,7 @@ Route::get('/answer/{token}', [\App\Http\Controllers\AssessmentAnswerController:
 Route::post('/answer/{token}', [\App\Http\Controllers\AssessmentAnswerController::class, 'submit'])
     ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]);
 
+Route::get('/assessment/{id}/summary', [AssessmentController::class, 'summary']);
 Route::middleware('auth:api')->group(function () {
     // Endpoint to get current authenticated user (for frontend role sync)
     Route::get('/user', [\App\Http\Controllers\AuthController::class, 'user']);
