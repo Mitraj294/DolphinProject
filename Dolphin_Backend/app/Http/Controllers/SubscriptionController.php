@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use App\Models\Subscription;
 
 class SubscriptionController extends Controller
+
+
 {
     // Get the current user's active subscription (if any)
     public function getUserSubscription()
@@ -32,6 +34,21 @@ class SubscriptionController extends Controller
             'current_subscription' => $subscription,
             'history' => $history,
         ]);
+    }
+
+        /**
+     * Update the user's role when subscription changes (upgrade/downgrade).
+     * Call this after subscription is created or updated.
+     * @param \App\Models\User $user
+     * @param string $roleName (e.g. 'organizationadmin' or 'user')
+     */
+    public function updateUserRoleOnSubscription($user, $roleName)
+    {
+        $role = \App\Models\Role::where('name', $roleName)->first();
+        if ($role) {
+            // Remove all roles and assign the new one (single role per user)
+            $user->roles()->sync([$role->id]);
+        }
     }
 
     /**

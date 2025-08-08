@@ -49,8 +49,18 @@ class MemberController extends Controller
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can access members.'], 403);
         }
         $userId = $user->id;
-        $members = Member::where('user_id', $userId)->get();
-        return response()->json($members);
+        $members = Member::where('user_id', $userId)->with('groups')->get();
+        // Return members with group_ids array for frontend selection logic
+        $membersWithGroups = $members->map(function($member) {
+            return [
+                'id' => $member->id,
+                'first_name' => $member->first_name,
+                'last_name' => $member->last_name,
+                'email' => $member->email,
+                'group_ids' => $member->groups->pluck('id')->toArray(),
+            ];
+        });
+        return response()->json($membersWithGroups);
     }
 
     public function store(Request $request)

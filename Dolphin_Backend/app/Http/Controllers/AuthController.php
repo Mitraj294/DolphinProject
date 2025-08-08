@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
@@ -34,15 +33,17 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
+        // Save to users table (basic info)
         $user = User::create([
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
+            'country' => $request->country,
         ]);
 
-        // Create user_details record
+        // Save all registration details to user_details table
         \App\Models\UserDetail::create([
             'user_id' => $user->id,
             'first_name' => $request->first_name,
@@ -62,10 +63,8 @@ class AuthController extends Controller
         // Assign default role in user_roles table
         $role = \App\Models\Role::where('name', 'user')->first();
         if ($role) {
-            \App\Models\UserRole::updateOrCreate(
-                ['user_id' => $user->id],
-                ['role_id' => $role->id]
-            );
+            // Remove all roles and assign the new one (single role per user)
+            $user->roles()->sync([$role->id]);
         }
 
         return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
@@ -212,6 +211,27 @@ class AuthController extends Controller
         return response()->json(['message' => 'Account deleted successfully']);
     }
 
-    
+        /**
+     * Return the authenticated user's info with role from user_roles table
+     */
+    public function user(Request $request)
+    {
+        $user = $request->user();
+        $user = User::with(['userDetails', 'roles'])->find($user->id);
+        $role = $user->roles->first()->name ?? 'user';
+        $details = $user->userDetails;
+        return response()->json([
+            'id' => $user->id,
+            'email' => $user->email,
+            'role' => $role,
+            'roles' => $user->roles,
+            'first_name' => $details->first_name ?? '',
+            'last_name' => $details->last_name ?? '',
+            'phone' => $details->phone ?? '',
+            'country' => $details->country ?? '',
+            'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+            'userDetails' => $details,
+        ]);
+    }
    
 }

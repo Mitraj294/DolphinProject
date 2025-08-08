@@ -6,8 +6,42 @@
     >
       &times;
     </button>
-    <h2 class="modal-title">Schedule {{ assessmentName }}</h2>
+    <h2 class="modal-title center-title">Schedule {{ assessmentName }}</h2>
+    <div
+      v-if="scheduledLoading"
+      class="centered-loading"
+    >
+      Loading schedule status...
+    </div>
+    <div
+      v-else-if="scheduledStatus"
+      class="centered-modal-content"
+    >
+      <div class="scheduled-status-row centered-status-row">
+        <span
+          :class="{
+            'scheduled-status-green': scheduledStatus === 'sent',
+            'scheduled-status-yellow': scheduledStatus === 'scheduled',
+            'scheduled-status-red': scheduledStatus === 'failed',
+          }"
+        >
+          {{
+            scheduledStatus === 'sent'
+              ? 'Mail Sent'
+              : scheduledStatus === 'failed'
+              ? 'Mail Failed'
+              : 'Mail Scheduled'
+          }}
+        </span>
+      </div>
+      <div class="scheduled-details-row centered-details-row">
+        <div><b>Subject:</b> {{ scheduledDetails.subject }}</div>
+        <div><b>Send At:</b> {{ scheduledDetails.send_at }}</div>
+        <div><b>Status:</b> {{ scheduledStatus }}</div>
+      </div>
+    </div>
     <form
+      v-if="!scheduledStatus && !scheduledLoading"
       class="modal-form"
       @submit.prevent="emitSchedule"
     >
@@ -33,9 +67,13 @@
           @update:selectedItems="selectedMembers = $event"
           placeholder="Members"
           icon="fas fa-user"
+          :inputValue="selectedMembers.map((m) => m.name).join(', ')"
         />
       </div>
-      <div class="modal-form-actions">
+      <div
+        class="modal-form-actions"
+        v-if="!scheduledStatus"
+      >
         <button
           class="modal-save-btn"
           type="submit"
@@ -54,9 +92,17 @@ export default {
   name: 'ScheduleAssessmentModal',
   components: { FormDateTime, MultiSelectDropdown },
   props: {
+    selectedMembers: {
+      type: Array,
+      default: () => [],
+    },
     assessmentName: {
       type: String,
       default: '',
+    },
+    assessment_id: {
+      type: [String, Number],
+      required: true,
     },
   },
   data() {
@@ -69,10 +115,71 @@ export default {
       members: [],
       loadingGroups: false,
       loadingMembers: false,
+      isSyncingSelection: false,
+      scheduledStatus: null,
+      scheduledDetails: null,
+      scheduledLoading: false,
     };
   },
 
   mounted: async function () {
+    // Check for existing assessment schedule before showing form
+    if (
+      typeof this.assessment_id === 'undefined' ||
+      this.assessment_id === null ||
+      this.assessment_id === ''
+    ) {
+      console.warn(
+        '[ScheduleAssessmentModal] assessment_id is undefined/null/empty! Modal will not check schedule.'
+      );
+      this.scheduledStatus = null;
+      this.scheduledDetails = null;
+      this.scheduledLoading = false;
+      return;
+    }
+    console.log(
+      '[ScheduleAssessmentModal] Checking if schedule exists for assessment_id:',
+      this.assessment_id
+    );
+    this.scheduledLoading = true;
+    try {
+      const storage = (await import('@/services/storage')).default;
+      const axios = (await import('axios')).default;
+      const authToken = storage.get('authToken');
+      const assessment_id = this.assessment_id;
+      let url =
+        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+        '/api/scheduled-email/show?assessment_id=' +
+        encodeURIComponent(assessment_id);
+      console.log('[ScheduleAssessmentModal] API URL:', url);
+      const resp = await axios.get(url, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      console.log('[ScheduleAssessmentModal] API response:', resp.data);
+      if (resp.data && resp.data.scheduled && resp.data.data) {
+        this.scheduledStatus = 'scheduled';
+        this.scheduledDetails = resp.data.data;
+        console.log(
+          '[ScheduleAssessmentModal] Assessment schedule exists:',
+          this.scheduledDetails
+        );
+      } else {
+        this.scheduledStatus = null;
+        this.scheduledDetails = null;
+        console.log(
+          '[ScheduleAssessmentModal] No schedule exists for this assessment.'
+        );
+      }
+    } catch (e) {
+      this.scheduledStatus = null;
+      this.scheduledDetails = null;
+      console.error(
+        '[ScheduleAssessmentModal] Error checking schedule status:',
+        e
+      );
+    }
+    this.scheduledLoading = false;
+
     // Fetch groups and members from backend
     this.loadingGroups = true;
     this.loadingMembers = true;
@@ -86,6 +193,7 @@ export default {
           '/api/groups',
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
+      console.log('Fetched groups response:', groupRes.data);
       if (Array.isArray(groupRes.data)) {
         this.groups = groupRes.data.map((g) => ({ id: g.id, name: g.name }));
       } else if (Array.isArray(groupRes.data.groups)) {
@@ -103,6 +211,7 @@ export default {
           '/api/members',
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
+      console.log('Fetched members response:', memberRes.data);
       if (Array.isArray(memberRes.data)) {
         this.members = memberRes.data.map((m) => ({
           id: m.id,
@@ -110,7 +219,13 @@ export default {
             m.first_name && m.last_name
               ? `${m.first_name} ${m.last_name}`
               : m.name || m.email || 'Unknown',
+          email: m.email,
+          group_ids: m.group_ids || (m.group_id ? [m.group_id] : []),
         }));
+        console.log('Initialized members:', this.members);
+        this.members.forEach((m, idx) => {
+          console.log('Member[' + idx + ']:', m);
+        });
       } else if (Array.isArray(memberRes.data.members)) {
         this.members = memberRes.data.members.map((m) => ({
           id: m.id,
@@ -118,9 +233,16 @@ export default {
             m.first_name && m.last_name
               ? `${m.first_name} ${m.last_name}`
               : m.name || m.email || 'Unknown',
+          email: m.email,
+          group_ids: m.group_ids || (m.group_id ? [m.group_id] : []),
         }));
+        console.log('Initialized members:', this.members);
+        this.members.forEach((m, idx) => {
+          console.log('Member[' + idx + ']:', m);
+        });
       } else {
         this.members = [];
+        console.log('No members found');
       }
       this.loadingMembers = false;
     } catch (e) {
@@ -128,6 +250,7 @@ export default {
       this.members = [];
       this.loadingGroups = false;
       this.loadingMembers = false;
+      console.error('Error fetching groups/members:', e);
     }
   },
   watch: {
@@ -138,14 +261,125 @@ export default {
       this.selectedGroups = [];
       this.selectedMembers = [];
     },
+    // Auto-select members when groups are selected
+    selectedGroups: {
+      handler(newGroups) {
+        console.log('selectedGroups changed:', newGroups);
+        if (this.isSyncingSelection) return;
+        this.isSyncingSelection = true;
+        if (!Array.isArray(newGroups) || newGroups.length === 0) {
+          if (this.selectedMembers.length > 0) {
+            this.selectedMembers = [];
+            console.log('No groups selected, clearing selectedMembers');
+          }
+          this.isSyncingSelection = false;
+          return;
+        }
+        // Collect all group IDs associated with selected groups
+        const selectedGroupIds = newGroups.map((g) => g.id);
+        console.log('Selected group IDs:', selectedGroupIds);
+        // Find all members associated with any selected group
+        const autoSelectedMembers = this.members.filter((m) => {
+          if (Array.isArray(m.group_ids)) {
+            const match = m.group_ids.some((gid) =>
+              selectedGroupIds.includes(gid)
+            );
+            if (match) console.log('Member matched:', m.name, m.group_ids);
+            return match;
+          }
+          if (m.group_id) {
+            const match = selectedGroupIds.includes(m.group_id);
+            if (match) console.log('Member matched:', m.name, m.group_id);
+            return match;
+          }
+          return false;
+        });
+        console.log(
+          'Auto-selected members:',
+          autoSelectedMembers.map((m) => m.name)
+        );
+        // Only update selectedMembers if changed
+        const autoIds = autoSelectedMembers
+          .map((m) => m.id)
+          .sort()
+          .join(',');
+        const currentIds = this.selectedMembers
+          .map((m) => m.id)
+          .sort()
+          .join(',');
+        if (autoIds !== currentIds) {
+          this.selectedMembers = autoSelectedMembers;
+          console.log(
+            'selectedMembers set:',
+            this.selectedMembers.map((m) => m.name)
+          );
+        }
+        this.isSyncingSelection = false;
+      },
+      deep: true,
+    },
+    selectedMembers: {
+      handler(newMembers) {
+        if (this.isSyncingSelection) return;
+        this.isSyncingSelection = true;
+        // For each group, check if all its members are selected
+        const groupIdToMemberIds = {};
+        this.groups.forEach((group) => {
+          groupIdToMemberIds[group.id] = this.members
+            .filter(
+              (m) =>
+                Array.isArray(m.group_ids) && m.group_ids.includes(group.id)
+            )
+            .map((m) => m.id);
+        });
+        // For each group, if all its members are selected, select the group
+        const selectedMemberIds = newMembers.map((m) => m.id);
+        const autoSelectedGroups = this.groups.filter((group) => {
+          const memberIds = groupIdToMemberIds[group.id];
+          return (
+            memberIds.length > 0 &&
+            memberIds.every((id) => selectedMemberIds.includes(id))
+          );
+        });
+        // Merge auto-selected groups with any manually selected groups
+        const manualGroupIds = this.selectedGroups.map((g) => g.id);
+        const mergedGroups = [
+          ...autoSelectedGroups,
+          ...this.groups.filter(
+            (g) =>
+              manualGroupIds.includes(g.id) &&
+              !autoSelectedGroups.some((ag) => ag.id === g.id)
+          ),
+        ];
+        // Only update selectedGroups if changed
+        const mergedIds = mergedGroups
+          .map((g) => g.id)
+          .sort()
+          .join(',');
+        const currentIds = this.selectedGroups
+          .map((g) => g.id)
+          .sort()
+          .join(',');
+        if (mergedIds !== currentIds) {
+          this.selectedGroups = mergedGroups;
+        }
+        this.isSyncingSelection = false;
+      },
+      deep: true,
+    },
   },
   methods: {
     emitSchedule() {
+      // Convert local date+time to UTC ISO string for send_at
+      const localDateTime = new Date(`${this.date}T${this.time}:00`);
+      const sendAtUtc = localDateTime.toISOString();
       this.$emit('schedule', {
         date: this.date,
         time: this.time,
+        send_at: sendAtUtc,
         groupIds: this.selectedGroups.map((g) => g.id),
         memberIds: this.selectedMembers.map((m) => m.id),
+        selectedMembers: this.selectedMembers,
       });
     },
   },
@@ -166,6 +400,40 @@ export default {
   flex-direction: column;
   align-items: flex-start;
 }
+/* Centered modal title */
+.center-title {
+  text-align: center;
+  width: 100%;
+  display: block;
+}
+
+/* Centered details row */
+.centered-details-row {
+  display: flex;
+
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+/* Centered modal content */
+.centered-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+/* Centered status row */
+.centered-status-row {
+  display: flex;
+
+  justify-content: center;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  width: 100%;
+}
 .modal-close {
   position: absolute;
   top: 24px;
@@ -173,6 +441,9 @@ export default {
   background: none;
   border: none;
   font-size: 32px;
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
   color: #888;
   cursor: pointer;
   z-index: 10;
@@ -182,6 +453,7 @@ export default {
   font-weight: 600;
   margin-bottom: 32px;
   color: #222;
+  font-size: 20px;
 }
 .modal-form {
   width: 100%;
@@ -213,6 +485,28 @@ export default {
 }
 .modal-save-btn:hover {
   background: #005fa3;
+}
+.scheduled-status-row {
+  margin-bottom: 12px;
+}
+.scheduled-status-green {
+  color: #2ecc40;
+  font-weight: bold;
+}
+.scheduled-status-yellow {
+  color: #f1c40f;
+  font-weight: bold;
+}
+.scheduled-status-red {
+  color: #e74c3c;
+  font-weight: bold;
+}
+.scheduled-details-row {
+  margin-bottom: 18px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 15px;
 }
 @media (max-width: 900px) {
   .modal-card {

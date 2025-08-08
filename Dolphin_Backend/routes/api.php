@@ -15,8 +15,10 @@ use App\Http\Controllers\MemberController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\OrganizationAssessmentQuestionController;
 
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\AssessmentAnswerLinkController;
+
+
+use App\Http\Controllers\ScheduledEmailController;
 
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -26,8 +28,19 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
 Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 
+
+// Schedule an email (public route)
+Route::post('/schedule-email', [\App\Http\Controllers\ScheduledEmailController::class, 'store']);
+// Scheduled email status/details endpoint for frontend modal
+Route::get('/scheduled-email/show', [\App\Http\Controllers\ScheduledEmailController::class, 'show']);
+
 // Send assessment email to lead (public route)
-    Route::post('/leads/send-assessment', [\App\Http\Controllers\SendAssessmentController::class, 'send']);
+Route::post('/leads/send-assessment', [\App\Http\Controllers\SendAssessmentController::class, 'send']);
+
+// Assessment answer link routes
+Route::post('/assessment/send-link', [AssessmentAnswerLinkController::class, 'sendLink']);
+Route::get('/assessment/answer/{token}', [AssessmentAnswerLinkController::class, 'getAssessmentByToken']);
+Route::post('/assessment/answer/{token}', [AssessmentAnswerLinkController::class, 'submitAnswers']);
 
 
     Route::post('/stripe/webhook', [StripeSubscriptionController::class, 'handleWebhook']);
@@ -37,11 +50,16 @@ Route::post('/password/reset', [AuthController::class, 'resetPassword']);
     Route::get('/leads/prefill', [LeadController::class, 'prefill']);
     // Organization assessment questions
     Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
-    Route::middleware('auth:api')->group(function () {
+
+// Public answer endpoints (no auth, no Sanctum)
+Route::get('/answer/{token}', [\App\Http\Controllers\AssessmentAnswerController::class, 'show'])
+    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]);
+Route::post('/answer/{token}', [\App\Http\Controllers\AssessmentAnswerController::class, 'submit'])
+    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]);
+
+Route::middleware('auth:api')->group(function () {
     // Endpoint to get current authenticated user (for frontend role sync)
-    Route::get('/user', function (Request $request) {
-        return response()->json($request->user());
-    });
+    Route::get('/user', [\App\Http\Controllers\AuthController::class, 'user']);
     Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
     Route::patch('/users/{id}/soft-delete', [UserController::class, 'softDelete']);
     Route::delete('/users/{id}', [UserController::class, 'destroy']);

@@ -155,17 +155,48 @@ class StripeSubscriptionController extends Controller
             // Find user by email
             $user = User::where('email', $customerEmail)->first();
             if ($user) {
-                // Set role to organizationadmin in users table and roles table
-                if ($user->role !== 'organizationadmin') {
-                    $user->role = 'organizationadmin';
-                    $user->save();
+                // Always set only one role: organizationadmin
+                $orgAdminRole = \App\Models\Role::where('name', 'organizationadmin')->first();
+                if ($orgAdminRole) {
+                    $user->roles()->sync([$orgAdminRole->id]);
                 }
-                if (!$user->roles()->where('name', 'organizationadmin')->exists()) {
-                    $orgAdminRole = \App\Models\Role::where('name', 'organizationadmin')->first();
-                    if ($orgAdminRole) {
-                        $user->roles()->attach($orgAdminRole->id);
-                    }
+
+                // Create organization if not exists for this user
+                $orgExists = \App\Models\Organization::where('user_id', $user->id)->first();
+                if (!$orgExists) {
+                    $details = $user->userDetails;
+                    $orgData = [
+                        'org_name' => $details->org_name ?? ($details->first_name ?? $user->email),
+                        'size' => $details->org_size ?? null,
+                        'source' => $details->find_us ?? null,
+                        'address1' => $details->address ?? null,
+                        'address2' => null,
+                        'city' => $details->city ?? null,
+                        'state' => $details->state ?? null,
+                        'zip' => $details->zip ?? null,
+                        'country' => $details->country ?? null,
+                        'contract_start' => null,
+                        'contract_end' => null,
+                        'main_contact' => $details->first_name ? ($details->first_name . ' ' . ($details->last_name ?? '')) : null,
+                        'admin_email' => $user->email,
+                        'admin_phone' => $details->phone ?? null,
+                        'sales_person' => null,
+                        'last_contacted' => null,
+                        'certified_staff' => null,
+                        'user_id' => $user->id,
+                    ];
+                    \Log::info('Creating organization for user subscription', [
+                        'user_id' => $user->id,
+                        'org_data' => $orgData
+                    ]);
+                    $org = \App\Models\Organization::create($orgData);
+                    \Log::info('Organization created', [
+                        'organization_id' => $org->id,
+                        'org_name' => $org->org_name,
+                        'user_id' => $org->user_id
+                    ]);
                 }
+
                 // Update or create subscription record (try by subscription_id, then by customer_id+user_id)
                 $sub = null;
                 if ($stripeSubscriptionId) {
@@ -199,7 +230,6 @@ class StripeSubscriptionController extends Controller
                 } else {
                     Subscription::create($subscriptionData);
                 }
-         
             }
         }
 

@@ -1,6 +1,6 @@
 <template>
   <MainLayout
-    :navbarTitle="orgName"
+    :navbarTitle="orgDetail.org_name || 'Organization Details'"
     sidebarActive="organization"
   >
     <div class="page">
@@ -9,7 +9,7 @@
           <div class="org-detail-main-card-header">
             <button
               class="btn btn-primary"
-              @click="$router.push(`/organizations/${orgName}/edit`)"
+              @click="$router.push(`/organizations/${orgDetail.org_name}/edit`)"
             >
               <img
                 src="@/assets/images/EditWhite.svg"
@@ -28,23 +28,29 @@
                 <h3 class="org-detail-section-title">Organization Detail</h3>
                 <div class="org-detail-list-card org-detail-list-card--box">
                   <div class="org-detail-list-row">
-                    <span>Organization Name</span><b>{{ orgName }}</b>
+                    <span>Organization Name</span
+                    ><b>{{ orgDetail.org_name }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Organization Size</span><b>250+ Employees (Large)</b>
+                    <span>Organization Size</span><b>{{ orgDetail.size }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Contract Start</span><b>Jun 18, 2024</b>
+                    <span>Contract Start</span
+                    ><b>{{ formatDate(orgDetail.contract_start) }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Contract End</span><b>Jun 18, 2025</b>
+                    <span>Contract End</span
+                    ><b>{{ formatDate(orgDetail.contract_end) }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Source</span><b>Google</b>
+                    <span>Source</span><b>{{ orgDetail.source }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Address</span>
-                    <b>153 Maggie Loop<br />Pottsville, Arkansas(AR), 72858</b>
+                    <span>Address</span
+                    ><b
+                      >{{ orgDetail.address1 }}<br />{{ orgDetail.city }},
+                      {{ orgDetail.state }}, {{ orgDetail.zip }}</b
+                    >
                   </div>
                 </div>
               </div>
@@ -52,22 +58,24 @@
                 <h3 class="org-detail-section-title">Admin Detail</h3>
                 <div class="org-detail-list-card org-detail-list-card--box">
                   <div class="org-detail-list-row">
-                    <span>Main Contact</span><b>Aaliyah Moss</b>
+                    <span>Main Contact</span><b>{{ orgDetail.main_contact }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Admin Email</span><b>aaliyah@dolphin.org</b>
+                    <span>Admin Email</span><b>{{ orgDetail.admin_email }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Admin Phone #</span><b>313-586-7462</b>
+                    <span>Admin Phone #</span><b>{{ orgDetail.admin_phone }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Sales Person</span><b>John</b>
+                    <span>Sales Person</span><b>{{ orgDetail.sales_person }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Last Contacted</span><b>Dec 15, 2024</b>
+                    <span>Last Contacted</span
+                    ><b>{{ orgDetail.last_contacted }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Certified Staff</span><b>2</b>
+                    <span>Certified Staff</span
+                    ><b>{{ orgDetail.certified_staff }}</b>
                   </div>
                 </div>
               </div>
@@ -109,7 +117,7 @@
                     @click="
                       $router.push({
                         name: 'BillingDetails',
-                        query: { orgName },
+                        query: { orgName: orgDetail.org_name },
                       })
                     "
                   >
@@ -153,10 +161,54 @@
 
 <script>
 import MainLayout from '@/components/layout/MainLayout.vue';
+import axios from 'axios';
+import storage from '@/services/storage.js';
 export default {
   name: 'OrganizationDetail',
   components: { MainLayout },
-  props: ['orgName'],
+  data() {
+    return {
+      orgDetail: {},
+    };
+  },
+  mounted() {
+    this.fetchOrganization();
+  },
+  methods: {
+    async fetchOrganization() {
+      try {
+        const authToken = storage.get('authToken');
+        const headers = authToken
+          ? { Authorization: `Bearer ${authToken}` }
+          : {};
+        const orgName = this.$route.params.orgName;
+        let res = null;
+        try {
+          res = await axios.get(`http://127.0.0.1:8000/api/organizations`, {
+            headers,
+          });
+          if (res.data && Array.isArray(res.data)) {
+            const found = res.data.find((o) => o.org_name === orgName);
+            if (found) {
+              this.orgDetail = found;
+              return;
+            }
+          }
+        } catch (e) {
+          // fallback
+        }
+        this.orgDetail = res && res.data && res.data.length ? res.data[0] : {};
+      } catch (e) {
+        this.orgDetail = {};
+      }
+    },
+    formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      return d.toLocaleDateString();
+    },
+  },
 };
 </script>
 

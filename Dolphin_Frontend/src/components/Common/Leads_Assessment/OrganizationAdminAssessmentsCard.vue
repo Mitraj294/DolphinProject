@@ -50,23 +50,50 @@
               </button>
             </td>
             <td>
-              <button
-                class="schedule-btn"
-                @click="openScheduleModal(item)"
-              >
-                <img
-                  src="@/assets/images/Schedule.svg"
-                  alt="Schedule"
-                  style="
-                    margin-right: 6px;
-                    width: 18px;
-                    height: 18px;
-                    vertical-align: middle;
-                    display: inline-block;
+              <template v-if="item.schedule">
+                <div class="scheduled-details">
+                  <span
+                    style="color: #f7c948; font-weight: bold; font-size: 18px"
+                    >Mail Scheduled</span
+                  >
+                  <div style="margin-top: 8px; font-size: 15px">
+                    <div>
+                      <strong>Subject:</strong>
+                      {{ item.schedule.subject || 'Assessment Scheduled' }}
+                    </div>
+                    <div>
+                      <strong>Send At:</strong> {{ item.schedule.send_at }}
+                    </div>
+                    <div>
+                      <strong>Status:</strong>
+                      {{ item.schedule.status || 'scheduled' }}
+                    </div>
+                  </div>
+                </div>
+              </template>
+              <template v-else>
+                <button
+                  class="schedule-btn"
+                  @click="
+                    item.schedule
+                      ? openScheduleDetails(item)
+                      : openScheduleModal(item)
                   "
-                />
-                Schedule
-              </button>
+                >
+                  <img
+                    src="@/assets/images/Schedule.svg"
+                    alt="Schedule"
+                    style="
+                      margin-right: 6px;
+                      width: 18px;
+                      height: 18px;
+                      vertical-align: middle;
+                      display: inline-block;
+                    "
+                  />
+                  {{ item.schedule ? 'Details' : 'Schedule' }}
+                </button>
+              </template>
             </td>
           </tr>
         </tbody>
@@ -202,6 +229,7 @@
     >
       <ScheduleAssessmentModal
         :assessmentName="selectedAssessment && selectedAssessment.name"
+        :assessment_id="selectedAssessment && selectedAssessment.id"
         @close="closeScheduleModal"
         @schedule="handleScheduleAssessment"
       />
@@ -323,7 +351,13 @@ export default {
         alert('Failed to create assessment.');
       }
     },
-    async handleScheduleAssessment({ date, time, groupIds, memberIds }) {
+    async handleScheduleAssessment({
+      date,
+      time,
+      groupIds,
+      memberIds,
+      selectedMembers,
+    }) {
       if (!this.selectedAssessment || !date || !time) {
         this.toast.add({
           severity: 'warn',
@@ -347,18 +381,56 @@ export default {
           },
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
+
+        // Send scheduled emails to selected members (using selectedMembers for emails)
+        // Convert local date+time to UTC ISO string for send_at
+        const localDateTime = new Date(`${date}T${time}:00`);
+        const sendAt = localDateTime.toISOString();
+        const subject = 'Assessment Scheduled';
+        const body = 'You have an assessment scheduled.';
+        for (const member of selectedMembers || []) {
+          if (member.email) {
+            // Find the group_id for this member (assume first from group_ids array or group_id property)
+            let group_id = null;
+            if (
+              Array.isArray(member.group_ids) &&
+              member.group_ids.length > 0
+            ) {
+              group_id = member.group_ids[0];
+            } else if (member.group_id) {
+              group_id = member.group_id;
+            } else if (Array.isArray(groupIds) && groupIds.length === 1) {
+              group_id = groupIds[0];
+            }
+            await axios.post(
+              (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+                '/api/schedule-email',
+              {
+                recipient_email: member.email,
+                subject,
+                body,
+                send_at: sendAt,
+                assessment_id: this.selectedAssessment.id,
+                member_id: member.id,
+                group_id: group_id,
+              },
+              { headers: { Authorization: `Bearer ${authToken}` } }
+            );
+          }
+        }
+
         this.closeScheduleModal();
         this.toast.add({
           severity: 'success',
           summary: 'Scheduled',
-          detail: 'Assessment scheduled successfully!',
+          detail: 'Assessment scheduled and emails queued!',
           life: 3500,
         });
       } catch (e) {
         this.toast.add({
           severity: 'error',
           summary: 'Error',
-          detail: 'Failed to schedule assessment.',
+          detail: 'Failed to schedule assessment or emails.',
           life: 3500,
         });
       }

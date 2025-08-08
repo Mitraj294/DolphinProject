@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('organizations', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('org_name');
             $table->string('size')->nullable();
             $table->string('source')->nullable();
             $table->string('address1')->nullable();
@@ -30,8 +30,11 @@ return new class extends Migration
             $table->string('sales_person')->nullable();
             $table->date('last_contacted')->nullable();
             $table->integer('certified_staff')->nullable();
+            $table->unsignedBigInteger('user_id');
             $table->timestamps();
             $table->softDeletes();
+
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 

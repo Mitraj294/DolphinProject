@@ -319,8 +319,32 @@ export default {
         });
         // Assume API returns { plan_amount: 250 } or { plan_amount: 2500 }
         this.userPlan = res.data.plan_amount || null;
+
+        // After fetching plan, also refresh user role in storage (in case role changed)
+        const { fetchCurrentUser } = await import('@/services/user');
+        const user = await fetchCurrentUser();
+        const oldRole = storage.get('role');
+        console.log('[Subscription] Old role:', oldRole);
+        if (user && user.role) {
+          console.log('[Subscription] New role from backend:', user.role);
+          if (user.role !== oldRole) {
+            storage.set('role', user.role);
+            console.log(
+              '[Subscription] Role updated in storage. Reloading page...'
+            );
+            window.location.reload();
+          } else {
+            console.log('[Subscription] Role unchanged, no reload needed.');
+          }
+        } else {
+          console.warn('[Subscription] Could not fetch user or user.role');
+        }
       } catch (e) {
         this.userPlan = null;
+        console.error(
+          '[Subscription] Error fetching user plan or updating role:',
+          e
+        );
       }
     },
     async startStripeCheckout(period) {

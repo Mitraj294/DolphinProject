@@ -1,0 +1,4 @@
+# Add this line to your system crontab (edit with `crontab -e`)
+* * * * * cd /home/digilab/Dolphin/Dolphin_Backend && php artisan assessment:send-scheduled-emails >> /home/digilab/Dolphin/Dolphin_Backend/storage/logs/schedule-email-cron.log 2>&1
+
+# This will run the command every minute, queueing any scheduled emails that are due.

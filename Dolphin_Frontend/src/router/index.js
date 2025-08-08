@@ -1,3 +1,4 @@
+
 import { createRouter, createWebHistory } from 'vue-router'
 import Login from '@/components/auth/Login.vue'
 import Register from '@/components/auth/Register.vue'
@@ -21,6 +22,13 @@ import { ROLES, PERMISSIONS, canAccess } from '@/permissions.js'
 import storage from '../services/storage';
 
 const routes = [
+ 
+  {
+    path: '/assessment/answer/:token',
+    name: 'AssessmentAnswerPage',
+    component: () => import('@/components/Common/AssessmentAnswerPage.vue'),
+    meta: { public: true }
+  },
   {
     path: '/reset-password',
     name: 'ResetPassword',

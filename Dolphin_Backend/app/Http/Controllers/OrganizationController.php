@@ -9,7 +9,34 @@ class OrganizationController extends Controller
 {
     public function index()
     {
-        return response()->json(Organization::all());
+        $orgs = Organization::with(['user', 'user.userDetails', 'user.subscriptions' => function($q) {
+            $q->where('status', 'active')->orderByDesc('id');
+        }])->get();
+        $result = $orgs->map(function ($org) {
+            $subscription = $org->user && $org->user->subscriptions ? $org->user->subscriptions->first() : null;
+            return [
+                'id' => $org->id,
+                'org_name' => $org->org_name,
+                'size' => $org->size,
+                'source' => $org->source,
+                'admin' => $org->main_contact ?? ($org->user ? ($org->user->userDetails->first_name ?? $org->user->email) : ''),
+                'main_contact' => $org->main_contact,
+                'contract_start' => $subscription ? $subscription->subscription_start : $org->contract_start,
+                'contract_end' => $subscription ? $subscription->subscription_end : $org->contract_end,
+                'last_login' => $org->last_contacted,
+                'address1' => $org->address1,
+                'address2' => $org->address2,
+                'city' => $org->city,
+                'state' => $org->state,
+                'zip' => $org->zip,
+                'country' => $org->country,
+                'admin_email' => $org->admin_email,
+                'admin_phone' => $org->admin_phone,
+                'sales_person' => $org->sales_person,
+                'certified_staff' => $org->certified_staff,
+            ];
+        });
+        return response()->json($result);
     }
 
     public function show($id)

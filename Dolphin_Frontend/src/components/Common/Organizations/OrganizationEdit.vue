@@ -209,6 +209,8 @@ import {
   FormInput,
   FormDropdown,
 } from '@/components/Common/Common_UI/Form';
+import axios from 'axios';
+import storage from '@/services/storage.js';
 
 export default {
   name: 'OrganizationEdit',
@@ -216,32 +218,144 @@ export default {
   data() {
     return {
       form: {
-        orgName: this.$route.params.orgName || 'Flexi-Finders',
-        orgSize: '250+ Employees (Large)',
-        source: 'Google',
-        address1: '153',
-        address2: 'Maggie Loop',
-        city: 'Pottsville',
-        state: '', // Show placeholder for state
-        zip: '72858',
-        country: 'United States',
-        contractStart: 'Jun 18, 2024',
-        contractEnd: 'Jun 18, 2025',
-        mainContact: 'Aaliyah Moss',
-        adminEmail: 'aaliyah@dolphin.org',
-        adminPhone: '313-586-7462',
-        salesPerson: 'John',
-        lastContacted: 'Dec 15, 2024',
-        certifiedStaff: 2,
+        orgName: '',
+        orgSize: '',
+        source: '',
+        address1: '',
+        address2: '',
+        city: '',
+        state: '',
+        zip: '',
+        country: '',
+        contractStart: '',
+        contractEnd: '',
+        mainContact: '',
+        adminEmail: '',
+        adminPhone: '',
+        salesPerson: '',
+        lastContacted: '',
+        certifiedStaff: '',
       },
     };
   },
+  mounted() {
+    this.fetchOrganization();
+  },
   methods: {
+    async fetchOrganization() {
+      try {
+        const authToken = storage.get('authToken');
+        const headers = authToken
+          ? { Authorization: `Bearer ${authToken}` }
+          : {};
+        // Get user_id from route or storage (assume orgName param is user_id for this patch)
+        const userId = this.$route.params.orgName;
+        let res = await axios.get('http://127.0.0.1:8000/api/organizations', {
+          headers,
+        });
+        if (res.data && Array.isArray(res.data)) {
+          // Find by user_id instead of org_name
+          const found = res.data.find(
+            (o) => String(o.user_id) === String(userId)
+          );
+          if (found) {
+            this.orgId = found.id; // Save org id for update
+            this.form = {
+              orgName: found.org_name || '',
+              orgSize: found.size || '',
+              source: found.source || '',
+              address1: found.address1 || '',
+              address2: found.address2 || '',
+              city: found.city || '',
+              state: found.state || '',
+              zip: found.zip || '',
+              country: found.country || '',
+              contractStart: found.contract_start
+                ? new Date(found.contract_start).toLocaleDateString()
+                : '',
+              contractEnd: found.contract_end
+                ? new Date(found.contract_end).toLocaleDateString()
+                : '',
+              mainContact: found.main_contact || '',
+              adminEmail: found.admin_email || '',
+              adminPhone: found.admin_phone || '',
+              salesPerson: found.sales_person || '',
+              lastContacted: found.last_contacted || '',
+              certifiedStaff: found.certified_staff || '',
+            };
+          }
+        }
+      } catch (e) {
+        // fallback: leave form as is
+      }
+    },
     cancelEdit() {
       this.$router.push(`/organizations/${this.form.orgName}`);
     },
-    updateDetails() {
-      this.$router.push(`/organizations/${this.form.orgName}`);
+    async updateDetails() {
+      // Send PUT request to update organization
+      try {
+        const authToken = storage.get('authToken');
+        const headers = authToken
+          ? { Authorization: `Bearer ${authToken}` }
+          : {};
+        // Find org id
+        const orgId = this.orgId;
+        if (!orgId) {
+          alert('Organization not found.');
+          return;
+        }
+        // Prepare payload (convert camelCase to snake_case for backend)
+        const payload = {
+          org_name: this.form.orgName,
+          size: this.form.orgSize,
+          source: this.form.source,
+          address1: this.form.address1,
+          address2: this.form.address2,
+          city: this.form.city,
+          state: this.form.state,
+          zip: this.form.zip,
+          country: this.form.country,
+          main_contact: this.form.mainContact,
+          admin_email: this.form.adminEmail,
+          admin_phone: this.form.adminPhone,
+          sales_person: this.form.salesPerson,
+          certified_staff: this.form.certifiedStaff,
+        };
+        await axios.put(
+          `http://127.0.0.1:8000/api/organizations/${orgId}`,
+          payload,
+          { headers }
+        );
+        // Redirect using user_id instead of orgName
+        this.$router.push(`/organizations/${this.$route.params.orgName}`);
+      } catch (e) {
+        alert('Failed to update organization.');
+      }
+    },
+    data() {
+      return {
+        form: {
+          orgName: '',
+          orgSize: '',
+          source: '',
+          address1: '',
+          address2: '',
+          city: '',
+          state: '',
+          zip: '',
+          country: '',
+          contractStart: '',
+          contractEnd: '',
+          mainContact: '',
+          adminEmail: '',
+          adminPhone: '',
+          salesPerson: '',
+          lastContacted: '',
+          certifiedStaff: '',
+        },
+        orgId: null, // Store org id for update
+      };
     },
   },
 };

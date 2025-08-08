@@ -152,12 +152,12 @@ export default {
           headers,
         });
         this.organizations = res.data.map((org) => ({
-          name: org.name,
+          name: org.org_name,
           size: org.size || '',
-          admin: org.main_contact || org.name || '',
+          admin: org.admin || '',
           contractStart: org.contract_start || '',
           contractEnd: org.contract_end || '',
-          lastLogin: org.last_contacted || '',
+          lastLogin: org.last_login || '',
           id: org.id,
         }));
       } catch (e) {
