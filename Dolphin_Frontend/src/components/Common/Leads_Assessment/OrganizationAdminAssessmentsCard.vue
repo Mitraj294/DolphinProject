@@ -63,16 +63,30 @@
                       {{ item.schedule.status || 'scheduled' }}
                     </div>
                   </div>
+                  <button
+                    class="schedule-btn"
+                    @click="openScheduleDetails(item)"
+                    style="margin-top: 10px"
+                  >
+                    <img
+                      src="@/assets/images/Schedule.svg"
+                      alt="Details"
+                      style="
+                        margin-right: 6px;
+                        width: 18px;
+                        height: 18px;
+                        vertical-align: middle;
+                        display: inline-block;
+                      "
+                    />
+                    Details
+                  </button>
                 </div>
               </template>
               <template v-else>
                 <button
                   class="schedule-btn"
-                  @click="
-                    item.schedule
-                      ? openScheduleDetails(item)
-                      : openScheduleModal(item)
-                  "
+                  @click="openScheduleModal(item)"
                 >
                   <img
                     src="@/assets/images/Schedule.svg"
@@ -85,7 +99,7 @@
                       display: inline-block;
                     "
                   />
-                  {{ item.schedule ? 'Details' : 'Schedule' }}
+                  Schedule
                 </button>
               </template>
             </td>
@@ -228,6 +242,137 @@
         @schedule="handleScheduleAssessment"
       />
     </div>
+    <!-- Schedule Details Modal -->
+    <div
+      v-if="showScheduleDetailsModal"
+      class="modal-overlay"
+    >
+      <div
+        class="modal-card"
+        style="max-width: 480px; text-align: center; align-items: center"
+      >
+        <button
+          class="modal-close"
+          @click="closeScheduleDetailsModal"
+        >
+          &times;
+        </button>
+        <div
+          class="modal-title"
+          style="margin-bottom: 18px"
+        >
+          Scheduled Assessment Details
+        </div>
+        <div v-if="scheduleDetails && scheduleDetails.schedule">
+          <div style="margin-bottom: 8px">
+            <strong>Assessment:</strong> {{ scheduleDetails.assessment.name }}
+          </div>
+          <div style="margin-bottom: 8px">
+            <strong>Date:</strong> {{ scheduleDetails.schedule.date }}
+          </div>
+          <div style="margin-bottom: 8px">
+            <strong>Time:</strong> {{ scheduleDetails.schedule.time }}
+          </div>
+
+          <div style="margin-top: 16px; margin-bottom: 6px">
+            <strong>Emails:</strong>
+          </div>
+          <div>
+            <span
+              v-if="scheduleDetails.emails && scheduleDetails.emails.length"
+            >
+              <span
+                v-if="
+                  filteredEmails.length && filteredEmails.every((e) => e.sent)
+                "
+                class="status-green"
+                >Sent</span
+              >
+              <span
+                v-else-if="
+                  filteredEmails.length &&
+                  filteredEmails.some((e) => !e.sent) &&
+                  filteredEmails.some((e) => e.sent)
+                "
+                class="status-yellow"
+                >Scheduled</span
+              >
+              <span
+                v-else-if="
+                  filteredEmails.length && filteredEmails.every((e) => !e.sent)
+                "
+              >
+                <span
+                  v-if="
+                    filteredEmails.some((e) => {
+                      const [date, time] = (e.send_at || '').split(' ');
+                      const [year, month, day] = date ? date.split('-') : [];
+                      const [hour, min, sec] = time ? time.split(':') : [];
+                      const sendAtUtc = Date.UTC(
+                        Number(year),
+                        Number(month) - 1,
+                        Number(day),
+                        Number(hour),
+                        Number(min),
+                        Number(sec)
+                      );
+                      const nowUtc = Date.now();
+                      return sendAtUtc >= nowUtc;
+                    })
+                  "
+                  class="status-yellow"
+                  >Scheduled</span
+                >
+                <span
+                  v-else
+                  class="status-red"
+                  >Failed</span
+                >
+              </span>
+              <span
+                v-else
+                class="status-yellow"
+                >Scheduled</span
+              >
+            </span>
+            <span v-else>
+              <span
+                v-if="
+                  (() => {
+                    const [year, month, day] = (
+                      scheduleDetails.schedule.date || ''
+                    ).split('-');
+                    const [hour, min, sec] = (
+                      scheduleDetails.schedule.time || ''
+                    ).split(':');
+                    const schedAtUtc = Date.UTC(
+                      Number(year),
+                      Number(month) - 1,
+                      Number(day),
+                      Number(hour),
+                      Number(min),
+                      Number(sec)
+                    );
+                    const nowUtc = Date.now();
+                    return schedAtUtc >= nowUtc;
+                  })()
+                "
+                class="status-yellow"
+                >Scheduled</span
+              >
+              <span
+                v-else
+                class="status-red"
+                >Failed</span
+              >
+            </span>
+          </div>
+        </div>
+        <div v-else>
+          <em>No schedule details found.</em>
+        </div>
+      </div>
+    </div>
   </div>
   <Pagination
     :pageSize="pageSize"
@@ -271,6 +416,11 @@ export default {
       showMembersDropdown: false,
       loading: false,
       toast: null,
+      // Schedule details state
+      showScheduleDetailsModal: false,
+      scheduleDetails: null,
+      allGroups: [],
+      allMembers: [],
     };
   },
   created() {
@@ -284,11 +434,89 @@ export default {
     totalPages() {
       return Math.ceil(this.assessments.length / this.pageSize) || 1;
     },
+    groupNameMap() {
+      const map = {};
+      (this.allGroups || []).forEach((g) => {
+        map[g.id] = g.name;
+      });
+      return map;
+    },
+    memberNameMap() {
+      const map = {};
+      (this.allMembers || []).forEach((m) => {
+        map[m.id] = m.name || m.email || m.id;
+      });
+      return map;
+    },
+    filteredEmails() {
+      if (!this.scheduleDetails || !this.scheduleDetails.emails) return [];
+      const schedule = this.scheduleDetails.schedule;
+      if (!schedule) return [];
+      // Only include emails for this assessment
+      return this.scheduleDetails.emails.filter(
+        (e) => e.assessment_id == this.scheduleDetails.assessment.id
+      );
+    },
   },
   methods: {
-    openScheduleModal(item) {
+    async openScheduleDetails(item) {
+      // Fetch schedule details from backend
+      try {
+        const res = await axios.get(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/scheduled-email/show',
+          { params: { assessment_id: item.id } }
+        );
+        this.scheduleDetails = res.data;
+      } catch (e) {
+        this.scheduleDetails = null;
+      }
       this.selectedAssessment = item;
-      this.showScheduleModal = true;
+      this.showScheduleDetailsModal = true;
+    },
+    closeScheduleDetailsModal() {
+      this.showScheduleDetailsModal = false;
+      this.scheduleDetails = null;
+    },
+    async openScheduleModal(item) {
+      // Always check backend for schedule status
+      try {
+        const res = await axios.get(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            '/api/scheduled-email/show',
+          { params: { assessment_id: item.id } }
+        );
+        // Debug log for backend response
+        console.log('Scheduled check response:', res.data);
+        if (
+          res.data &&
+          (res.data.scheduled === true || res.data.scheduled === 1)
+        ) {
+          // If scheduled, show details instead
+          this.openScheduleDetails(item);
+          return;
+        } else if (
+          res.data &&
+          (res.data.scheduled === false || res.data.scheduled === 0)
+        ) {
+          this.selectedAssessment = item;
+          this.showScheduleModal = true;
+          return;
+        } else {
+          // Defensive: treat as scheduled if response is malformed
+          this.openScheduleDetails(item);
+          return;
+        }
+      } catch (e) {
+        console.error('Schedule check error:', e);
+        this.toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Could not check schedule status.',
+          life: 3500,
+        });
+        return;
+      }
     },
     closeScheduleModal() {
       this.showScheduleModal = false;
@@ -457,9 +685,35 @@ export default {
       if (Array.isArray(qres.data.questions)) {
         this.questions = qres.data.questions;
       } else if (Array.isArray(qres.data)) {
-        this.questions = qres.data;
+        this.questions = res.data;
       } else {
         this.questions = [];
+      }
+      // Fetch all groups
+      const groupsRes = await axios.get(
+        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+          '/api/groups',
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      if (Array.isArray(groupsRes.data.groups)) {
+        this.allGroups = groupsRes.data.groups;
+      } else if (Array.isArray(groupsRes.data)) {
+        this.allGroups = groupsRes.data;
+      } else {
+        this.allGroups = [];
+      }
+      // Fetch all members
+      const membersRes = await axios.get(
+        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+          '/api/members',
+        { headers: { Authorization: `Bearer ${authToken}` } }
+      );
+      if (Array.isArray(membersRes.data.members)) {
+        this.allMembers = membersRes.data.members;
+      } else if (Array.isArray(membersRes.data)) {
+        this.allMembers = membersRes.data;
+      } else {
+        this.allMembers = [];
       }
     } catch (e) {
       this.assessments = [];
@@ -605,6 +859,7 @@ export default {
 .modal-title {
   font-size: 26px;
   font-weight: 600;
+  margin-top: 32px;
   margin-bottom: 32px;
   color: #222;
 }
@@ -800,5 +1055,33 @@ export default {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;
   }
+}
+
+.status-green {
+  color: #fff;
+  background: #28a745;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  display: inline-block;
+}
+.status-yellow {
+  color: #fff;
+  background: #f7c948;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  display: inline-block;
+}
+.status-red {
+  color: #fff;
+  background: #e74c3c;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  display: inline-block;
 }
 </style>

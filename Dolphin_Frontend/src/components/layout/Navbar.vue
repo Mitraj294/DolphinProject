@@ -148,6 +148,7 @@ export default {
       roleName: authMiddleware.getRole(),
       isVerySmallScreen: false,
       notificationCount: 0,
+      assessmentNameCache: {},
     };
   },
   computed: {
@@ -220,9 +221,16 @@ export default {
       }
       if (routeName === 'AssessmentSummary') {
         const assessmentId = this.$route.params.assessmentId;
-        return assessmentId
-          ? `Assessment ${assessmentId} Summary`
-          : 'Assessment Summary';
+        if (!assessmentId) return 'Assessment Summary';
+        if (
+          this.assessmentNameCache &&
+          this.assessmentNameCache[assessmentId]
+        ) {
+          return `${this.assessmentNameCache[assessmentId]} Summary`;
+        }
+        // If not cached, fetch and update cache
+        this.fetchAssessmentName(assessmentId);
+        return `Assessment ${assessmentId} Summary`;
       }
       if (routeName === 'Profile') {
         return 'Profile';
@@ -249,7 +257,31 @@ export default {
       return authMiddleware.getRole();
     },
   },
+
   methods: {
+    async fetchAssessmentName(assessmentId) {
+      if (!assessmentId || this.assessmentNameCache[assessmentId]) return;
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        // Fetch all assessments and cache their names
+        const res = await fetch(`${API_BASE_URL}/api/assessments`);
+        const data = await res.json();
+        if (Array.isArray(data.assessments)) {
+          data.assessments.forEach((a) => {
+            if (a.id && a.name) {
+              this.$set(this.assessmentNameCache, a.id.toString(), a.name);
+            }
+          });
+        }
+        // If the requested assessmentId is now cached, force update
+        if (this.assessmentNameCache[assessmentId]) {
+          this.$forceUpdate && this.$forceUpdate();
+        }
+      } catch (e) {
+        // Ignore error, fallback to ID
+      }
+    },
     toggleDropdown() {
       this.dropdownOpen = !this.dropdownOpen;
     },
@@ -321,6 +353,12 @@ export default {
         document.body.classList.remove('logout-overlay-active');
       }
     },
+    $route(to) {
+      // If navigating to a new assessment summary, fetch the name
+      if (to.name === 'AssessmentSummary' && to.params.assessmentId) {
+        this.fetchAssessmentName(to.params.assessmentId);
+      }
+    },
   },
   mounted() {
     document.addEventListener('mousedown', this.handleClickOutside);
@@ -329,6 +367,13 @@ export default {
     this.updateNotificationCount();
     window.addEventListener('storage', this.updateNotificationCount);
     window.addEventListener('focus', this.updateNotificationCount);
+    // On mount, if on summary page, fetch assessment name
+    if (
+      this.$route.name === 'AssessmentSummary' &&
+      this.$route.params.assessmentId
+    ) {
+      this.fetchAssessmentName(this.$route.params.assessmentId);
+    }
     if (this.showLogoutConfirm) {
       document.body.classList.add('logout-overlay-active');
     }

@@ -42,19 +42,29 @@ class AssessmentController extends Controller
             ];
         }
 
+        // Calculate summary counts
+        $totalSent = $tokens->count();
+        $submitted = $tokens->where('used', 1)->count();
+        $pending = $tokens->where('used', 0)->count();
+
         return response()->json([
             'assessment' => [
                 'id' => $assessment->id,
                 'name' => $assessment->name,
             ],
             'members' => array_values($members),
+            'summary' => [
+                'total_sent' => $totalSent,
+                'submitted' => $submitted,
+                'pending' => $pending,
+            ],
         ]);
     }
 
     public function show()
     {
-        // Return all assessments with their questions (dummy for now)
-        $assessments = Assessment::with('questions')->get();
+        // Only return id and name for all assessments (for navbar, avoid relationship errors)
+        $assessments = \App\Models\Assessment::select('id', 'name')->get();
         return response()->json(['assessments' => $assessments]);
     }
 

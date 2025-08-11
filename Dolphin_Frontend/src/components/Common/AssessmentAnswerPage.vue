@@ -1,5 +1,15 @@
 <template>
   <div class="assessment-answer-page">
+    <img
+      src="@/assets/images/Lines.svg"
+      alt="Lines"
+      class="bg-lines"
+    />
+    <img
+      src="@/assets/images/Image.svg"
+      alt="Illustration"
+      class="bg-illustration"
+    />
     <div class="assessment-card">
       <Toast />
       <h2 class="assessment-title">{{ assessment?.name }}</h2>
@@ -68,10 +78,9 @@ export default {
         this.answers[q.assessment_question_id] = '';
       }
     } catch (e) {
-      this.toast.add({
-        severity: 'error',
-        summary: 'Invalid or expired link.',
-        life: 3500,
+      this.$router.replace({
+        name: 'ThanksPage',
+        query: { already: '1' },
       });
     }
   },
@@ -93,10 +102,8 @@ export default {
           `${API_BASE_URL}/api/assessment/answer/${token}`,
           payload
         );
-        this.toast.add({
-          severity: 'success',
-          summary: 'Thank you for your submission!',
-          life: 3500,
+        this.$router.replace({
+          name: 'ThanksPage',
         });
       } catch (e) {
         this.toast.add({
@@ -113,6 +120,145 @@ export default {
 </script>
 
 <style scoped>
+/* Login/Register style background and card */
+.assessment-answer-page {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  background: #f8f9fb;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+.bg-lines {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 250px;
+  height: auto;
+  z-index: 0;
+}
+.bg-illustration {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  height: auto;
+  z-index: 0;
+}
+.assessment-card {
+  position: relative;
+  background: #fff;
+  border-radius: 24px;
+  border: 1px solid #ebebeb;
+  box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.04);
+  padding: 48px 48px 32px 48px;
+  text-align: center;
+  z-index: 1;
+  max-width: 480px;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.assessment-title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 600;
+  color: #234056;
+  margin-bottom: 8px;
+  font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
+}
+.question-block {
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+.question-label {
+  font-weight: 500;
+  text-align: left;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+.question-input {
+  padding: 12px 16px;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 1rem;
+  background: #f9fafb;
+  transition: border-color 0.18s;
+  outline: none;
+  box-sizing: border-box;
+}
+.question-input:focus {
+  border-color: #0074c2;
+  background: #fff;
+}
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: #0074c2;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 32px;
+  margin-top: 8px;
+  transition: background 0.2s;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+}
+.submit-btn:disabled {
+  background: #b0bec5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1200px) {
+  .bg-lines {
+    width: 180px;
+    left: 1vw;
+    top: 8vh;
+  }
+  .bg-illustration {
+    width: 220px;
+    right: 1vw;
+    bottom: 8vh;
+  }
+  .assessment-card {
+    padding: 32px;
+    max-width: 400px;
+  }
+}
+@media (max-width: 768px) {
+  .bg-lines {
+    width: 120px;
+    left: -20px;
+    top: -20px;
+  }
+  .bg-illustration {
+    width: 150px;
+    right: -20px;
+    bottom: -20px;
+  }
+  .assessment-card {
+    padding: 24px;
+    margin: 0 16px;
+  }
+  .assessment-title {
+    font-size: 1.8rem;
+  }
+  .question-input {
+    font-size: 0.9rem;
+  }
+  .submit-btn {
+    font-size: 1rem;
+    padding: 12px;
+  }
+}
 /* Modern card style */
 .assessment-answer-page {
   min-height: 100vh;
@@ -121,11 +267,28 @@ export default {
   justify-content: center;
   background: #f4f7fa;
 }
+.bg-lines {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 250px;
+  height: auto;
+  z-index: 0;
+}
+
+.bg-illustration {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  height: auto;
+  z-index: 0;
+}
 .assessment-card {
   background: #fff;
   padding: 2.5rem 2rem 2rem 2rem;
   border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 18px 20px 20px 20px rgba(0, 0, 0, 0.08);
   max-width: 480px;
   width: 100%;
 }
@@ -179,5 +342,29 @@ export default {
   background: #b0bec5;
   cursor: not-allowed;
 }
-/* Removed unused success/error classes. Toast notifications are now used. */
+
+@media (max-width: 1200px) {
+  .bg-lines {
+    width: 180px;
+    left: 1vw;
+    top: 8vh;
+  }
+  .bg-illustration {
+    width: 220px;
+    right: 1vw;
+    bottom: 8vh;
+  }
+}
+@media (max-width: 768px) {
+  .bg-lines {
+    width: 120px;
+    left: -20px;
+    top: -20px;
+  }
+  .bg-illustration {
+    width: 150px;
+    right: -20px;
+    bottom: -20px;
+  }
+}
 </style>

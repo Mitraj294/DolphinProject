@@ -14,47 +14,26 @@ class ScheduledAssessmentMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $subjectText;
-    public $bodyText;
+    public $assessmentUrl;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($subjectText, $bodyText)
+    public function __construct($subjectText, $assessmentUrl)
     {
         $this->subjectText = $subjectText;
-        $this->bodyText = $bodyText;
+        $this->assessmentUrl = $assessmentUrl;
     }
 
     /**
-     * Get the message envelope.
+     * Build the message.
      */
-    public function envelope(): Envelope
+    public function build()
     {
-        return new Envelope(
-            subject: $this->subjectText,
-        );
-    }
-
-    /**
-     * Get the message content definition.
-     */
-    public function content(): Content
-    {
-        return new Content(
-            view: 'emails.scheduled_assessment',
-            with: [
-                'bodyText' => $this->bodyText,
-            ],
-        );
-    }
-
-    /**
-     * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
-     */
-    public function attachments(): array
-    {
-        return [];
+        $html = view('emails.assessment', [
+            'assessmentUrl' => $this->assessmentUrl,
+        ])->render();
+        return $this->subject($this->subjectText)
+            ->html($html);
     }
 }

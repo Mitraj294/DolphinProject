@@ -12,5 +12,6 @@ class ScheduledEmail extends Model
         'body',
         'send_at',
         'sent',
+        'assessment_id',
     ];
 }

@@ -6,15 +6,15 @@
           <div class="assessment-summary-cards">
             <div class="assessment-summary-card">
               <div class="summary-label">Total Sent Assessment</div>
-              <div class="summary-value">7</div>
+              <div class="summary-value">{{ summary.total_sent }}</div>
             </div>
             <div class="assessment-summary-card">
               <div class="summary-label">Submitted Assessment</div>
-              <div class="summary-value">5</div>
+              <div class="summary-value">{{ summary.submitted }}</div>
             </div>
             <div class="assessment-summary-card">
               <div class="summary-label">Pending</div>
-              <div class="summary-value">2</div>
+              <div class="summary-value">{{ summary.pending }}</div>
             </div>
           </div>
           <div class="assessment-table-header-spacer"></div>
@@ -40,6 +40,7 @@
                         height="20"
                         viewBox="0 0 20 20"
                         fill="none"
+                        style="margin-right: 8px"
                       >
                         <circle
                           cx="10"
@@ -61,6 +62,42 @@
                       v-else
                       class="status pending"
                     >
+                      <span
+                        style="
+                          position: relative;
+                          display: inline-flex;
+                          align-items: center;
+                          justify-content: center;
+                          width: 20px;
+                          height: 20px;
+                          margin-right: 8px;
+                        "
+                      >
+                        <svg
+                          width="20"
+                          height="20"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                        >
+                          <circle
+                            cx="10"
+                            cy="10"
+                            r="10"
+                            fill="#F0F0F0"
+                          />
+                        </svg>
+                        <img
+                          src="@/assets/images/Pending.svg"
+                          alt="Pending"
+                          style="
+                            position: absolute;
+                            left: 3px;
+                            top: 3px;
+                            width: 14px;
+                            height: 14px;
+                          "
+                        />
+                      </span>
                       Pending
                     </span>
                   </td>
@@ -151,6 +188,7 @@ export default {
     const route = useRoute();
     const assessmentId = route.params.assessmentId;
     const rows = ref([]);
+    const summary = ref({ total_sent: 0, submitted: 0, pending: 0 });
     // Fetch summary data from backend
     async function fetchSummary() {
       try {
@@ -174,8 +212,14 @@ export default {
             answer: a.answer,
           })),
         }));
+        summary.value = data.summary || {
+          total_sent: 0,
+          submitted: 0,
+          pending: 0,
+        };
       } catch (e) {
         rows.value = [];
+        summary.value = { total_sent: 0, submitted: 0, pending: 0 };
       }
     }
     fetchSummary();
@@ -251,6 +295,7 @@ export default {
       closeModal,
       tableColumns,
       sortBy,
+      summary,
     };
   },
 };
@@ -389,15 +434,16 @@ export default {
 .status {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-weight: 500;
 }
 .status.submitted {
   color: #48b02c;
 }
 .status.pending {
-  color: #bdbdbd;
+  color: #5d5d5d;
 }
+
 .no-data {
   text-align: center;
   color: #888;

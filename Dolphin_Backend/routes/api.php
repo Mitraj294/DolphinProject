@@ -74,7 +74,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/answers', [AnswerController::class, 'store']);      
     Route::get('/answers', [AnswerController::class, 'getUserAnswers']);
 
-    Route::get('/assessments', [AssessmentController::class, 'show']);
+    Route::get('/assessments', [AssessmentController::class, 'show'])->withoutMiddleware(['auth:api', 'auth']);
     Route::post('/assessments', [AssessmentController::class, 'store']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 

@@ -25,37 +25,40 @@ class ScheduledEmailController extends Controller
 
         // Parse send_at as UTC (frontend sends UTC ISO string)
         $sendAtUtc = Carbon::parse($validated['send_at'])->setTimezone('UTC');
+
+
+        // Try to find an existing token for this assessment/member/group
+        $answerToken = AssessmentAnswerToken::where('assessment_id', $validated['assessment_id'])
+            ->where('member_id', $validated['member_id'])
+            ->where('group_id', $validated['group_id'] ?? null)
+            ->first();
+        if (!$answerToken) {
+            $token = bin2hex(random_bytes(16));
+            $expiresAt = Carbon::now()->addDays(7);
+            $answerToken = AssessmentAnswerToken::create([
+                'assessment_id' => $validated['assessment_id'],
+                'member_id' => $validated['member_id'],
+                'group_id' => $validated['group_id'] ?? null,
+                'token' => $token,
+                'expires_at' => $expiresAt,
+            ]);
+        }
+        $token = $answerToken->token;
+        $frontendUrl = env('FRONTEND_URL', 'http://localhost:8080');
+        $answerUrl = $frontendUrl . '/assessment/answer/' . $token;
+        $emailBody = $validated['body'] . "\n\n" . 'To answer the assessment, click the link below:' . "\n" . $answerUrl;
+
         $scheduledEmail = ScheduledEmail::create([
             'recipient_email' => $validated['recipient_email'],
             'subject' => $validated['subject'],
-            'body' => $validated['body'],
+            'body' => $emailBody, // Save full body with link
             'send_at' => $sendAtUtc,
-        ]);
-
-        // Generate unique token for answer link
-        $token = bin2hex(random_bytes(16));
-        $expiresAt = Carbon::now()->addDays(7);
-        $answerToken = AssessmentAnswerToken::create([
             'assessment_id' => $validated['assessment_id'],
-            'member_id' => $validated['member_id'],
-            'group_id' => $validated['group_id'] ?? null,
-            'token' => $token,
-            'expires_at' => $expiresAt,
         ]);
-
-
-
-        // Build the answer link URL
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:8080');
-        $answerUrl = $frontendUrl . '/assessment/answer/' . $token;
-
-        // Append the answer link to the email body
-        $emailBody = $validated['body'] . "\n\n" . 'To answer the assessment, click the link below:' . "\n" . $answerUrl;
 
         // Queue the assessment email to be sent at the scheduled time
         try {
-            \Mail::to($validated['recipient_email'])
-                ->later($sendAtUtc, new \App\Mail\ScheduledAssessmentMail($validated['subject'], $emailBody));
+            \App\Jobs\SendScheduledAssessmentEmail::dispatch($scheduledEmail->id)->delay($sendAtUtc);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to schedule email: ' . $e->getMessage()], 500);
         }
@@ -66,15 +69,23 @@ class ScheduledEmailController extends Controller
 
     public function show(Request $request)
     {
-        // Check for existing assessment schedule by assessment_id
         $assessmentId = $request->query('assessment_id');
         if ($assessmentId) {
             $schedule = \DB::table('assessment_schedules')->where('assessment_id', $assessmentId)->first();
+            $assessment = \DB::table('assessments')->where('id', $assessmentId)->first();
+            $emails = [];
             if ($schedule) {
-                return response()->json(['scheduled' => true, 'data' => $schedule]);
-            } else {
-                return response()->json(['scheduled' => false]);
+                // Optionally, filter by send_at or member_ids
+                $emails = \DB::table('scheduled_emails')
+                    ->whereDate('send_at', $schedule->date)
+                    ->get();
             }
+            return response()->json([
+                'scheduled' => (bool)$schedule,
+                'schedule' => $schedule,
+                'assessment' => $assessment,
+                'emails' => $emails,
+            ]);
         }
         // Fallback: check ScheduledEmail by recipient_email if provided
         $recipientEmail = $request->query('recipient_email');

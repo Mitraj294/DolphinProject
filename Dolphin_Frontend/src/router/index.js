@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Login from '@/components/auth/Login.vue'
 import Register from '@/components/auth/Register.vue'
 import ThankYou from '@/components/auth/ThankYou.vue'
+import ThanksPage from '@/components/Common/ThanksPage.vue';
 import Dashboard from '@/components/Common/Dashboard/Dashboard.vue'
 import Organizations from '@/components/Common/Organizations/Organizations.vue'
 import Notifications from '@/components/Common/Superadmin/Notifications.vue'
@@ -22,6 +23,18 @@ import { ROLES, PERMISSIONS, canAccess } from '@/permissions.js'
 import storage from '../services/storage';
 
 const routes = [
+  {
+    path: '/thanks',
+    name: 'ThanksPage',
+    component: ThanksPage,
+    meta: { public: true }
+  },
+  {
+    path: '/thanks',
+    name: 'ThanksPage',
+    component: ThanksPage,
+    meta: { public: true }
+  },
  
   {
     path: '/assessment/answer/:token',
