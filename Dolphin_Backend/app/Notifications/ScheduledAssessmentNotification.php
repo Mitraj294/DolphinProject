@@ -40,7 +40,9 @@ class ScheduledAssessmentNotification extends Notification implements ShouldQueu
     {
         return (new MailMessage)
             ->subject($this->subject)
-            ->line($this->body);
+            ->view('emails.assessment', [
+                'assessmentUrl' => $this->body,
+            ]);
     }
 
     /**

@@ -19,34 +19,22 @@ class ScheduledEmailController extends Controller
             'body' => 'required|string',
             'send_at' => 'required|date',
             'assessment_id' => 'required|integer',
-            'member_id' => 'required|integer',
-            'group_id' => 'required|integer', // group_id is now required
+            'group_id' => 'required|integer',
+            'member_id' => 'required|integer'
         ]);
+
+        // Lookup member by email
+        $member = Member::whereRaw('LOWER(TRIM(email)) = ?', [trim(strtolower($validated['recipient_email']))])->first();
+        if (!$member) {
+            return response()->json(['message' => 'No member found for recipient_email: ' . $validated['recipient_email']], 422);
+        }
+        $memberId = $member->id;
 
         // Parse send_at as UTC (frontend sends UTC ISO string)
         $sendAtUtc = Carbon::parse($validated['send_at'])->setTimezone('UTC');
 
-
-        // Try to find an existing token for this assessment/member/group
-        $answerToken = AssessmentAnswerToken::where('assessment_id', $validated['assessment_id'])
-            ->where('member_id', $validated['member_id'])
-            ->where('group_id', $validated['group_id'] ?? null)
-            ->first();
-        if (!$answerToken) {
-            $token = bin2hex(random_bytes(16));
-            $expiresAt = Carbon::now()->addDays(7);
-            $answerToken = AssessmentAnswerToken::create([
-                'assessment_id' => $validated['assessment_id'],
-                'member_id' => $validated['member_id'],
-                'group_id' => $validated['group_id'] ?? null,
-                'token' => $token,
-                'expires_at' => $expiresAt,
-            ]);
-        }
-        $token = $answerToken->token;
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:8080');
-        $answerUrl = $frontendUrl . '/assessment/answer/' . $token;
-        $emailBody = $validated['body'] . "\n\n" . 'To answer the assessment, click the link below:' . "\n" . $answerUrl;
+    // Only schedule the email and dispatch the job. Token creation and email sending will be handled by the job.
+    $emailBody = $validated['body'] . "\n\n" . 'To answer the assessment, click the link below:';
 
         $scheduledEmail = ScheduledEmail::create([
             'recipient_email' => $validated['recipient_email'],
@@ -54,6 +42,8 @@ class ScheduledEmailController extends Controller
             'body' => $emailBody, // Save full body with link
             'send_at' => $sendAtUtc,
             'assessment_id' => $validated['assessment_id'],
+            'group_id' => $validated['group_id'],
+            'member_id' => $memberId,
         ]);
 
         // Queue the assessment email to be sent at the scheduled time
@@ -63,7 +53,13 @@ class ScheduledEmailController extends Controller
             return response()->json(['message' => 'Failed to schedule email: ' . $e->getMessage()], 500);
         }
 
-        return response()->json(['message' => 'Email scheduled successfully', 'data' => $scheduledEmail], 201);
+        return response()->json([
+            'message' => 'Email scheduled successfully',
+            'data' => array_merge(
+                $scheduledEmail->toArray(),
+                ['member_id' => $memberId]
+            )
+        ], 201);
     }
 
 

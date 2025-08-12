@@ -10,7 +10,7 @@
       type="text"
       :placeholder="placeholder"
       readonly
-      :value="selectedItems.map((item) => item.name).join(', ')"
+      :value="selectedItems.map((item) => item[optionLabel]).join(', ')"
       class="form-input-with-icon"
       @click="toggleDropdown"
     />
@@ -28,14 +28,18 @@
       />
       <div
         v-for="item in filteredItems"
-        :key="item.id"
+        :key="item[optionValue]"
         class="dropdown-item"
         @click="toggleItem(item)"
       >
-        <span>{{ item.name }}</span>
+        <span>{{ item[optionLabel] }}</span>
         <span
           class="dropdown-checkbox"
-          :class="{ checked: selectedItems.some((i) => i.name === item.name) }"
+          :class="{
+            checked: selectedItems.some(
+              (i) => i[optionValue] === item[optionValue]
+            ),
+          }"
         ></span>
       </div>
     </div>
@@ -50,6 +54,8 @@ export default {
     selectedItems: { type: Array, required: true },
     placeholder: { type: String, default: '' },
     icon: { type: String, default: 'fas fa-users' },
+    optionLabel: { type: String, default: 'name' },
+    optionValue: { type: String, default: 'id' },
   },
   data() {
     return {
@@ -61,7 +67,9 @@ export default {
     filteredItems() {
       if (!this.search) return this.options;
       return this.options.filter((item) =>
-        item.name.toLowerCase().includes(this.search.toLowerCase())
+        (item[this.optionLabel] || '')
+          .toLowerCase()
+          .includes(this.search.toLowerCase())
       );
     },
   },

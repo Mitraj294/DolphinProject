@@ -19,6 +19,7 @@ use App\Http\Controllers\AssessmentAnswerLinkController;
 
 
 use App\Http\Controllers\ScheduledEmailController;
+use App\Http\Controllers\NotificationController;
 
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -64,6 +65,12 @@ Route::post('/answer/{token}', [\App\Http\Controllers\AssessmentAnswerController
 
 Route::get('/assessment/{id}/summary', [AssessmentController::class, 'summary']);
 Route::middleware('auth:api')->group(function () {
+
+
+
+    Route::post('/notifications/send', [NotificationController::class, 'send']);
+    Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
+
     // Endpoint to get current authenticated user (for frontend role sync)
     Route::get('/user', [\App\Http\Controllers\AuthController::class, 'user']);
     Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
@@ -94,6 +101,7 @@ Route::middleware('auth:api')->group(function () {
 
 
 // Organization management
+    // For notifications page: superadmin can fetch all groups, orgadmin only their own
     Route::get('/groups', [GroupController::class, 'index']);
     Route::post('/groups', [GroupController::class, 'store']);
 

@@ -91,12 +91,31 @@
             <div class="modal-row">
               <div class="modal-field">
                 <FormLabel>Select Organizations</FormLabel>
-                <FormDropdown v-model="selectedOrganization">
-                  <option value="">Select</option>
-                  <option value="org1">Organization 1</option>
-                  <option value="org2">Organization 2</option>
-                </FormDropdown>
+                <MultiSelectDropdown
+                  :options="organizations || []"
+                  :selectedItems="selectedOrganizations"
+                  @update:selectedItems="selectedOrganizations = $event"
+                  option-label="org_name"
+                  option-value="id"
+                  placeholder="Select organizations"
+                />
               </div>
+              <div class="modal-field">
+                <FormLabel>Select Group</FormLabel>
+                <MultiSelectDropdown
+                  :options="groups || []"
+                  :selectedItems="selectedGroups"
+                  @update:selectedItems="selectedGroups = $event"
+                  placeholder="Select groups"
+                />
+              </div>
+              <!--
+                This section renders a dropdown menu for selecting an admin user.
+                - The dropdown is bound to the `selectedAdmin` model.
+                - Options include a default "Select" prompt and two admin choices ("Admin 1" and "Admin 2").
+                - The label "Select Admin" is displayed above the dropdown.
+                This part will be used later for admin selection functionality.
+            
               <div class="modal-field">
                 <FormLabel>Select Admin</FormLabel>
                 <FormDropdown v-model="selectedAdmin">
@@ -105,16 +124,9 @@
                   <option value="admin2">Admin 2</option>
                 </FormDropdown>
               </div>
+                -->
             </div>
             <div class="modal-row">
-              <div class="modal-field">
-                <FormLabel>Select Group</FormLabel>
-                <FormDropdown v-model="selectedGroup">
-                  <option value="">Select</option>
-                  <option value="group1">Group 1</option>
-                  <option value="group2">Group 2</option>
-                </FormDropdown>
-              </div>
               <div class="schedule-demo-field schedule-demo-schedule-field">
                 <FormLabel>Schedule</FormLabel>
                 <div class="schedule-demo-schedule-inputs">
@@ -131,7 +143,12 @@
                 </div>
               </div>
             </div>
-            <button class="btn btn-primary">Send Notification</button>
+            <button
+              class="btn btn-primary"
+              @click="sendNotification"
+            >
+              Send Notification
+            </button>
           </div>
         </div>
       </div>
@@ -150,6 +167,9 @@ import {
   FormDateTime,
 } from '@/components/Common/Common_UI/Form';
 import FormInput from '../Common_UI/Form/FormInput.vue';
+import MultiSelectDropdown from '../Common_UI/Form/MultiSelectDropdown.vue';
+import axios from 'axios';
+import storage from '@/services/storage';
 export default {
   name: 'Notifications',
   components: {
@@ -161,6 +181,7 @@ export default {
     FormInput,
     FormLabel,
     FormDateTime,
+    MultiSelectDropdown,
   },
   data() {
     return {
@@ -170,32 +191,14 @@ export default {
       currentPage: 1,
       sortKey: '',
       sortAsc: true,
-      selectedOrganization: '',
+      selectedOrganizations: [],
       selectedAdmin: '',
-      selectedGroup: '',
+      selectedGroups: [],
       scheduledDate: '',
       scheduledTime: '',
-      notifications: [
-        { title: 'Lorem Ipsum is simply', date: 'Jan 22, 2025 at 02:00 PM' },
-        {
-          title: 'Dummy text of the printing',
-          date: 'Jan 22, 2025 at 02:00 PM',
-        },
-        {
-          title: 'And typesetting industry.',
-          date: 'Jan 12, 2025 at 01:15 PM',
-        },
-        {
-          title: 'Lorem Ipsum text has been',
-          date: 'Jan 10, 2025 at 01:00 PM',
-        },
-        { title: 'The industry standard', date: 'Jan 6, 2025 at 12:00 PM' },
-        { title: 'Dummy text ever since', date: 'Dec 24, 2024 at 10:00 AM' },
-        { title: 'When an unknown printer', date: 'Dec 24, 2024 at 10:00 AM' },
-        { title: 'took a galley of type', date: 'Dec 24, 2024 at 10:00 AM' },
-        { title: 'And scrambled it to make', date: 'Dec 24, 2024 at 10:00 AM' },
-        { title: 'And scrambled it to make', date: 'Dec 15, 2024 at 4:40 PM' },
-      ],
+      organizations: [],
+      groups: [],
+      notifications: [],
     };
   },
   computed: {
@@ -254,9 +257,82 @@ export default {
         this.sortAsc = true;
       }
     },
-    sendNotification() {
-      this.showSendModal = false;
+    async sendNotification() {
+      try {
+        const apiUrl = process.env.VUE_APP_API_URL || '/api';
+        const token = storage.get('authToken');
+        // Collect data from modal
+        const payload = {
+          organization_ids: this.selectedOrganizations.map((org) => org.id),
+          group_ids: this.selectedGroups.map((group) => group.id),
+          body: this.$el.querySelector('.modal-textarea').value,
+        };
+        await axios.post(apiUrl + '/notifications/send', payload, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        this.showSendModal = false;
+        // Optionally, show a success message or refresh notifications
+      } catch (err) {
+        console.error('Error sending notification:', err);
+        // Optionally, show an error message
+      }
     },
+    async fetchOrganizations() {
+      try {
+        const apiUrl = process.env.VUE_APP_API_URL || '/api';
+        const token = storage.get('authToken');
+        const res = await axios.get(apiUrl + '/organizations', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('Organizations response:', res.data);
+        this.organizations = res.data;
+      } catch (err) {
+        console.error('Error fetching organizations:', err);
+        this.organizations = [];
+      }
+    },
+    async fetchGroups() {
+      try {
+        const apiUrl = process.env.VUE_APP_API_URL || '/api';
+        const token = storage.get('authToken');
+        const res = await axios.get(apiUrl + '/groups', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('Groups response:', res.data);
+        this.groups = res.data;
+      } catch (err) {
+        console.error('Error fetching groups:', err);
+        this.groups = [];
+      }
+    },
+    async fetchNotifications() {
+      try {
+        const apiUrl = process.env.VUE_APP_API_URL || '/api';
+        const token = storage.get('authToken');
+        // Send selected orgs/groups as query params
+        const orgIds = this.selectedOrganizations
+          .map((org) => org.id)
+          .join(',');
+        const groupIds = this.selectedGroups.map((group) => group.id).join(',');
+        const res = await axios.get(apiUrl + '/notifications/user', {
+          headers: { Authorization: `Bearer ${token}` },
+          params: {
+            organization_ids: orgIds,
+            group_ids: groupIds,
+          },
+        });
+        this.notifications = Array.isArray(res.data) ? res.data : [];
+      } catch (err) {
+        console.error('Error fetching notifications:', err);
+        this.notifications = [];
+      }
+    },
+  },
+  mounted() {
+    this.fetchOrganizations();
+    this.fetchGroups();
+    this.fetchNotifications();
+    console.log('Mounted: fetching organizations, groups, notifications');
   },
 };
 </script>

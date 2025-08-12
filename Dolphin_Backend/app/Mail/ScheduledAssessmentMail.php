@@ -26,14 +26,35 @@ class ScheduledAssessmentMail extends Mailable implements ShouldQueue
     }
 
     /**
-     * Build the message.
+     * Get the message envelope.
      */
-    public function build()
+    public function envelope(): Envelope
     {
-        $html = view('emails.assessment', [
-            'assessmentUrl' => $this->assessmentUrl,
-        ])->render();
-        return $this->subject($this->subjectText)
-            ->html($html);
+        return new Envelope(
+            subject: $this->subjectText,
+        );
+    }
+
+    /**
+     * Get the message content definition.
+     */
+    public function content(): Content
+    {
+        return new Content(
+            view: 'emails.assessment',
+            with: [
+                'assessmentUrl' => $this->assessmentUrl,
+            ],
+        );
+    }
+
+    /**
+     * Get the attachments for the message.
+     *
+     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     */
+    public function attachments(): array
+    {
+        return [];
     }
 }

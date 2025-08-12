@@ -7,11 +7,24 @@ use Illuminate\Http\Request;
 
 class OrganizationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $orgs = Organization::with(['user', 'user.userDetails', 'user.subscriptions' => function($q) {
-            $q->where('status', 'active')->orderByDesc('id');
-        }])->get();
+        $user = $request->user();
+        $role = $user->roles()->first();
+        if (!$role) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+        if ($role->name === 'superadmin') {
+            $orgs = Organization::with(['user', 'user.userDetails', 'user.subscriptions' => function($q) {
+                $q->where('status', 'active')->orderByDesc('id');
+            }])->get();
+        } elseif ($role->name === 'organizationadmin') {
+            $orgs = Organization::with(['user', 'user.userDetails', 'user.subscriptions' => function($q) {
+                $q->where('status', 'active')->orderByDesc('id');
+            }])->where('user_id', $user->id)->get();
+        } else {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
         $result = $orgs->map(function ($org) {
             $subscription = $org->user && $org->user->subscriptions ? $org->user->subscriptions->first() : null;
             return [

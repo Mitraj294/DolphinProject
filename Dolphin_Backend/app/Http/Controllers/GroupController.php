@@ -4,21 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Models\Group;
 
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 
 class GroupController extends Controller
 {
+    // organizationadmin: only their groups; superadmin: all groups
     public function index(Request $request)
     {
         $user = $request->user();
         $role = $user->roles()->first();
-        if (!$role || $role->name !== 'organizationadmin') {
-            return response()->json(['error' => 'Unauthorized. Only organizationadmin can access groups.'], 403);
+        if (!$role) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
         }
-        $userId = $user->id;
-        $groups = Group::with('members')->where('user_id', $userId)->get();
-        return response()->json($groups);
+        if ($role->name === 'superadmin') {
+            $groups = Group::with('members')->get();
+            return response()->json($groups);
+        } elseif ($role->name === 'organizationadmin') {
+            $userId = $user->id;
+            $groups = Group::with('members')->where('user_id', $userId)->get();
+            return response()->json($groups);
+        } else {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
     }
 
     public function store(Request $request)

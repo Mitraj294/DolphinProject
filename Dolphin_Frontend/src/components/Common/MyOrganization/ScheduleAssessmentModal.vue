@@ -34,10 +34,47 @@
           }}
         </span>
       </div>
-      <div class="scheduled-details-row centered-details-row">
-        <div><b>Subject:</b> {{ scheduledDetails.subject }}</div>
-        <div><b>Send At:</b> {{ scheduledDetails.send_at }}</div>
-        <div><b>Status:</b> {{ scheduledStatus }}</div>
+      <div class="scheduled-details-table">
+        <table class="justified-table">
+          <tbody>
+            <tr>
+              <td class="field">Assessment</td>
+              <td class="value">{{ assessmentName }}</td>
+            </tr>
+            <tr>
+              <td class="field">Date</td>
+              <td class="value">
+                {{
+                  scheduledDetails.send_at
+                    ? scheduledDetails.send_at.split('T')[0]
+                    : ''
+                }}
+              </td>
+            </tr>
+            <tr>
+              <td class="field">Time</td>
+              <td class="value">
+                {{
+                  scheduledDetails.send_at
+                    ? scheduledDetails.send_at.split('T')[1]
+                    : ''
+                }}
+              </td>
+            </tr>
+            <tr>
+              <td class="field">Emails</td>
+              <td class="value">
+                {{
+                  scheduledStatus === 'sent'
+                    ? 'Sent'
+                    : scheduledStatus === 'failed'
+                    ? 'Failed'
+                    : 'Scheduled'
+                }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
     <form
@@ -387,6 +424,40 @@ export default {
 </script>
 
 <style scoped>
+/* Table layout for scheduled details */
+.scheduled-details-table {
+  width: 100%;
+  margin-bottom: 18px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 15px;
+}
+.justified-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 18px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  font-size: 15px;
+}
+.justified-table td {
+  border: none;
+  padding: 10px 8px;
+  background: transparent;
+}
+.justified-table .field {
+  text-align: left;
+  font-weight: bold;
+  width: 40%;
+  min-width: 120px;
+}
+.justified-table .value {
+  text-align: left;
+  width: 60%;
+  color: #222;
+  min-width: 180px;
+}
 .modal-card {
   background: #fff;
   border-radius: 22px;

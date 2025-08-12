@@ -167,6 +167,7 @@
                 <div class="assessment-answer">{{ q.answer }}</div>
               </div>
             </div>
+            <div class="assessment-modal-header-row sticky-modal-header"></div>
           </div>
         </div>
       </div>

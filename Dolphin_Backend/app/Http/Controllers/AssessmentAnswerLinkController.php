@@ -38,12 +38,13 @@ class AssessmentAnswerLinkController extends Controller
         ]);
 
 
-        // Generate frontend link for email (adjust domain as needed for production)
-        $frontendBase = env('FRONTEND_URL', 'http://localhost:8080');
-        $link = $frontendBase . '/assessment/answer/' . $token;
-        Mail::to($request->email)->send(new AssessmentAnswerLinkMail($link, $assessment));
+    // Generate frontend link for email (adjust domain as needed for production)
+    $frontendBase = env('FRONTEND_URL', 'http://localhost:8080');
+    $groupId = $request->input('group_id');
+    $link = $frontendBase . '/assessment/answer/' . $token . '?group_id=' . $groupId . '&member_id=' . $member->id;
+    Mail::to($request->email)->send(new AssessmentAnswerLinkMail($link, $assessment));
 
-        return response()->json(['message' => 'Link sent successfully.']);
+    return response()->json(['message' => 'Link sent successfully.']);
     }
 
     // Serve the answer page (API for frontend)
@@ -69,19 +70,42 @@ class AssessmentAnswerLinkController extends Controller
             ];
         });
 
+        // Get group details if available
+        $group = null;
+        if ($tokenRow->group_id) {
+            $group = \DB::table('groups')->where('id', $tokenRow->group_id)->first();
+        }
+
+        // Get member details
+        $member = \App\Models\Member::find($tokenRow->member_id);
+
+        // Get any previously submitted answers for this token/member/assessment
+        $answers = \DB::table('assessment_question_answers')
+            ->where('assessment_id', $assessment->id)
+            ->where('member_id', $tokenRow->member_id)
+            ->where('group_id', $tokenRow->group_id)
+            ->get();
+
         return response()->json([
             'assessment' => [
                 'id' => $assessment->id,
                 'name' => $assessment->name,
-                'questions' => $questions
-            ],
-            'member_id' => $tokenRow->member_id,
-        ]);
-    }
+                'questions' => $questions,
+                'member' => $member,
+                'group' => $group,
+                'token' => $tokenRow->token,
+                'answers' => $answers,
+                 ],
+            ]);
+        }
 
     // Save answers
     public function submitAnswers(Request $request, $token)
     {
+        \Log::info('submitAnswers called', [
+            'token' => $token,
+            'payload' => $request->all()
+        ]);
         $tokenRow = AssessmentAnswerToken::where('token', $token)
             ->where('used', false)
             ->where('expires_at', '>', Carbon::now())
@@ -113,12 +137,27 @@ class AssessmentAnswerLinkController extends Controller
             // Get organization_assessment_question_id from assessment_question
             $assessmentQuestion = \App\Models\AssessmentQuestion::find($answer['assessment_question_id']);
             $organizationAssessmentQuestionId = $assessmentQuestion ? $assessmentQuestion->question_id : null;
+            // Always use tokenRow group_id and member_id if not present in request
+            $groupId = $tokenRow->group_id;
+            $memberId = $tokenRow->member_id;
+            if (is_null($groupId) || is_null($memberId)) {
+                \Log::error('Missing group_id or member_id in tokenRow', [
+                    'group_id' => $groupId,
+                    'member_id' => $memberId,
+                    'assessment_question_id' => $answer['assessment_question_id'],
+                    'payload' => $request->all()
+                ]);
+                return response()->json([
+                    'message' => 'group_id and member_id are required and missing for this answer.',
+                    'assessment_question_id' => $answer['assessment_question_id']
+                ], 422);
+            }
             \DB::table('assessment_question_answers')->insert([
                 'assessment_id' => $tokenRow->assessment_id,
                 'organization_assessment_question_id' => $organizationAssessmentQuestionId,
                 'assessment_question_id' => $answer['assessment_question_id'],
-                'member_id' => $tokenRow->member_id,
-                'group_id' => $tokenRow->group_id,
+                'member_id' => $memberId,
+                'group_id' => $groupId,
                 'answer' => $answer['answer'],
                 'created_at' => now(),
                 'updated_at' => now(),

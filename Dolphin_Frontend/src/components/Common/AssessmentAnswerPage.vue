@@ -74,6 +74,8 @@ export default {
         `${API_BASE_URL}/api/assessment/answer/${token}`
       );
       this.assessment = res.data.assessment;
+      this.group_id = res.data.group ? res.data.group.id : null;
+      this.member_id = res.data.member ? res.data.member.id : null;
       for (const q of this.assessment.questions) {
         this.answers[q.assessment_question_id] = '';
       }
@@ -97,7 +99,11 @@ export default {
           organization_assessment_question_id: q.question_id, // question_id is org_assessment_question_id from backend
           answer: this.answers[q.assessment_question_id],
         }));
-        const payload = { answers: answersPayload };
+        const payload = {
+          answers: answersPayload,
+          group_id: this.group_id,
+          member_id: this.member_id,
+        };
         const res = await axios.post(
           `${API_BASE_URL}/api/assessment/answer/${token}`,
           payload

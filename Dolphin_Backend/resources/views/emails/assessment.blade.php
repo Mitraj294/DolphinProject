@@ -54,7 +54,7 @@
 </head>
 <body>
     <div class="email-container">
-        <img src="{{ asset('Logo.png') }}" alt="Dolphin Logo" class="logo">
+    <img src="{{ url('/images/Logo.svg') }}" alt="Dolphin Logo" class="logo">
         <div class="title">Assessment Scheduled</div>
         <div class="content">
             You have an assessment scheduled.<br><br>
@@ -64,10 +64,11 @@
         <div class="content" style="font-size:13px; color:#888; margin-top:18px;">
             If you’re having trouble clicking the "Answer Assessment" button, copy and paste the URL below into your web browser:<br>
             <a href="{{ $assessmentUrl }}" style="color:#007bff;">{{ $assessmentUrl }}</a>
-        </div>
-        <div class="footer">
+       <div class="footer">
             &copy; {{ date('Y') }} Dolphin. All rights reserved.
         </div>
+        </div>
+        
     </div>
 </body>
 </html>

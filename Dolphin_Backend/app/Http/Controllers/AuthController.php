@@ -113,6 +113,14 @@ class AuthController extends Controller
                 'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
                 'userDetails' => $details,
             ],
+
+        ]);
+        \Log::info('Login endpoint hit', [
+            'email' => $request->input('email'),
+            'time' => now()->toDateTimeString()
+        ]);
+        return response()->json([
+            // ...existing code...
         ], 200);
     }
 
