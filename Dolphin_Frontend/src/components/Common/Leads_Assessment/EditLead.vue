@@ -50,17 +50,13 @@
                 <FormDropdown
                   v-model="form.find_us"
                   icon="fas fa-search"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>Google</option>
-                  <option>Friend</option>
-                  <option>Other</option>
-                </FormDropdown>
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    { value: 'Google', text: 'Google' },
+                    { value: 'Friend', text: 'Friend' },
+                    { value: 'Other', text: 'Other' },
+                  ]"
+                />
               </div>
               <div></div>
             </FormRow>
@@ -78,17 +74,22 @@
                 <FormDropdown
                   v-model="form.org_size"
                   icon="fas fa-users"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>250+ Employees (Large)</option>
-                  <option>100-249 Employees (Medium)</option>
-                  <option>1-99 Employees (Small)</option>
-                </FormDropdown>
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    {
+                      value: '250+ Employees (Large)',
+                      text: '250+ Employees (Large)',
+                    },
+                    {
+                      value: '100-249 Employees (Medium)',
+                      text: '100-249 Employees (Medium)',
+                    },
+                    {
+                      value: '1-99 Employees (Small)',
+                      text: '1-99 Employees (Small)',
+                    },
+                  ]"
+                />
               </div>
               <div></div>
             </FormRow>
@@ -104,55 +105,42 @@
               <div>
                 <FormLabel>Country</FormLabel>
                 <FormDropdown
-                  v-model="form.country"
+                  v-model="form.country_id"
                   icon="fas fa-globe"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>India</option>
-                  <option>United States</option>
-                  <option>Canada</option>
-                </FormDropdown>
+                  @change="onCountryChange"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...countries.map((c) => ({ value: c.id, text: c.name })),
+                  ]"
+                />
               </div>
               <div>
                 <FormLabel>State</FormLabel>
                 <FormDropdown
-                  v-model="form.state"
+                  v-model="form.state_id"
                   icon="fas fa-map-marker-alt"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>Gujarat</option>
-                  <option>UP</option>
-                  <option>MP</option>
-                </FormDropdown>
+                  @change="onStateChange"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...states.map((s) => ({ value: s.id, text: s.name })),
+                  ]"
+                />
               </div>
             </FormRow>
             <FormRow>
               <div>
                 <FormLabel>City</FormLabel>
                 <FormDropdown
-                  v-model="form.city"
+                  v-model="form.city_id"
                   icon="fas fa-map-marker-alt"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>A'bad</option>
-                  <option>Baroda</option>
-                  <option>surat</option>
-                </FormDropdown>
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...cities.map((city) => ({
+                      value: city.id,
+                      text: city.name,
+                    })),
+                  ]"
+                />
               </div>
               <div>
                 <FormLabel>Zip Code</FormLabel>
@@ -221,17 +209,22 @@ export default {
         org_name: '',
         org_size: '',
         address: '',
-        country: '',
-        state: '',
-        city: '',
+        country_id: null,
+        state_id: null,
+        city_id: null,
         zip: '',
       },
+      countries: [],
+      states: [],
+      cities: [],
       loading: false,
-      successMessage: '', // Still used internally for toast detail
-      errorMessage: '', // Still used internally for toast detail
+      successMessage: '',
+      errorMessage: '',
     };
   },
   async created() {
+    // Fetch countries on mount
+    await this.fetchCountries();
     // Prefill form from backend if id is present, else from query params
     const q = this.$route.query;
     const leadId = q.id;
@@ -256,10 +249,13 @@ export default {
           this.form.org_name = found.org_name || '';
           this.form.org_size = found.org_size || '';
           this.form.address = found.address || '';
-          this.form.country = found.country || '';
-          this.form.state = found.state || '';
-          this.form.city = found.city || '';
+          this.form.country_id = found.country_id || null;
+          this.form.state_id = found.state_id || null;
+          this.form.city_id = found.city_id || null;
           this.form.zip = found.zip || '';
+          // Fetch states and cities for selected country/state
+          if (this.form.country_id) await this.fetchStates();
+          if (this.form.state_id) await this.fetchCities();
           return;
         }
       } catch (e) {
@@ -283,12 +279,84 @@ export default {
     this.form.org_size = q.size || q.org_size || lead.org_size || '';
     this.form.address =
       q.address || q.address_line || lead.address || lead.address_line || '';
-    this.form.country = q.country || lead.country || '';
-    this.form.state = q.state || lead.state || '';
-    this.form.city = q.city || lead.city || '';
+    this.form.country_id = q.country_id || lead.country_id || null;
+    this.form.state_id = q.state_id || lead.state_id || null;
+    this.form.city_id = q.city_id || lead.city_id || null;
     this.form.zip = q.zip || lead.zip || '';
+    if (this.form.country_id) await this.fetchStates();
+    if (this.form.state_id) await this.fetchCities();
   },
   methods: {
+    async fetchCountries() {
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const res = await axios.get(`${API_BASE_URL}/api/countries`);
+      this.countries = res.data;
+    },
+    async fetchStates() {
+      if (!this.form.country_id) {
+        this.states = [];
+        return;
+      }
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const res = await axios.get(
+        `${API_BASE_URL}/api/states?country_id=${this.form.country_id}`
+      );
+      this.states = res.data;
+    },
+    async fetchCities() {
+      if (!this.form.state_id) {
+        this.cities = [];
+        return;
+      }
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const res = await axios.get(
+        `${API_BASE_URL}/api/cities?state_id=${this.form.state_id}`
+      );
+      this.cities = res.data;
+    },
+    onCountryChange() {
+      let val = this.form.country_id;
+      if (val !== null && val !== '' && typeof val !== 'number') {
+        const num = Number(val);
+        if (!isNaN(num)) {
+          this.form.country_id = num;
+          val = num;
+        }
+      }
+      if (val && typeof val === 'number') {
+        this.form.state_id = null;
+        this.form.city_id = null;
+        this.states = [];
+        this.cities = [];
+        this.fetchStates();
+      } else {
+        this.form.state_id = null;
+        this.form.city_id = null;
+        this.states = [];
+        this.cities = [];
+      }
+    },
+    onStateChange() {
+      let val = this.form.state_id;
+      if (val !== null && val !== '' && typeof val !== 'number') {
+        const num = Number(val);
+        if (!isNaN(num)) {
+          this.form.state_id = num;
+          val = num;
+        }
+      }
+      if (val && typeof val === 'number') {
+        this.form.city_id = null;
+        this.cities = [];
+        this.fetchCities();
+      } else {
+        this.form.city_id = null;
+        this.cities = [];
+      }
+    },
     async handleUpdateLead() {
       this.loading = true;
       this.successMessage = '';

@@ -27,6 +27,17 @@
         v-model="search"
       />
       <div
+        v-if="enableSelectAll"
+        class="dropdown-item"
+        @click="toggleSelectAll"
+      >
+        <span><strong>Select All</strong></span>
+        <span
+          class="dropdown-checkbox"
+          :class="{ checked: isAllSelected }"
+        ></span>
+      </div>
+      <div
         v-for="item in filteredItems"
         :key="item[optionValue]"
         class="dropdown-item"
@@ -56,6 +67,7 @@ export default {
     icon: { type: String, default: 'fas fa-users' },
     optionLabel: { type: String, default: 'name' },
     optionValue: { type: String, default: 'id' },
+    enableSelectAll: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -70,6 +82,14 @@ export default {
         (item[this.optionLabel] || '')
           .toLowerCase()
           .includes(this.search.toLowerCase())
+      );
+    },
+    isAllSelected() {
+      if (!this.filteredItems.length) return false;
+      return this.filteredItems.every((item) =>
+        this.selectedItems.some(
+          (i) => i[this.optionValue] === item[this.optionValue]
+        )
       );
     },
   },
@@ -90,8 +110,32 @@ export default {
           'update:selectedItems',
           this.selectedItems.filter((i) => i.name !== item.name)
         );
+        // Uncheck select all if any item is unchecked
+        // (handled by computed isAllSelected)
       } else {
         this.$emit('update:selectedItems', [...this.selectedItems, item]);
+      }
+    },
+    toggleSelectAll() {
+      if (this.isAllSelected) {
+        // Unselect all filtered
+        const filteredIds = this.filteredItems.map((i) => i[this.optionValue]);
+        const newSelected = this.selectedItems.filter(
+          (i) => !filteredIds.includes(i[this.optionValue])
+        );
+        this.$emit('update:selectedItems', newSelected);
+      } else {
+        // Select all filtered
+        // Merge with already selected (avoid duplicates)
+        const merged = [...this.selectedItems];
+        this.filteredItems.forEach((item) => {
+          if (
+            !merged.some((i) => i[this.optionValue] === item[this.optionValue])
+          ) {
+            merged.push(item);
+          }
+        });
+        this.$emit('update:selectedItems', merged);
       }
     },
     handleClickOutside(event) {

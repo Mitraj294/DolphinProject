@@ -108,6 +108,7 @@
               @update:selectedItems="newMember.roles = $event"
               placeholder="Role"
               icon="fas fa-user-tag"
+              :enableSelectAll="true"
             />
             <MultiSelectDropdown
               :options="groups"
@@ -116,6 +117,7 @@
               "
               @update:selectedItems="newMember.groups = $event"
               placeholder="Groups associated with"
+              :enableSelectAll="true"
             />
           </FormRow>
           <div class="modal-form-actions">
@@ -161,6 +163,7 @@
               @update:selectedItems="newGroup.members = $event"
               placeholder="Members"
               icon="fas fa-user"
+              :enableSelectAll="true"
             />
           </FormRow>
           <div class="modal-form-actions">

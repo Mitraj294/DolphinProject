@@ -20,8 +20,8 @@
             <table class="table">
               <TableHeader
                 :columns="[
-                  { label: 'Notification Title', key: 'title' },
-                  { label: 'Date & Time', key: 'date' },
+                  { label: 'Notification Body', key: 'body' },
+                  { label: 'Date & Time', key: 'sent_at' },
                   { label: 'Action', key: 'action' },
                 ]"
                 @sort="sortBy"
@@ -31,8 +31,15 @@
                   v-for="(item, idx) in paginatedNotifications"
                   :key="idx"
                 >
-                  <td>{{ item.title }}</td>
-                  <td>{{ item.date }}</td>
+                  <td class="notification-body-cell">
+                    <span
+                      class="notification-body-truncate"
+                      :title="item.body"
+                    >
+                      {{ item.body }}
+                    </span>
+                  </td>
+                  <td>{{ item.sent_at }}</td>
                   <td>
                     <button class="btn-view">
                       <img
@@ -98,6 +105,7 @@
                   option-label="org_name"
                   option-value="id"
                   placeholder="Select organizations"
+                  :enableSelectAll="true"
                 />
               </div>
               <div class="modal-field">
@@ -107,6 +115,7 @@
                   :selectedItems="selectedGroups"
                   @update:selectedItems="selectedGroups = $event"
                   placeholder="Select groups"
+                  :enableSelectAll="true"
                 />
               </div>
               <!--
@@ -309,19 +318,12 @@ export default {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
         const token = storage.get('authToken');
-        // Send selected orgs/groups as query params
-        const orgIds = this.selectedOrganizations
-          .map((org) => org.id)
-          .join(',');
-        const groupIds = this.selectedGroups.map((group) => group.id).join(',');
-        const res = await axios.get(apiUrl + '/notifications/user', {
+        const res = await axios.get(apiUrl + '/notifications', {
           headers: { Authorization: `Bearer ${token}` },
-          params: {
-            organization_ids: orgIds,
-            group_ids: groupIds,
-          },
         });
-        this.notifications = Array.isArray(res.data) ? res.data : [];
+        this.notifications = Array.isArray(res.data)
+          ? res.data
+          : res.data.notifications || [];
       } catch (err) {
         console.error('Error fetching notifications:', err);
         this.notifications = [];
@@ -346,6 +348,22 @@ export default {
   color: #888;
   font-size: 16px;
   padding: 32px 0;
+}
+
+.notification-body-cell {
+  max-width: 320px;
+  width: 320px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.notification-body-truncate {
+  display: inline-block;
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: pointer;
 }
 
 .notifications-add-btn-icon {

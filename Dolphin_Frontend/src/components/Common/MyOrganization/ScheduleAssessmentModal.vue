@@ -97,6 +97,7 @@
           @update:selectedItems="selectedGroups = $event"
           placeholder="Groups"
           icon="fas fa-users"
+          :enableSelectAll="true"
         />
         <MultiSelectDropdown
           :options="members"
@@ -105,6 +106,7 @@
           placeholder="Members"
           icon="fas fa-user"
           :inputValue="selectedMembers.map((m) => m.name).join(', ')"
+          :enableSelectAll="true"
         />
       </div>
       <div

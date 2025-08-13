@@ -25,9 +25,9 @@ class LeadController extends Controller
             'org_name' => 'nullable|string',
             'org_size' => 'nullable|string',
             'address' => 'nullable|string',
-            'country' => 'nullable|string',
-            'state' => 'nullable|string',
-            'city' => 'nullable|string',
+            'country_id' => 'nullable|integer|exists:countries,id',
+            'state_id' => 'nullable|integer|exists:states,id',
+            'city_id' => 'nullable|integer|exists:cities,id',
             'zip' => 'nullable|string',
         ]);
         $lead->update($data);
@@ -44,14 +44,12 @@ class LeadController extends Controller
             'org_name' => 'nullable|string',
             'org_size' => 'nullable|string',
             'address' => 'nullable|string',
-            'country' => 'nullable|string',
-            'state' => 'nullable|string',
-            'city' => 'nullable|string',
+            'country_id' => 'nullable|integer|exists:countries,id',
+            'state_id' => 'nullable|integer|exists:states,id',
+            'city_id' => 'nullable|integer|exists:cities,id',
             'zip' => 'nullable|string',
         ]);
         $lead = Lead::create($data);
-
-
         return response()->json(['message' => 'Lead saved successfully', 'lead' => $lead], 201);
     }
 
@@ -81,10 +79,10 @@ class LeadController extends Controller
             'organization_name' => $lead->org_name ?? '',
             'organization_size' => $lead->org_size ?? '',
             'organization_address' => $lead->address ?? '',
-            'organization_city' => $lead->city ?? '',
-            'organization_state' => $lead->state ?? '',
+            'organization_city_id' => $lead->city_id ?? '',
+            'organization_state_id' => $lead->state_id ?? '',
             'organization_zip' => $lead->zip ?? '',
-            'country' => $lead->country ?? '',
+            'country_id' => $lead->country_id ?? '',
         ]]);
     }
 }

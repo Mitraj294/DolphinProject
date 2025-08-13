@@ -49,17 +49,12 @@
                 <FormDropdown
                   v-model="form.findUs"
                   icon="fas fa-search"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>Google</option>
-                  <option>Friend</option>
-                  <option>Other</option>
-                </FormDropdown>
+                  :options="[
+                    { value: 'Google', text: 'Google' },
+                    { value: 'Friend', text: 'Friend' },
+                    { value: 'Other', text: 'Other' },
+                  ]"
+                />
               </div>
               <div></div>
             </FormRow>
@@ -77,17 +72,21 @@
                 <FormDropdown
                   v-model="form.orgSize"
                   icon="fas fa-users"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>250+ Employees (Large)</option>
-                  <option>100-249 Employees (Medium)</option>
-                  <option>1-99 Employees (Small)</option>
-                </FormDropdown>
+                  :options="[
+                    {
+                      value: '250+ Employees (Large)',
+                      text: '250+ Employees (Large)',
+                    },
+                    {
+                      value: '100-249 Employees (Medium)',
+                      text: '100-249 Employees (Medium)',
+                    },
+                    {
+                      value: '1-99 Employees (Small)',
+                      text: '1-99 Employees (Small)',
+                    },
+                  ]"
+                />
               </div>
               <div></div>
             </FormRow>
@@ -103,55 +102,42 @@
               <div>
                 <FormLabel>Country</FormLabel>
                 <FormDropdown
-                  v-model="form.country"
+                  v-model="form.country_id"
                   icon="fas fa-globe"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>India</option>
-                  <option>United States</option>
-                  <option>Canada</option>
-                </FormDropdown>
+                  @change="onCountryChange"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...countries.map((c) => ({ value: c.id, text: c.name })),
+                  ]"
+                />
               </div>
               <div>
                 <FormLabel>State</FormLabel>
                 <FormDropdown
-                  v-model="form.state"
+                  v-model="form.state_id"
                   icon="fas fa-map-marker-alt"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>Gujarat</option>
-                  <option>UP</option>
-                  <option>MP</option>
-                </FormDropdown>
+                  @change="onStateChange"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...states.map((s) => ({ value: s.id, text: s.name })),
+                  ]"
+                />
               </div>
             </FormRow>
             <FormRow>
               <div>
                 <FormLabel>City</FormLabel>
                 <FormDropdown
-                  v-model="form.city"
+                  v-model="form.city_id"
                   icon="fas fa-map-marker-alt"
-                >
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select
-                  </option>
-                  <option>A'bad</option>
-                  <option>Baroda</option>
-                  <option>surat</option>
-                </FormDropdown>
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...cities.map((city) => ({
+                      value: city.id,
+                      text: city.name,
+                    })),
+                  ]"
+                />
               </div>
               <div>
                 <FormLabel>Zip Code</FormLabel>
@@ -220,25 +206,145 @@ export default {
         orgName: '',
         orgSize: '',
         address: '',
-        country: '',
-        state: '',
-        city: '',
+        country_id: null,
+        state_id: null,
+        city_id: null,
         zip: '',
       },
+      countries: [],
+      states: [],
+      cities: [],
       loading: false,
       successMessage: '',
       errorMessage: '',
     };
   },
+  watch: {
+    'form.country_id'(val) {
+      console.log(
+        `[LeadCapture] [FRONTEND] country_id changed:`,
+        val,
+        'type:',
+        typeof val
+      );
+    },
+  },
   methods: {
     togglePassword() {
       this.showPassword = !this.showPassword;
+    },
+    async fetchCountries() {
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      console.log('[LeadCapture] [FRONTEND] Fetching countries...');
+      const res = await axios.get(`${API_BASE_URL}/api/countries`);
+      this.countries = res.data;
+      console.log(
+        '[LeadCapture] [FRONTEND] Countries fetched:',
+        this.countries
+      );
+    },
+    async fetchStates() {
+      if (!this.form.country_id) {
+        this.states = [];
+        console.log(
+          '[LeadCapture] [FRONTEND] No country selected, states cleared.'
+        );
+        return;
+      }
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      console.log(
+        `[LeadCapture] [FRONTEND] Fetching states for country_id: ${this.form.country_id}`
+      );
+      const res = await axios.get(
+        `${API_BASE_URL}/api/states?country_id=${this.form.country_id}`
+      );
+      this.states = res.data;
+      console.log('[LeadCapture] [FRONTEND] States fetched:', this.states);
+    },
+    async fetchCities() {
+      if (!this.form.state_id) {
+        this.cities = [];
+        console.log(
+          '[LeadCapture] [FRONTEND] No state selected, cities cleared.'
+        );
+        return;
+      }
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      console.log(
+        `[LeadCapture] [FRONTEND] Fetching cities for state_id: ${this.form.state_id}`
+      );
+      const res = await axios.get(
+        `${API_BASE_URL}/api/cities?state_id=${this.form.state_id}`
+      );
+      this.cities = res.data;
+      console.log('[LeadCapture] [FRONTEND] Cities fetched:', this.cities);
+    },
+    onCountryChange() {
+      let val = this.form.country_id;
+      // Convert to number if possible
+      if (val !== null && val !== '' && typeof val !== 'number') {
+        const num = Number(val);
+        if (!isNaN(num)) {
+          this.form.country_id = num;
+          val = num;
+        }
+      }
+      console.log(
+        `[LeadCapture] [FRONTEND] Country changed:`,
+        val,
+        'type:',
+        typeof val
+      );
+      if (val && typeof val === 'number') {
+        this.form.state_id = null;
+        this.form.city_id = null;
+        this.states = [];
+        this.cities = [];
+        this.fetchStates();
+      } else {
+        this.form.state_id = null;
+        this.form.city_id = null;
+        this.states = [];
+        this.cities = [];
+        console.log(
+          '[LeadCapture] [FRONTEND] No country selected, states cleared.'
+        );
+      }
+    },
+    onStateChange() {
+      let val = this.form.state_id;
+      if (val !== null && val !== '' && typeof val !== 'number') {
+        const num = Number(val);
+        if (!isNaN(num)) {
+          this.form.state_id = num;
+          val = num;
+        }
+      }
+      console.log(
+        `[LeadCapture] [FRONTEND] State changed:`,
+        val,
+        'type:',
+        typeof val
+      );
+      if (val && typeof val === 'number') {
+        this.form.city_id = null;
+        this.cities = [];
+        this.fetchCities();
+      } else {
+        this.form.city_id = null;
+        this.cities = [];
+        console.log(
+          '[LeadCapture] [FRONTEND] No state selected, cities cleared.'
+        );
+      }
     },
     async handleSaveLead() {
       this.loading = true;
       this.successMessage = '';
       this.errorMessage = '';
-
       try {
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
@@ -247,7 +353,6 @@ export default {
           this.loading = false;
           return;
         }
-
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
         const response = await axios.post(
@@ -262,9 +367,9 @@ export default {
             org_name: this.form.orgName,
             org_size: this.form.orgSize,
             address: this.form.address,
-            country: this.form.country,
-            state: this.form.state,
-            city: this.form.city,
+            country_id: this.form.country_id,
+            state_id: this.form.state_id,
+            city_id: this.form.city_id,
             zip: this.form.zip,
           },
           {
@@ -273,21 +378,16 @@ export default {
             },
           }
         );
-
         this.successMessage =
           response.data.message || 'Lead saved successfully!';
         this.resetForm();
         this.$router.push('/leads');
       } catch (error) {
         console.error('Error saving lead:', error);
-        // Add this line to see the full response from Laravel
-        console.error('Laravel Validation Errors:', error.response.data);
-
         if (error.response && error.response.data) {
           this.errorMessage =
             error.response.data.message || 'Failed to save lead.';
           if (error.response.data.errors) {
-            // Display specific validation errors
             for (const key in error.response.data.errors) {
               this.errorMessage += ` ${error.response.data.errors[key][0]}`;
             }
@@ -310,12 +410,17 @@ export default {
         orgName: '',
         orgSize: '',
         address: '',
-        country: '',
-        state: '',
-        city: '',
+        country_id: '',
+        state_id: '',
+        city_id: '',
         zip: '',
       };
+      this.states = [];
+      this.cities = [];
     },
+  },
+  mounted() {
+    this.fetchCountries();
   },
 };
 </script>

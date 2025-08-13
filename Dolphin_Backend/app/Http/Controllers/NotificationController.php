@@ -8,8 +8,15 @@ use Illuminate\Support\Facades\Notification as LaravelNotification;
 use App\Notifications\SendNotification;
 use Carbon\Carbon;
 
-class NotificationController extends Controller
-{
+class NotificationController extends Controller {
+    // Return all notifications (for superadmin or testing)
+    // Public: Return all notifications (no auth required)
+    public function allNotifications()
+    {
+        $notifications = Notification::orderByDesc('created_at')->get();
+        return response()->json($notifications);
+    }
+
     // Send notification to orgs, admins, groups
     public function send(Request $request)
     {

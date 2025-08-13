@@ -29,7 +29,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
 Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 
-
+Route::get('/all-notifications', [NotificationController::class, 'allNotifications']);
 // Schedule an email (public route)
 Route::post('/schedule-email', [\App\Http\Controllers\ScheduledEmailController::class, 'store']);
 // Scheduled email status/details endpoint for frontend modal
@@ -64,15 +64,24 @@ Route::post('/answer/{token}', [\App\Http\Controllers\AssessmentAnswerController
     ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]);
 
 Route::get('/assessment/{id}/summary', [AssessmentController::class, 'summary']);
+// Location endpoints for country/state/city dropdowns (public)
+Route::get('/countries', [\App\Http\Controllers\LocationController::class, 'countries']);
+Route::get('/countries/{id}', [\App\Http\Controllers\LocationController::class, 'getCountryById']);
+Route::get('/states', [\App\Http\Controllers\LocationController::class, 'states']);
+Route::get('/states/{id}', [\App\Http\Controllers\LocationController::class, 'getStateById']);
+Route::get('/cities', [\App\Http\Controllers\LocationController::class, 'cities']);
+Route::get('/cities/{id}', [\App\Http\Controllers\LocationController::class, 'getCityById']);
+
 Route::middleware('auth:api')->group(function () {
-
-
 
     Route::post('/notifications/send', [NotificationController::class, 'send']);
     Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
-
+    Route::get('/notifications', [NotificationController::class, 'allNotifications']);
     // Endpoint to get current authenticated user (for frontend role sync)
     Route::get('/user', [\App\Http\Controllers\AuthController::class, 'user']);
+
+// Public endpoint for frontend to fetch all notifications
+
     Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
     Route::patch('/users/{id}/soft-delete', [UserController::class, 'softDelete']);
     Route::delete('/users/{id}', [UserController::class, 'destroy']);
@@ -134,5 +143,6 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate'])
         ->middleware('can:impersonate,user');
 
-    
+
+
 });

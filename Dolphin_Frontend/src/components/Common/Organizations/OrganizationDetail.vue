@@ -46,11 +46,13 @@
                     <span>Source</span><b>{{ orgDetail.source }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Address</span
-                    ><b
-                      >{{ orgDetail.address1 }}<br />{{ orgDetail.city }},
-                      {{ orgDetail.state }}, {{ orgDetail.zip }}</b
-                    >
+                    <span>Address</span>
+                    <b>
+                      <template v-if="addressDisplay.length">
+                        {{ addressDisplay.join(', ') }}
+                      </template>
+                      <template v-else>N/A</template>
+                    </b>
                   </div>
                 </div>
               </div>
@@ -169,10 +171,25 @@ export default {
   data() {
     return {
       orgDetail: {},
+      countryName: '',
+      stateName: '',
+      cityName: '',
     };
   },
-  mounted() {
-    this.fetchOrganization();
+  computed: {
+    addressDisplay() {
+      const arr = [];
+      if (this.orgDetail.address1) arr.push(this.orgDetail.address1);
+      if (this.cityName) arr.push(this.cityName);
+      if (this.stateName) arr.push(this.stateName);
+      if (this.orgDetail.zip) arr.push(this.orgDetail.zip);
+      if (this.countryName) arr.push(this.countryName);
+      return arr.filter((f) => f && String(f).trim().length > 0);
+    },
+  },
+  async mounted() {
+    await this.fetchOrganization();
+    await this.lookupLocationNames();
   },
   methods: {
     async fetchOrganization() {
@@ -201,6 +218,44 @@ export default {
       } catch (e) {
         this.orgDetail = {};
       }
+    },
+    async lookupLocationNames() {
+      // Only lookup if IDs are present
+      const API_BASE_URL = 'http://127.0.0.1:8000';
+      if (this.orgDetail.country_id) {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/api/countries/${this.orgDetail.country_id}`
+          );
+          this.countryName = res.data?.name || '';
+        } catch (e) {
+          this.countryName = '';
+        }
+      }
+      if (this.orgDetail.state_id) {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/api/states/${this.orgDetail.state_id}`
+          );
+          this.stateName = res.data?.name || '';
+        } catch (e) {
+          this.stateName = '';
+        }
+      }
+      if (this.orgDetail.city_id) {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/api/cities/${this.orgDetail.city_id}`
+          );
+          this.cityName = res.data?.name || '';
+        } catch (e) {
+          this.cityName = '';
+        }
+      }
+      // fallback to old fields if not found
+      if (!this.cityName) this.cityName = this.orgDetail.city || '';
+      if (!this.stateName) this.stateName = this.orgDetail.state || '';
+      if (!this.countryName) this.countryName = this.orgDetail.country || '';
     },
     formatDate(dateStr) {
       if (!dateStr) return '-';

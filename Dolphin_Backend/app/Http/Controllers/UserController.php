@@ -177,4 +177,35 @@ class UserController extends Controller
             return response()->json(['message' => 'Failed to impersonate user.', 'error' => $e->getMessage()], 500);
         }
     }
+
+
+        // Relationship: Get user details
+    public function userDetails(User $user)
+    {
+        return $user->hasOne(UserDetail::class, 'user_id');
+    }
+
+    // Relationship: Get all subscriptions for the user
+    public function subscriptions(User $user)
+    {
+        return $user->hasMany(Subscription::class, 'user_id');
+    }
+
+    // Relationship: Get roles for the user (many-to-many)
+    public function roles(User $user)
+    {
+        return $user->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id')->withTimestamps();
+    }
+
+    // Check if the user has a specific role
+    public static function hasRole(User $user, string $roleName): bool
+    {
+        return $user->roles->contains('name', $roleName);
+    }
+
+    // Check if the user is a superadmin
+    public static function isSuperAdmin(User $user): bool
+    {
+        return self::hasRole($user, 'superadmin');
+    }
 }

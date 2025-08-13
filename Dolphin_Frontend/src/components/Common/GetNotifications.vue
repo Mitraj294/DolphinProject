@@ -81,6 +81,7 @@
 <script>
 import Pagination from '@/components/layout/Pagination.vue';
 import storage from '@/services/storage';
+import axios from 'axios';
 export default {
   name: 'GetNotification',
   components: { Pagination },
@@ -90,32 +91,7 @@ export default {
       page: 1,
       pageSize: 10,
       showPageDropdown: false,
-      notifications: [
-        {
-          date: 'Jan 25, 2025 at 06:00 PM',
-          text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-        },
-        {
-          date: 'Jan 22, 2025 at 02:00 PM',
-          text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-        },
-        {
-          date: 'Jan 12, 2025 at 08:00 PM',
-          text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-        },
-        {
-          date: 'Jan 10, 2025 at 8:00 AM',
-          text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-        },
-        {
-          date: 'Jan 10, 2025 at 10:00 AM',
-          text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-        },
-        {
-          date: 'Jan 22, 2025 at 02:00 PM',
-          text: "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book.",
-        },
-      ],
+      notifications: [],
       readNotifications: [],
     };
   },
@@ -183,8 +159,76 @@ export default {
     },
   },
   mounted() {
-    storage.set('notificationCount', '7');
+    this.fetchNotifications();
     this.updateNotificationCount();
+  },
+
+  methods: {
+    async fetchNotifications() {
+      try {
+        const response = await axios.get('/api/all-notifications');
+        // Assuming response.data is an array of notifications with body and sent_at
+        this.notifications = response.data.map((n) => ({
+          date: n.sent_at ? this.formatDate(n.sent_at) : '',
+          text: n.body || '',
+        }));
+      } catch (error) {
+        this.notifications = [];
+        this.$nextTick(() => {
+          this.$notify &&
+            this.$notify({
+              type: 'error',
+              message: 'Failed to fetch notifications.',
+            });
+        });
+      }
+    },
+    formatDate(dateStr) {
+      // Format MySQL datetime to 'MMM DD, YYYY at hh:mm A'
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      const options = {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      };
+      return d
+        .toLocaleString('en-US', options)
+        .replace(',', '')
+        .replace(/(\d{2}:\d{2}) (AM|PM)/, 'at $1 $2');
+    },
+    markAllRead() {
+      this.readNotifications = [
+        ...this.readNotifications,
+        ...this.notifications,
+      ];
+      this.notifications = [];
+      this.updateNotificationCount();
+    },
+    prevPage() {
+      if (this.page > 1) this.page--;
+    },
+    nextPage() {
+      if (this.page < this.totalPages) this.page++;
+    },
+    goToPage(n) {
+      if (n >= 1 && n <= this.totalPages) this.page = n;
+    },
+    selectPageSize(size) {
+      this.pageSize = size;
+      this.page = 1;
+      this.showPageDropdown = false;
+    },
+    togglePageDropdown() {
+      this.showPageDropdown = !this.showPageDropdown;
+    },
+    updateNotificationCount() {
+      storage.set('notificationCount', this.notifications.length);
+      window.dispatchEvent(new Event('storage'));
+    },
   },
 };
 </script>

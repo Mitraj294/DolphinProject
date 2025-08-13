@@ -57,38 +57,8 @@
                 <div class="lead-detail-list-row">
                   <span>Address</span>
                   <b>
-                    <template
-                      v-if="
-                        [
-                          leadData.address,
-                          leadData.city,
-                          leadData.state,
-                          leadData.zip,
-                          leadData.country,
-                        ].some(
-                          (f) =>
-                            f !== undefined &&
-                            f !== null &&
-                            String(f).trim().length > 0
-                        )
-                      "
-                    >
-                      {{
-                        [
-                          leadData.address,
-                          leadData.city,
-                          leadData.state,
-                          leadData.zip,
-                          leadData.country,
-                        ]
-                          .filter(
-                            (f) =>
-                              f !== undefined &&
-                              f !== null &&
-                              String(f).trim().length > 0
-                          )
-                          .join(', ')
-                      }}
+                    <template v-if="addressDisplay.length">
+                      {{ addressDisplay.join(', ') }}
                     </template>
                     <template v-else>N/A</template>
                   </b>
@@ -104,6 +74,7 @@
 
 <script>
 import MainLayout from '@/components/layout/MainLayout.vue';
+import axios from 'axios';
 export default {
   name: 'LeadDetail',
   components: { MainLayout },
@@ -123,17 +94,37 @@ export default {
         state: '',
         zip: '',
         country: '',
+        country_id: null,
+        state_id: null,
+        city_id: null,
       }),
     },
   },
   data() {
     return {
       localLead: { ...this.lead },
+      countryName: '',
+      stateName: '',
+      cityName: '',
     };
+  },
+  computed: {
+    leadData() {
+      return this.localLead;
+    },
+    addressDisplay() {
+      // Compose address with looked-up names
+      const arr = [];
+      if (this.leadData.address) arr.push(this.leadData.address);
+      if (this.cityName) arr.push(this.cityName);
+      if (this.stateName) arr.push(this.stateName);
+      if (this.leadData.zip) arr.push(this.leadData.zip);
+      if (this.countryName) arr.push(this.countryName);
+      return arr.filter((f) => f && String(f).trim().length > 0);
+    },
   },
   methods: {
     goToEditLead() {
-      // Pass all current lead data as query params for prefill
       this.$router.push({
         path: '/leads/edit-lead',
         query: {
@@ -142,10 +133,44 @@ export default {
         },
       });
     },
-  },
-  computed: {
-    leadData() {
-      return this.localLead;
+    async lookupLocationNames() {
+      const API_BASE_URL = 'http://127.0.0.1:8000';
+      if (this.leadData.country_id) {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/api/countries/${this.leadData.country_id}`
+          );
+          this.countryName = res.data?.name || '';
+        } catch (e) {
+          this.countryName = '';
+        }
+      } else {
+        this.countryName = this.leadData.country || '';
+      }
+      if (this.leadData.state_id) {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/api/states/${this.leadData.state_id}`
+          );
+          this.stateName = res.data?.name || '';
+        } catch (e) {
+          this.stateName = '';
+        }
+      } else {
+        this.stateName = this.leadData.state || '';
+      }
+      if (this.leadData.city_id) {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL}/api/cities/${this.leadData.city_id}`
+          );
+          this.cityName = res.data?.name || '';
+        } catch (e) {
+          this.cityName = '';
+        }
+      } else {
+        this.cityName = this.leadData.city || '';
+      }
     },
   },
   async created() {
@@ -157,7 +182,7 @@ export default {
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
-        const res = await this.$axios.get(`${API_BASE_URL}/api/leads`, {
+        const res = await axios.get(`${API_BASE_URL}/api/leads`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         const found = Array.isArray(res.data)
@@ -179,11 +204,14 @@ export default {
             state: found.state !== undefined ? found.state : '',
             zip: found.zip !== undefined ? found.zip : '',
             country: found.country !== undefined ? found.country : '',
+            country_id: found.country_id || null,
+            state_id: found.state_id || null,
+            city_id: found.city_id || null,
           };
-          // Defensive: ensure all fields are present
           ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
             if (this.localLead[f] === undefined) this.localLead[f] = '';
           });
+          await this.lookupLocationNames();
           return;
         }
       } catch (e) {
@@ -217,10 +245,14 @@ export default {
           this.$route.query.country !== undefined
             ? this.$route.query.country
             : '',
+        country_id: this.$route.query.country_id || null,
+        state_id: this.$route.query.state_id || null,
+        city_id: this.$route.query.city_id || null,
       };
       ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
         if (this.localLead[f] === undefined) this.localLead[f] = '';
       });
+      await this.lookupLocationNames();
     }
   },
   watch: {
@@ -240,10 +272,14 @@ export default {
             state: newQuery.state !== undefined ? newQuery.state : '',
             zip: newQuery.zip !== undefined ? newQuery.zip : '',
             country: newQuery.country !== undefined ? newQuery.country : '',
+            country_id: newQuery.country_id || null,
+            state_id: newQuery.state_id || null,
+            city_id: newQuery.city_id || null,
           };
           ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
             if (this.localLead[f] === undefined) this.localLead[f] = '';
           });
+          this.lookupLocationNames();
         }
       },
       deep: true,
@@ -251,6 +287,7 @@ export default {
     lead: {
       handler(newLead) {
         this.localLead = { ...newLead };
+        this.lookupLocationNames();
       },
       deep: true,
     },

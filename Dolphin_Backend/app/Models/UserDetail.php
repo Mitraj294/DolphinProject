@@ -9,21 +9,22 @@ class UserDetail extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'user_id',
-        'first_name',
-        'last_name',
-        'email',
-        'phone',
-        'find_us',
-        'org_name',
-        'org_size',
-        'address',
-        'country',
-        'state',
-        'city',
-        'zip',
-    ];
+
+        protected $fillable = [
+            'user_id',
+            'first_name',
+            'last_name',
+            'email',
+            'phone',
+            'find_us',
+            'org_name',
+            'org_size',
+            'address',
+            'country_id',
+            'state_id',
+            'city_id',
+            'zip',
+        ];
 
     public function user()
     {
