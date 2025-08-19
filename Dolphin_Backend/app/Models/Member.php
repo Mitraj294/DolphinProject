@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Model;
 class Member extends Model
 {
     use HasFactory, \Illuminate\Notifications\Notifiable;
-    protected $fillable = ['first_name', 'last_name', 'email', 'phone', 'member_role', 'user_id'];
+    protected $fillable = ['first_name', 'last_name', 'email', 'phone', 'member_role', 'organization_id'];
 
-    public function user()
+    public function organization()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Organization::class, 'organization_id');
     }
 
     public function groups()

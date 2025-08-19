@@ -4,12 +4,8 @@
       <div class="notifications-table-card">
         <div class="notifications-controls">
           <div class="notifications-date-wrapper">
-            <img
-              src="@/assets/images/Calendar.svg"
-              class="calendar-icon"
-            />
             <input
-              type="text"
+              type="date"
               placeholder="Select Date"
               class="notifications-date"
             />
@@ -29,10 +25,27 @@
             </button>
           </div>
           <button
+            v-if="tab === 'unread' && notifications.length > 0"
             class="mark-all"
+            :disabled="markAllLoading"
             @click="markAllRead"
+            style="
+              margin-top: 10px;
+              background: #fff;
+              color: #0164a5;
+              border: none;
+              border-radius: 6px;
+              padding: 4px 10px;
+              font-size: 0.95rem;
+              cursor: pointer;
+            "
           >
-            Mark all as read
+            <i
+              class="fas fa-check"
+              style="margin-right: 6px"
+            ></i>
+            <span v-if="!markAllLoading">Mark All As Read</span>
+            <span v-else>Marking...</span>
           </button>
         </div>
         <div class="notifications-list">
@@ -41,7 +54,10 @@
             :key="idx"
             class="notification-item"
           >
-            <div class="notification-meta">
+            <div
+              class="notification-meta"
+              style="display: flex; flex-direction: column; align-items: center"
+            >
               <img
                 src="@/assets/images/Logo.svg"
                 class="notification-icon"
@@ -51,15 +67,39 @@
               <span class="notification-date">{{ item.date }}</span>
               <span class="notification-text">
                 <span class="notification-title">Dolphin.</span>
-                {{ item.text }}
+                {{ item.body }}
               </span>
             </div>
+            <div
+              class="notification-meta"
+              style="display: flex; flex-direction: column; align-items: center"
+            >
+              <button
+                v-if="tab === 'unread' && !item.read_at"
+                class="mark-all"
+                @click="markAsRead(idx)"
+                style="
+                  margin-top: 10px;
+                  background: #fff;
+                  color: #0164a5;
+                  border: none;
+                  border-radius: 6px;
+                  padding: 4px 10px;
+                  font-size: 0.95rem;
+                  cursor: pointer;
+                "
+              >
+                <i class="fas fa-check"></i>
+              </button>
+            </div>
           </div>
+
           <div
             v-if="paginatedNotifications.length === 0"
             class="no-data"
           >
-            No notifications found.
+            <span v-if="tab === 'unread'">No unread notifications found.</span>
+            <span v-else>No notification found.</span>
           </div>
         </div>
       </div>
@@ -82,6 +122,9 @@
 import Pagination from '@/components/layout/Pagination.vue';
 import storage from '@/services/storage';
 import axios from 'axios';
+import { ref } from 'vue';
+
+const date = ref();
 export default {
   name: 'GetNotification',
   components: { Pagination },
@@ -93,6 +136,7 @@ export default {
       showPageDropdown: false,
       notifications: [],
       readNotifications: [],
+      markAllLoading: false,
     };
   },
   computed: {
@@ -113,6 +157,302 @@ export default {
     },
   },
   methods: {
+    async fetchNotifications() {
+      try {
+        let endpoint =
+          this.tab === 'unread'
+            ? '/api/notifications/unread'
+            : '/api/notifications';
+        let token = storage.get('authToken');
+        if (token && typeof token === 'object' && token.token) {
+          token = token.token;
+        }
+        if (typeof token !== 'string') {
+          token = '';
+        }
+        const config = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
+        const response = await axios.get(endpoint, config);
+        let notificationsArr = [];
+        if (Array.isArray(response.data)) {
+          notificationsArr = response.data;
+        } else if (
+          response.data &&
+          Array.isArray(response.data.notifications)
+        ) {
+          notificationsArr = response.data.notifications;
+        } else if (response.data && Array.isArray(response.data.unread)) {
+          notificationsArr = response.data.unread;
+        }
+        // only show notifications related to the logged-in user
+        const storedUserId =
+          storage.get('userId') ||
+          storage.get('user_id') ||
+          storage.get('userId');
+        const currentUserId = storedUserId ? parseInt(storedUserId, 10) : 0;
+
+        const isForUser = (n) => {
+          // If server already returned only user's notifications, allow.
+          if (!currentUserId) return true;
+          // check standard Laravel notifications table field
+          if (
+            n.notifiable_id &&
+            parseInt(n.notifiable_id, 10) === currentUserId
+          )
+            return true;
+          // check common payload shapes
+          if (n.data) {
+            try {
+              const d =
+                typeof n.data === 'string' ? JSON.parse(n.data) : n.data;
+              if (d.user_id && parseInt(d.user_id, 10) === currentUserId)
+                return true;
+              if (d.userId && parseInt(d.userId, 10) === currentUserId)
+                return true;
+              if (
+                d.recipient_id &&
+                parseInt(d.recipient_id, 10) === currentUserId
+              )
+                return true;
+            } catch (e) {
+              // ignore parse errors
+            }
+          }
+          return false;
+        };
+
+        const filtered = notificationsArr.filter(isForUser);
+
+        this.notifications = filtered.map((n) => {
+          // normalize data payload
+          let d = n.data;
+          if (typeof d === 'string') {
+            try {
+              d = JSON.parse(d);
+            } catch (e) {
+              // leave as string
+            }
+          }
+
+          // helper to pick the first non-empty string from common fields
+          const pickString = (obj, keys) => {
+            if (!obj) return '';
+            for (const k of keys) {
+              if (Object.prototype.hasOwnProperty.call(obj, k)) {
+                const v = obj[k];
+                if (typeof v === 'string' && v.trim()) return v.trim();
+                if (typeof v === 'number') return String(v);
+                if (v && typeof v === 'object' && v.message)
+                  return String(v.message);
+              }
+            }
+            return '';
+          };
+
+          const bodyFromData = pickString(d, [
+            'body',
+            'message',
+            'text',
+            'details',
+            'description',
+            'content',
+            'msg',
+          ]);
+
+          const fallbackBody = n.body || '';
+          const finalBody = bodyFromData || fallbackBody;
+
+          // If still empty and data is an object, stringify a helpful subset
+          let bodyDisplay = finalBody;
+          if (!bodyDisplay && d && typeof d === 'object') {
+            // try common nested shapes
+            bodyDisplay =
+              pickString(d, ['user_message', 'notification', 'payload']) ||
+              (Object.keys(d).length ? JSON.stringify(d) : '');
+          }
+
+          return {
+            id: n.id,
+            date: n.created_at ? this.formatDate(n.created_at) : '',
+            body: bodyDisplay,
+            read_at: n.read_at,
+            _rawData: d,
+          };
+        });
+      } catch (error) {
+        this.notifications = [];
+        console.error('Failed to fetch notifications:', error);
+        this.$nextTick(() => {
+          this.$notify &&
+            this.$notify({
+              type: 'error',
+              message: 'Failed to fetch notifications.',
+            });
+        });
+      }
+    },
+    formatDate(dateStr) {
+      // Format MySQL datetime to 'MMM DD, YYYY at hh:mm A'
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      const options = {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      };
+      return d
+        .toLocaleString('en-US', options)
+        .replace(',', '')
+        .replace(/(\d{2}:\d{2}) (AM|PM)/, 'at $1 $2');
+    },
+    async markAllRead() {
+      // mark all unread notifications as read
+      let token = storage.get('authToken');
+      if (token && typeof token === 'object' && token.token) {
+        token = token.token;
+      }
+      if (typeof token !== 'string') {
+        token = '';
+      }
+      const config = token
+        ? { headers: { Authorization: `Bearer ${token}` } }
+        : {};
+
+      const unread = this.notifications.filter((n) => !n.read_at);
+      if (!unread.length) return;
+
+      this.markAllLoading = true;
+      // keep a shallow copy to revert if API fails
+      const beforeSnapshot = this.notifications.map((n) => ({
+        id: n.id,
+        read_at: n.read_at,
+      }));
+
+      // optimistic UI: set read_at locally
+      const now = new Date().toISOString();
+      unread.forEach((n) => {
+        n.read_at = now;
+      });
+      this.updateNotificationCount();
+
+      try {
+        const resp = await axios.post(
+          '/api/announcements/read-all',
+          {},
+          config
+        );
+        // if server responds with success, refresh to sync exact timestamps
+        if (resp && (resp.status === 200 || resp.status === 201)) {
+          await this.fetchNotifications();
+        } else {
+          // fallback to per-item marking
+          await Promise.all(
+            unread.map((notif) =>
+              axios
+                .post(`/api/announcements/${notif.id}/read`, {}, config)
+                .catch(() => {})
+            )
+          );
+          await this.fetchNotifications();
+        }
+      } catch (error) {
+        // revert optimistic update if unauthorized or server error
+        if (error && error.response && error.response.status === 401) {
+          // user unauthenticated — revert and notify
+          beforeSnapshot.forEach((s) => {
+            const found = this.notifications.find((n) => n.id === s.id);
+            if (found) found.read_at = s.read_at;
+          });
+          this.updateNotificationCount();
+          this.$notify &&
+            this.$notify({
+              type: 'error',
+              message: 'Session expired. Please login again.',
+            });
+        } else {
+          // try per-item fallback once
+          await Promise.all(
+            unread.map((notif) =>
+              axios
+                .post(`/api/announcements/${notif.id}/read`, {}, config)
+                .catch(() => {})
+            )
+          );
+          await this.fetchNotifications();
+        }
+      } finally {
+        this.markAllLoading = false;
+      }
+    },
+    async markAsRead(idx) {
+      const notif = this.paginatedNotifications[idx];
+      let token = storage.get('authToken');
+      if (token && typeof token === 'object' && token.token) {
+        token = token.token;
+      }
+      if (typeof token !== 'string') {
+        token = '';
+      }
+      const config = token
+        ? { headers: { Authorization: `Bearer ${token}` } }
+        : {};
+      if (notif && notif.id) {
+        try {
+          await axios.post(`/api/announcements/${notif.id}/read`, {}, config);
+          this.fetchNotifications();
+        } catch (error) {
+          console.error('Failed to mark notification as read:', error);
+          this.$notify &&
+            this.$notify({
+              type: 'error',
+              message: 'Failed to mark notification as read.',
+            });
+        }
+      }
+    },
+    prevPage() {
+      if (this.page > 1) this.page--;
+    },
+    nextPage() {
+      if (this.page < this.totalPages) this.page++;
+    },
+    goToPage(n) {
+      if (n >= 1 && n <= this.totalPages) this.page = n;
+    },
+    selectPageSize(size) {
+      this.pageSize = size;
+      this.page = 1;
+      this.showPageDropdown = false;
+    },
+    togglePageDropdown() {
+      this.showPageDropdown = !this.showPageDropdown;
+    },
+    updateNotificationCount() {
+      storage.set('notificationCount', this.notifications.length);
+      window.dispatchEvent(new Event('storage'));
+    },
+    // ...existing code...
+    formatDate(dateStr) {
+      // Format MySQL datetime to 'MMM DD, YYYY at hh:mm A'
+      const d = new Date(dateStr);
+      if (isNaN(d)) return dateStr;
+      const options = {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      };
+      return d
+        .toLocaleString('en-US', options)
+        .replace(',', '')
+        .replace(/(\d{2}:\d{2}) (AM|PM)/, 'at $1 $2');
+    },
     markAllRead() {
       this.readNotifications = [
         ...this.readNotifications,
@@ -162,72 +502,9 @@ export default {
     this.fetchNotifications();
     this.updateNotificationCount();
   },
-
-  methods: {
-    async fetchNotifications() {
-      try {
-        const response = await axios.get('/api/all-notifications');
-        // Assuming response.data is an array of notifications with body and sent_at
-        this.notifications = response.data.map((n) => ({
-          date: n.sent_at ? this.formatDate(n.sent_at) : '',
-          text: n.body || '',
-        }));
-      } catch (error) {
-        this.notifications = [];
-        this.$nextTick(() => {
-          this.$notify &&
-            this.$notify({
-              type: 'error',
-              message: 'Failed to fetch notifications.',
-            });
-        });
-      }
-    },
-    formatDate(dateStr) {
-      // Format MySQL datetime to 'MMM DD, YYYY at hh:mm A'
-      const d = new Date(dateStr);
-      if (isNaN(d)) return dateStr;
-      const options = {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      };
-      return d
-        .toLocaleString('en-US', options)
-        .replace(',', '')
-        .replace(/(\d{2}:\d{2}) (AM|PM)/, 'at $1 $2');
-    },
-    markAllRead() {
-      this.readNotifications = [
-        ...this.readNotifications,
-        ...this.notifications,
-      ];
-      this.notifications = [];
-      this.updateNotificationCount();
-    },
-    prevPage() {
-      if (this.page > 1) this.page--;
-    },
-    nextPage() {
-      if (this.page < this.totalPages) this.page++;
-    },
-    goToPage(n) {
-      if (n >= 1 && n <= this.totalPages) this.page = n;
-    },
-    selectPageSize(size) {
-      this.pageSize = size;
-      this.page = 1;
-      this.showPageDropdown = false;
-    },
-    togglePageDropdown() {
-      this.showPageDropdown = !this.showPageDropdown;
-    },
-    updateNotificationCount() {
-      storage.set('notificationCount', this.notifications.length);
-      window.dispatchEvent(new Event('storage'));
+  watch: {
+    tab() {
+      this.fetchNotifications();
     },
   },
 };
@@ -267,7 +544,7 @@ export default {
   align-items: center;
   gap: 24px;
   margin-bottom: 24px;
-  padding: 24px 46px 0 24px;
+  padding: 24px 24px 0 24px;
   background: #fff;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
@@ -280,16 +557,10 @@ export default {
   background: #f6f6f6;
   border-radius: 32px;
   padding: 0 0 0 18px;
-  height: 56px;
+  height: 36px;
   min-width: 340px;
-  margin-right: 24px;
 }
-.calendar-icon {
-  width: 28px;
-  height: 28px;
-  margin-right: 14px;
-  opacity: 0.7;
-}
+
 .notifications-date {
   border: none;
   outline: none;
@@ -308,10 +579,11 @@ export default {
   background: #f8f8f8;
   overflow: hidden;
   min-width: 240px;
-  height: 56px;
+  height: 36px;
 }
 .notifications-tab-btn {
   border: none;
+  border-radius: 32px;
   outline: none;
   background: #f8f8f8;
   color: #0f0f0f;
@@ -320,8 +592,10 @@ export default {
   font-weight: 400;
   line-height: 26px;
   letter-spacing: 0.02em;
-  padding: 0 38px;
-  height: 56px;
+  padding: 0 50px;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -332,6 +606,7 @@ export default {
 .notifications-tab-btn.active {
   background: #f6f6f6;
   border: 1px solid #dcdcdc;
+  border-radius: 32px;
   color: #0f0f0f;
   font-weight: 500;
   z-index: 1;
@@ -339,6 +614,7 @@ export default {
 .notifications-tab-btn:not(.active) {
   background: #f8f8f8;
   border: none;
+  border-radius: 32px;
   color: #0f0f0f;
   font-weight: 400;
 }

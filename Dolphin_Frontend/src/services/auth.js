@@ -36,10 +36,14 @@ const authService = {
             });
             const { token, user } = response.data;
             this.setToken(token);
+            if (user && user.id) {
+                storage.set('user_id', user.id);
+            }
             return { user, token };
         } catch (error) {
             throw error;
         }
+
     },
 
     async logout() {
@@ -63,6 +67,10 @@ const authService = {
         if (token) {
             this.setAxiosAuthHeader(token);
         }
+    },
+
+    getUserId() {
+        return storage.get('user_id');
     }
 };
 

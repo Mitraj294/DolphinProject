@@ -61,18 +61,48 @@ class AssessmentController extends Controller
         ]);
     }
 
-    public function show()
+    public function show(Request $request)
     {
-        // Only return id and name for all assessments (for navbar, avoid relationship errors)
-        $assessments = \App\Models\Assessment::select('id', 'name')->get();
+        // Only return assessments for the logged-in user or user_id from request
+        $user = $request->user();
+        $userId = null;
+        if ($user) {
+            $userId = $user->id;
+            \Log::info('[AssessmentController@show] user info', [
+                'user_id' => $userId,
+                'name' => $user->name ?? null,
+                'email' => $user->email ?? null,
+                'attributes' => $user->toArray()
+            ]);
+        } else {
+            $userId = $request->input('user_id');
+            if (!$userId) {
+                $userId = $request->query('user_id');
+            }
+            // If user_id is encrypted, decode it
+            if ($userId && strpos($userId, 'U2FsdGVkX1') === 0) {
+                // Remove encryption prefix, use raw value
+                $userId = str_replace('U2FsdGVkX1/', '', $userId);
+            }
+            \Log::warning('[AssessmentController@show] No user logged in, using user_id from request', ['user_id' => $userId]);
+        }
+        if (!$userId) {
+            return response()->json(['assessments' => []]);
+        }
+        $assessments = Assessment::where('user_id', $userId)
+            ->select('id', 'name')
+            ->get();
+        \Log::info('[AssessmentController@show] assessments returned', ['count' => $assessments->count(), 'ids' => $assessments->pluck('id')]);
         return response()->json(['assessments' => $assessments]);
     }
 
     public function store(Request $request)
     {
-        // Dummy create logic
+       
         $assessment = Assessment::create([
             'name' => $request->input('name'),
+            'user_id' => $request->user()->id ?? $request->input('user_id'),
+            'organization_id' => $request->input('organization_id'),
         ]);
         // Attach questions if provided
         if ($request->has('question_ids')) {

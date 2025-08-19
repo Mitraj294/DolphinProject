@@ -26,6 +26,8 @@ app.use(PrimeVue); // Initialize PrimeVue
 app.use(ToastService); // Install the ToastService globally
 import Toast from 'primevue/toast';
 app.component('Toast', Toast); // Register Toast globally
+import DatePicker from 'primevue/datepicker';
+app.component('DatePicker', DatePicker); // Register DatePicker globally
 
 
 // Sync encrypted storage role with backend user role on app start

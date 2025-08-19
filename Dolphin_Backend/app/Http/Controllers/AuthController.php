@@ -93,10 +93,10 @@ class AuthController extends Controller
         $expiresAt = $tokenResult->token->expires_at;
 
         // Eager load userDetails and roles for frontend
-        $user = User::with(['userDetails', 'roles'])->find($user->id);
+    $user = User::with(['userDetails.country', 'roles'])->find($user->id);
         // For convenience, also provide top-level role and userDetails fields
         $role = $user->roles->first()->name ?? 'user';
-        $details = $user->userDetails;
+    $details = $user->userDetails;
         return response()->json([
             'message' => 'Login successful',
             'token' => $token,
@@ -140,7 +140,8 @@ class AuthController extends Controller
             'first_name' => $details->first_name ?? '',
             'last_name' => $details->last_name ?? '',
             'phone' => $details->phone ?? '',
-            'country' => $details->country ?? '',
+            'country_id' => $details->country_id ?? null,
+            'country' => $details->country ? $details->country->name : '',
             'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
             'userDetails' => $details,
         ]);

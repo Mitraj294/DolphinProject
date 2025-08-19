@@ -53,7 +53,7 @@
           <div class="profile-info-row">
             <div class="profile-label">Country</div>
             <div class="profile-value">
-              {{ user.userDetails?.country || '' }}
+              {{ user.country || user.userDetails?.country_id || '' }}
             </div>
           </div>
           <div class="profile-info-row">

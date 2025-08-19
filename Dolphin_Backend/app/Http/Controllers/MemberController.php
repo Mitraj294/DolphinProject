@@ -14,7 +14,7 @@ class MemberController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can update members.'], 403);
         }
-        $member = Member::where('user_id', $user->id)->findOrFail($id);
+    $member = Member::where('organization_id', $user->organization_id)->findOrFail($id);
         $rules = [
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
@@ -36,7 +36,7 @@ class MemberController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can delete members.'], 403);
         }
-        $member = Member::where('user_id', $user->id)->findOrFail($id);
+    $member = Member::where('organization_id', $user->organization_id)->findOrFail($id);
         $member->delete();
         return response()->json(['message' => 'Member deleted successfully']);
     }
@@ -48,8 +48,8 @@ class MemberController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can access members.'], 403);
         }
-        $userId = $user->id;
-        $members = Member::where('user_id', $userId)->with('groups')->get();
+    $orgId = $user->organization_id;
+    $members = Member::where('organization_id', $orgId)->with('groups')->get();
         // Return members with group_ids array for frontend selection logic
         $membersWithGroups = $members->map(function($member) {
             return [
@@ -81,7 +81,7 @@ class MemberController extends Controller
             'group_ids.*' => 'exists:groups,id',
         ];
         $validated = $request->validate($rules);
-        $validated['user_id'] = $userId;
+    $validated['organization_id'] = $orgId;
         $groupIds = $request->input('group_ids', []);
         $member = Member::create($validated);
         if (!empty($groupIds)) {

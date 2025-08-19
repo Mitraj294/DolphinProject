@@ -11,6 +11,8 @@ class Assessment extends Model
 
     protected $fillable = [
         'name',
+        'user_id',
+        'organization_id',
     ];
 
     public function questions()

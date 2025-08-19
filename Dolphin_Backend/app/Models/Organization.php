@@ -32,4 +32,10 @@ class Organization extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    // Add relationship to get all users in the organization
+    public function users()
+    {
+        return $this->hasMany(User::class, 'organization_id');
+    }
 }

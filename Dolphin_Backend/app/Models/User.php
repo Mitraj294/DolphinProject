@@ -17,7 +17,6 @@ class User extends Authenticatable
         'email',
         'password',
         'phone',
-        'country', // now this will be country_id in DB, but keep the field name as 'country' for compatibility
         'created_at',
         'updated_at',
         'deleted_at',

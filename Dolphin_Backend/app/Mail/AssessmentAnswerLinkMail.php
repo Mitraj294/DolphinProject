@@ -22,6 +22,8 @@ class AssessmentAnswerLinkMail extends Mailable
     public function build()
     {
         return $this->subject('Assessment Participation Link')
-            ->view('emails.assessment_answer_link');
+            ->view('emails.assessment', [
+                'assessmentUrl' => $this->link
+            ]);
     }
 }

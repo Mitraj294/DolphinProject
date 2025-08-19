@@ -8,11 +8,17 @@ use Illuminate\Database\Eloquent\Model;
 class Group extends Model
 {
     use HasFactory;
-    protected $fillable = ['name', 'user_id'];
+    protected $fillable = ['name', 'organization_id'];
 
-    public function user()
+    public function organization()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Organization::class, 'organization_id');
+    }
+
+    // Add relationship to get all users in the group
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'group_user', 'group_id', 'user_id');
     }
 
     public function members()

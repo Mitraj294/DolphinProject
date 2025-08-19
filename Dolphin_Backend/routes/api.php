@@ -29,7 +29,16 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
 Route::post('/password/reset', [AuthController::class, 'resetPassword']);
 
-Route::get('/all-notifications', [NotificationController::class, 'allNotifications']);
+// Laravel notifications endpoints
+// Announcement endpoints
+Route::middleware('auth:api')->group(function () {
+    Route::get('/announcements', [\App\Http\Controllers\NotificationController::class, 'allAnnouncements']);
+    Route::post('/announcements/send', [\App\Http\Controllers\NotificationController::class, 'send']);
+    Route::get('/announcements/user', [\App\Http\Controllers\NotificationController::class, 'userAnnouncements']);
+    Route::get('/announcements/unread', [\App\Http\Controllers\NotificationController::class, 'unreadAnnouncements']);
+    Route::post('/announcements/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
+    Route::post('/announcements/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllRead']);
+});
 // Schedule an email (public route)
 Route::post('/schedule-email', [\App\Http\Controllers\ScheduledEmailController::class, 'store']);
 // Scheduled email status/details endpoint for frontend modal
@@ -75,6 +84,7 @@ Route::get('/cities/{id}', [\App\Http\Controllers\LocationController::class, 'ge
 Route::middleware('auth:api')->group(function () {
 
     Route::post('/notifications/send', [NotificationController::class, 'send']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
     Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
     Route::get('/notifications', [NotificationController::class, 'allNotifications']);
     // Endpoint to get current authenticated user (for frontend role sync)

@@ -663,11 +663,15 @@ export default {
     this.loading = true;
     try {
       const authToken = storage.get('authToken');
+      const userId = storage.get('user_id');
       // Fetch assessments
       const res = await axios.get(
         (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
           '/api/assessments',
-        { headers: { Authorization: `Bearer ${authToken}` } }
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+          params: userId ? { user_id: userId } : {},
+        }
       );
       if (Array.isArray(res.data.assessments)) {
         this.assessments = res.data.assessments;

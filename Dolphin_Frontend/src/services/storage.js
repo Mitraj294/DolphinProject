@@ -20,7 +20,18 @@ const storage = {
     try {
       const bytes = CryptoJS.AES.decrypt(encrypted, STORAGE_KEY);
       const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-      return JSON.parse(decrypted);
+      const value = JSON.parse(decrypted);
+      // If value is a string, return as is
+      if (typeof value === 'string') return value;
+      // If value is an object with a token property, return value.token;
+      if (value && typeof value === 'object') {
+        if (value.token) return value.token;
+        // If the object itself is the token string
+        if (Object.keys(value).length === 1 && value[Object.keys(value)[0]].length > 30) {
+          return value[Object.keys(value)[0]];
+        }
+      }
+      return value;
     } catch (e) {
       // fallback: return as is
       return encrypted;

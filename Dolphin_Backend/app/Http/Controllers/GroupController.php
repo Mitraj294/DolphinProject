@@ -20,8 +20,9 @@ class GroupController extends Controller
             $groups = Group::with('members')->get();
             return response()->json($groups);
         } elseif ($role->name === 'organizationadmin') {
-            $userId = $user->id;
-            $groups = Group::with('members')->where('user_id', $userId)->get();
+            // organizationadmin: return groups belonging to the admin's organization
+            $orgId = $user->organization_id;
+            $groups = Group::with('members')->where('organization_id', $orgId)->get();
             return response()->json($groups);
         } else {
             return response()->json(['error' => 'Unauthorized.'], 403);
@@ -35,14 +36,14 @@ class GroupController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can create groups.'], 403);
         }
-        $userId = $user->id;
+    $orgId = $user->organization_id;
         $rules = [
             'name' => 'required|string|max:255',
             'member_ids' => 'array',
             'member_ids.*' => 'exists:members,id',
         ];
         $validated = $request->validate($rules);
-        $validated['user_id'] = $userId;
+    $validated['organization_id'] = $orgId;
         $memberIds = $request->input('member_ids', []);
         $group = Group::create($validated);
         if (!empty($memberIds)) {

@@ -104,14 +104,17 @@ export default {
       this.showDropdown = !this.showDropdown;
     },
     toggleItem(item) {
-      const idx = this.selectedItems.findIndex((i) => i.name === item.name);
+      // Compare items by the configured optionValue (defaults to 'id')
+      const idx = this.selectedItems.findIndex(
+        (i) => i[this.optionValue] === item[this.optionValue]
+      );
       if (idx > -1) {
         this.$emit(
           'update:selectedItems',
-          this.selectedItems.filter((i) => i.name !== item.name)
+          this.selectedItems.filter(
+            (i) => i[this.optionValue] !== item[this.optionValue]
+          )
         );
-        // Uncheck select all if any item is unchecked
-        // (handled by computed isAllSelected)
       } else {
         this.$emit('update:selectedItems', [...this.selectedItems, item]);
       }

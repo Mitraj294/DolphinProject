@@ -148,6 +148,7 @@ export default {
         storage.set('role', role);
         storage.set('first_name', firstName);
         storage.set('last_name', lastName);
+        storage.set('user_id', response.data.user.id);
         // Set userName as 'first_name last_name' if available, else fallback to name
         if (firstName || lastName) {
           storage.set(

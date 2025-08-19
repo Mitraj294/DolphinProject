@@ -1,5 +1,6 @@
 <template>
   <MainLayout>
+    <Toast />
     <div class="page">
       <div class="table-outer">
         <div class="table-card">
@@ -39,7 +40,7 @@
                       {{ item.body }}
                     </span>
                   </td>
-                  <td>{{ item.sent_at }}</td>
+                  <td>{{ formatLocalDateTime(item.sent_at) }}</td>
                   <td>
                     <button class="btn-view">
                       <img
@@ -138,17 +139,26 @@
             <div class="modal-row">
               <div class="schedule-demo-field schedule-demo-schedule-field">
                 <FormLabel>Schedule</FormLabel>
-                <div class="schedule-demo-schedule-inputs">
-                  <FormInput
-                    v-model="date"
-                    type="date"
-                    placeholder="MM/DD/YYYY"
-                  />
-                  <FormInput
-                    v-model="time"
-                    type="time"
-                    placeholder="00:00"
-                  />
+                <div class="modal-row">
+                  <div class="modal-field">
+                    <div class="form-box">
+                      <FormInput
+                        v-model="scheduledDate"
+                        type="date"
+                        placeholder="MM/DD/YYYY"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="modal-field">
+                    <div class="form-box">
+                      <FormInput
+                        v-model="scheduledTime"
+                        type="time"
+                        placeholder="00:00"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -179,6 +189,7 @@ import FormInput from '../Common_UI/Form/FormInput.vue';
 import MultiSelectDropdown from '../Common_UI/Form/MultiSelectDropdown.vue';
 import axios from 'axios';
 import storage from '@/services/storage';
+import Toast from 'primevue/toast';
 export default {
   name: 'Notifications',
   components: {
@@ -191,6 +202,7 @@ export default {
     FormLabel,
     FormDateTime,
     MultiSelectDropdown,
+    Toast,
   },
   data() {
     return {
@@ -207,6 +219,7 @@ export default {
       scheduledTime: '',
       organizations: [],
       groups: [],
+      // orgGroupsMap and syncing logic removed to keep selections independent
       notifications: [],
     };
   },
@@ -266,24 +279,55 @@ export default {
         this.sortAsc = true;
       }
     },
+    formatLocalDateTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr.replace(' ', 'T') + 'Z');
+      return date.toLocaleString();
+    },
     async sendNotification() {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
         const token = storage.get('authToken');
         // Collect data from modal
+        let scheduled_at;
+        if (this.scheduledDate && this.scheduledTime) {
+          let time = this.scheduledTime;
+          if (time.length === 5) time += ':00';
+          // Combine date and time as local, then convert to UTC ISO string
+          const localDateTime = new Date(`${this.scheduledDate}T${time}`);
+          scheduled_at = localDateTime
+            .toISOString()
+            .replace('T', ' ')
+            .replace(/\.\d+Z$/, 'Z');
+        }
         const payload = {
           organization_ids: this.selectedOrganizations.map((org) => org.id),
           group_ids: this.selectedGroups.map((group) => group.id),
           body: this.$el.querySelector('.modal-textarea').value,
         };
-        await axios.post(apiUrl + '/notifications/send', payload, {
+        if (scheduled_at) {
+          payload.scheduled_at = scheduled_at;
+        }
+        console.log('Sending notification payload:', payload);
+        await axios.post(apiUrl + '/announcements/send', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
         this.showSendModal = false;
-        // Optionally, show a success message or refresh notifications
+        this.$toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Announcement sent!',
+          life: 3000,
+        });
+        console.log('Announcement sent successfully');
       } catch (err) {
         console.error('Error sending notification:', err);
-        // Optionally, show an error message
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to send announcement',
+          life: 4000,
+        });
       }
     },
     async fetchOrganizations() {
@@ -318,7 +362,7 @@ export default {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
         const token = storage.get('authToken');
-        const res = await axios.get(apiUrl + '/notifications', {
+        const res = await axios.get(apiUrl + '/announcements', {
           headers: { Authorization: `Bearer ${token}` },
         });
         this.notifications = Array.isArray(res.data)
@@ -329,6 +373,9 @@ export default {
         this.notifications = [];
       }
     },
+  },
+  watch: {
+    // No watchers - selections are independent
   },
   mounted() {
     this.fetchOrganizations();
@@ -493,30 +540,6 @@ export default {
   color: #222;
   outline: none;
   transition: border 0.2s;
-}
-.schedule-demo-schedule-inputs {
-  display: flex;
-  gap: 18px;
-  width: 100%;
-}
-.schedule-demo-schedule-inputs input[type='date'],
-.schedule-demo-schedule-inputs input[type='time'] {
-  flex: 1 1 0;
-  min-width: 0;
-  background: #fafafa;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 10px 14px 10px 44px;
-  font-size: 15px;
-  color: #222;
-  outline: none;
-  transition: border 0.2s;
-  box-sizing: border-box;
-}
-.schedule-demo-schedule-inputs input[type='date']::placeholder,
-.schedule-demo-schedule-inputs input[type='time']::placeholder {
-  color: #888;
-  opacity: 1;
 }
 @media (max-width: 900px) {
   .send-notification-modal {

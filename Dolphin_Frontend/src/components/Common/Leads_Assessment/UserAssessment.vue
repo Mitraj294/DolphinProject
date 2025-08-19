@@ -161,13 +161,19 @@ export default {
       try {
         const storage = require('@/services/storage').default;
         const authToken = storage.get('authToken');
+        const userId = storage.get('user_id');
         const headers = {};
         if (authToken) {
           headers['Authorization'] = `Bearer ${authToken}`;
         }
+        const params = {};
+        if (userId) {
+          params['user_id'] = userId;
+        }
         // Fetch questions
         const resQ = await axios.get(`${API_BASE_URL}/api/questions`, {
           headers,
+          params,
         });
         if (Array.isArray(resQ.data)) {
           questions.value = resQ.data;
@@ -177,6 +183,7 @@ export default {
         // Fetch previous answers
         const resA = await axios.get(`${API_BASE_URL}/api/answers`, {
           headers,
+          params,
         });
         if (Array.isArray(resA.data)) {
           // Map answers to selectedWords by question_id
