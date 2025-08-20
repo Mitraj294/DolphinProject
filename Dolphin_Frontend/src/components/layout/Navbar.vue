@@ -44,7 +44,6 @@
           <span
             v-if="notificationCount > 0"
             class="navbar-badge"
-            :data-count-length="String(notificationCount).length"
             >{{ notificationCount }}</span
           >
         </span>
@@ -608,30 +607,23 @@ export default {
 }
 .navbar-badge {
   position: absolute;
-  top: -6px; /* float above the icon */
-  right: -6px; /* align to the right edge of the icon container */
-  min-width: 18px;
+  top: 0;
+  left: 15px;
+  right: 0;
+  min-width: 10px;
   height: 18px;
   background: #e53935;
   color: #fff;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 999px; /* pill for multiple digits */
-  display: inline-flex;
+  font-size: 0.85rem;
+  font-weight: bold;
+  border-radius: 50%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  padding: 0 5px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   pointer-events: none;
-  z-index: 2;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-/* make badge slightly smaller when it contains 3+ digits */
-.navbar-badge[data-count-length='3'] {
-  font-size: 0.65rem;
-  padding: 0 5px;
+  z-index: 1;
 }
 
 @media (max-width: 900px) {

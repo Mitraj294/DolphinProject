@@ -24,7 +24,7 @@ class DispatchAnnouncements extends Command
      */
     public function handle(): int
     {
-        \Log::info('[DispatchAnnouncements] started');
+  
 
         $announcements = \App\Models\Announcement::whereNull('sent_at')
             ->whereNotNull('scheduled_at')
@@ -32,7 +32,7 @@ class DispatchAnnouncements extends Command
             ->get();
 
         if ($announcements->isEmpty()) {
-            \Log::info('[DispatchAnnouncements] no announcements to dispatch');
+          
             $this->info('No announcements to dispatch');
             return 0;
         }
@@ -40,6 +40,9 @@ class DispatchAnnouncements extends Command
         foreach ($announcements as $announcement) {
             try {
                 dispatch(new \App\Jobs\SendScheduledAnnouncementJob($announcement));
+                // NOTE: do not mark `sent_at` here — the job itself sets `sent_at` when it completes.
+                // Marking `sent_at` before the job runs causes the job to skip sending (it checks sent_at at start).
+                // If you need to prevent duplicate dispatches, add a separate `dispatched_at` column and set it here.
                 \Log::info('[DispatchAnnouncements] dispatched job', ['announcement_id' => $announcement->id]);
                 $this->info('Dispatched announcement: '.$announcement->id);
             } catch (\Exception $e) {
@@ -48,7 +51,7 @@ class DispatchAnnouncements extends Command
             }
         }
 
-        \Log::info('[DispatchAnnouncements] completed');
+      
         return 0;
     }
 }

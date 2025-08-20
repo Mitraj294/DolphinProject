@@ -28,7 +28,7 @@
             v-if="tab === 'unread' && notifications.length > 0"
             class="mark-all"
             :disabled="markAllLoading"
-            @click="markAllRead"
+            @click="markAllAsRead"
             style="
               margin-top: 10px;
               background: #fff;
@@ -309,83 +309,28 @@ export default {
         .replace(',', '')
         .replace(/(\d{2}:\d{2}) (AM|PM)/, 'at $1 $2');
     },
-    async markAllRead() {
-      // mark all unread notifications as read
-      let token = storage.get('authToken');
-      if (token && typeof token === 'object' && token.token) {
-        token = token.token;
-      }
-      if (typeof token !== 'string') {
-        token = '';
-      }
-      const config = token
-        ? { headers: { Authorization: `Bearer ${token}` } }
-        : {};
-
-      const unread = this.notifications.filter((n) => !n.read_at);
-      if (!unread.length) return;
-
-      this.markAllLoading = true;
-      // keep a shallow copy to revert if API fails
-      const beforeSnapshot = this.notifications.map((n) => ({
-        id: n.id,
-        read_at: n.read_at,
-      }));
-
-      // optimistic UI: set read_at locally
-      const now = new Date().toISOString();
-      unread.forEach((n) => {
-        n.read_at = now;
-      });
-      this.updateNotificationCount();
-
+    async markAllAsRead() {
       try {
-        const resp = await axios.post(
-          '/api/announcements/read-all',
-          {},
-          config
-        );
-        // if server responds with success, refresh to sync exact timestamps
-        if (resp && (resp.status === 200 || resp.status === 201)) {
-          await this.fetchNotifications();
-        } else {
-          // fallback to per-item marking
-          await Promise.all(
-            unread.map((notif) =>
-              axios
-                .post(`/api/announcements/${notif.id}/read`, {}, config)
-                .catch(() => {})
-            )
-          );
-          await this.fetchNotifications();
+        let token = storage.get('authToken');
+        if (token && typeof token === 'object' && token.token) {
+          token = token.token;
         }
+        if (typeof token !== 'string') {
+          token = '';
+        }
+        const config = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
+        await axios.post('/api/notifications/mark-all-read', {}, config);
+        // Refresh notifications
+        this.fetchNotifications();
       } catch (error) {
-        // revert optimistic update if unauthorized or server error
-        if (error && error.response && error.response.status === 401) {
-          // user unauthenticated — revert and notify
-          beforeSnapshot.forEach((s) => {
-            const found = this.notifications.find((n) => n.id === s.id);
-            if (found) found.read_at = s.read_at;
+        console.error('Error marking all as read:', error);
+        this.$notify &&
+          this.$notify({
+            type: 'error',
+            message: 'Failed to mark all notifications as read.',
           });
-          this.updateNotificationCount();
-          this.$notify &&
-            this.$notify({
-              type: 'error',
-              message: 'Session expired. Please login again.',
-            });
-        } else {
-          // try per-item fallback once
-          await Promise.all(
-            unread.map((notif) =>
-              axios
-                .post(`/api/announcements/${notif.id}/read`, {}, config)
-                .catch(() => {})
-            )
-          );
-          await this.fetchNotifications();
-        }
-      } finally {
-        this.markAllLoading = false;
       }
     },
     async markAsRead(idx) {

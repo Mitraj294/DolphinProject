@@ -5,7 +5,7 @@ use Illuminate\Http\Request;
 use App\Models\Announcement;
 use App\Models\User;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
-use App\Notifications\SendNotification;
+use App\Notifications\GeneralNotification;
 use Carbon\Carbon;
 
 class NotificationController extends Controller {
@@ -114,8 +114,16 @@ class NotificationController extends Controller {
         if (!empty($data['admin_ids'])) {
             $announcement->admins()->attach($data['admin_ids']);
         }
+        // Only attach groups if the request explicitly provided group_ids.
+        // If this is an organization-only send (no group_ids present), ensure
+        // any pre-existing group links are not used so member emails are not
+        // included accidentally.
         if (!empty($data['group_ids'])) {
             $announcement->groups()->attach($data['group_ids']);
+        } else {
+            // defensive: detach any groups to guarantee organization-only sends
+            // do not include group member emails.
+            $announcement->groups()->detach();
         }
         \Log::info('[AnnouncementController@send] scheduled_at saved', ['scheduled_at' => $announcement->scheduled_at]);
         // If scheduled, queue it. Otherwise, send now.
@@ -162,75 +170,85 @@ class NotificationController extends Controller {
     }
 
     // Mark all notifications as read for the authenticated user
-    public function markAllRead()
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        try {
-            $now = Carbon::now();
-            // Update notifications table directly to ensure read_at is persisted
-            \DB::table('notifications')
-                ->whereNull('read_at')
-                ->where(function($q) use ($user) {
-                    // notifications directly for this user
-                    $q->where(function($qq) use ($user) {
-                        $qq->where('notifiable_type', User::class)
-                           ->where('notifiable_id', $user->id);
-                    });
+   public function markAllAsRead(Request $request)
+{
+    $user = $request->user();
 
-                    // notifications for the user's organization (if any)
-                    if (!empty($user->organization_id)) {
-                        $q->orWhere(function($qq) use ($user) {
-                            $qq->where('notifiable_type', '\\App\\Models\\Organization')
-                               ->where('notifiable_id', $user->organization_id);
-                        });
-                    }
+    // Mark all unread notifications for this user as read
+    $user->unreadNotifications->markAsRead();
 
-                    // notifications for the user's group (if any)
-                    if (!empty($user->group_id)) {
-                        $q->orWhere(function($qq) use ($user) {
-                            $qq->where('notifiable_type', '\\App\\Models\\Group')
-                               ->where('notifiable_id', $user->group_id);
-                        });
-                    }
-                })
-                ->update(['read_at' => $now]);
+    return response()->json([
+        'message' => 'All notifications marked as read',
+        'notifications' => $user->notifications // send back updated list
+    ]);
+}
 
-            // Also attempt to mark collection items (if loaded) for consistency
-            if ($user->relationLoaded('unreadNotifications')) {
-                foreach ($user->unreadNotifications as $n) {
-                    $n->read_at = $now;
-                }
-            }
-
-            return response()->json(['success' => true]);
-        } catch (\Exception $e) {
-            \Log::error('Failed to mark all notifications as read', ['user_id' => $user->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to mark all as read'], 500);
-        }
-    }
     // Dispatch announcement (send email + store)
     protected function dispatchAnnouncement(Announcement $announcement)
     {
-        // Find users by orgs, admins, groups
-        $userIds = [];
-        // Get admin IDs
-        $userIds = array_merge($userIds, $announcement->admins()->pluck('users.id')->toArray());
-        // Get organization user IDs
-        foreach ($announcement->organizations as $org) {
+    // Find users by orgs, admins, groups — dedupe IDs to avoid duplicate notifications/emails
+    $userIds = [];
+    // Collect member emails (members are separate from users in this app)
+    $memberEmails = [];
+    // Get admin IDs
+    $userIds = array_merge($userIds, $announcement->admins()->pluck('users.id')->toArray());
+        // Organization handling:
+        // - DB notifications: include any User models associated with the org (via org->users())
+        // - Mail: only send to the organization's admin_email (if present) to avoid mailing every member
+    foreach ($announcement->organizations as $org) {
             if (method_exists($org, 'users')) {
-                $userIds = array_merge($userIds, $org->users()->pluck('users.id')->toArray());
+                // safe attempt to collect user ids for DB notifications
+                try {
+                    $userIds = array_merge($userIds, $org->users()->pluck('users.id')->toArray());
+                } catch (\Exception $e) {
+                    // if the users relation or schema is not available, skip DB collection for safety
+                    \Log::warning('[Dispatch] Failed to pluck org users', ['org_id' => $org->id, 'error' => $e->getMessage()]);
+                }
+            }
+            // For mail, include only the organization's admin contact email (if available)
+            if (!empty($org->admin_email) && filter_var($org->admin_email, FILTER_VALIDATE_EMAIL)) {
+                $memberEmails[] = $org->admin_email;
             }
         }
-        // Get group user IDs
-        foreach ($announcement->groups as $group) {
-            if (method_exists($group, 'users')) {
-                $userIds = array_merge($userIds, $group->users()->pluck('users.id')->toArray());
+
+        // For groups: collect member emails only when groups are actually attached
+        // to this announcement. If this is an organization-only announcement
+        // announcement->groups will be empty and we must not collect group members.
+        if ($announcement->groups && $announcement->groups->isNotEmpty()) {
+            foreach ($announcement->groups as $group) {
+                if (method_exists($group, 'members')) {
+                    $emails = $group->members()->pluck('email')->toArray();
+                    $memberEmails = array_merge($memberEmails, $emails);
+                }
+                // intentionally skip $group->users() and member->user_id handling
             }
         }
-        $users = User::whereIn('id', $userIds)->get();
-        LaravelNotification::send($users, new SendNotification($announcement));
+
+        // Clean up lists
+        $userIds = array_values(array_unique(array_filter($userIds)));
+        $memberEmails = array_values(array_unique(array_filter($memberEmails)));
+
+        // Fetch unique users for DB + mail (via Notification)
+        $users = $userIds ? User::whereIn('id', $userIds)->get() : collect();
+
+        // Send notifications to User models (this will create database entries + mail)
+        if ($users->isNotEmpty()) {
+            LaravelNotification::send($users, new GeneralNotification($announcement));
+        }
+
+        // Avoid sending duplicate emails to addresses that belong to User models
+        $userEmails = $users->pluck('email')->filter()->unique()->values()->toArray();
+        $emailsToSend = array_values(array_diff($memberEmails, $userEmails));
+
+        // Send mail-only notifications to remaining member emails
+        foreach ($emailsToSend as $email) {
+            $email = trim((string)$email);
+            if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                // Use Notification routing to send mail to raw email addresses
+                LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
+            } else {
+                \Log::warning('[Dispatch] Skipping invalid member email', ['announcement_id' => $announcement->id, 'email' => $email]);
+            }
+        }
     }
 }

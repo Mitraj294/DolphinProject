@@ -80,7 +80,9 @@ class MemberController extends Controller
             'group_ids' => 'array',
             'group_ids.*' => 'exists:groups,id',
         ];
-        $validated = $request->validate($rules);
+    $validated = $request->validate($rules);
+    // ensure organization_id is set from the authenticated user's organization
+    $orgId = $user->organization_id;
     $validated['organization_id'] = $orgId;
         $groupIds = $request->input('group_ids', []);
         $member = Member::create($validated);

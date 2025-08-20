@@ -52,7 +52,12 @@ class SendAssessmentController extends Controller
                 $registrationUrl .= (parse_url($registrationUrl, PHP_URL_QUERY) ? '&' : '?') . $query;
             }
 
-            Notification::route('mail', $validated['to'])
+            $to = trim((string)$validated['to']);
+            if (!$to || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+                return response()->json(['error' => 'Invalid recipient email'], 400);
+            }
+
+            Notification::route('mail', $to)
                 ->notify(new LeadAssessmentRegistrationNotification(
                     $registrationUrl,
                     $validated['name'],

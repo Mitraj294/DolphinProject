@@ -18,7 +18,7 @@ class Group extends Model
     // Add relationship to get all users in the group
     public function users()
     {
-        return $this->belongsToMany(User::class, 'group_user', 'group_id', 'user_id');
+        return $this->belongsToMany(User::class, 'group_member', 'group_id', 'user_id');
     }
 
     public function members()

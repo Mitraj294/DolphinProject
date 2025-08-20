@@ -37,7 +37,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/announcements/user', [\App\Http\Controllers\NotificationController::class, 'userAnnouncements']);
     Route::get('/announcements/unread', [\App\Http\Controllers\NotificationController::class, 'unreadAnnouncements']);
     Route::post('/announcements/{id}/read', [\App\Http\Controllers\NotificationController::class, 'markAsRead']);
-    Route::post('/announcements/read-all', [\App\Http\Controllers\NotificationController::class, 'markAllRead']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+
 });
 // Schedule an email (public route)
 Route::post('/schedule-email', [\App\Http\Controllers\ScheduledEmailController::class, 'store']);
@@ -89,6 +90,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'allNotifications']);
     // Endpoint to get current authenticated user (for frontend role sync)
     Route::get('/user', [\App\Http\Controllers\AuthController::class, 'user']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
 // Public endpoint for frontend to fetch all notifications
 

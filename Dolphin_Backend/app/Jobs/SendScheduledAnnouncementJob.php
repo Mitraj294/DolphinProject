@@ -24,53 +24,66 @@ class SendScheduledAnnouncementJob implements ShouldQueue
     {
         $userIds = [];
         $memberEmails = [];
+if ($this->announcement->sent_at) {
+    \Log::info('[Job] Announcement already sent, skipping', ['announcement_id' => $this->announcement->id]);
+    return;
+}
+    // Admins (safe pluck)
+    $userIds = array_merge($userIds, $this->safePluckUserIds($this->announcement->admins()));
 
-        // Admins
-        $userIds = array_merge($userIds, $this->announcement->admins()->pluck('users.id')->toArray());
-
-        // For each organization: send mail to org admin_email and notify the admin user (if exists).
+        // Organizations: include org users (if any) and org admin_email as member email
         foreach ($this->announcement->organizations as $org) {
-            // If organization provides an admin_email, send email there and notify the user account with that email (if any)
+            if (method_exists($org, 'users')) {
+                $orgUserIds = $this->safePluckUserIds($org->users());
+                // fallback: if no users found via users table mapping, include organization owner user_id if present
+                if (empty($orgUserIds) && isset($org->user_id) && $org->user_id) {
+                    $orgUserIds[] = $org->user_id;
+                }
+                $userIds = array_merge($userIds, $orgUserIds);
+            }
             if (!empty($org->admin_email)) {
                 $memberEmails[] = $org->admin_email;
-
-                // try to find a User with that email to show a notification on their page
                 $adminUser = \App\Models\User::where('email', $org->admin_email)->first();
                 if ($adminUser) {
                     $userIds[] = $adminUser->id;
-                } else {
-                    \Log::warning('[Job] Organization admin_email has no linked user account', ['organization_id' => $org->id, 'email' => $org->admin_email]);
                 }
             }
+            // For organization-level sends we prefer to notify org users (DB) and
+            // email the organization's admin contact only (mail). Do NOT include
+            // group members here unless those groups were explicitly selected.
+        }
 
-            // Also collect member emails from any groups that belong to this organization
-            $groups = \App\Models\Group::where('organization_id', $org->id)->get();
-            foreach ($groups as $group) {
-                $groupMemberIds = \DB::table('group_member')->where('group_id', $group->id)->pluck('member_id')->toArray();
-                $emails = \App\Models\Member::whereIn('id', $groupMemberIds)->pluck('email')->toArray();
-                $memberEmails = array_merge($memberEmails, $emails);
+        // For each selected group: collect member emails and user ids (if linked)
+        // Only collect group member emails if groups are attached to the announcement
+        if ($this->announcement->groups && $this->announcement->groups->isNotEmpty()) {
+            foreach ($this->announcement->groups as $group) {
+                if (method_exists($group, 'members')) {
+                    try {
+                        $emails = $group->members()->pluck('email')->toArray();
+                        $memberEmails = array_merge($memberEmails, $emails);
+                        // collect any linked user ids from members (if present)
+                        $memberUserIds = $group->members()->whereNotNull('user_id')->pluck('user_id')->toArray();
+                        $userIds = array_merge($userIds, $memberUserIds);
+                    } catch (\Exception $e) {
+                        \Log::warning('[Job] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
+                    }
+                }
             }
         }
 
-        // For each selected group: collect member emails (members don't have logins -> email only)
-        foreach ($this->announcement->groups as $group) {
-            $groupMemberIds = \DB::table('group_member')->where('group_id', $group->id)->pluck('member_id')->toArray();
-            $emails = \App\Models\Member::whereIn('id', $groupMemberIds)->pluck('email')->toArray();
-            $memberEmails = array_merge($memberEmails, $emails);
-        }
-
-        $userIds = array_unique($userIds);
-        $memberEmails = array_unique($memberEmails);
+        // Clean up lists
+        $userIds = array_values(array_unique(array_filter($userIds)));
+        $memberEmails = array_values(array_unique(array_filter($memberEmails)));
 
         \Log::info('Announcement job user IDs', ['user_ids' => $userIds]);
         \Log::info('Announcement job member emails', ['member_emails' => $memberEmails]);
 
         // Get user models for notification
-        $users = \App\Models\User::whereIn('id', $userIds)->get();
+        $users = $userIds ? \App\Models\User::whereIn('id', $userIds)->get() : collect();
         \Log::info('Announcement job found users', ['count' => $users->count(), 'user_ids' => $users->pluck('id')->toArray()]);
 
         // Send notification to users (database + mail)
-        if ($users->count() > 0) {
+        if ($users->isNotEmpty()) {
             try {
                 Notification::send($users, new GeneralNotification($this->announcement));
                 \Log::info('[Job] Notifications sent to users', [
@@ -87,35 +100,51 @@ class SendScheduledAnnouncementJob implements ShouldQueue
             \Log::warning('[Job] No users found for announcement notification', ['announcement_id' => $this->announcement->id]);
         }
 
-        // Send mail to member emails (if needed). Guard against missing Mailable to avoid job failures.
-        $memberEmails = array_unique($memberEmails);
-        if (count($memberEmails) > 0) {
-            if (!class_exists(\App\Mail\AnnouncementMail::class)) {
-                \Log::error('[Job] Mail class App\\Mail\\AnnouncementMail not found; skipping email sends', ['announcement_id' => $this->announcement->id]);
-            } else {
-                foreach ($memberEmails as $email) {
-                    try {
-                        \Mail::to($email)->send(new \App\Mail\AnnouncementMail($this->announcement));
-                        \Log::info('[Job] Mail sent to member', [
-                            'announcement_id' => $this->announcement->id,
-                            'email' => $email
-                        ]);
-                    } catch (\Exception $e) {
-                        \Log::error('[Job] Failed to send mail to member', [
-                            'announcement_id' => $this->announcement->id,
-                            'email' => $email,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }
-            }
-        } else {
-            \Log::warning('[Job] No member emails found for announcement', ['announcement_id' => $this->announcement->id]);
+        // Avoid sending duplicate emails to addresses that belong to User models
+        $userEmails = $users->pluck('email')->filter()->unique()->values()->toArray();
+        $emailsToSend = array_values(array_diff($memberEmails, $userEmails));
+
+        // Send mail-only notifications to remaining member emails
+      foreach ($emailsToSend as $email) {
+    $email = trim((string)$email);
+    // Add an explicit check to make sure the email is not empty after trimming
+    if (empty($email)) {
+        \Log::warning('[Job] Skipping empty member email', ['announcement_id' => $this->announcement->id]);
+        continue;
+    }
+    
+    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        try {
+            Notification::route('mail', $email)->notify(new GeneralNotification($this->announcement));
+            \Log::info('[Job] Mail sent to member', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+        } catch (\Exception $e) {
+            \Log::error('[Job] Failed to send mail to member', ['announcement_id' => $this->announcement->id, 'email' => $email, 'error' => $e->getMessage()]);
         }
+    } else {
+        \Log::warning('[Job] Skipping invalid member email', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+    }
+}
+
+  
         // Only set sent_at if notifications or mails were attempted
         $this->announcement->sent_at = now();
         $this->announcement->save();
         \Log::info('[Job] Announcement job completed', ['announcement_id' => $this->announcement->id]);
+    }
+
+    /**
+     * Safely pluck user ids from a relation/query builder. If the underlying users table
+     * doesn't have expected columns (for example organization_id), the DB query may fail.
+     * This helper returns an empty array on failure instead of throwing.
+     */
+    private function safePluckUserIds($relation)
+    {
+        try {
+            return $relation ? $relation->pluck('users.id')->toArray() : [];
+        } catch (\Exception $e) {
+            \Log::warning('[Job] safePluckUserIds failed', ['error' => $e->getMessage()]);
+            return [];
+        }
     }
 
 }
