@@ -6,6 +6,8 @@
           :columns="[
             { label: 'Group Name', key: 'name' },
             { label: 'Actions', key: 'action' },
+            {},
+            {},
           ]"
         />
         <tbody>

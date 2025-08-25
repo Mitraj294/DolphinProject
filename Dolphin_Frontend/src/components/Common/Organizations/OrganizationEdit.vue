@@ -45,32 +45,21 @@
                 </FormDropdown>
               </div>
             </FormRow>
-
             <FormRow>
               <div>
-                <FormLabel>Address</FormLabel>
-                <FormInput
-                  v-model="form.address1"
-                  placeholder="Enter address"
-                />
+                <FormLabel>Country</FormLabel>
+                <FormDropdown v-model="form.country">
+                  <option
+                    disabled
+                    value=""
+                  >
+                    Select country
+                  </option>
+                  <option>India</option>
+                  <option>United States</option>
+                  <option>Canada</option>
+                </FormDropdown>
               </div>
-              <div>
-                <FormLabel>Street</FormLabel>
-                <FormInput
-                  v-model="form.address2"
-                  placeholder="Enter street"
-                />
-              </div>
-              <div>
-                <FormLabel>City</FormLabel>
-                <FormInput
-                  v-model="form.city"
-                  placeholder="Enter city"
-                />
-              </div>
-            </FormRow>
-
-            <FormRow>
               <div>
                 <FormLabel>State</FormLabel>
                 <FormDropdown v-model="form.state">
@@ -86,27 +75,32 @@
                 </FormDropdown>
               </div>
               <div>
+                <FormLabel>City</FormLabel>
+                <FormInput
+                  v-model="form.city"
+                  placeholder="Enter city"
+                />
+              </div>
+            </FormRow>
+            <FormRow>
+              <div>
+                <FormLabel>Address</FormLabel>
+                <FormInput
+                  v-model="form.address1"
+                  placeholder="Enter address"
+                />
+              </div>
+
+              <div>
                 <FormLabel>PIN</FormLabel>
                 <FormInput
                   v-model="form.zip"
                   placeholder="Enter PIN code"
                 />
               </div>
-              <div>
-                <FormLabel>Country</FormLabel>
-                <FormDropdown v-model="form.country">
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select country
-                  </option>
-                  <option>India</option>
-                  <option>United States</option>
-                  <option>Canada</option>
-                </FormDropdown>
-              </div>
+              <div><FormLabel>&nbsp;</FormLabel></div>
             </FormRow>
+
             <!-- Contract dates row: use 3 columns, last is empty -->
             <FormRow>
               <div>
@@ -262,7 +256,7 @@ export default {
             this.orgId = found.id; // Save org id for update
             this.form = {
               orgName: found.org_name || '',
-              orgSize: found.size || '',
+              orgSize: found.org_size || '',
               source: found.source || '',
               address1: found.address1 || '',
               address2: found.address2 || '',
@@ -290,7 +284,9 @@ export default {
       }
     },
     cancelEdit() {
-      this.$router.push(`/organizations/${this.form.orgName}`);
+      const id =
+        this.orgId || this.$route.params.id || this.$route.params.orgName;
+      this.$router.push(`/organizations/${id}`);
     },
     async updateDetails() {
       // Send PUT request to update organization
@@ -327,8 +323,10 @@ export default {
           payload,
           { headers }
         );
-        // Redirect using user_id instead of orgName
-        this.$router.push(`/organizations/${this.$route.params.orgName}`);
+        // Redirect to the organization detail by id (fallback to orgName param)
+        const id =
+          this.orgId || this.$route.params.id || this.$route.params.orgName;
+        this.$router.push(`/organizations/${id}`);
       } catch (e) {
         alert('Failed to update organization.');
       }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Announcement;
 use App\Models\User;
+use App\Models\Group;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
 use App\Notifications\GeneralNotification;
 use Carbon\Carbon;
@@ -32,7 +33,29 @@ class NotificationController extends Controller {
     public function allNotifications(Request $request)
     {
         try {
-            $notifications = \DB::table('notifications')->orderByDesc('created_at')->get();
+            // Allow callers to request notifications for a specific notifiable.
+            // If not provided, and a user is authenticated, default to that user.
+            $notifiableType = $request->input('notifiable_type');
+            $notifiableId = $request->input('notifiable_id');
+
+            if (!$notifiableType || !$notifiableId) {
+                $user = auth()->user();
+                if ($user) {
+                    $notifiableType = 'App\\Models\\User';
+                    $notifiableId = $user->id;
+                } else {
+                    // No filter provided and no authenticated user: avoid returning
+                    // the entire notifications table; require a notifiable filter.
+                    return response()->json(['error' => 'notifiable_type and notifiable_id required'], 400);
+                }
+            }
+
+            $notifications = \DB::table('notifications')
+                ->where('notifiable_type', $notifiableType)
+                ->where('notifiable_id', $notifiableId)
+                ->orderByDesc('created_at')
+                ->get();
+
             // Decode payloads
             $notifications->transform(function ($n) {
                 if (isset($n->data) && is_string($n->data)) {
@@ -42,7 +65,7 @@ class NotificationController extends Controller {
             });
             return response()->json(['notifications' => $notifications]);
         } catch (\Exception $e) {
-            \Log::error('Failed to fetch all notifications', ['error' => $e->getMessage()]);
+            \Log::error('Failed to fetch notifications', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to fetch notifications'], 500);
         }
     }
@@ -107,31 +130,54 @@ class NotificationController extends Controller {
             'scheduled_at' => $scheduledAtUtc,
             'sent_at' => isset($data['scheduled_at']) ? null : Carbon::now(),
         ]);
-        // Attach relationships
-        if (!empty($data['organization_ids'])) {
-            $announcement->organizations()->attach($data['organization_ids']);
-        }
-        if (!empty($data['admin_ids'])) {
-            $announcement->admins()->attach($data['admin_ids']);
-        }
-        // Only attach groups if the request explicitly provided group_ids.
-        // If this is an organization-only send (no group_ids present), ensure
-        // any pre-existing group links are not used so member emails are not
-        // included accidentally.
-        if (!empty($data['group_ids'])) {
+        // Attach pivot relations. Important behavior:
+        // - If only groups are provided (group-only send), attach groups ONLY
+        //   and do NOT attach organizations or admins. This ensures a pure
+        //   group-mail send does not involve organization recipients or create
+        //   org-related DB notifications.
+        // - If organizations are provided (org-only or mixed), attach orgs,
+        //   admins and also attach groups when both are explicitly provided.
+        $hasGroups = !empty($data['group_ids']);
+        $hasOrgs = !empty($data['organization_ids']);
+
+        if ($hasGroups && !$hasOrgs) {
+            // group-only: attach groups only
             $announcement->groups()->attach($data['group_ids']);
         } else {
-            // defensive: detach any groups to guarantee organization-only sends
-            // do not include group member emails.
-            $announcement->groups()->detach();
+            // org-only or mixed: attach orgs/admins if present
+            if ($hasOrgs) {
+                $announcement->organizations()->attach($data['organization_ids']);
+            }
+            if (!empty($data['admin_ids'])) {
+                $announcement->admins()->attach($data['admin_ids']);
+            }
+            // attach groups as well if provided (mixed case)
+            if ($hasGroups) {
+                $announcement->groups()->attach($data['group_ids']);
+            }
         }
         \Log::info('[AnnouncementController@send] scheduled_at saved', ['scheduled_at' => $announcement->scheduled_at]);
         // If scheduled, queue it. Otherwise, send now.
         if (isset($data['scheduled_at'])) {
             // You can dispatch a job to send later
         } else {
-            // Send announcement now
-            $this->dispatchAnnouncement($announcement);
+            // Dispatch the normal announcement flow (org notifications + admin mails)
+            // if organizations were provided.
+            if ($hasOrgs) {
+                $this->dispatchAnnouncement($announcement);
+            }
+
+            // Send mail-only to group members if any remain after deduplication
+            if (!empty($groupMemberEmails)) {
+                foreach ($groupMemberEmails as $email) {
+                    $email = trim((string)$email);
+                    if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                        LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
+                    } else {
+                        \Log::warning('[Send] Skipping invalid group member email post-dispatch', ['announcement_id' => $announcement->id, 'email' => $email]);
+                    }
+                }
+            }
         }
         return response()->json(['success' => true, 'announcement' => $announcement]);
     }
@@ -186,69 +232,98 @@ class NotificationController extends Controller {
     // Dispatch announcement (send email + store)
     protected function dispatchAnnouncement(Announcement $announcement)
     {
-    // Find users by orgs, admins, groups — dedupe IDs to avoid duplicate notifications/emails
-    $userIds = [];
-    // Collect member emails (members are separate from users in this app)
-    $memberEmails = [];
-    // Get admin IDs
-    $userIds = array_merge($userIds, $announcement->admins()->pluck('users.id')->toArray());
-        // Organization handling:
-        // - DB notifications: include any User models associated with the org (via org->users())
-        // - Mail: only send to the organization's admin_email (if present) to avoid mailing every member
-    foreach ($announcement->organizations as $org) {
-            if (method_exists($org, 'users')) {
-                // safe attempt to collect user ids for DB notifications
+        // Read attachments from pivot tables
+        $attachedGroups = $announcement->groups()->get();
+        $attachedOrgs = $announcement->organizations()->get();
+        $attachedAdmins = $announcement->admins()->pluck('users.id')->toArray();
+
+        $groupMemberEmails = [];
+        foreach ($attachedGroups as $group) {
+            if (method_exists($group, 'members')) {
                 try {
-                    $userIds = array_merge($userIds, $org->users()->pluck('users.id')->toArray());
+                    $groupMemberEmails = array_merge($groupMemberEmails, $group->members()->pluck('email')->toArray());
                 } catch (\Exception $e) {
-                    // if the users relation or schema is not available, skip DB collection for safety
+                    \Log::warning('[Dispatch] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
+                }
+            }
+        }
+        $groupMemberEmails = array_values(array_unique(array_filter($groupMemberEmails)));
+
+        // Collect org-related recipients (DB notifications + admin emails)
+        $orgUserIds = [];
+        $orgAdminEmails = [];
+        foreach ($attachedOrgs as $org) {
+            if (method_exists($org, 'users')) {
+                try {
+                    $orgUserIds = array_merge($orgUserIds, $org->users()->pluck('users.id')->toArray());
+                } catch (\Exception $e) {
                     \Log::warning('[Dispatch] Failed to pluck org users', ['org_id' => $org->id, 'error' => $e->getMessage()]);
                 }
             }
-            // For mail, include only the organization's admin contact email (if available)
-            if (!empty($org->admin_email) && filter_var($org->admin_email, FILTER_VALIDATE_EMAIL)) {
-                $memberEmails[] = $org->admin_email;
+            $orgAdminEmail = $org->admin_email ?? ($org->user->email ?? null);
+            if (!empty($orgAdminEmail) && filter_var($orgAdminEmail, FILTER_VALIDATE_EMAIL)) {
+                $orgAdminEmails[] = $orgAdminEmail;
             }
         }
 
-        // For groups: collect member emails only when groups are actually attached
-        // to this announcement. If this is an organization-only announcement
-        // announcement->groups will be empty and we must not collect group members.
-        if ($announcement->groups && $announcement->groups->isNotEmpty()) {
-            foreach ($announcement->groups as $group) {
-                if (method_exists($group, 'members')) {
-                    $emails = $group->members()->pluck('email')->toArray();
-                    $memberEmails = array_merge($memberEmails, $emails);
-                }
-                // intentionally skip $group->users() and member->user_id handling
-            }
-        }
+        // Merge admin ids provided explicitly
+        $orgUserIds = array_values(array_unique(array_filter(array_merge($orgUserIds, $attachedAdmins))));
+        $orgAdminEmails = array_values(array_unique(array_filter($orgAdminEmails)));
 
-        // Clean up lists
-        $userIds = array_values(array_unique(array_filter($userIds)));
-        $memberEmails = array_values(array_unique(array_filter($memberEmails)));
-
-        // Fetch unique users for DB + mail (via Notification)
-        $users = $userIds ? User::whereIn('id', $userIds)->get() : collect();
-
-        // Send notifications to User models (this will create database entries + mail)
+        // Send DB notifications to Org users (if any)
+        $users = $orgUserIds ? User::whereIn('id', $orgUserIds)->get() : collect();
         if ($users->isNotEmpty()) {
             LaravelNotification::send($users, new GeneralNotification($announcement));
         }
 
-        // Avoid sending duplicate emails to addresses that belong to User models
+        // Mail addresses originating from org admin fields
         $userEmails = $users->pluck('email')->filter()->unique()->values()->toArray();
-        $emailsToSend = array_values(array_diff($memberEmails, $userEmails));
+        $emailsFromOrgs = array_values(array_unique(array_filter(array_merge($orgAdminEmails, $userEmails))));
 
-        // Send mail-only notifications to remaining member emails
-        foreach ($emailsToSend as $email) {
-            $email = trim((string)$email);
-            if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                // Use Notification routing to send mail to raw email addresses
-                LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
-            } else {
-                \Log::warning('[Dispatch] Skipping invalid member email', ['announcement_id' => $announcement->id, 'email' => $email]);
+        // Now decide sending strategy:
+        // - If only groups attached: send only to groupMemberEmails (mail-only)
+        // - If only orgs attached: send to org recipients (users + admin emails)
+        // - If both attached: send org recipients via DB+mail, and also mail remaining groupMemberEmails (deduped)
+
+        if (!empty($groupMemberEmails) && empty($emailsFromOrgs)) {
+            // group-only
+            foreach ($groupMemberEmails as $email) {
+                $email = trim((string)$email);
+                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
+                }
             }
+            return;
+        }
+
+        if (empty($groupMemberEmails) && !empty($emailsFromOrgs)) {
+            // org-only
+            foreach ($emailsFromOrgs as $email) {
+                $email = trim((string)$email);
+                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
+                }
+            }
+            return;
+        }
+
+        if (!empty($groupMemberEmails) && !empty($emailsFromOrgs)) {
+            // mixed: send org recipients (DB already done), then mail remaining group members
+            foreach ($emailsFromOrgs as $email) {
+                $email = trim((string)$email);
+                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
+                }
+            }
+            // subtract org emails from groupMemberEmails
+            $remaining = array_values(array_diff($groupMemberEmails, $emailsFromOrgs));
+            foreach ($remaining as $email) {
+                $email = trim((string)$email);
+                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
+                }
+            }
+            return;
         }
     }
 }

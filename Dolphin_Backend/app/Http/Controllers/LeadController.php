@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Lead;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -24,6 +25,7 @@ class LeadController extends Controller
             'find_us' => 'nullable|string',
             'org_name' => 'nullable|string',
             'org_size' => 'nullable|string',
+            'notes' => 'nullable|string',
             'address' => 'nullable|string',
             'country_id' => 'nullable|integer|exists:countries,id',
             'state_id' => 'nullable|integer|exists:states,id',
@@ -43,6 +45,7 @@ class LeadController extends Controller
             'find_us' => 'nullable|string',
             'org_name' => 'nullable|string',
             'org_size' => 'nullable|string',
+            'notes' => 'nullable|string',
             'address' => 'nullable|string',
             'country_id' => 'nullable|integer|exists:countries,id',
             'state_id' => 'nullable|integer|exists:states,id',
@@ -71,6 +74,13 @@ class LeadController extends Controller
         if (!$lead) {
             return response()->json(['message' => 'Lead not found'], 404);
         }
+        // Log find_us presence/absence for debugging
+        if (empty($lead->find_us)) {
+            Log::info("Lead prefill: lead_id={$lead->id} find_us is empty");
+        } else {
+            Log::info("Lead prefill: lead_id={$lead->id} find_us={$lead->find_us}");
+        }
+
         return response()->json(['lead' => [
             'first_name' => $lead->first_name,
             'last_name' => $lead->last_name,
@@ -83,6 +93,28 @@ class LeadController extends Controller
             'organization_state_id' => $lead->state_id ?? '',
             'organization_zip' => $lead->zip ?? '',
             'country_id' => $lead->country_id ?? '',
+            'find_us' => $lead->find_us ?? '',
         ]]);
+    }
+
+    /**
+     * Return distinct non-empty find_us values found in leads (public).
+     */
+    public function findUsOptions()
+    {
+        $values = Lead::whereNotNull('find_us')
+            ->where('find_us', '!=', '')
+            ->distinct()
+            ->pluck('find_us')
+            ->filter()
+            ->values();
+
+        if ($values->isEmpty()) {
+            Log::info('Lead find_us options: none found');
+        } else {
+            Log::info('Lead find_us options: ' . $values->join(', '));
+        }
+
+        return response()->json(['options' => $values]);
     }
 }

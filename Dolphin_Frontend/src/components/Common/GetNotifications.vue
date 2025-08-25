@@ -8,7 +8,17 @@
               type="date"
               placeholder="Select Date"
               class="notifications-date"
+              v-model="selectedDate"
+              @change="onDateChange"
             />
+            <button
+              v-if="selectedDate"
+              class="mark-all"
+              style="margin-left: 8px; height: 36px"
+              @click="clearDate"
+            >
+              Clear
+            </button>
           </div>
           <div class="notifications-tabs">
             <button
@@ -136,6 +146,7 @@ export default {
       showPageDropdown: false,
       notifications: [],
       readNotifications: [],
+      selectedDate: '',
       markAllLoading: false,
     };
   },
@@ -148,12 +159,36 @@ export default {
       return this.filteredNotifications.slice(start, start + this.pageSize);
     },
     filteredNotifications() {
+      // base list depending on tab
+      let list = [];
       if (this.tab === 'unread') {
-        return this.notifications;
+        list = this.notifications.slice();
       } else if (this.tab === 'all') {
-        return [...this.notifications, ...this.readNotifications];
+        list = [...this.notifications, ...this.readNotifications];
+      } else {
+        list = this.notifications.slice();
       }
-      return this.notifications;
+
+      // if a date is selected, filter by created_at date (YYYY-MM-DD)
+      if (this.selectedDate) {
+        const sel = this.selectedDate;
+        list = list.filter((n) => {
+          // try multiple places for created timestamp
+          const createdAt =
+            n.created_at ||
+            (n._rawData && (n._rawData.created_at || n._rawData.createdAt)) ||
+            '';
+          if (!createdAt) return false;
+          const d = new Date(createdAt);
+          if (isNaN(d)) return false;
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const dd = String(d.getDate()).padStart(2, '0');
+          return `${yyyy}-${mm}-${dd}` === sel;
+        });
+      }
+
+      return list;
     },
   },
   methods: {
@@ -292,6 +327,16 @@ export default {
         });
       }
     },
+    onDateChange() {
+      // reset to first page when date filter changes
+      this.page = 1;
+      // If needed, you could fetch fresh data from server for the date here.
+      // For now, we filter client-side using already fetched notifications.
+    },
+    clearDate() {
+      this.selectedDate = '';
+      this.page = 1;
+    },
     formatDate(dateStr) {
       // Format MySQL datetime to 'MMM DD, YYYY at hh:mm A'
       const d = new Date(dateStr);
@@ -323,7 +368,9 @@ export default {
           : {};
         await axios.post('/api/notifications/mark-all-read', {}, config);
         // Refresh notifications
-        this.fetchNotifications();
+        await this.fetchNotifications();
+        // notify other components (Navbar) to refresh unread count immediately
+        window.dispatchEvent(new Event('notification-updated'));
       } catch (error) {
         console.error('Error marking all as read:', error);
         this.$notify &&
@@ -348,7 +395,9 @@ export default {
       if (notif && notif.id) {
         try {
           await axios.post(`/api/announcements/${notif.id}/read`, {}, config);
-          this.fetchNotifications();
+          await this.fetchNotifications();
+          // notify navbar to update badge immediately
+          window.dispatchEvent(new Event('notification-updated'));
         } catch (error) {
           console.error('Failed to mark notification as read:', error);
           this.$notify &&
@@ -379,6 +428,8 @@ export default {
     updateNotificationCount() {
       storage.set('notificationCount', this.notifications.length);
       window.dispatchEvent(new Event('storage'));
+      // Notify other components (like Navbar) to fetch fresh unread count
+      window.dispatchEvent(new Event('notification-updated'));
     },
     // ...existing code...
     formatDate(dateStr) {

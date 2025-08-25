@@ -224,6 +224,11 @@ export default {
   margin-left: 4px;
 }
 .notifications-page-size-menu {
+  left: 50% !important;
+  transform: translateX(-50%);
+  min-width: 100px !important;
+  width: auto !important;
+  max-width: 90vw;
   position: absolute;
   left: 0;
   top: 100%;

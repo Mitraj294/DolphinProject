@@ -16,7 +16,6 @@ class User extends Authenticatable
         'last_name',
         'email',
         'password',
-        'phone',
         'created_at',
         'updated_at',
         'deleted_at',
@@ -33,8 +32,30 @@ class User extends Authenticatable
         return $this->hasMany(Subscription::class, 'user_id');
     }
 
+    // Organization owned by this user (owner)
+    public function organization()
+    {
+        return $this->hasOne(Organization::class, 'user_id');
+    }
+
     public function roles()
     {
         return $this->belongsToMany(Role::class, 'user_roles', 'user_id', 'role_id')->withTimestamps();
+    }
+
+    /**
+     * Check if the user has a specific role.
+     */
+    public function hasRole(string $roleName): bool
+    {
+        return $this->roles()->where('name', $roleName)->exists();
+    }
+
+    /**
+     * Convenience: is the user a superadmin?
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasRole('superadmin');
     }
 }

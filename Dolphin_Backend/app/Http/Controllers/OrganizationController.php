@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Organization;
+use App\Models\Country;
+use App\Models\State;
+use App\Models\City;
 use Illuminate\Http\Request;
 
 class OrganizationController extends Controller
@@ -27,24 +30,58 @@ class OrganizationController extends Controller
         }
         $result = $orgs->map(function ($org) {
             $subscription = $org->user && $org->user->subscriptions ? $org->user->subscriptions->first() : null;
+            $user = $org->user;
+            $details = $user && $user->userDetails ? $user->userDetails : null;
+            $mainContact = $org->main_contact ?? null;
+            if (!$mainContact && $user) {
+                $mainContact = trim((($user->first_name ?? '') . ' ' . ($user->last_name ?? '')));
+                if (trim($mainContact) === '') {
+                    $mainContact = $details->org_name ?? $user->email ?? '';
+                }
+            }
+            // derive location names from ids when available so frontend can display them
+            $countryId = $org->country_id ?? $details->country_id ?? null;
+            $stateId = $org->state_id ?? $details->state_id ?? null;
+            $cityId = $org->city_id ?? $details->city_id ?? null;
+
+            $countryName = null;
+            $stateName = null;
+            $cityName = null;
+
+            if ($countryId) {
+                $c = Country::find($countryId);
+                $countryName = $c ? $c->name : null;
+            }
+            if ($stateId) {
+                $s = State::find($stateId);
+                $stateName = $s ? $s->name : null;
+            }
+            if ($cityId) {
+                $ci = City::find($cityId);
+                $cityName = $ci ? $ci->name : null;
+            }
+
             return [
                 'id' => $org->id,
                 'org_name' => $org->org_name,
-                'size' => $org->size,
-                'source' => $org->source,
-                'admin' => $org->main_contact ?? ($org->user ? ($org->user->userDetails->first_name ?? $org->user->email) : ''),
-                'main_contact' => $org->main_contact,
+                'org_size' => $details->org_size ?? $org->org_size ?? null,
+                'find_us' => $details->find_us ?? $org->find_us ?? null,
+                'main_contact' => $mainContact,
                 'contract_start' => $subscription ? $subscription->subscription_start : $org->contract_start,
                 'contract_end' => $subscription ? $subscription->subscription_end : $org->contract_end,
-                'last_login' => $org->last_contacted,
-                'address1' => $org->address1,
-                'address2' => $org->address2,
-                'city' => $org->city,
-                'state' => $org->state,
-                'zip' => $org->zip,
-                'country' => $org->country,
-                'admin_email' => $org->admin_email,
-                'admin_phone' => $org->admin_phone,
+                'last_contacted' => $org->last_contacted,
+                'address' => $org->address1 ?? $details->address ?? null,
+                // string fields (legacy) - may be null if IDs are used
+                'city' => $org->city ?? $details->city ?? null,
+                'state' => $org->state ?? $details->state ?? null,
+                'zip' => $org->zip ?? $details->zip ?? null,
+                'country_id' => $org->country_id ?? $details->country_id ?? null,
+                // explicit lookup names from location tables (if available)
+                'country' => $countryName ?? ($org->country ?? $details->country ?? null),
+                'state_name' => $stateName ?? ($org->state ?? $details->state ?? null),
+                'city_name' => $cityName ?? ($org->city ?? $details->city ?? null),
+                'admin_email' => $org->admin_email ?? ($user->email ?? null),
+                'admin_phone' => $org->admin_phone ?? ($details->phone ?? null),
                 'sales_person' => $org->sales_person,
                 'certified_staff' => $org->certified_staff,
             ];
@@ -54,30 +91,80 @@ class OrganizationController extends Controller
 
     public function show($id)
     {
-        $org = Organization::findOrFail($id);
-        return response()->json($org);
+        $org = Organization::with(['user', 'user.userDetails', 'user.subscriptions' => function($q) {
+            $q->where('status', 'active')->orderByDesc('id');
+        }])->findOrFail($id);
+
+        $subscription = $org->user && $org->user->subscriptions ? $org->user->subscriptions->first() : null;
+        $user = $org->user;
+        $details = $user && $user->userDetails ? $user->userDetails : null;
+        $mainContact = $org->main_contact ?? null;
+        if (!$mainContact && $user) {
+            $mainContact = trim((($user->first_name ?? '') . ' ' . ($user->last_name ?? '')));
+            if (trim($mainContact) === '') {
+                $mainContact = $details->org_name ?? $user->email ?? '';
+            }
+        }
+
+        $countryId = $org->country_id ?? $details->country_id ?? null;
+        $stateId = $org->state_id ?? $details->state_id ?? null;
+        $cityId = $org->city_id ?? $details->city_id ?? null;
+
+        $countryName = null;
+        $stateName = null;
+        $cityName = null;
+
+        if ($countryId) {
+            $c = Country::find($countryId);
+            $countryName = $c ? $c->name : null;
+        }
+        if ($stateId) {
+            $s = State::find($stateId);
+            $stateName = $s ? $s->name : null;
+        }
+        if ($cityId) {
+            $ci = City::find($cityId);
+            $cityName = $ci ? $ci->name : null;
+        }
+
+        return response()->json([
+            'id' => $org->id,
+            'org_name' => $org->org_name,
+            'org_size' => $details->org_size ?? $org->org_size ?? null,
+            'find_us' => $details->find_us ?? $org->find_us ?? null,
+            'main_contact' => $mainContact,
+            'contract_start' => $subscription ? $subscription->subscription_start : $org->contract_start,
+            'contract_end' => $subscription ? $subscription->subscription_end : $org->contract_end,
+            'last_contacted' => $org->last_contacted,
+            'address' => $org->address1 ?? $details->address ?? null,
+            'city' => $org->city ?? $details->city ?? null,
+            'state' => $org->state ?? $details->state ?? null,
+            'zip' => $org->zip ?? $details->zip ?? null,
+            'country_id' => $org->country_id ?? $details->country_id ?? null,
+            'country' => $countryName ?? ($org->country ?? $details->country ?? null),
+            'state_name' => $stateName ?? ($org->state ?? $details->state ?? null),
+            'city_name' => $cityName ?? ($org->city ?? $details->city ?? null),
+            'admin_email' => $org->admin_email ?? ($user->email ?? null),
+            'admin_phone' => $org->admin_phone ?? ($details->phone ?? null),
+            'sales_person' => $org->sales_person,
+            'certified_staff' => $org->certified_staff,
+            // include nested user and details for frontend that relies on them
+            'user' => $user,
+        ]);
     }
 
     public function store(Request $request)
     {
+        // Only accept fields that remain on organizations table. Other
+        // organization-looking fields should be set on the owning user's
+        // user_details or users table via the user endpoints.
         $validated = $request->validate([
-            'org_name' => 'required|string|max:255',
-            'size' => 'nullable|string',
-            'source' => 'nullable|string',
-            'address1' => 'nullable|string',
-            'address2' => 'nullable|string',
-            'city' => 'nullable|string',
-            'state' => 'nullable|string',
-            'zip' => 'nullable|string',
-            'country' => 'nullable|string',
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
-            'main_contact' => 'nullable|string',
-            'admin_email' => 'nullable|email',
-            'admin_phone' => 'nullable|string',
             'sales_person' => 'nullable|string',
             'last_contacted' => 'nullable|date',
             'certified_staff' => 'nullable|integer',
+            'user_id' => 'nullable|integer|exists:users,id',
         ]);
         $org = Organization::create($validated);
         return response()->json($org, 201);
@@ -87,20 +174,8 @@ class OrganizationController extends Controller
     {
         $org = Organization::findOrFail($id);
         $validated = $request->validate([
-            'org_name' => 'sometimes|required|string|max:255',
-            'size' => 'nullable|string',
-            'source' => 'nullable|string',
-            'address1' => 'nullable|string',
-            'address2' => 'nullable|string',
-            'city' => 'nullable|string',
-            'state' => 'nullable|string',
-            'zip' => 'nullable|string',
-            'country' => 'nullable|string',
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
-            'main_contact' => 'nullable|string',
-            'admin_email' => 'nullable|email',
-            'admin_phone' => 'nullable|string',
             'sales_person' => 'nullable|string',
             'last_contacted' => 'nullable|date',
             'certified_staff' => 'nullable|integer',

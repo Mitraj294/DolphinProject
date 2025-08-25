@@ -14,7 +14,19 @@ class MemberController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can update members.'], 403);
         }
-    $member = Member::where('organization_id', $user->organization_id)->findOrFail($id);
+        // determine organization id: prefer $user->organization_id, otherwise find org owned by this user
+        $orgId = $user->organization_id;
+        if (!$orgId) {
+            $org = \App\Models\Organization::where('user_id', $user->id)->first();
+            if ($org) {
+                $orgId = $org->id;
+            }
+        }
+        if (!$orgId) {
+            return response()->json(['error' => 'Organization not found for user.'], 400);
+        }
+
+        $member = Member::where('organization_id', $orgId)->findOrFail($id);
         $rules = [
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
@@ -36,7 +48,18 @@ class MemberController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can delete members.'], 403);
         }
-    $member = Member::where('organization_id', $user->organization_id)->findOrFail($id);
+        // determine organization id with fallback
+        $orgId = $user->organization_id;
+        if (!$orgId) {
+            $org = \App\Models\Organization::where('user_id', $user->id)->first();
+            if ($org) {
+                $orgId = $org->id;
+            }
+        }
+        if (!$orgId) {
+            return response()->json(['error' => 'Organization not found for user.'], 400);
+        }
+        $member = Member::where('organization_id', $orgId)->findOrFail($id);
         $member->delete();
         return response()->json(['message' => 'Member deleted successfully']);
     }
@@ -48,8 +71,18 @@ class MemberController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can access members.'], 403);
         }
-    $orgId = $user->organization_id;
-    $members = Member::where('organization_id', $orgId)->with('groups')->get();
+        // determine organization id with fallback to Organization.user_id
+        $orgId = $user->organization_id;
+        if (!$orgId) {
+            $org = \App\Models\Organization::where('user_id', $user->id)->first();
+            if ($org) {
+                $orgId = $org->id;
+            }
+        }
+        if (!$orgId) {
+            return response()->json(['error' => 'Organization not found for user.'], 400);
+        }
+        $members = Member::where('organization_id', $orgId)->with('groups')->get();
         // Return members with group_ids array for frontend selection logic
         $membersWithGroups = $members->map(function($member) {
             return [
@@ -80,10 +113,21 @@ class MemberController extends Controller
             'group_ids' => 'array',
             'group_ids.*' => 'exists:groups,id',
         ];
-    $validated = $request->validate($rules);
-    // ensure organization_id is set from the authenticated user's organization
-    $orgId = $user->organization_id;
-    $validated['organization_id'] = $orgId;
+        $validated = $request->validate($rules);
+        // ensure organization_id is set from the authenticated user's organization (with fallback)
+        $orgId = $user->organization_id;
+        if (!$orgId) {
+            $org = \App\Models\Organization::where('user_id', $user->id)->first();
+            if ($org) {
+                $orgId = $org->id;
+            }
+        }
+        if (!$orgId) {
+            return response()->json(['error' => 'Organization not found for user.'], 400);
+        }
+        $validated['organization_id'] = $orgId;
+    // record which user (admin) created this member
+    $validated['user_id'] = $userId;
         $groupIds = $request->input('group_ids', []);
         $member = Member::create($validated);
         if (!empty($groupIds)) {

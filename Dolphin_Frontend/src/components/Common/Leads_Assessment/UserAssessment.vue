@@ -466,10 +466,10 @@ export default {
   content: '';
   display: block;
   position: absolute;
-  left: 6px;
+  left: 5px;
   top: 2px;
   width: 6px;
-  height: 12px;
+  height: 9px;
   border: solid #fff;
   border-width: 0 3px 3px 0;
   transform: rotate(45deg);

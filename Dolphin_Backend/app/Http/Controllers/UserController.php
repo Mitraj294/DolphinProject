@@ -31,16 +31,18 @@ class UserController extends Controller
         $users = $users->map(function ($user) {
             $details = $user->userDetails;
             $role = $user->roles->first()->name ?? 'user';
+            $firstName = $user->first_name ?? ($details->first_name ?? '');
+            $lastName = $user->last_name ?? ($details->last_name ?? '');
             return [
                 'id' => $user->id,
                 'email' => $user->email,
                 'role' => $role,
                 'roles' => $user->roles,
-                'first_name' => $details->first_name ?? '',
-                'last_name' => $details->last_name ?? '',
+                'first_name' => $firstName,
+                'last_name' => $lastName,
                 'phone' => $details->phone ?? '',
                 'country' => $details->country ?? '',
-                'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+                'name' => trim($firstName . ($lastName ? ' ' . $lastName : '')),
                 'userDetails' => $details,
             ];
         });
@@ -61,19 +63,23 @@ class UserController extends Controller
             if (!empty($updates)) {
                 $user->update($updates);
             }
-            // Update user_details
+            // Update names on users table (user_details no longer stores first/last name)
+            $userUpdates = [];
+            if ($first_name !== null && $first_name !== $user->first_name) $userUpdates['first_name'] = $first_name;
+            if ($last_name !== null && $last_name !== $user->last_name) $userUpdates['last_name'] = $last_name;
+            if (!empty($userUpdates)) {
+                $user->update($userUpdates);
+            }
+            // Keep org_name in user_details and organizations as before
             $details = $user->userDetails;
             if ($details) {
                 $detailsUpdates = [];
-                if ($first_name !== null) $detailsUpdates['first_name'] = $first_name;
-                if ($last_name !== null) $detailsUpdates['last_name'] = $last_name;
                 if ($request->has('org_name')) {
                     $detailsUpdates['org_name'] = $request->input('org_name');
                 }
                 if (!empty($detailsUpdates)) {
                     $details->update($detailsUpdates);
                 }
-                // Sync org_name to organizations table
                 if (isset($detailsUpdates['org_name'])) {
                     \App\Models\Organization::updateOrCreate(
                         ['user_id' => $user->id],
@@ -91,17 +97,19 @@ class UserController extends Controller
             // Reload user with roles and userDetails to return updated info
             $user = User::with(['roles', 'userDetails'])->find($user->id);
             $details = $user->userDetails;
+            $firstName = $user->first_name ?? ($details->first_name ?? '');
+            $lastName = $user->last_name ?? ($details->last_name ?? '');
             $role = $user->roles->first()->name ?? 'user';
             return response()->json([
                 'id' => $user->id,
                 'email' => $user->email,
                 'role' => $role,
                 'roles' => $user->roles,
-                'first_name' => $details->first_name ?? '',
-                'last_name' => $details->last_name ?? '',
+                'first_name' => $firstName,
+                'last_name' => $lastName,
                 'phone' => $details->phone ?? '',
                 'country' => $details->country ?? '',
-                'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+                'name' => trim($firstName . ($lastName ? ' ' . $lastName : '')),
                 'userDetails' => $details,
             ]);
         } catch (\Exception $e) {
@@ -161,12 +169,23 @@ class UserController extends Controller
             // Get the role of the impersonated user (first role or 'user')
             $impersonatedRole = $user->roles()->first()->name ?? 'user';
 
+            // Build clear name fields for the frontend (first/last and a combined name)
+            $impersonatedFirst = $user->first_name ?? '';
+            $impersonatedLast = $user->last_name ?? '';
+            $combinedName = trim(($impersonatedFirst ? $impersonatedFirst : '') . ' ' . ($impersonatedLast ? $impersonatedLast : ''));
+            if (empty($combinedName)) {
+                // Fall back to legacy name or email if first/last are not present
+                $combinedName = $user->name ?? $user->email ?? '';
+            }
+
             return response()->json([
                 'message' => 'Impersonation successful.',
                 'user_id' => $user->id,
                 'impersonated_token' => $token,
                 'impersonated_role' => $impersonatedRole,
-                'impersonated_name' => $user->name,
+                'impersonated_first_name' => $impersonatedFirst,
+                'impersonated_last_name' => $impersonatedLast,
+                'impersonated_name' => $combinedName,
             ]);
         } catch (\Exception $e) {
             \Log::error('Error during impersonation: ' . $e->getMessage(), [
@@ -206,6 +225,6 @@ class UserController extends Controller
     // Check if the user is a superadmin
     public static function isSuperAdmin(User $user): bool
     {
-        return self::hasRole($user, 'superadmin');
+       return $user->role === 'super_admin';
     }
 }

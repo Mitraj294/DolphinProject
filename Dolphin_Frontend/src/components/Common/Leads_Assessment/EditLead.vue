@@ -54,6 +54,7 @@
                     { value: null, text: 'Select', disabled: true },
                     { value: 'Google', text: 'Google' },
                     { value: 'Friend', text: 'Friend' },
+                    { value: 'Colleague', text: 'Colleague' },
                     { value: 'Other', text: 'Other' },
                   ]"
                 />
@@ -77,15 +78,15 @@
                   :options="[
                     { value: null, text: 'Select', disabled: true },
                     {
-                      value: '250+ Employees (Large)',
+                      value: 'Large',
                       text: '250+ Employees (Large)',
                     },
                     {
-                      value: '100-249 Employees (Medium)',
+                      value: 'Medium',
                       text: '100-249 Employees (Medium)',
                     },
                     {
-                      value: '1-99 Employees (Small)',
+                      value: 'Small',
                       text: '1-99 Employees (Small)',
                     },
                   ]"
@@ -95,11 +96,11 @@
             </FormRow>
             <FormRow>
               <div>
-                <FormLabel>Address Line</FormLabel>
+                <FormLabel>Address </FormLabel>
                 <FormInput
                   v-model="form.address"
                   icon="fas fa-map-marker-alt"
-                  placeholder="153, Maggie Loop Pottsville"
+                  placeholder="Enter address"
                 />
               </div>
               <div>
@@ -147,22 +148,22 @@
                 <FormInput
                   v-model="form.zip"
                   icon="fas fa-map-marker-alt"
-                  placeholder="382443"
+                  placeholder="Enter PIN code"
                 />
               </div>
               <div></div>
             </FormRow>
-            <div class="lead-capture-actions">
+            <div class="org-edit-actions">
               <button
                 type="button"
-                class="btn btn-secondary"
+                class="org-edit-cancel"
                 @click="$router.push('/leads')"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                class="btn btn-primary"
+                class="org-edit-update"
               >
                 Update Lead
               </button>
@@ -491,8 +492,6 @@ export default {
   gap: 18px;
 }
 
-/* Removed local button styles. Use only global .btn classes for buttons. */
-
 /* Responsive styles to match other pages */
 @media (max-width: 1400px) {
   .lead-capture-outer {
@@ -569,5 +568,40 @@ export default {
   margin-bottom: 0;
   box-sizing: border-box;
   transition: border 0.18s;
+}
+
+.org-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.org-edit-cancel {
+  background: #f5f5f5;
+  color: #888;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 32px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.org-edit-cancel:hover {
+  background: #e0e0e0;
+}
+.org-edit-update {
+  background: #0074c2;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 32px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.org-edit-update:hover {
+  background: #005fa3;
 }
 </style>

@@ -158,8 +158,15 @@ const routes = [
     props: true
   },
   {
-    path: '/organizations/:orgName',
+    path: '/organizations/:id',
     name: 'OrganizationDetail',
+    component: () => import('@/components/Common/Organizations/OrganizationDetail.vue'),
+    props: true
+  },
+  // Legacy route kept for compatibility (orgName)
+  {
+    path: '/organizations/:orgName',
+    name: 'OrganizationDetailByName',
     component: () => import('@/components/Common/Organizations/OrganizationDetail.vue'),
     props: true
   },
@@ -169,8 +176,15 @@ const routes = [
     component: () => import('@/components/Common/BillingDetails.vue')
   },
   {
-    path: '/organizations/:orgName/edit',
+    path: '/organizations/:id/edit',
     name: 'OrganizationEdit',
+    component: () => import('@/components/Common/Organizations/OrganizationEdit.vue'),
+    props: true
+  },
+  // Legacy edit route by name
+  {
+    path: '/organizations/:orgName/edit',
+    name: 'OrganizationEditByName',
     component: () => import('@/components/Common/Organizations/OrganizationEdit.vue'),
     props: true
   },
@@ -237,9 +251,13 @@ router.beforeEach((to, from, next) => {
     return next('/');
   }
 
-  // Allow manage-subscription and subscription plans for all roles
+  // Allow manage-subscription and subscription plans only for USER and ORGANIZATIONADMIN
   if (to.path === '/manage-subscription' || to.path === '/subscriptions/plans') {
-    return next();
+    if (role === ROLES.USER || role === ROLES.ORGANIZATIONADMIN) {
+      return next();
+    }
+    // other roles not allowed
+    return next('/dashboard');
   }
 
   // Check if the role can access the route

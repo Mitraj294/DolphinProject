@@ -3,10 +3,14 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\UserDetail;
+use App\Models\Organization;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\DB;
 
 class AuthController extends Controller
 {
@@ -23,13 +27,20 @@ class AuthController extends Controller
             'org_name' => 'nullable|string|max:255',
             'org_size' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
-            'country' => 'nullable|string|max:255',
-            'state' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
+            // Accept numeric IDs for location fields coming from frontend
+            'country' => 'nullable|integer|exists:countries,id',
+            'state' => 'nullable|integer|exists:states,id',
+            'city' => 'nullable|integer|exists:cities,id',
             'zip' => 'nullable|string|max:32',
         ]);
 
         if ($validator->fails()) {
+            // Log validation errors and payload (exclude passwords)
+            Log::warning('Register validation failed', [
+                'errors' => $validator->errors()->toArray(),
+                'payload' => $request->except(['password', 'confirm_password']),
+                'ip' => $request->ip(),
+            ]);
             return response()->json($validator->errors(), 422);
         }
 
@@ -43,20 +54,19 @@ class AuthController extends Controller
             'country' => $request->country,
         ]);
 
-        // Save all registration details to user_details table
+        // Save all registration details to user_details table (names are stored on users table)
+        // Persist registration details to user_details using *_id columns for locations
         \App\Models\UserDetail::create([
             'user_id' => $user->id,
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
             'email' => $request->email,
             'phone' => $request->phone,
             'find_us' => $request->find_us,
             'org_name' => $request->org_name,
             'org_size' => $request->org_size,
             'address' => $request->address,
-            'country' => $request->country,
-            'state' => $request->state,
-            'city' => $request->city,
+            'country_id' => $request->country ?: null,
+            'state_id' => $request->state ?: null,
+            'city_id' => $request->city ?: null,
             'zip' => $request->zip,
         ]);
 
@@ -93,10 +103,23 @@ class AuthController extends Controller
         $expiresAt = $tokenResult->token->expires_at;
 
         // Eager load userDetails and roles for frontend
+    // Load details and roles only. Resolve organization separately to avoid relationship recursion while serializing.
     $user = User::with(['userDetails.country', 'roles'])->find($user->id);
         // For convenience, also provide top-level role and userDetails fields
         $role = $user->roles->first()->name ?? 'user';
     $details = $user->userDetails;
+        // Persist last_contacted (date+time) on the user's organization for real logins
+        try {
+            // Resolve organization via direct query to avoid eager-loading cycles
+            $org = Organization::where('user_id', $user->id)->first();
+            if ($org) {
+                $org->last_contacted = now();
+                $org->save();
+            }
+        } catch (\Exception $e) {
+            // ignore failures to avoid breaking login
+        }
+
         return response()->json([
             'message' => 'Login successful',
             'token' => $token,
@@ -106,11 +129,12 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'role' => $role,
                 'roles' => $user->roles,
-                'first_name' => $details->first_name ?? '',
-                'last_name' => $details->last_name ?? '',
+                // Provide authoritative name fields from users table
+                'first_name' => $user->first_name ?? '',
+                'last_name' => $user->last_name ?? '',
                 'phone' => $details->phone ?? '',
                 'country' => $details->country ?? '',
-                'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
+                'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
                 'userDetails' => $details,
             ],
 
@@ -137,27 +161,147 @@ class AuthController extends Controller
             'email' => $user->email,
             'role' => $role,
             'roles' => $user->roles,
-            'first_name' => $details->first_name ?? '',
-            'last_name' => $details->last_name ?? '',
-            'phone' => $details->phone ?? '',
-            'country_id' => $details->country_id ?? null,
-            'country' => $details->country ? $details->country->name : '',
-            'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
-            'userDetails' => $details,
+                // Prefer names from users table
+                'first_name' => $user->first_name ?? '',
+                'last_name' => $user->last_name ?? '',
+                'phone' => $details->phone ?? '',
+                'country_id' => $details->country_id ?? null,
+                'country' => $details->country ? $details->country->name : '',
+                'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
+                'userDetails' => $details,
         ]);
     }
 
     public function updateProfile(Request $request)
     {
         $user = $request->user();
-        $data = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
-            'phone' => 'nullable|string',
-            'country' => 'nullable|string',
+        // Accept structured payloads from frontend. Possible shapes:
+        // { user: { email }, user_details: { first_name, last_name, phone, country }, admin_email }
+        $payload = $request->all();
+
+        // Validate top-level user.email if provided
+        $validator = Validator::make($payload, [
+            'user.email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+            'user_details.first_name' => 'sometimes|nullable|string|max:255',
+            'user_details.last_name' => 'sometimes|nullable|string|max:255',
+            'user_details.phone' => 'sometimes|nullable|string|max:32',
+            'user_details.country' => 'sometimes|nullable|string',
+            'admin_email' => 'sometimes|nullable|email',
         ]);
-        $user->update($data);
-        return response()->json(['message' => 'Profile updated successfully', 'user' => $user]);
+
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Update user table (email) and basic fields if provided
+            if (isset($payload['user'])) {
+                $u = $payload['user'];
+                $shouldSaveUser = false;
+                if (isset($u['email']) && $u['email'] !== $user->email) {
+                    $user->email = $u['email'];
+                    $shouldSaveUser = true;
+                }
+                // allow updating basic name/phone on users table as well
+                if (isset($payload['user_details'])) {
+                    $ud = $payload['user_details'];
+                    if (isset($ud['first_name']) && $ud['first_name'] !== $user->first_name) {
+                        $user->first_name = $ud['first_name'];
+                        $shouldSaveUser = true;
+                    }
+                    if (isset($ud['last_name']) && $ud['last_name'] !== $user->last_name) {
+                        $user->last_name = $ud['last_name'];
+                        $shouldSaveUser = true;
+                    }
+                    // Do not store phone on users table anymore; keep phone in user_details
+                }
+                if ($shouldSaveUser) $user->save();
+            }
+
+            // Update/insert user_details
+            $detailsData = $payload['user_details'] ?? [];
+            if (!empty($detailsData)) {
+                $userDetail = UserDetail::firstOrNew(['user_id' => $user->id]);
+                // Names are authoritative on users table; only persist other profile fields here
+                if (isset($detailsData['first_name'])) {
+                    // sync to users table instead
+                    if ($detailsData['first_name'] !== $user->first_name) {
+                        $user->first_name = $detailsData['first_name'];
+                        $user->save();
+                    }
+                }
+                if (isset($detailsData['last_name'])) {
+                    if ($detailsData['last_name'] !== $user->last_name) {
+                        $user->last_name = $detailsData['last_name'];
+                        $user->save();
+                    }
+                }
+                if (isset($detailsData['phone'])) $userDetail->phone = $detailsData['phone'];
+                // Frontend sends country as string id; store in country_id if numeric-like
+                if (isset($detailsData['country'])) {
+                    $countryVal = $detailsData['country'];
+                    // If frontend sent an object/array (e.g. { value, text, id, name }), try to extract a primitive
+                    if (is_array($countryVal)) {
+                        $countryVal = $countryVal['value'] ?? $countryVal['id'] ?? $countryVal['name'] ?? '';
+                    } elseif (is_object($countryVal)) {
+                        $countryVal = $countryVal->value ?? $countryVal->id ?? $countryVal->name ?? '';
+                    }
+
+                    if (is_numeric($countryVal)) {
+                        $userDetail->country_id = intval($countryVal);
+                    } else if (is_string($countryVal) && trim($countryVal) !== '') {
+                        $countryVal = trim($countryVal);
+                        // Try to resolve by name first (most common). Only attempt other columns if they exist.
+                        $countryModel = \App\Models\Country::where('name', $countryVal)->first();
+                        // Check optional columns safely
+                        if (!$countryModel && \Illuminate\Support\Facades\Schema::hasColumn('countries', 'code')) {
+                            $countryModel = \App\Models\Country::where('code', $countryVal)->first();
+                        }
+                        if (!$countryModel && \Illuminate\Support\Facades\Schema::hasColumn('countries', 'iso')) {
+                            $countryModel = \App\Models\Country::where('iso', $countryVal)->first();
+                        }
+                        if ($countryModel) {
+                            $userDetail->country_id = $countryModel->id;
+                        } else {
+                            // unknown string, null the country_id to avoid DB errors
+                            $userDetail->country_id = null;
+                        }
+                    } else {
+                        $userDetail->country_id = null;
+                    }
+                }
+                // Email is authoritative on users table. If frontend provided an
+                // email under user_details, use it to update the users.email.
+                if (isset($detailsData['email'])) {
+                    if ($detailsData['email'] !== $user->email) {
+                        $user->email = $detailsData['email'];
+                        $user->save();
+                    }
+                }
+
+                $userDetail->user_id = $user->id;
+                $userDetail->save();
+            }
+
+            // organizations.admin_email column was removed in a migration. The
+            // admin contact information is now sourced from the owning user's
+            // `users` / `user_details` records. If an admin_email was provided
+            // we'll log it so callers can optionally update their user record
+            // through the dedicated user/profile endpoints.
+            if (!empty($payload['admin_email'])) {
+                \Log::info('updateProfile: received admin_email but organizations.admin_email has been removed; ignoring. admin_email=' . $payload['admin_email'], ['user_id' => $user->id]);
+            }
+
+            DB::commit();
+            // reload user with details/roles
+            $user = User::with(['userDetails', 'roles'])->find($user->id);
+            return response()->json(['message' => 'Profile updated successfully', 'user' => $user]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to update profile', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to update profile', 'error' => $e->getMessage()], 500);
+        }
     }
 
     public function changePassword(Request $request)
@@ -234,12 +378,13 @@ class AuthController extends Controller
             'email' => $user->email,
             'role' => $role,
             'roles' => $user->roles,
-            'first_name' => $details->first_name ?? '',
-            'last_name' => $details->last_name ?? '',
-            'phone' => $details->phone ?? '',
-            'country' => $details->country ?? '',
-            'name' => trim(($details->first_name ?? '') . (($details->last_name ?? '') ? ' ' . $details->last_name : '')),
-            'userDetails' => $details,
+                // Prefer names from users table
+                'first_name' => $user->first_name ?? '',
+                'last_name' => $user->last_name ?? '',
+                'phone' => $details->phone ?? '',
+                'country' => $details->country ?? '',
+                'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
+                'userDetails' => $details,
         ]);
     }
 

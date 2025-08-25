@@ -53,16 +53,8 @@
                 ></div>
               </div>
             </div>
-            <div class="send-assessment-label">Assessment Link</div>
+
             <div class="send-assessment-link-actions-row">
-              <div class="send-assessment-link-box">
-                <a
-                  :href="registrationLink"
-                  class="send-assessment-link"
-                  target="_blank"
-                  >Complete Registration</a
-                >
-              </div>
               <div class="send-assessment-actions">
                 <button
                   type="submit"

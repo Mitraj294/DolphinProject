@@ -17,7 +17,10 @@ export const PERMISSIONS = {
       '/leads/schedule-demo',
       '/leads/schedule-class-training',
       '/organizations/:orgName',
+      '/organizations/:orgName',
+      '/organizations/:id',
       '/organizations/:orgName/edit',
+      '/organizations/:id/edit',
       '/leads/lead-capture',
       '/leads/edit-lead',
       '/leads/:email',
@@ -27,7 +30,6 @@ export const PERMISSIONS = {
       '/assessments/:assessmentId/summary',
       '/user-permission',
       '/user-permission/add',
-      '/subscriptions/plans',
       '/organizations/billing-details',
       '/profile',
     ],
@@ -57,14 +59,14 @@ export const PERMISSIONS = {
     routes: [
       '/dashboard',
       '/assessments',
-      '/leads/send-assessment',
-      '/assessments/send-assessment',
+ 
       '/assessments/:assessmentId/summary',
       '/get-notification',
       '/subscriptions/plans',
       '/organizations/billing-details',
       '/profile',
-     
+      '/subscriptions/plans', 
+  '/manage-subscription', 
     ],
 
   },
@@ -76,8 +78,8 @@ export const PERMISSIONS = {
       '/assessments',
       '/members',
       '/my-organization/members',
-      '/leads/send-assessment',
-      '/assessments/send-assessment',
+
+      '/assessments',
       '/assessments/:assessmentId/summary',
       '/get-notification',
       '/subscriptions/plans',
@@ -98,7 +100,8 @@ export const PERMISSIONS = {
       '/subscriptions/plans',
       '/organizations/billing-details',
       '/profile',
-     
+      '/subscriptions/plans', 
+  '/manage-subscription', 
     ],
 
   },

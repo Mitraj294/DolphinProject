@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Member extends Model
 {
     use HasFactory, \Illuminate\Notifications\Notifiable;
-    protected $fillable = ['first_name', 'last_name', 'email', 'phone', 'member_role', 'organization_id'];
+    protected $fillable = ['first_name', 'last_name', 'email', 'phone', 'member_role', 'organization_id', 'user_id'];
 
     public function organization()
     {

@@ -14,7 +14,8 @@ foreach($a->organizations as $org){
     try{ if(method_exists($org,'users')){ $ou = $org->users()->pluck('users.id')->toArray(); } else { $ou = []; } } catch (\Exception $e) { $ou = []; }
     if(empty($ou) && isset($org->user_id) && $org->user_id) $ou[] = $org->user_id;
     $u = array_merge($u, $ou);
-    if(!empty($org->admin_email)) $m[] = $org->admin_email;
+    $orgAdminEmail = $org->admin_email ?? ($org->user->email ?? null);
+    if (!empty($orgAdminEmail)) $m[] = $orgAdminEmail;
 }
 if($a->groups && $a->groups->isNotEmpty()){
     foreach($a->groups as $g){
@@ -35,8 +36,8 @@ $out = [
 foreach ($a->organizations as $org) {
     $out['organizations'][] = [
         'id' => $org->id,
-        'org_name' => $org->org_name ?? null,
-        'admin_email' => $org->admin_email ?? null,
+    'org_name' => $org->org_name ?? null,
+    'admin_email' => $org->admin_email ?? $org->user->email ?? null,
         'user_id' => $org->user_id ?? null,
     ];
 }

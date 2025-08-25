@@ -165,21 +165,11 @@ class StripeSubscriptionController extends Controller
                 $orgExists = \App\Models\Organization::where('user_id', $user->id)->first();
                 if (!$orgExists) {
                     $details = $user->userDetails;
+                    // Create org record with minimal persistent fields. Contact/profile
+                    // information remains on the user's user_details/users records.
                     $orgData = [
-                        'org_name' => $details->org_name ?? ($details->first_name ?? $user->email),
-                        'size' => $details->org_size ?? null,
-                        'source' => $details->find_us ?? null,
-                        'address1' => $details->address ?? null,
-                        'address2' => null,
-                        'city' => $details->city ?? null,
-                        'state' => $details->state ?? null,
-                        'zip' => $details->zip ?? null,
-                        'country' => $details->country ?? null,
                         'contract_start' => null,
                         'contract_end' => null,
-                        'main_contact' => $details->first_name ? ($details->first_name . ' ' . ($details->last_name ?? '')) : null,
-                        'admin_email' => $user->email,
-                        'admin_phone' => $details->phone ?? null,
                         'sales_person' => null,
                         'last_contacted' => null,
                         'certified_staff' => null,

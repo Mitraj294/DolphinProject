@@ -6,7 +6,7 @@
     <div class="navbar-actions">
       <!-- Show bell only if not superadmin -->
       <router-link
-        v-if="roleName !== 'superadmin'"
+        v-if="!['superadmin', 'dolphinadmin', 'salesperson'].includes(roleName)"
         to="/get-notification"
         style="display: flex; align-items: center; position: relative"
       >
@@ -90,6 +90,7 @@
             </div>
             <div
               class="navbar-dropdown-item"
+              v-if="roleName != 'superadmin'"
               @click="
                 $router.push({ name: 'ManageSubscription' });
                 dropdownOpen = false;
@@ -138,6 +139,7 @@
 import authMiddleware from '@/middleware/authMiddleware';
 import '@/assets/global.css';
 import storage from '@/services/storage';
+import axios from 'axios';
 
 export default {
   name: 'Navbar',
@@ -149,6 +151,10 @@ export default {
       isVerySmallScreen: false,
       notificationCount: 0,
       assessmentNameCache: {},
+      // bound handlers for window events (so `this` stays correct)
+      _boundFetchUnread: null,
+      _boundUpdateNotificationCount: null,
+      _boundAuthUpdated: null,
     };
   },
   computed: {
@@ -164,6 +170,9 @@ export default {
         let contact = this.$route.query.contact || '';
         if (contact) return `${contact} Details`;
         return 'Lead Details';
+      }
+      if (routeName === 'EditLead') {
+        return 'Edit Lead';
       }
       if (routeName === 'OrganizationDetail') {
         const orgName = this.$route.params.orgName || '';
@@ -219,6 +228,13 @@ export default {
       if (routeName === 'SubscriptionPlans') {
         return 'Subscription Plans';
       }
+      if (routeName === 'MemberListing') {
+        return 'Member Listing';
+      }
+      if (routeName === 'Members') {
+        return 'Member Listing';
+      }
+
       if (routeName === 'AssessmentSummary') {
         const assessmentId = this.$route.params.assessmentId;
         if (!assessmentId) return 'Assessment Summary';
@@ -259,6 +275,32 @@ export default {
   },
 
   methods: {
+    async fetchUnreadCount() {
+      try {
+        let token = storage.get('authToken');
+        if (token && typeof token === 'object' && token.token)
+          token = token.token;
+        if (typeof token !== 'string') token = '';
+        const config = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
+        const res = await axios.get('/api/notifications/unread', config);
+        let unread = 0;
+        if (res && res.data) {
+          if (Array.isArray(res.data)) unread = res.data.length;
+          else if (Array.isArray(res.data.unread))
+            unread = res.data.unread.length;
+          else if (Array.isArray(res.data.notifications)) {
+            // some endpoints return notifications array
+            unread = res.data.notifications.filter((n) => !n.read_at).length;
+          }
+        }
+        this.notificationCount = unread;
+        storage.set('notificationCount', String(unread));
+      } catch (e) {
+        // ignore errors silently; keep existing badge
+      }
+    },
     async fetchAssessmentName(assessmentId) {
       if (!assessmentId || this.assessmentNameCache[assessmentId]) return;
       try {
@@ -365,8 +407,28 @@ export default {
     window.addEventListener('resize', this.checkScreen);
     this.checkScreen();
     this.updateNotificationCount();
-    window.addEventListener('storage', this.updateNotificationCount);
-    window.addEventListener('focus', this.updateNotificationCount);
+    // initial fetch of unread count
+    this.fetchUnreadCount();
+    // bind handlers so `this` is preserved when invoked by window events
+    this._boundFetchUnread = this.fetchUnreadCount.bind(this);
+    this._boundUpdateNotificationCount =
+      this.updateNotificationCount.bind(this);
+    this._boundAuthUpdated = () => {
+      // Recompute roleName and let Vue recompute computed properties
+      this.roleName = authMiddleware.getRole();
+      this.updateNotificationCount();
+      // Force a UI update if needed
+      this.$forceUpdate && this.$forceUpdate();
+    };
+    // refresh when tab/window gains focus
+    window.addEventListener('focus', this._boundFetchUnread);
+    // refresh when other components dispatch a notification update
+    window.addEventListener('notification-updated', this._boundFetchUnread);
+    // refresh when auth context changes (impersonation/revert)
+    window.addEventListener('auth-updated', this._boundAuthUpdated);
+    // storage event (cross-tab) and focus should update local count
+    window.addEventListener('storage', this._boundUpdateNotificationCount);
+    window.addEventListener('focus', this._boundUpdateNotificationCount);
     // On mount, if on summary page, fetch assessment name
     if (
       this.$route.name === 'AssessmentSummary' &&
@@ -381,8 +443,20 @@ export default {
   beforeDestroy() {
     document.removeEventListener('mousedown', this.handleClickOutside);
     window.removeEventListener('resize', this.checkScreen);
-    window.removeEventListener('storage', this.updateNotificationCount);
-    window.removeEventListener('focus', this.updateNotificationCount);
+    if (this._boundUpdateNotificationCount) {
+      window.removeEventListener('storage', this._boundUpdateNotificationCount);
+      window.removeEventListener('focus', this._boundUpdateNotificationCount);
+    }
+    if (this._boundFetchUnread) {
+      window.removeEventListener('focus', this._boundFetchUnread);
+      window.removeEventListener(
+        'notification-updated',
+        this._boundFetchUnread
+      );
+    }
+    if (this._boundAuthUpdated) {
+      window.removeEventListener('auth-updated', this._boundAuthUpdated);
+    }
     document.body.classList.remove('logout-overlay-active');
   },
 };

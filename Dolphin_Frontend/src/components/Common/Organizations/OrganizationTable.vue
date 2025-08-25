@@ -14,25 +14,48 @@
             :columns="[
               { label: 'Organizations Name', key: 'name', sortable: true },
               { label: 'Size', key: 'size' },
-              { label: 'Admin Name', key: 'admin' },
+              { label: 'Admin Name', key: 'main_contact' },
               { label: 'Contract Start', key: 'contractStart', sortable: true },
               { label: 'Contract End', key: 'contractEnd', sortable: true },
-              { label: 'Last Login', key: 'lastLogin' },
+              {
+                label: 'Last Contacted',
+                key: 'last_contacted',
+                sortable: true,
+              },
               { label: 'Action', key: 'action' },
             ]"
+            :activeSortKey="sortKey"
+            :sortAsc="sortAsc"
             @sort="sortBy"
           />
           <tbody>
             <tr
               v-for="org in paginatedOrganizations"
-              :key="org.name"
+              :key="org.id"
             >
               <td>{{ org.name }}</td>
               <td>{{ org.size }}</td>
-              <td>{{ org.admin }}</td>
-              <td>{{ org.contractStart }}</td>
-              <td>{{ org.contractEnd }}</td>
-              <td>{{ org.lastLogin }}</td>
+              <td>{{ org.main_contact }}</td>
+              <td>{{ formatDate(org.contractStart) }}</td>
+              <td>{{ formatDate(org.contractEnd) }}</td>
+              <td>
+                {{
+                  org.last_contacted
+                    ? (() => {
+                        const d = new Date(org.last_contacted);
+                        if (isNaN(d)) return org.last_contacted;
+                        return d.toLocaleString(undefined, {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        });
+                      })()
+                    : ''
+                }}
+              </td>
+
               <td>
                 <button
                   class="btn-view"
@@ -97,10 +120,11 @@ export default {
         orgs = orgs.slice().sort((a, b) => {
           let aVal = a[this.sortKey];
           let bVal = b[this.sortKey];
-          // For contractStart and contractEnd, sort as dates
+          // For contractStart, contractEnd and last_contacted, sort as dates
           if (
             this.sortKey === 'contractStart' ||
-            this.sortKey === 'contractEnd'
+            this.sortKey === 'contractEnd' ||
+            this.sortKey === 'last_contacted'
           ) {
             // Try to parse as Date, fallback to string compare
             const aDate = new Date(aVal);
@@ -153,11 +177,12 @@ export default {
         });
         this.organizations = res.data.map((org) => ({
           name: org.org_name,
-          size: org.size || '',
-          admin: org.admin || '',
+          size: org.org_size || '',
+          main_contact: org.main_contact || '',
           contractStart: org.contract_start || '',
           contractEnd: org.contract_end || '',
-          lastLogin: org.last_login || '',
+          // use snake_case key to match table usage and sorting key
+          last_contacted: org.last_contacted || '',
           id: org.id,
         }));
       } catch (e) {
@@ -173,8 +198,21 @@ export default {
     goToDetail(org) {
       this.$router.push({
         name: 'OrganizationDetail',
-        params: { orgName: org.name },
+        params: { id: org.id },
       });
+    },
+    formatDate(dateStr) {
+      if (!dateStr) return '';
+      try {
+        const d = new Date(dateStr);
+        if (isNaN(d)) {
+          // Fallback: try to split on 'T' for ISO-like strings
+          return (dateStr && dateStr.split && dateStr.split('T')[0]) || dateStr;
+        }
+        return d.toISOString().slice(0, 10);
+      } catch (e) {
+        return (dateStr && dateStr.split && dateStr.split('T')[0]) || dateStr;
+      }
     },
     goToPage(page) {
       if (page === '...' || page < 1 || page > this.totalPages) return;

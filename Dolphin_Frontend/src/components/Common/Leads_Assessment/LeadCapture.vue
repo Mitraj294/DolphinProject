@@ -52,6 +52,7 @@
                   :options="[
                     { value: 'Google', text: 'Google' },
                     { value: 'Friend', text: 'Friend' },
+                    { value: 'Colleague', text: 'Colleague' },
                     { value: 'Other', text: 'Other' },
                   ]"
                 />
@@ -74,15 +75,15 @@
                   icon="fas fa-users"
                   :options="[
                     {
-                      value: '250+ Employees (Large)',
+                      value: 'Large',
                       text: '250+ Employees (Large)',
                     },
                     {
-                      value: '100-249 Employees (Medium)',
+                      value: 'Medium',
                       text: '100-249 Employees (Medium)',
                     },
                     {
-                      value: '1-99 Employees (Small)',
+                      value: 'Small',
                       text: '1-99 Employees (Small)',
                     },
                   ]"
@@ -144,7 +145,7 @@
                 <FormInput
                   v-model="form.zip"
                   icon="fas fa-map-marker-alt"
-                  placeholder="382443"
+                  placeholder="Enter PIN code"
                 />
               </div>
               <div></div>

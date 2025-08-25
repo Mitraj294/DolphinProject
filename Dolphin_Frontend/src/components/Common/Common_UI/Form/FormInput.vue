@@ -56,6 +56,14 @@ export default {
       },
     },
   },
+  methods: {
+    focus() {
+      this.$nextTick(() => {
+        const el = this.$el && this.$el.querySelector('input');
+        if (el && typeof el.focus === 'function') el.focus();
+      });
+    },
+  },
 };
 </script>
 

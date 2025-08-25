@@ -21,8 +21,8 @@
             <table class="table">
               <TableHeader
                 :columns="[
-                  { label: 'Notification Body', key: 'body' },
-                  { label: 'Date & Time', key: 'sent_at' },
+                  { label: 'Notification Title', key: 'body' },
+                  { label: 'Date & Time', key: 'sent_at', width: '225px' },
                   { label: 'Action', key: 'action' },
                 ]"
                 @sort="sortBy"
@@ -397,16 +397,22 @@ export default {
   padding: 32px 0;
 }
 
+.table-container .table {
+  width: 100%;
+  table-layout: fixed; /* respect column widths */
+}
+
 .notification-body-cell {
-  max-width: 320px;
-  width: 320px;
+  /* make body column the dominant column */
+  width: 60%;
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .notification-body-truncate {
   display: inline-block;
-  max-width: 60%;
+  max-width: 100%;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;

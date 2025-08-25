@@ -9,7 +9,7 @@
           <div class="org-detail-main-card-header">
             <button
               class="btn btn-primary"
-              @click="$router.push(`/organizations/${orgDetail.org_name}/edit`)"
+              @click="$router.push(`/organizations/${orgDetail.id}/edit`)"
             >
               <img
                 src="@/assets/images/EditWhite.svg"
@@ -32,7 +32,8 @@
                     ><b>{{ orgDetail.org_name }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Organization Size</span><b>{{ orgDetail.size }}</b>
+                    <span>Organization Size</span>
+                    <b>{{ orgDetail.org_size }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Contract Start</span
@@ -43,7 +44,8 @@
                     ><b>{{ formatDate(orgDetail.contract_end) }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Source</span><b>{{ orgDetail.source }}</b>
+                    <span>Source</span>
+                    <b>{{ orgDetail.find_us }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Address</span>
@@ -66,7 +68,10 @@
                     <span>Admin Email</span><b>{{ orgDetail.admin_email }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Admin Phone #</span><b>{{ orgDetail.admin_phone }}</b>
+                    <span>Admin Phone</span>
+                    <b>{{
+                      orgDetail.admin_phone || orgDetail.user?.phone || ''
+                    }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Sales Person</span><b>{{ orgDetail.sales_person }}</b>
@@ -179,14 +184,43 @@ export default {
   computed: {
     addressDisplay() {
       const arr = [];
-      if (this.orgDetail.address1) arr.push(this.orgDetail.address1);
-      if (this.cityName) arr.push(this.cityName);
-      if (this.stateName) arr.push(this.stateName);
-      if (this.orgDetail.zip) arr.push(this.orgDetail.zip);
-      if (this.countryName) arr.push(this.countryName);
+      // prefer userDetails address fields when present
+      const details =
+        this.orgDetail.user && this.orgDetail.user.userDetails
+          ? this.orgDetail.user.userDetails
+          : this.orgDetail;
+      // Address: prefer details.address then orgDetail.address
+      const addr = details.address || this.orgDetail.address || '';
+      if (addr) arr.push(addr);
+      // Prefer explicit name fields returned from API (city_name/state_name/country)
+      // then local lookup names, then details/orgDetail string fields
+      const city =
+        this.orgDetail.city_name ||
+        this.cityName ||
+        details.city ||
+        this.orgDetail.city ||
+        '';
+      const state =
+        this.orgDetail.state_name ||
+        this.stateName ||
+        details.state ||
+        this.orgDetail.state ||
+        '';
+      const zip = details.zip || this.orgDetail.zip || '';
+      const country =
+        this.orgDetail.country ||
+        this.countryName ||
+        details.country ||
+        this.orgDetail.country ||
+        '';
+      if (city) arr.push(city);
+      if (state) arr.push(state);
+      if (zip) arr.push(zip);
+      if (country) arr.push(country);
       return arr.filter((f) => f && String(f).trim().length > 0);
     },
   },
+
   async mounted() {
     await this.fetchOrganization();
     await this.lookupLocationNames();
@@ -198,6 +232,24 @@ export default {
         const headers = authToken
           ? { Authorization: `Bearer ${authToken}` }
           : {};
+        // Prefer numeric id param when available (route: /organizations/:id)
+        const orgId = this.$route.params.id || null;
+        if (orgId) {
+          try {
+            const res = await axios.get(
+              `http://127.0.0.1:8000/api/organizations/${orgId}`,
+              { headers }
+            );
+            if (res && res.data) {
+              this.orgDetail = res.data;
+              return;
+            }
+          } catch (e) {
+            // fall through to index-based lookup
+          }
+        }
+
+        // Fallback: if no id param, or show returned nothing, try index and match by org_name param
         const orgName = this.$route.params.orgName;
         let res = null;
         try {
@@ -205,7 +257,9 @@ export default {
             headers,
           });
           if (res.data && Array.isArray(res.data)) {
-            const found = res.data.find((o) => o.org_name === orgName);
+            const found = orgName
+              ? res.data.find((o) => o.org_name === orgName)
+              : res.data[0];
             if (found) {
               this.orgDetail = found;
               return;
@@ -222,40 +276,48 @@ export default {
     async lookupLocationNames() {
       // Only lookup if IDs are present
       const API_BASE_URL = 'http://127.0.0.1:8000';
-      if (this.orgDetail.country_id) {
+      // Prefer IDs from userDetails when available
+      const details =
+        this.orgDetail.user && this.orgDetail.user.userDetails
+          ? this.orgDetail.user.userDetails
+          : this.orgDetail;
+      // Prefer IDs from details but fall back to orgDetail top-level ids
+      const countryId = details.country_id || this.orgDetail.country_id || null;
+      const stateId = details.state_id || this.orgDetail.state_id || null;
+      const cityId = details.city_id || this.orgDetail.city_id || null;
+      if (countryId) {
         try {
           const res = await axios.get(
-            `${API_BASE_URL}/api/countries/${this.orgDetail.country_id}`
+            `${API_BASE_URL}/api/countries/${countryId}`
           );
           this.countryName = res.data?.name || '';
         } catch (e) {
           this.countryName = '';
         }
       }
-      if (this.orgDetail.state_id) {
+      if (stateId) {
         try {
-          const res = await axios.get(
-            `${API_BASE_URL}/api/states/${this.orgDetail.state_id}`
-          );
+          const res = await axios.get(`${API_BASE_URL}/api/states/${stateId}`);
           this.stateName = res.data?.name || '';
         } catch (e) {
           this.stateName = '';
         }
       }
-      if (this.orgDetail.city_id) {
+      if (cityId) {
         try {
-          const res = await axios.get(
-            `${API_BASE_URL}/api/cities/${this.orgDetail.city_id}`
-          );
+          const res = await axios.get(`${API_BASE_URL}/api/cities/${cityId}`);
           this.cityName = res.data?.name || '';
         } catch (e) {
           this.cityName = '';
         }
       }
       // fallback to old fields if not found
-      if (!this.cityName) this.cityName = this.orgDetail.city || '';
-      if (!this.stateName) this.stateName = this.orgDetail.state || '';
-      if (!this.countryName) this.countryName = this.orgDetail.country || '';
+      if (!this.cityName)
+        this.cityName = details.city || this.orgDetail.city || '';
+      if (!this.stateName)
+        this.stateName = details.state || this.orgDetail.state || '';
+      if (!this.countryName)
+        this.countryName = details.country || this.orgDetail.country || '';
     },
     formatDate(dateStr) {
       if (!dateStr) return '-';

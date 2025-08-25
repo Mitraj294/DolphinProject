@@ -25,9 +25,11 @@
       <table class="table">
         <TableHeader
           :columns="[
-            { label: 'Assessment Name', key: 'name' },
+            { label: 'Assessment Name', key: 'name', width: '250px' },
 
-            { label: 'Actions', key: 'actions' },
+            { label: 'Actions', key: 'actions', width: '250px' },
+            {},
+            {},
           ]"
         />
         <tbody>
@@ -670,7 +672,7 @@ export default {
           '/api/assessments',
         {
           headers: { Authorization: `Bearer ${authToken}` },
-          params: userId ? { user_id: userId } : {},
+          params: userId ? { user_id: userId, organization_id: userId } : {},
         }
       );
       if (Array.isArray(res.data.assessments)) {
@@ -784,26 +786,36 @@ export default {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: auto; /* let columns size naturally */
 }
+
 .table th,
 .table td {
   padding: 16px;
   text-align: left;
   border-bottom: 1px solid #ebebeb;
 }
+
 .table th {
   background: #f9f9f9;
   color: #333;
   font-weight: 600;
 }
+
 .table td {
   color: #555;
   font-weight: 500;
 }
+
+/* First column: fixed width for Assessment Name */
+
+/* Second column: fixed width for Actions/details */
+
+/* Responsive fallback: on narrow screens let columns wrap/size naturally */
 
 .assessment-name-cell {
   text-align: left;
@@ -977,7 +989,6 @@ export default {
   text-decoration: underline;
 }
 
-/* --- UserAssessment style import --- */
 .user-assessment-checkbox-label {
   display: flex;
   align-items: center;
@@ -992,7 +1003,6 @@ export default {
   transition: border 0.18s, background 0.18s;
   width: 100%;
   user-select: none;
-  text-align: left;
 }
 .user-assessment-checkbox-label.checked {
   background: #e6f0fa;
@@ -1019,15 +1029,14 @@ export default {
   content: '';
   display: block;
   position: absolute;
-  left: 6px;
+  left: 5px;
   top: 2px;
   width: 6px;
-  height: 12px;
+  height: 9px;
   border: solid #fff;
   border-width: 0 3px 3px 0;
   transform: rotate(45deg);
 }
-
 /* --- End UserAssessment style import --- */
 @media (max-width: 1400px) {
   .assessments-card {

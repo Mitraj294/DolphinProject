@@ -17,102 +17,108 @@
             </button>
           </div>
           <div class="table-container">
-            <table class="table">
-              <TableHeader
-                :columns="[
-                  { label: 'Contact', key: 'contact', sortable: true },
-                  { label: 'Email', key: 'email' },
-                  { label: 'Phone Number', key: 'phone' },
-                  {
-                    label: 'Organization',
-                    key: 'organization',
-                    sortable: true,
-                  },
-                  { label: 'Size', key: 'size' },
-                  { label: 'Source', key: 'source' },
-                  { label: 'Status', key: 'status' },
-                  { label: 'Notes', key: 'notes' },
-                  { label: '', key: 'actions' },
-                ]"
-                @sort="sortBy"
-              />
-              <tbody>
-                <tr
-                  v-for="(lead, idx) in paginatedLeads"
-                  :key="lead.email"
-                >
-                  <td>
-                    <span
-                      class="lead-contact-link"
-                      @click="goToLeadDetail(lead)"
-                      >{{ lead.contact }}</span
-                    >
-                  </td>
-                  <td>{{ lead.email }}</td>
-                  <td>{{ lead.phone }}</td>
-                  <td>{{ lead.organization }}</td>
-                  <td>{{ lead.size }}</td>
-                  <td>{{ lead.source }}</td>
-                  <td>{{ lead.status }}</td>
-                  <td>
-                    <button
-                      class="btn-view"
-                      @click="openNotesModal(lead, idx)"
-                    >
-                      <template v-if="lead.notesAction === 'View'">
-                        <img
-                          src="@/assets/images/Detail.svg"
-                          alt="View"
-                          class="btn-view-icon"
-                        />
-                        View
-                      </template>
-                      <template v-else>
-                        <img
-                          src="@/assets/images/AddBlack.svg"
-                          alt="Add"
-                          class="btn-view-icon"
-                        />
-                        Add
-                      </template>
-                    </button>
-                  </td>
-                  <td
-                    style="position: relative"
-                    @click.stop
+            <div class="table-scroll">
+              <table class="table">
+                <TableHeader
+                  :columns="[
+                    { label: 'Contact', key: 'contact', sortable: true },
+                    { label: 'Email', key: 'email' },
+                    { label: 'Phone Number', key: 'phone' },
+                    {
+                      label: 'Organization',
+                      key: 'organization',
+                      sortable: true,
+                    },
+                    { label: 'Size', key: 'size' },
+                    { label: 'Source', key: 'source' },
+                    { label: 'Status', key: 'status' },
+                    { label: 'Notes', key: 'notes' },
+                    { label: '', key: 'actions' },
+                  ]"
+                  @sort="sortBy"
+                />
+                <tbody>
+                  <tr
+                    v-for="(lead, idx) in paginatedLeads"
+                    :key="lead.email"
                   >
-                    <button
-                      class="leads-menu-btn"
-                      @click.stop="toggleMenu(idx)"
-                    >
-                      <img
-                        src="@/assets/images/Actions.svg"
-                        alt="Actions"
-                        width="20"
-                        height="20"
-                        class="leads-menu-icon"
-                      />
-                    </button>
-                    <div
-                      v-if="menuOpen === idx"
-                      class="leads-menu custom-leads-menu"
-                      :style="getMenuPosition($event, idx)"
-                      ref="menuDropdown"
-                      @click.stop
-                    >
-                      <div
-                        class="leads-menu-item"
-                        v-for="option in customMenuOptions"
-                        :key="option"
-                        @click="selectCustomAction(idx, option)"
+                    <td data-label="Contact">
+                      <span
+                        class="lead-contact-link"
+                        @click="goToLeadDetail(lead)"
+                        >{{ lead.contact }}</span
                       >
-                        {{ option }}
+                    </td>
+                    <td data-label="Email">{{ lead.email }}</td>
+                    <td data-label="Phone Number">{{ lead.phone }}</td>
+                    <td data-label="Organization">{{ lead.organization }}</td>
+                    <td data-label="Size">{{ lead.size }}</td>
+                    <td data-label="Source">{{ lead.source }}</td>
+                    <td data-label="Status">{{ lead.status }}</td>
+                    <td data-label="Notes">
+                      <button
+                        class="btn-view"
+                        @click="openNotesModal(lead, idx)"
+                      >
+                        <template v-if="lead.notesAction === 'View'">
+                          <img
+                            src="@/assets/images/Detail.svg"
+                            alt="View"
+                            class="btn-view-icon"
+                          />
+                          View
+                        </template>
+                        <template v-else>
+                          <img
+                            src="@/assets/images/AddBlack.svg"
+                            alt="Add"
+                            class="btn-view-icon"
+                          />
+                          Add
+                        </template>
+                      </button>
+                    </td>
+                    <td
+                      data-label="Actions"
+                      style="position: relative"
+                    >
+                      <div class="actions-row">
+                        <button
+                          class="leads-menu-btn"
+                          @click.stop="toggleMenu(idx)"
+                          aria-haspopup="true"
+                          :aria-expanded="menuOpen === idx"
+                        >
+                          <img
+                            src="@/assets/images/Actions.svg"
+                            alt="Actions"
+                            width="20"
+                            height="20"
+                            class="leads-menu-icon"
+                          />
+                        </button>
+                        <div
+                          v-if="menuOpen === idx"
+                          class="leads-menu custom-leads-menu"
+                          :style="menuStyle"
+                          ref="menuDropdown"
+                          @click.stop
+                        >
+                          <div
+                            class="leads-menu-item"
+                            v-for="option in customMenuOptions"
+                            :key="option"
+                            @click="selectCustomAction(idx, option)"
+                          >
+                            {{ option }}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
         <Pagination
@@ -172,13 +178,14 @@ export default {
   data() {
     return {
       menuOpen: null,
+      menuStyle: {},
       customMenuOptions: [
-        'Schedule Follow Up',
+        // 'Schedule Follow Up',
         'Schedule Demo',
         'Schedule Class/Training',
         'Send Assessment',
-        'Send Agreement/Payment Link',
-        'Convert to Client',
+        //'Send Agreement/Payment Link',
+        //'Convert to Client',
       ],
       leads: [],
       pageSize: 10,
@@ -253,7 +260,7 @@ export default {
             Authorization: `Bearer ${token}`,
           },
         });
-        // Transform backend data to frontend format
+        // Transform backend data to frontend format and keep notes from backend
         this.leads = response.data.map((lead) => ({
           contact: `${lead.first_name} ${lead.last_name}`,
           email: lead.email,
@@ -261,9 +268,11 @@ export default {
           organization: lead.org_name,
           size: lead.org_size,
           source: lead.find_us,
-          status: 'Lead Stage', // You can adjust this if you have a status field
-          notesAction: 'Add', // Default, can be changed if you have notes
-          notes: '', // Default, can be changed if you have notes
+          status: lead.status || 'Lead Stage',
+          // If backend provides notes field, show "View" else "Add"
+          notesAction:
+            lead.notes && String(lead.notes).trim().length ? 'View' : 'Add',
+          notes: lead.notes || '',
           ...lead,
         }));
       } catch (error) {
@@ -332,6 +341,11 @@ export default {
       this.showPageDropdown = false;
     },
     openNotesModal(lead, idx) {
+      // Close any open menu and restore scrolling
+      this.menuOpen = null;
+      try {
+        document.body.style.overflow = '';
+      } catch (e) {}
       this.currentLead = lead;
       this.currentLeadIdx = idx + (this.currentPage - 1) * this.pageSize;
       if (lead.notesAction === 'View') {
@@ -342,19 +356,63 @@ export default {
       this.notesInput = lead.notes || '';
       this.showNotesModal = true;
     },
-    submitNotes() {
-      // Logic to save notes for add
+    async submitNotes() {
+      // Save new notes (add)
       const lead = this.leads[this.currentLeadIdx];
-      lead.notes = this.notesInput;
-      lead.notesAction = 'View';
-      this.closeNotesModal();
+      if (!lead || !lead.id) {
+        // update locally and close
+        if (lead) {
+          lead.notes = this.notesInput;
+          lead.notesAction = 'View';
+        }
+        this.closeNotesModal();
+        return;
+      }
+      try {
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        await axios.patch(
+          `${API_BASE_URL}/api/leads/${lead.id}`,
+          { notes: this.notesInput },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // update local copy
+        lead.notes = this.notesInput;
+        lead.notesAction = 'View';
+      } catch (e) {
+        console.error('Failed to submit notes', e);
+        this.errorMessage = 'Failed to save notes.';
+      } finally {
+        this.closeNotesModal();
+      }
     },
-    saveNotes() {
-      // Logic to save notes for view/edit
+    async saveNotes() {
+      // Save edited notes
       const lead = this.leads[this.currentLeadIdx];
-      lead.notes = this.notesInput;
-      // notesAction remains 'View'
-      this.closeNotesModal();
+      if (!lead || !lead.id) {
+        if (lead) lead.notes = this.notesInput;
+        this.closeNotesModal();
+        return;
+      }
+      try {
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        await axios.patch(
+          `${API_BASE_URL}/api/leads/${lead.id}`,
+          { notes: this.notesInput },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        lead.notes = this.notesInput;
+      } catch (e) {
+        console.error('Failed to save notes', e);
+        this.errorMessage = 'Failed to save notes.';
+      } finally {
+        this.closeNotesModal();
+      }
     },
     closeNotesModal() {
       this.showNotesModal = false;
@@ -371,38 +429,84 @@ export default {
       }
     },
     toggleMenu(idx) {
-      this.menuOpen = this.menuOpen === idx ? null : idx;
+      const opening = this.menuOpen !== idx;
+      this.menuOpen = opening ? idx : null;
+      // Lock body scrolling when menu open
+      try {
+        document.body.style.overflow = opening ? 'hidden' : '';
+      } catch (e) {}
+      if (opening) {
+        // set initial position and attach listeners
+        this.updateMenuPosition(idx);
+        window.addEventListener('scroll', this._menuScrollHandler, {
+          passive: true,
+        });
+        window.addEventListener('resize', this._menuResizeHandler);
+      } else {
+        // closing
+        this.menuStyle = {};
+        window.removeEventListener('scroll', this._menuScrollHandler);
+        window.removeEventListener('resize', this._menuResizeHandler);
+      }
     },
-    getMenuPosition(event, idx) {
-      // Find the button and menu DOM nodes
-      const btn = event?.target?.closest('.leads-menu-btn');
+    getMenuPosition(idx) {
+      // Fallback (unused when menuStyle is set) - compute fixed coordinates
+      const buttons = document.querySelectorAll('.leads-menu-btn');
+      const btn = buttons && buttons[idx] ? buttons[idx] : null;
       if (!btn) return {};
       const rect = btn.getBoundingClientRect();
-      const menuWidth = 200; // Approximate width of menu
+      const menuWidth = 220; // menu width
       const padding = 8;
       const viewportWidth = window.innerWidth;
-      let left = rect.left;
-      let right = 'auto';
-      // If menu would overflow right, align right
-      if (rect.left + menuWidth + padding > viewportWidth) {
-        left = 'auto';
-        right = 0;
-      }
+      let left = rect.left + rect.width / 2 - menuWidth / 2;
+      left = Math.max(
+        padding,
+        Math.min(left, viewportWidth - menuWidth - padding)
+      );
+      const top = rect.bottom + window.scrollY + 8;
       return {
-        left: left !== 'auto' ? `${left}px` : 'auto',
-        right: right !== 'auto' ? `${right}px` : 'auto',
-        top: `${rect.bottom + window.scrollY}px`,
+        left: `${Math.round(left)}px`,
+        top: `${Math.round(top)}px`,
         minWidth: menuWidth + 'px',
-        zIndex: 2000,
+      };
+    },
+
+    updateMenuPosition(idx) {
+      const buttons = document.querySelectorAll('.leads-menu-btn');
+      const btn = buttons && buttons[idx] ? buttons[idx] : null;
+      if (!btn) return;
+      const rect = btn.getBoundingClientRect();
+      const menuWidth = 220;
+      const padding = 8;
+      const viewportWidth = window.innerWidth;
+      let left = rect.left + rect.width / 2 - menuWidth / 2;
+      left = Math.max(
+        padding,
+        Math.min(left, viewportWidth - menuWidth - padding)
+      );
+      const top = rect.bottom + window.scrollY + 8;
+      this.menuStyle = {
+        left: `${Math.round(left)}px`,
+        top: `${Math.round(top)}px`,
+        minWidth: menuWidth + 'px',
       };
     },
   },
   mounted() {
     document.addEventListener('click', this.handleGlobalClick);
+    // handlers for keeping menu aligned
+    this._menuScrollHandler = () => {
+      if (this.menuOpen !== null) this.updateMenuPosition(this.menuOpen);
+    };
+    this._menuResizeHandler = () => {
+      if (this.menuOpen !== null) this.updateMenuPosition(this.menuOpen);
+    };
     this.fetchLeads();
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleGlobalClick);
+    window.removeEventListener('scroll', this._menuScrollHandler);
+    window.removeEventListener('resize', this._menuResizeHandler);
   },
 };
 </script>
@@ -450,19 +554,20 @@ export default {
   display: block;
 }
 .leads-menu.custom-leads-menu {
-  position: absolute;
+  /* Use fixed positioning so the menu is never clipped by scrolling containers */
+  position: fixed !important;
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
   min-width: 180px;
-  z-index: 4000;
+  z-index: 10050;
   display: flex;
   flex-direction: column;
   padding: 4px 0;
-  right: 0;
   left: auto;
-  top: 44px;
+  right: auto;
+  top: auto;
   max-width: 90vw;
   overflow-x: visible;
 }
@@ -541,5 +646,10 @@ export default {
 .btn-view {
   min-width: 80px;
   justify-content: center;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 </style>

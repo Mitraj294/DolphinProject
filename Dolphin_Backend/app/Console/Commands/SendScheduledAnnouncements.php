@@ -29,9 +29,10 @@ class SendScheduledAnnouncements extends Command
                 if (method_exists($org, 'users')) {
                     $userIds = array_merge($userIds, $org->users()->pluck('users.id')->toArray());
                 }
-                if (!empty($org->admin_email)) {
-                    $memberEmails[] = $org->admin_email;
-                    $adminUser = \App\Models\User::where('email', $org->admin_email)->first();
+                $orgAdminEmail = $org->admin_email ?? ($org->user->email ?? null);
+                if (!empty($orgAdminEmail)) {
+                    $memberEmails[] = $orgAdminEmail;
+                    $adminUser = \App\Models\User::where('email', $orgAdminEmail)->first();
                     if ($adminUser) $userIds[] = $adminUser->id;
                 }
             }

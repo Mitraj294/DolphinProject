@@ -64,6 +64,8 @@ Route::post('/assessment/answer/{token}', [AssessmentAnswerLinkController::class
     Route::get('/users', [UserController::class, 'index']);
 // Public prefill endpoint for registration form (by lead_id or email)
     Route::get('/leads/prefill', [LeadController::class, 'prefill']);
+    // Public endpoint to fetch distinct "find_us" options from leads
+    Route::get('/leads/find-us-options', [LeadController::class, 'findUsOptions']);
     // Organization assessment questions
     Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
 

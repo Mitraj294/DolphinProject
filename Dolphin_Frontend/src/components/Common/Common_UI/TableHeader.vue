@@ -1,4 +1,23 @@
 <template>
+  <!-- Render a colgroup so callers can declare per-column widths when building the columns array.
+       Usage example (in parent): { label: 'Email', key: 'email', width: '220px' } or width: 220
+       If width is not provided, column size will be determined by content (table-layout: auto).
+  -->
+  <colgroup>
+    <col
+      v-for="(col, idx) in columns"
+      :key="'col-' + (col.key || idx)"
+      :class="col.width ? 'col-fixed' : ''"
+      :style="
+        col.width
+          ? {
+              width:
+                typeof col.width === 'number' ? col.width + 'px' : col.width,
+            }
+          : null
+      "
+    />
+  </colgroup>
   <thead>
     <tr>
       <th
@@ -7,22 +26,30 @@
         :class="[
           idx === 0 ? 'rounded-th-left' : '',
           idx === columns.length - 1 ? 'rounded-th-right' : '',
+          col.width ? 'col-fixed' : '',
         ]"
+        :role="col.sortable ? 'button' : null"
+        :tabindex="col.sortable ? 0 : null"
+        @click="col.sortable === true ? $emit('sort', col.key) : null"
+        @keyup.enter="col.sortable === true ? $emit('sort', col.key) : null"
       >
-        <span class="org-th-content">
+        <span
+          :class="[
+            'org-th-content',
+            col.sortable ? 'org-th-sortable' : '',
+            activeSortKey === col.key ? 'sorted' : '',
+          ]"
+        >
           {{ col.label }}
-          <button
+          <img
             v-if="col.sortable === true"
-            class="org-th-sort-btn"
-            type="button"
-            @click="$emit('sort', col.key)"
-          >
-            <img
-              src="@/assets/images/up-down.svg"
-              class="org-th-sort"
-              alt="Sort"
-            />
-          </button>
+            src="@/assets/images/up-down.svg"
+            :class="[
+              'org-th-sort',
+              activeSortKey === col.key ? (sortAsc ? 'asc' : 'desc') : '',
+            ]"
+            alt="Sort"
+          />
         </span>
       </th>
     </tr>
@@ -32,10 +59,21 @@
 <script>
 export default {
   name: 'TableHeader',
+  emits: ['sort'],
   props: {
     columns: {
       type: Array,
       required: true,
+    },
+    // Optional: which column is currently sorted (key)
+    activeSortKey: {
+      type: String,
+      default: null,
+    },
+    // Optional: current sort direction
+    sortAsc: {
+      type: Boolean,
+      default: true,
     },
   },
 };

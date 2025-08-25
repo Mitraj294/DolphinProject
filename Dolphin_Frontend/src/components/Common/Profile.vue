@@ -27,19 +27,19 @@
           <div class="profile-info-row">
             <div class="profile-label">First Name</div>
             <div class="profile-value">
-              {{ user.userDetails?.first_name || '' }}
+              {{ user.first_name || '' }}
             </div>
           </div>
           <div class="profile-info-row">
             <div class="profile-label">Last Name</div>
             <div class="profile-value">
-              {{ user.userDetails?.last_name || '' }}
+              {{ user.last_name || '' }}
             </div>
           </div>
           <div class="profile-info-row">
             <div class="profile-label">Email</div>
             <div class="profile-value">
-              {{ user.email || user.userDetails?.email || '' }}
+              {{ user.email || '' }}
             </div>
           </div>
           <div class="profile-info-row">
@@ -53,7 +53,7 @@
           <div class="profile-info-row">
             <div class="profile-label">Country</div>
             <div class="profile-value">
-              {{ user.country || user.userDetails?.country_id || '' }}
+              {{ countryName }}
             </div>
           </div>
           <div class="profile-info-row">
@@ -111,9 +111,10 @@
         </FormRow>
         <FormRow>
           <FormLabel>Country</FormLabel>
-          <FormInput
+          <FormDropdown
             v-model="editForm.country"
-            type="text"
+            :options="countries"
+            placeholder="Select country"
           />
         </FormRow>
         <template #actions>
@@ -231,6 +232,7 @@ import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
+import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
 import storage from '@/services/storage';
 
 export default {
@@ -242,6 +244,7 @@ export default {
     FormRow,
     FormLabel,
     FormInput,
+    FormDropdown,
   },
   setup() {
     const toast = useToast();
@@ -250,15 +253,16 @@ export default {
   data() {
     return {
       user: {
+        // Top-level name fields come from `users` table. Other profile metadata
+        // (phone, country, etc.) remain in userDetails for compatibility.
+        first_name: '',
+        last_name: '',
+        email: '',
         userDetails: {
-          first_name: '',
-          last_name: '',
-          email: '',
           phone: '',
           country: '',
         },
         roles: [],
-        email: '',
       },
       currentPassword: '',
       newPassword: '',
@@ -273,17 +277,76 @@ export default {
         last_name: '',
         email: '',
         phone: '',
-        country: '',
+        country: '', // will store country id
       },
+      countries: [],
       editMessage: '',
       profileError: '', // <-- error message for profile fetch
       profileRaw: '', // <-- raw API response for debug
     };
   },
+  computed: {
+    countryName() {
+      // prefer countries lookup
+      const raw = this.user.userDetails?.country || this.user.country || '';
+      // if raw is an object with name
+      if (raw && typeof raw === 'object') {
+        return raw.name || raw.text || '';
+      }
+      // if raw looks like a JSON string, try parse
+      if (typeof raw === 'string') {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            return parsed.name || parsed.text || '';
+          }
+        } catch (e) {
+          // not JSON
+        }
+      }
+      // lookup in countries list by id or string value
+      if (this.countries && this.countries.length) {
+        const found = this.countries.find(
+          (c) =>
+            String(c.value) === String(raw) || String(c.text) === String(raw)
+        );
+        if (found) return found.text || '';
+      }
+      // fallback to raw string/number
+      return raw || '';
+    },
+  },
   mounted() {
     this.fetchProfile();
+    this.fetchCountries();
   },
   methods: {
+    async fetchCountries() {
+      try {
+        const apiUrl =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const token = storage.get('authToken');
+        const res = await axios.get(apiUrl + '/api/countries', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        // Expect array of { id, name } or { value, text }
+        const raw = Array.isArray(res.data)
+          ? res.data
+          : res.data.countries || [];
+        this.countries = raw.map((c) => {
+          if (c.value !== undefined && c.text !== undefined)
+            return { value: String(c.value), text: c.text };
+          const val = c.id || c.value || c.code || c.name;
+          return {
+            value: val !== undefined && val !== null ? String(val) : '',
+            text: c.name || c.text || String(val),
+          };
+        });
+      } catch (e) {
+        console.error('Failed to fetch countries', e);
+        this.countries = [];
+      }
+    },
     async fetchProfile() {
       try {
         const token = storage.get('authToken');
@@ -305,10 +368,45 @@ export default {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
-        // Expect userDetails and roles in response
-        this.user = response.data;
+        // Accept multiple response shapes and normalize to { email, roles, userDetails }
+        const data = response.data;
+        this.profileRaw = JSON.stringify(data, null, 2);
+
+        // Extract candidate first/last name from multiple possible sources.
+        const userFirstFromUsers =
+          (data.user && data.user.first_name) || data.first_name || null;
+        const userLastFromUsers =
+          (data.user && data.user.last_name) || data.last_name || null;
+
+        // userDetails payload from response (may be under several keys)
+        const detailsPayload =
+          data.user_details ||
+          data.userDetails ||
+          (data.user && data.user.user_details) ||
+          {};
+
+        // prefer names from users table (top-level user object) and keep other
+        // metadata under userDetails for compatibility
+        const firstName = userFirstFromUsers || detailsPayload.first_name || '';
+        const lastName = userLastFromUsers || detailsPayload.last_name || '';
+
+        // Build normalized user object for the component
+        this.user = {
+          first_name: firstName,
+          last_name: lastName,
+          email:
+            (data.user && data.user.email) ||
+            data.email ||
+            this.user.email ||
+            '',
+          roles: data.roles || (data.user && data.user.roles) || [],
+          userDetails: Object.assign({}, detailsPayload || {}, {
+            email: (data.user && data.user.email) || data.email || '',
+            phone: detailsPayload.phone || '',
+            country: detailsPayload.country || data.country || '',
+          }),
+        };
         this.profileError = '';
-        this.profileRaw = JSON.stringify(response.data, null, 2);
       } catch (error) {
         this.user = { userDetails: {}, roles: [], email: '' };
         if (error.response && error.response.data) {
@@ -402,13 +500,60 @@ export default {
         });
       }
     },
-    editAccount() {
-      // Prefill modal form with current user data
-      this.editForm.first_name = this.user.userDetails.first_name;
-      this.editForm.last_name = this.user.userDetails.last_name;
+    async editAccount() {
+      // Prefill modal form with current user data (use top-level names)
+      this.editForm.first_name = this.user.first_name || '';
+      this.editForm.last_name = this.user.last_name || '';
       this.editForm.email = this.user.email;
-      this.editForm.phone = this.user.userDetails.phone;
-      this.editForm.country = this.user.userDetails.country;
+      this.editForm.phone = this.user.userDetails?.phone || '';
+
+      // prefill country as id if available; user.userDetails.country may be id or name
+      const rawCountry =
+        this.user.userDetails.country || this.user.country || '';
+      const countryId =
+        rawCountry !== undefined && rawCountry !== null
+          ? String(rawCountry)
+          : '';
+
+      // If countries are not yet loaded, try to load them so the dropdown can display the label
+      if (!this.countries || !this.countries.length) {
+        try {
+          await this.fetchCountries();
+        } catch (e) {
+          // fetchCountries handles errors internally; ignore here
+        }
+      }
+
+      // Try to find a matching option after ensuring countries are loaded
+      let found = null;
+      if (this.countries && this.countries.length) {
+        found = this.countries.find(
+          (c) =>
+            String(c.value) === String(countryId) ||
+            String(c.text) === String(countryId)
+        );
+      }
+
+      if (found) {
+        this.editForm.country = String(found.value);
+      } else {
+        // Provide a temporary option so FormDropdown can show a label even when the
+        // canonical country list doesn't include the current value yet.
+        const label = this.countryName || countryId || 'Select country';
+        if (countryId) {
+          const exists = (this.countries || []).some(
+            (c) => String(c.value) === String(countryId)
+          );
+          if (!exists) {
+            // append a non-destructive temporary option
+            this.countries = (this.countries || []).concat([
+              { value: countryId, text: label },
+            ]);
+          }
+        }
+        this.editForm.country = countryId;
+      }
+
       this.editMessage = '';
       this.showEditModal = true;
     },
@@ -427,17 +572,46 @@ export default {
           });
           return;
         }
+        // ensure country is a primitive (id or code) before sending
+        let countryToSend = this.editForm.country;
+        if (countryToSend && typeof countryToSend === 'object') {
+          countryToSend =
+            countryToSend.value ||
+            countryToSend.id ||
+            countryToSend.code ||
+            countryToSend.name ||
+            '';
+        }
+        // backend expects a string for country field; send id as string
+        if (countryToSend !== undefined && countryToSend !== null) {
+          countryToSend = String(countryToSend);
+        } else {
+          countryToSend = '';
+        }
+
+        // send structured payload so backend can update `users` and `user_details` tables and organizations.admin_email
+        const payload = {
+          user: {
+            email: this.editForm.email,
+          },
+          user_details: {
+            first_name: this.editForm.first_name,
+            last_name: this.editForm.last_name,
+            phone: this.editForm.phone,
+            country: countryToSend,
+          },
+          // also update admin_email in organizations table (backend should handle this field)
+          admin_email: this.editForm.email,
+        };
+
+        // helpful debug output when validation fails
+        console.log('Updating profile with payload:', payload);
+
         const response = await axios.patch(
           `${
             process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
           }/api/profile`,
-          {
-            first_name: this.editForm.first_name,
-            last_name: this.editForm.last_name,
-            email: this.editForm.email,
-            phone: this.editForm.phone,
-            country: this.editForm.country,
-          },
+          payload,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -445,21 +619,51 @@ export default {
             },
           }
         );
-        // Update local user data and encrypted storage
-        this.user.userDetails.first_name = response.data.user.first_name;
-        this.user.userDetails.last_name = response.data.user.last_name;
-        this.user.email = response.data.user.email;
-        this.user.userDetails.phone = response.data.user.phone;
-        this.user.userDetails.country = response.data.user.country;
-        storage.set('first_name', this.user.userDetails.first_name);
-        storage.set('last_name', this.user.userDetails.last_name);
+        // Update local user data and encrypted storage from response (handle multiple shapes)
+        const res = response.data || {};
+        // response may contain { user, user_details } or merged user object
+        const resUser = res.user || res;
+        const resDetails =
+          res.user_details ||
+          res.userDetails ||
+          res.user_details ||
+          res.user_details ||
+          (res.user && res.user.user_details) ||
+          {};
+
+        // Update top-level name fields when backend returns them, otherwise
+        // fall back to the editForm values (backend should update users table)
+        this.user.email =
+          resUser.email || this.editForm.email || this.user.email;
+        this.user.first_name =
+          resUser.first_name ||
+          (resDetails && resDetails.first_name) ||
+          this.editForm.first_name ||
+          this.user.first_name;
+        this.user.last_name =
+          resUser.last_name ||
+          (resDetails && resDetails.last_name) ||
+          this.editForm.last_name ||
+          this.user.last_name;
+        this.user.userDetails = Object.assign(
+          {},
+          this.user.userDetails || {},
+          resDetails || {},
+          {
+            phone: (resDetails && resDetails.phone) || this.editForm.phone,
+            country: (resDetails && resDetails.country) || countryToSend,
+          }
+        );
+        // Persist top-level names to storage for Navbar and other components
+        storage.set('first_name', this.user.first_name);
+        storage.set('last_name', this.user.last_name);
         storage.set('email', this.user.email);
         storage.set('phone', this.user.userDetails.phone);
         storage.set('country', this.user.userDetails.country);
         // Also update the full user object for Navbar
         storage.set('user', {
-          first_name: this.user.userDetails.first_name,
-          last_name: this.user.userDetails.last_name,
+          first_name: this.user.first_name,
+          last_name: this.user.last_name,
           email: this.user.email,
           role: this.user.role,
           country: this.user.userDetails.country,
@@ -478,9 +682,25 @@ export default {
       } catch (error) {
         let msg = 'Failed to update profile.';
         if (error.response && error.response.data) {
-          msg =
-            error.response.data.message ||
-            Object.values(error.response.data).join(' ');
+          const data = error.response.data;
+          // Laravel validation errors are under data.errors
+          if (data.errors && typeof data.errors === 'object') {
+            const msgs = [];
+            Object.values(data.errors).forEach((v) => {
+              if (Array.isArray(v)) msgs.push(...v);
+              else msgs.push(String(v));
+            });
+            msg = msgs.join(' ');
+          } else if (data.message) {
+            msg = data.message;
+          } else {
+            try {
+              msg = JSON.stringify(data);
+            } catch (e) {
+              msg = String(data);
+            }
+          }
+          console.error('Profile update error response:', data);
         }
         this.editMessage = msg;
         this.toast.add({

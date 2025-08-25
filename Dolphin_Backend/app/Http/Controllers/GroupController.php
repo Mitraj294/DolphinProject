@@ -21,7 +21,17 @@ class GroupController extends Controller
             return response()->json($groups);
         } elseif ($role->name === 'organizationadmin') {
             // organizationadmin: return groups belonging to the admin's organization
+            // determine organization id with fallback to Organization.user_id
             $orgId = $user->organization_id;
+            if (!$orgId) {
+                $org = \App\Models\Organization::where('user_id', $user->id)->first();
+                if ($org) {
+                    $orgId = $org->id;
+                }
+            }
+            if (!$orgId) {
+                return response()->json(['error' => 'Organization not found for user.'], 400);
+            }
             $groups = Group::with('members')->where('organization_id', $orgId)->get();
             return response()->json($groups);
         } else {
@@ -36,7 +46,17 @@ class GroupController extends Controller
         if (!$role || $role->name !== 'organizationadmin') {
             return response()->json(['error' => 'Unauthorized. Only organizationadmin can create groups.'], 403);
         }
-    $orgId = $user->organization_id;
+        // determine organization id with fallback to Organization.user_id
+        $orgId = $user->organization_id;
+        if (!$orgId) {
+            $org = \App\Models\Organization::where('user_id', $user->id)->first();
+            if ($org) {
+                $orgId = $org->id;
+            }
+        }
+        if (!$orgId) {
+            return response()->json(['error' => 'Organization not found for user.'], 400);
+        }
         $rules = [
             'name' => 'required|string|max:255',
             'member_ids' => 'array',
@@ -44,6 +64,8 @@ class GroupController extends Controller
         ];
         $validated = $request->validate($rules);
     $validated['organization_id'] = $orgId;
+    // record which user (admin) created this group
+    $validated['user_id'] = $user->id;
         $memberIds = $request->input('member_ids', []);
         $group = Group::create($validated);
         if (!empty($memberIds)) {

@@ -5,8 +5,8 @@ This repository contains both the backend (Laravel) and frontend (Vue.js) applic
 ## Structure
 
 ```
-Dolphin_backend/   # Laravel PHP backend
-Dolphin_frontend/  # Vue.js frontend
+Dolphin_Backend/   # Laravel PHP backend
+Dolphin_Frontend/  # Vue.js frontend
 ```
 
 - Use the provided `start-dev.sh` script to run both servers for development.
@@ -32,3 +32,27 @@ sdolphin632@gmail.com
 git add .
 git commit -m "daily update"
 git push
+
+
+//////////////
+
+need to fix auth
+unread
+then super admin subscription thing also m,ange subscription and need to fix its paths and routes also
+notifications date wise filter
+role organizationadmin show this with proper name
+
+Notification VIEW DETAILS PAGE
+in NOTES LEADS INDEXING PROBLEM
+
+
+show billing details in http://127.0.0.1:8080/organizations/billing-details?orgName=test
+with id and for particular organization in superadmin dashboard
+
+
+in pagination svg filter for disable and enable icons
+
+in user + permission management edit user role style
+
+  v-if="roleName !== 'superadmin'"
+  also add salseperson and dolphinadminrole here

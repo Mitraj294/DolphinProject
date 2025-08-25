@@ -24,10 +24,10 @@
                   <span>Admin Email</span><b>{{ leadData.email }}</b>
                 </div>
                 <div class="lead-detail-list-row">
-                  <span>Admin Phone #</span><b>{{ leadData.phone }}</b>
+                  <span>Admin Phone</span><b>{{ leadData.phone }}</b>
                 </div>
                 <div class="lead-detail-list-row">
-                  <span>Sales Person</span><b>John</b>
+                  <span>Sales Person</span><b></b>
                 </div>
                 <div class="lead-detail-list-row">
                   <span>Source</span><b>{{ leadData.source }}</b>
@@ -40,29 +40,91 @@
             <div class="lead-detail-col lead-detail-col-right">
               <h3 class="lead-detail-section-title">Organization Detail</h3>
               <div class="lead-detail-list-card lead-detail-list-card--box">
-                <div class="lead-detail-list-row">
-                  <span>Organization Name</span
-                  ><b>{{ leadData.organization }}</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Organization Size</span>
-                  <b>{{ leadData.size }}</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Contract Start</span><b>Jun 18, 2024</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Contract End</span><b>Jun 18, 2025</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Address</span>
-                  <b>
-                    <template v-if="addressDisplay.length">
-                      {{ addressDisplay.join(', ') }}
-                    </template>
-                    <template v-else>N/A</template>
-                  </b>
-                </div>
+                <template v-if="organizationChecked && isOrganizationCreated">
+                  <div class="lead-detail-list-row">
+                    <span>Organization Name</span
+                    ><b>{{
+                      orgData.name || orgData.org_name || leadData.organization
+                    }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Organization Size</span>
+                    <b>{{
+                      orgData.size || orgData.org_size || leadData.size
+                    }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Primary User</span>
+                    <b>{{
+                      orgUser?.name ||
+                      orgUser?.full_name ||
+                      (orgUserDetails &&
+                        orgUserDetails.first_name +
+                          ' ' +
+                          orgUserDetails.last_name) ||
+                      'N/A'
+                    }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Primary Email</span>
+                    <b>{{
+                      orgUser?.email || orgUserDetails?.email || 'N/A'
+                    }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Address</span>
+                    <b>
+                      <template
+                        v-if="
+                          orgData &&
+                          (orgData.address ||
+                            orgData.city ||
+                            orgData.state ||
+                            orgData.zip ||
+                            orgData.country)
+                        "
+                      >
+                        {{
+                          [
+                            orgData.address,
+                            orgData.city,
+                            orgData.state,
+                            orgData.zip,
+                            orgData.country,
+                          ]
+                            .filter(Boolean)
+                            .join(', ')
+                        }}
+                      </template>
+                      <template v-else>N/A</template>
+                    </b>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="lead-detail-list-row">
+                    <span>Organization Name</span
+                    ><b>{{ leadData.organization }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Organization Size</span>
+                    <b>{{ leadData.size }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Contract Start</span><b></b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Contract End</span><b></b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Address</span>
+                    <b>
+                      <template v-if="addressDisplay.length">
+                        {{ addressDisplay.join(', ') }}
+                      </template>
+                      <template v-else>N/A</template>
+                    </b>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -106,6 +168,12 @@ export default {
       countryName: '',
       stateName: '',
       cityName: '',
+      // organization related
+      orgData: null,
+      orgUser: null,
+      orgUserDetails: null,
+      isOrganizationCreated: false,
+      organizationChecked: false,
     };
   },
   computed: {
@@ -172,6 +240,71 @@ export default {
         this.cityName = this.leadData.city || '';
       }
     },
+    async fetchOrganizationIfExists() {
+      // Assumptions: backend exposes /api/organizations/:id and /api/users/:id and /api/user-details/:id
+      // Detect organisation id on the lead as organization_id, org_id or organizationId
+      this.organizationChecked = false;
+      this.orgData = null;
+      this.orgUser = null;
+      this.orgUserDetails = null;
+      this.isOrganizationCreated = false;
+      const orgId =
+        this.localLead.organization_id ||
+        this.localLead.org_id ||
+        this.localLead.organizationId ||
+        null;
+      const userId =
+        this.localLead.user_id ||
+        this.localLead.userId ||
+        this.localLead.owner_id ||
+        null;
+      if (!orgId) {
+        this.isOrganizationCreated = false;
+        this.organizationChecked = true;
+        return;
+      }
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        // fetch organization
+        const orgRes = await axios.get(
+          `${API_BASE_URL}/api/organizations/${orgId}`,
+          { headers }
+        );
+        this.orgData = orgRes.data || null;
+        this.isOrganizationCreated = !!this.orgData;
+        // fetch user and user details if userId present
+        if (userId) {
+          try {
+            const userRes = await axios.get(
+              `${API_BASE_URL}/api/users/${userId}`,
+              { headers }
+            );
+            this.orgUser = userRes.data || null;
+          } catch (e) {
+            this.orgUser = null;
+          }
+          try {
+            const detailsRes = await axios.get(
+              `${API_BASE_URL}/api/user-details/${userId}`,
+              { headers }
+            );
+            this.orgUserDetails = detailsRes.data || null;
+          } catch (e) {
+            this.orgUserDetails = null;
+          }
+        }
+      } catch (e) {
+        // organization not found or request failed
+        this.orgData = null;
+        this.isOrganizationCreated = false;
+      } finally {
+        this.organizationChecked = true;
+      }
+    },
   },
   async created() {
     // If id is present, fetch lead details from backend
@@ -212,6 +345,7 @@ export default {
             if (this.localLead[f] === undefined) this.localLead[f] = '';
           });
           await this.lookupLocationNames();
+          await this.fetchOrganizationIfExists();
           return;
         }
       } catch (e) {
@@ -253,6 +387,7 @@ export default {
         if (this.localLead[f] === undefined) this.localLead[f] = '';
       });
       await this.lookupLocationNames();
+      await this.fetchOrganizationIfExists();
     }
   },
   watch: {
@@ -280,6 +415,7 @@ export default {
             if (this.localLead[f] === undefined) this.localLead[f] = '';
           });
           this.lookupLocationNames();
+          this.fetchOrganizationIfExists();
         }
       },
       deep: true,
@@ -288,6 +424,7 @@ export default {
       handler(newLead) {
         this.localLead = { ...newLead };
         this.lookupLocationNames();
+        this.fetchOrganizationIfExists();
       },
       deep: true,
     },

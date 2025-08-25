@@ -7,19 +7,7 @@
       >
         Members Listing
       </button>
-      <button class="my-org-secondary">
-        <img
-          src="@/assets/images/Templates.svg"
-          alt="Template"
-          style="
-            width: 18px;
-            height: 18px;
-            margin-right: 6px;
-            vertical-align: middle;
-          "
-        />
-        Template
-      </button>
+
       <button
         class="my-org-primary"
         @click="openAddGroupModal"
@@ -403,19 +391,8 @@ export default {
   flex-wrap: wrap;
 }
 
-/* Medium screens: 2x2 grid */
-@media (max-width: 900px) {
-  .my-org-action-buttons {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px 12px;
-    justify-items: stretch;
-    align-items: stretch;
-  }
-}
-
 /* Small screens: column */
-@media (max-width: 600px) {
+@media (max-width: 650px) {
   .my-org-action-buttons {
     display: flex;
     flex-direction: column;
@@ -430,6 +407,7 @@ export default {
   font-family: 'Helvetica Neue LT Std', Helvetica, Arial, sans-serif;
   font-weight: 500;
   font-size: 15px;
+
   padding: 8px 24px 8px 16px;
   display: flex;
   align-items: center;
@@ -444,6 +422,7 @@ export default {
   min-width: 0;
   max-width: none;
   overflow: visible;
+  border: 1px solid #e6e6e6;
 }
 .my-org-primary {
   background: #0164a5;
@@ -455,7 +434,7 @@ export default {
 }
 .my-org-secondary {
   background: #f5f5f5;
-  color: #888;
+  color: #000000;
 }
 
 .my-org-action-buttons .my-org-secondary:nth-child(2) {

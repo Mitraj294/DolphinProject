@@ -327,6 +327,12 @@ export default {
         } else {
           storage.set('userName', data.impersonated_name);
         }
+        // Notify other parts of the app (same-window) that auth info changed
+        try {
+          window.dispatchEvent(new Event('auth-updated'));
+        } catch (e) {
+          // ignore
+        }
         // Reload to apply new context
         this.$router.go(0);
       } catch (e) {
@@ -352,6 +358,9 @@ export default {
       storage.remove('superLastName');
       storage.remove('superUserName');
       this.$router.go(0);
+      try {
+        window.dispatchEvent(new Event('auth-updated'));
+      } catch (e) {}
     },
 
     async fetchUsers() {

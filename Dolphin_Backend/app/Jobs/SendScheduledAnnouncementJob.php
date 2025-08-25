@@ -28,10 +28,55 @@ if ($this->announcement->sent_at) {
     \Log::info('[Job] Announcement already sent, skipping', ['announcement_id' => $this->announcement->id]);
     return;
 }
-    // Admins (safe pluck)
-    $userIds = array_merge($userIds, $this->safePluckUserIds($this->announcement->admins()));
+        // Determine attachment types early. If this is a pure group-only
+        // announcement (groups attached, no organizations), take a fast-path
+        // that only collects group member emails and sends mail. This avoids
+        // collecting any user IDs or creating DB notifications for group
+        // members.
+        $hasGroups = $this->announcement->groups && $this->announcement->groups->isNotEmpty();
+        $hasOrgs = $this->announcement->organizations && $this->announcement->organizations->isNotEmpty();
+        if ($hasGroups && !$hasOrgs) {
+            // collect group member emails
+            foreach ($this->announcement->groups as $group) {
+                if (method_exists($group, 'members')) {
+                    try {
+                        $emails = $group->members()->pluck('email')->toArray();
+                        $memberEmails = array_merge($memberEmails, $emails);
+                    } catch (\Exception $e) {
+                        \Log::warning('[Job] Failed to pluck group members (group-only fast-path)', ['group_id' => $group->id, 'error' => $e->getMessage()]);
+                    }
+                }
+            }
+            $memberEmails = array_values(array_unique(array_filter($memberEmails)));
+            \Log::info('Announcement job member emails (group-only)', ['member_emails' => $memberEmails]);
 
-        // Organizations: include org users (if any) and org admin_email as member email
+            // Send mail-only to group member emails
+            foreach ($memberEmails as $email) {
+                $email = trim((string)$email);
+                if (empty($email)) continue;
+                if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    try {
+                        Notification::route('mail', $email)->notify(new GeneralNotification($this->announcement));
+                        \Log::info('[Job] Mail sent to member (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+                    } catch (\Exception $e) {
+                        \Log::error('[Job] Failed to send mail to member (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email, 'error' => $e->getMessage()]);
+                    }
+                } else {
+                    \Log::warning('[Job] Skipping invalid member email (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+                }
+            }
+
+            // mark sent and exit
+            $this->announcement->sent_at = now();
+            $this->announcement->save();
+            \Log::info('[Job] Announcement group-only fast-path completed', ['announcement_id' => $this->announcement->id]);
+            return;
+        }
+    // NOTE: Only include announcement-level admins when organizations are
+    // attached. This prevents announcement admins (or stale pivot rows)
+    // from causing DB notifications for pure group-only announcements.
+
+    // Organizations: include org users (if any) and org admin_email as member email
         foreach ($this->announcement->organizations as $org) {
             if (method_exists($org, 'users')) {
                 $orgUserIds = $this->safePluckUserIds($org->users());
@@ -41,9 +86,10 @@ if ($this->announcement->sent_at) {
                 }
                 $userIds = array_merge($userIds, $orgUserIds);
             }
-            if (!empty($org->admin_email)) {
-                $memberEmails[] = $org->admin_email;
-                $adminUser = \App\Models\User::where('email', $org->admin_email)->first();
+            $orgAdminEmail = $org->admin_email ?? ($org->user->email ?? null);
+            if (!empty($orgAdminEmail)) {
+                $memberEmails[] = $orgAdminEmail;
+                $adminUser = \App\Models\User::where('email', $orgAdminEmail)->first();
                 if ($adminUser) {
                     $userIds[] = $adminUser->id;
                 }
@@ -53,17 +99,32 @@ if ($this->announcement->sent_at) {
             // group members here unless those groups were explicitly selected.
         }
 
-        // For each selected group: collect member emails and user ids (if linked)
-        // Only collect group member emails if groups are attached to the announcement
-        if ($this->announcement->groups && $this->announcement->groups->isNotEmpty()) {
+        // For each selected group: collect member emails and optionally user ids
+        // Behavior: if this announcement is group-only (no organizations attached)
+        // we must NOT add group members' user_ids into $userIds (to avoid
+        // creating DB notifications for group members). We still collect their
+        // emails for mail-only sending. If organizations are also attached
+        // (mixed case), it's acceptable to include member user_ids so they
+        // receive DB notifications as part of the org flow.
+        $hasGroups = $this->announcement->groups && $this->announcement->groups->isNotEmpty();
+        $hasOrgs = $this->announcement->organizations && $this->announcement->organizations->isNotEmpty();
+
+        // If organizations are attached, include announcement admins as DB recipients.
+        if ($hasOrgs) {
+            $userIds = array_merge($userIds, $this->safePluckUserIds($this->announcement->admins()));
+        }
+        if ($hasGroups) {
             foreach ($this->announcement->groups as $group) {
                 if (method_exists($group, 'members')) {
                     try {
                         $emails = $group->members()->pluck('email')->toArray();
                         $memberEmails = array_merge($memberEmails, $emails);
-                        // collect any linked user ids from members (if present)
-                        $memberUserIds = $group->members()->whereNotNull('user_id')->pluck('user_id')->toArray();
-                        $userIds = array_merge($userIds, $memberUserIds);
+                        // Only include linked user ids for mixed (org+group) sends;
+                        // skip adding user ids for pure group-only announcements.
+                        if ($hasOrgs) {
+                            $memberUserIds = $group->members()->whereNotNull('user_id')->pluck('user_id')->toArray();
+                            $userIds = array_merge($userIds, $memberUserIds);
+                        }
                     } catch (\Exception $e) {
                         \Log::warning('[Job] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
                     }
