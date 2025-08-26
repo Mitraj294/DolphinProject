@@ -461,6 +461,36 @@ export default {
     },
   },
   methods: {
+    // Resolve organization id: try storage first, then ask backend for the
+    // authenticated user's organization and persist it to storage.
+    async resolveOrgId() {
+      const fromStorage =
+        storage.get('organization_id') || storage.get('organizationId') || null;
+      if (fromStorage) return fromStorage;
+      // Try to fetch from authenticated user endpoint (available at /api/user)
+      const token = storage.get('authToken');
+      if (!token) return null;
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await axios.get(`${API_BASE_URL}/api/user`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        // backend may return user object under res.data.user or res.data directly
+        const user = res.data && res.data.user ? res.data.user : res.data;
+        const orgId =
+          (user &&
+            (user.organization_id || user.organizationId || user.org_id)) ||
+          null;
+        if (orgId) {
+          storage.set('organization_id', orgId);
+          return orgId;
+        }
+      } catch (e) {
+        // ignore and return null
+      }
+      return null;
+    },
     async openScheduleDetails(item) {
       // Fetch schedule details from backend
       try {
@@ -558,12 +588,17 @@ export default {
       }
       try {
         const authToken = storage.get('authToken');
+        // Determine organization id from storage or backend
+        const orgId = await this.resolveOrgId();
         const res = await axios.post(
           (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
             '/api/assessments',
           {
             name: this.newAssessment.name,
             question_ids: this.newAssessment.selectedQuestionIds,
+            // include organization_id so backend persists it and the assessment
+            // will be visible when listing by organization
+            organization_id: orgId,
           },
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
@@ -666,13 +701,21 @@ export default {
     try {
       const authToken = storage.get('authToken');
       const userId = storage.get('user_id');
+      // Determine organization id from storage or backend
+      const orgId = await this.resolveOrgId();
+
       // Fetch assessments
+      const params = orgId
+        ? { organization_id: orgId }
+        : userId
+        ? { user_id: userId }
+        : {};
       const res = await axios.get(
         (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
           '/api/assessments',
         {
           headers: { Authorization: `Bearer ${authToken}` },
-          params: userId ? { user_id: userId, organization_id: userId } : {},
+          params,
         }
       );
       if (Array.isArray(res.data.assessments)) {

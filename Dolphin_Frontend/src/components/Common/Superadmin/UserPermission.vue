@@ -44,7 +44,7 @@
                   </td>
                   <td>{{ user.email }}</td>
                   <td>
-                    {{ user.role.charAt(0).toUpperCase() + user.role.slice(1) }}
+                    {{ formatRoleLabel(user.role) }}
                   </td>
                   <td class="actions actions-scroll">
                     <div class="actions-row">
@@ -145,23 +145,12 @@
     </FormRow>
     <FormRow>
       <FormLabel>Role</FormLabel>
-      <select
+      <FormDropdown
         v-model="editUser.role"
-        required
-        class="form-input"
-        style="
-          width: 100%;
-          height: 44px;
-          padding: 0 12px;
-          border-radius: 8px;
-          border: 1.5px solid #e0e0e0;
-        "
-      >
-        <option value="organizationadmin">Organization Admin</option>
-        <option value="Dolphinadmin">Dolphin Admin</option>
-        <option value="salesperson">Sales Person</option>
-        <option value="user">User</option>
-      </select>
+        :options="roleOptions"
+        placeholder="Select role"
+        :padding-left="16"
+      />
     </FormRow>
 
     <template #actions>
@@ -183,8 +172,10 @@ import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
+import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+import { formatRole } from '@/utils/roles';
 export default {
   name: 'UserPermission',
   components: {
@@ -195,6 +186,7 @@ export default {
     FormRow,
     FormLabel,
     FormInput,
+    FormDropdown,
     Toast,
   },
   data() {
@@ -215,6 +207,13 @@ export default {
         email: '',
         role: '',
       },
+      // Centralized role options for consistent UI
+      roleOptions: [
+        { value: 'organizationadmin', text: 'Organization Admin' },
+        { value: 'dolphinadmin', text: 'Dolphin Admin' },
+        { value: 'salesperson', text: 'Sales Person' },
+        { value: 'user', text: 'User' },
+      ],
     };
   },
   setup() {
@@ -259,6 +258,14 @@ export default {
     },
   },
   methods: {
+    // Expose formatRole to the template
+    formatRole(role) {
+      return formatRole(role);
+    },
+    // Template wrapper for compatibility with templates
+    formatRoleLabel(role) {
+      return formatRole(role);
+    },
     getAuthHeaders() {
       const storage = require('@/services/storage').default;
       const token = storage.get('authToken');
@@ -378,7 +385,7 @@ export default {
           first_name: u.first_name || '',
           last_name: u.last_name || '',
           email: u.email || '',
-          role: u.role || 'user',
+          role: (u.role || 'user').toString().toLowerCase(),
           name:
             u.first_name || u.last_name
               ? `${u.first_name || ''}${u.last_name ? ' ' + u.last_name : ''}`

@@ -3,7 +3,7 @@
     <div class="page">
       <div class="lead-capture-outer">
         <div class="lead-capture-card">
-          <h3 class="lead-capture-card-title">Edit Lead Details</h3>
+          <h3 class="lead-capture-card-title">Edit Lead</h3>
           <form
             class="lead-capture-form"
             @submit.prevent="handleUpdateLead"
@@ -226,37 +226,48 @@ export default {
   async created() {
     // Fetch countries on mount
     await this.fetchCountries();
-    // Prefill form from backend if id is present, else from query params
+    // Prefill form from backend if id is present in params or query
     const q = this.$route.query;
-    const leadId = q.id;
+    const leadId = this.$route.params.id || q.id;
     if (leadId) {
       try {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
-        const res = await axios.get(`${API_BASE_URL}/api/leads`, {
+        const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const found = Array.isArray(res.data)
-          ? res.data.find((l) => l.id == leadId)
-          : null;
-        if (found) {
-          this.form.first_name = found.first_name || '';
-          this.form.last_name = found.last_name || '';
-          this.form.email = found.email || '';
-          this.form.phone = found.phone || '';
-          this.form.find_us = found.find_us || '';
-          this.form.org_name = found.org_name || '';
-          this.form.org_size = found.org_size || '';
-          this.form.address = found.address || '';
-          this.form.country_id = found.country_id || null;
-          this.form.state_id = found.state_id || null;
-          this.form.city_id = found.city_id || null;
-          this.form.zip = found.zip || '';
+        const payload = res.data || null;
+        const leadObj = payload && payload.lead ? payload.lead : payload;
+        if (leadObj) {
+          this.form.first_name = leadObj.first_name || '';
+          this.form.last_name = leadObj.last_name || '';
+          this.form.email = leadObj.email || '';
+          this.form.phone = leadObj.phone || '';
+          this.form.find_us = leadObj.find_us || '';
+          this.form.org_name = leadObj.org_name || '';
+          this.form.org_size = leadObj.org_size || '';
+          this.form.address = leadObj.address || '';
+          this.form.country_id = leadObj.country_id || null;
+          this.form.state_id = leadObj.state_id || null;
+          this.form.city_id = leadObj.city_id || null;
+          this.form.zip = leadObj.zip || '';
           // Fetch states and cities for selected country/state
           if (this.form.country_id) await this.fetchStates();
           if (this.form.state_id) await this.fetchCities();
+          // set navbar override
+          this.$nextTick(() => {
+            const name = `${this.form.first_name || ''} ${
+              this.form.last_name || ''
+            }`.trim();
+            if (this.$root && this.$root.$emit) {
+              this.$root.$emit(
+                'page-title-override',
+                name ? `Edit Lead : ${name}` : 'Edit Lead'
+              );
+            }
+          });
           return;
         }
       } catch (e) {
@@ -380,7 +391,7 @@ export default {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
 
-        const leadId = this.$route.query.id;
+        const leadId = this.$route.params.id || this.$route.query.id;
         if (!leadId) {
           this.errorMessage = 'Lead ID not found in route query.';
           this.loading = false;

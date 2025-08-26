@@ -77,6 +77,19 @@ class AuthController extends Controller
             $user->roles()->sync([$role->id]);
         }
 
+        // Try to find a corresponding lead by this email and mark it as Registered
+        try {
+            $lead = \App\Models\Lead::where('email', $user->email)->first();
+            if ($lead) {
+                $lead->status = 'Registered';
+                $lead->registered_at = now();
+                $lead->save();
+            }
+        } catch (\Exception $e) {
+            // Log but don't block registration success
+            Log::warning('Failed to update lead status to Registered after user registration', ['email' => $user->email, 'error' => $e->getMessage()]);
+        }
+
         return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
     }
 
@@ -109,6 +122,7 @@ class AuthController extends Controller
         $role = $user->roles->first()->name ?? 'user';
     $details = $user->userDetails;
         // Persist last_contacted (date+time) on the user's organization for real logins
+        $org = null;
         try {
             // Resolve organization via direct query to avoid eager-loading cycles
             $org = Organization::where('user_id', $user->id)->first();
@@ -136,6 +150,8 @@ class AuthController extends Controller
                 'country' => $details->country ?? '',
                 'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
                 'userDetails' => $details,
+                // Include organization_id for frontend convenience (may be null)
+                'organization_id' => $org ? $org->id : null,
             ],
 
         ]);
@@ -156,6 +172,8 @@ class AuthController extends Controller
         $user = User::with(['userDetails', 'roles'])->find($user->id);
         $role = $user->roles->first()->name ?? 'user';
         $details = $user->userDetails;
+        // Resolve organization id for the profile response
+        $org = Organization::where('user_id', $user->id)->first();
         return response()->json([
             'id' => $user->id,
             'email' => $user->email,
@@ -169,6 +187,7 @@ class AuthController extends Controller
                 'country' => $details->country ? $details->country->name : '',
                 'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
                 'userDetails' => $details,
+                'organization_id' => $org ? $org->id : null,
         ]);
     }
 
@@ -373,7 +392,9 @@ class AuthController extends Controller
         $user = User::with(['userDetails', 'roles'])->find($user->id);
         $role = $user->roles->first()->name ?? 'user';
         $details = $user->userDetails;
-        return response()->json([
+    // Resolve organization id for the convenience endpoint
+    $org = Organization::where('user_id', $user->id)->first();
+    return response()->json([
             'id' => $user->id,
             'email' => $user->email,
             'role' => $role,
@@ -385,6 +406,7 @@ class AuthController extends Controller
                 'country' => $details->country ?? '',
                 'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
                 'userDetails' => $details,
+        'organization_id' => $org ? $org->id : null,
         ]);
     }
 

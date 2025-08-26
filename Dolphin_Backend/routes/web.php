@@ -12,3 +12,10 @@ Route::get('password/reset/{token}', function ($token) {
     // Redirect to frontend reset page with token and email as query params
     return redirect("http://127.0.0.1:8080/reset-password?token=$token&email=$email");
 })->name('password.reset');
+
+// Provide a simple named login route so calls to route('login') during
+// authentication/exception handling don't throw a RouteNotFoundException.
+// This redirects to the frontend login page.
+Route::get('/login', function () {
+    return redirect('http://127.0.0.1:8080/login');
+})->name('login');

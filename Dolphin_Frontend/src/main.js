@@ -17,7 +17,7 @@ import 'primevue/resources/primevue.min.css'; // Core PrimeVue styles
 // Font Awesome and PrimeIcons
 import 'primeicons/primeicons.css'; // PrimeIcons for PrimeVue components
 import '@fortawesome/fontawesome-free/css/all.min.css'; // Font Awesome for your custom icons
-
+import 'primeflex/primeflex.css';
 const app = createApp(App);
 
 

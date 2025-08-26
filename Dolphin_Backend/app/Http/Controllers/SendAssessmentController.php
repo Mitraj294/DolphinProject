@@ -4,8 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
-use App\Notifications\LeadAssessmentRegistrationNotification;
+use Illuminate\Support\Facades\Mail;
 use App\Models\Lead;
 
 class SendAssessmentController extends Controller
@@ -57,14 +56,27 @@ class SendAssessmentController extends Controller
                 return response()->json(['error' => 'Invalid recipient email'], 400);
             }
 
-            Notification::route('mail', $to)
-                ->notify(new LeadAssessmentRegistrationNotification(
-                    $registrationUrl,
-                    $validated['name'],
-                    $validated['body'],
-                    $validated['subject']
-                ));
-            Log::info('Notification sent', ['to' => $validated['to']]);
+            // Send email directly using Blade view `emails.lead_registration`
+            Mail::send('emails.lead_registration', [
+                'registrationUrl' => $registrationUrl,
+                'body' => $validated['body'] ?? null,
+            ], function ($message) use ($to, $validated) {
+                $message->to($to)
+                    ->subject($validated['subject'] ?: 'Complete Your Registration');
+            });
+            Log::info('Mail sent', ['to' => $validated['to']]);
+
+            // If we have a lead record, mark it as Assessment Sent
+            try {
+                if ($lead) {
+                    $lead->status = 'Assessment Sent';
+                    $lead->assessment_sent_at = now();
+                    $lead->save();
+                }
+            } catch (\Exception $e) {
+                // Don't fail the request if status update fails; just log it
+                Log::error('Failed to update lead status after sending assessment', ['error' => $e->getMessage(), 'lead_id' => $lead ? $lead->id : null]);
+            }
 
             return response()->json(['message' => 'Assessment email sent successfully.']);
         } catch (\Exception $e) {

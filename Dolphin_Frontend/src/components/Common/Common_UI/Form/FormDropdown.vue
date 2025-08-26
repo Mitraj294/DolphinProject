@@ -17,6 +17,7 @@
       class="form-input-with-icon"
       @click="toggleDropdown"
       :disabled="disabled"
+      :style="inputStyle"
     />
     <span class="form-dropdown-chevron">
       <i class="fas fa-chevron-down"></i>
@@ -51,6 +52,9 @@ export default {
     icon: { type: String, default: '' },
     placeholder: { type: String, default: 'Select' },
     disabled: { type: Boolean, default: false },
+    // allow callers to override horizontal padding in px (left/right)
+    paddingLeft: { type: [Number, String], default: 36 },
+    paddingRight: { type: [Number, String], default: 36 },
   },
   data() {
     return {
@@ -66,6 +70,12 @@ export default {
       }
       // fallback for slot
       return this.placeholder;
+    },
+    inputStyle() {
+      // ensure numeric value and append 'px'
+      const left = Number(this.paddingLeft) || 36;
+      const right = Number(this.paddingRight) || 36;
+      return { padding: `0 ${right}px 0 ${left}px` };
     },
     filteredOptions() {
       let opts = [];

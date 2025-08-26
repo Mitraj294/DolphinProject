@@ -5,9 +5,11 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Passport\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
+use App\Models\Traits\HasRoles; 
 class User extends Authenticatable
 {
-    use HasApiTokens, HasFactory, SoftDeletes, Notifiable;
+
+    use HasApiTokens, HasFactory, SoftDeletes, Notifiable, HasRoles;
 
 
     protected $fillable = [

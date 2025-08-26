@@ -21,160 +21,175 @@
             <table class="table">
               <TableHeader
                 :columns="[
-                  { label: 'Notification Title', key: 'body' },
-                  { label: 'Date & Time', key: 'sent_at', width: '225px' },
-                  { label: 'Action', key: 'action' },
-                ]"
-                @sort="sortBy"
-              />
-              <tbody>
-                <tr
-                  v-for="(item, idx) in paginatedNotifications"
-                  :key="idx"
-                >
-                  <td class="notification-body-cell">
-                    <span
-                      class="notification-body-truncate"
-                      :title="item.body"
+                  { label: 'Notification Title', key: 'body', sortable: true },
+                  {
+                    label: 'Date & Time',
+                    <Pagination
+                      :pageSize="pageSize"
+                      :pageSizes="[10, 25, 100]"
+                      :showPageDropdown="showPageDropdown"
+                      :currentPage="currentPage"
+                      :totalPages="totalPages"
+                      :paginationPages="paginationPages"
+                      @goToPage="goToPage"
+                      @selectPageSize="selectPageSize"
+                      @togglePageDropdown="showPageDropdown = !showPageDropdown"
+                    />
+
+                    <!-- Send modal already defined earlier -->
+
+                    <!-- Improved Notification Detail Modal -->
+                    <div
+                      v-if="showDetailModal && selectedNotification"
+                      class="send-notification-modal-overlay"
+                      @click.self="closeDetail"
                     >
-                      {{ item.body }}
-                    </span>
-                  </td>
-                  <td>{{ formatLocalDateTime(item.sent_at) }}</td>
-                  <td>
-                    <button class="btn-view">
-                      <img
-                        src="@/assets/images/Detail.svg"
-                        alt="View"
-                        class="btn-view-icon"
-                      />
-                      View Detail
-                    </button>
-                  </td>
-                </tr>
-                <tr v-if="paginatedNotifications.length === 0">
-                  <td
-                    colspan="3"
-                    class="no-data"
-                  >
-                    No notifications found.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-        <Pagination
-          :pageSize="pageSize"
-          :pageSizes="[10, 25, 100]"
-          :showPageDropdown="showPageDropdown"
-          :currentPage="currentPage"
-          :totalPages="totalPages"
-          :paginationPages="paginationPages"
-          @goToPage="goToPage"
-          @selectPageSize="selectPageSize"
-          @togglePageDropdown="showPageDropdown = !showPageDropdown"
-        />
-        <div
-          v-if="showSendModal"
-          class="send-notification-modal-overlay"
-          @click.self="showSendModal = false"
-        >
-          <div class="send-notification-modal">
-            <button
-              class="modal-close-btn"
-              @click="showSendModal = false"
-            >
-              &times;
-            </button>
-            <div class="modal-title">Send Notifications</div>
-            <div class="modal-desc">
-              Send a notification to selected organizations, admins, or groups.
-              You can also schedule it for later.
-            </div>
-            <textarea
-              class="modal-textarea"
-              placeholder="Type your notification here..."
-            ></textarea>
-            <div class="modal-row">
-              <div class="modal-field">
-                <FormLabel>Select Organizations</FormLabel>
-                <MultiSelectDropdown
-                  :options="organizations || []"
-                  :selectedItems="selectedOrganizations"
-                  @update:selectedItems="selectedOrganizations = $event"
-                  option-label="org_name"
-                  option-value="id"
-                  placeholder="Select organizations"
-                  :enableSelectAll="true"
-                />
-              </div>
-              <div class="modal-field">
-                <FormLabel>Select Group</FormLabel>
-                <MultiSelectDropdown
-                  :options="groups || []"
-                  :selectedItems="selectedGroups"
-                  @update:selectedItems="selectedGroups = $event"
-                  placeholder="Select groups"
-                  :enableSelectAll="true"
-                />
-              </div>
-              <!--
-                This section renders a dropdown menu for selecting an admin user.
-                - The dropdown is bound to the `selectedAdmin` model.
-                - Options include a default "Select" prompt and two admin choices ("Admin 1" and "Admin 2").
-                - The label "Select Admin" is displayed above the dropdown.
-                This part will be used later for admin selection functionality.
-            
-              <div class="modal-field">
-                <FormLabel>Select Admin</FormLabel>
-                <FormDropdown v-model="selectedAdmin">
-                  <option value="">Select</option>
-                  <option value="admin1">Admin 1</option>
-                  <option value="admin2">Admin 2</option>
-                </FormDropdown>
-              </div>
-                -->
-            </div>
-            <div class="modal-row">
-              <div class="schedule-demo-field schedule-demo-schedule-field">
-                <FormLabel>Schedule</FormLabel>
-                <div class="modal-row">
-                  <div class="modal-field">
-                    <div class="form-box">
-                      <FormInput
-                        v-model="scheduledDate"
-                        type="date"
-                        placeholder="MM/DD/YYYY"
-                      />
-                    </div>
-                  </div>
+                      <div class="send-notification-modal notification-detail-modal">
+                        <button class="modal-close-btn" @click="closeDetail">&times;</button>
+                        <div class="notification-detail-header">
+                          <div>
+                            <div class="modal-title">{{ selectedNotification.title || 'Notification Detail' }}</div>
+                            <div class="modal-desc">{{ selectedNotification.subtitle || 'Details for the selected notification.' }}</div>
+                          </div>
+                          <div class="notification-badges">
+                            <div class="status-badge">{{ announcementStatus }}</div>
+                            <div class="recipient-count">{{ recipientCountText }}</div>
+                          </div>
+                        </div>
 
-                  <div class="modal-field">
-                    <div class="form-box">
-                      <FormInput
-                        v-model="scheduledTime"
-                        type="time"
-                        placeholder="00:00"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button
-              class="btn btn-primary"
-              @click="sendNotification"
-            >
-              Send Notification
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </MainLayout>
-</template>
+                        <div class="notification-detail-grid">
+                          <div class="left-col">
+                            <div class="section">
+                              <div class="section-title">Title</div>
+                              <div class="section-body">{{ selectedNotification.body }}</div>
+                            </div>
 
+                            <div class="section two-cols">
+                              <div>
+                                <div class="section-title">Sender</div>
+                                <div class="section-body">{{ senderName || 'System' }}</div>
+                              </div>
+                              <div>
+                                <div class="section-title">Date & Time</div>
+                                <div class="section-body">
+                                  <div v-if="selectedNotification.sent_at">Sent: {{ formatLocalDateTime(selectedNotification.sent_at) }}</div>
+                                  <div v-if="selectedNotification.scheduled_at">Scheduled: {{ formatLocalDateTime(selectedNotification.scheduled_at) }}</div>
+                                  <div v-if="!selectedNotification.sent_at && !selectedNotification.scheduled_at">Created: {{ formatLocalDateTime(selectedNotification.created_at) }}</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="section">
+                              <div class="section-title">Organizations</div>
+                              <div class="section-body">
+                                <div v-if="orgChips.length">
+                                  <span v-for="(o, i) in orgChips" :key="i" class="chip">{{ o }}</span>
+                                </div>
+                                <div v-else class="muted">—</div>
+                              </div>
+                            </div>
+
+                            <div class="section">
+                              <div class="section-title">Groups</div>
+                              <div class="section-body">
+                                <div v-if="groupChips.length">
+                                  <span v-for="(g, i) in groupChips" :key="i" class="chip chip-secondary">{{ g }}</span>
+                                </div>
+                                <div v-else class="muted">—</div>
+                              </div>
+                            </div>
+
+                            <div class="section">
+                              <div class="section-title">Admin Emails</div>
+                              <div class="section-body">
+                                <div v-if="adminEmails.length">
+                                  <div v-for="(e, i) in adminEmails" :key="i" class="small-muted">{{ e }}</div>
+                                </div>
+                                <div v-else class="muted">—</div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="right-col">
+                            <div class="section">
+                              <div class="section-title">Recipients</div>
+                              <div class="recipient-list">
+                                <div v-for="(r, ri) in detailRecipients" :key="ri" class="recipient-row">
+                                  <div class="recipient-info">
+                                    <div class="recipient-name">{{ r.name }}</div>
+                                    <div class="recipient-email" v-if="r.email">{{ r.email }}</div>
+                                  </div>
+                                  <div class="recipient-status">
+                                    <span v-if="r.status === 'delivered'" class="status-icon delivered" v-html="tickSvg"></span>
+                                    <span v-else-if="r.status === 'failed'" class="status-icon failed" v-html="crossSvg"></span>
+                                    <span v-else class="status-icon pending">Pending</span>
+                                  </div>
+                                </div>
+                                <div v-if="detailRecipients.length === 0" class="muted">All</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div class="modal-actions">
+                          <button class="btn btn-secondary" @click="closeDetail">Close</button>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div> <!-- .table-outer -->
+                </div> <!-- .page -->
+              </MainLayout>
+            </template>
+                                <div class="section-body">
+                                  <div v-if="groupChips.length">
+                                    <span v-for="(g, i) in groupChips" :key="i" class="chip chip-secondary">{{ g }}</span>
+                                  </div>
+                                  <div v-else class="muted">—</div>
+                                </div>
+                              </div>
+
+                              <div class="section">
+                                <div class="section-title">Admin Emails</div>
+                                <div class="section-body">
+                                  <div v-if="adminEmails.length">
+                                    <div v-for="(e, i) in adminEmails" :key="i" class="small-muted">{{ e }}</div>
+                                  </div>
+                                  <div v-else class="muted">—</div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div class="right-col">
+                              <div class="section">
+                                <div class="section-title">Recipients</div>
+                                <div class="recipient-list">
+                                  <div
+                                    v-for="(r, ri) in detailRecipients"
+                                    :key="ri"
+                                    class="recipient-row"
+                                  >
+                                    <div class="recipient-info">
+                                      <div class="recipient-name">{{ r.name }}</div>
+                                      <div class="recipient-email" v-if="r.email">{{ r.email }}</div>
+                                    </div>
+                                    <div class="recipient-status">
+                                      <span v-if="r.status === 'delivered'" class="status-icon delivered" v-html="tickSvg"></span>
+                                      <span v-else-if="r.status === 'failed'" class="status-icon failed" v-html="crossSvg"></span>
+                                      <span v-else class="status-icon pending">Pending</span>
+                                    </div>
+                                  </div>
+                                  <div v-if="detailRecipients.length === 0" class="muted">All</div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="modal-actions">
+                            <button class="btn btn-secondary" @click="closeDetail">Close</button>
+                          </div>
+                        </div>
+                      </div>
 <script>
 import MainLayout from '../../layout/MainLayout.vue';
 import Pagination from '../../layout/Pagination.vue';
@@ -206,8 +221,12 @@ export default {
   },
   data() {
     return {
+      // lifecycle guard to prevent state updates after unmount
+      isAlive: false,
       showPageDropdown: false,
       showSendModal: false,
+      showDetailModal: false,
+      selectedNotification: null,
       pageSize: 10,
       currentPage: 1,
       sortKey: '',
@@ -260,6 +279,40 @@ export default {
         return pages;
       }
     },
+    // detailRecipients and svg getters
+    detailRecipients() {
+      const n = this.selectedNotification || {};
+      const list = [];
+      // If backend supplied explicit recipients array, use it.
+      if (Array.isArray(n.recipients) && n.recipients.length) {
+        n.recipients.forEach((r) => {
+          list.push({
+            name: r.name || r.full_name || r.email || 'Unknown',
+            email: r.email || '',
+            status: r.status || r.delivery_status || r.state || 'pending',
+          });
+        });
+        return list;
+      }
+      // Fallback: build from organizations/groups/admins info
+      if (Array.isArray(n.organization_names) && n.organization_names.length) {
+        n.organization_names.forEach((on) => {
+          list.push({ name: on, email: '', status: 'pending' });
+        });
+      }
+      if (Array.isArray(n.group_names) && n.group_names.length) {
+        n.group_names.forEach((gn) => {
+          list.push({ name: gn, email: '', status: 'pending' });
+        });
+      }
+      return list;
+    },
+    tickSvg() {
+      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17L4 12" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    },
+    crossSvg() {
+      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    },
   },
   methods: {
     goToPage(page) {
@@ -281,8 +334,71 @@ export default {
     },
     formatLocalDateTime(dateStr) {
       if (!dateStr) return '';
-      const date = new Date(dateStr.replace(' ', 'T') + 'Z');
-      return date.toLocaleString();
+      // If ISO with timezone or 'Z', let Date parse it
+      let d = null;
+      try {
+        if (/[T].*Z$/.test(dateStr) || /[T].*[+-]\d{2}:?\d{2}$/.test(dateStr)) {
+          d = new Date(dateStr);
+        } else {
+          // Try to parse 'YYYY-MM-DD HH:MM:SS' (assume it's UTC from DB)
+          const m = (dateStr || '').match(
+            /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
+          );
+          if (m) {
+            const year = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10) - 1;
+            const day = parseInt(m[3], 10);
+            const hour = parseInt(m[4], 10);
+            const minute = parseInt(m[5], 10);
+            const second = m[6] ? parseInt(m[6], 10) : 0;
+            // create Date from UTC components, then use local getters for display
+            const utcMillis = Date.UTC(year, month, day, hour, minute, second);
+            d = new Date(utcMillis);
+          } else {
+            d = new Date(dateStr);
+          }
+        }
+      } catch (e) {
+        d = new Date(dateStr);
+      }
+      if (!d || isNaN(d.getTime())) return dateStr || '';
+
+      // Use local date/time getters so the shown value is in user's local timezone
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+
+      let hr = d.getHours();
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      hr = hr % 12;
+      hr = hr ? hr : 12; // convert 0 -> 12
+      const strTime = `${hr}:${min} ${ampm}`;
+      return `${day} ${mon},${yr} ${strTime}`;
+    },
+    openDetail(item) {
+      if (!this.isAlive) return;
+      this.selectedNotification = item || null;
+      this.showDetailModal = !!item;
+    },
+    closeDetail() {
+      if (!this.isAlive) return;
+      this.showDetailModal = false;
+      this.selectedNotification = null;
     },
     async sendNotification() {
       try {
@@ -293,12 +409,17 @@ export default {
         if (this.scheduledDate && this.scheduledTime) {
           let time = this.scheduledTime;
           if (time.length === 5) time += ':00';
-          // Combine date and time as local, then convert to UTC ISO string
-          const localDateTime = new Date(`${this.scheduledDate}T${time}`);
-          scheduled_at = localDateTime
-            .toISOString()
-            .replace('T', ' ')
-            .replace(/\.\d+Z$/, 'Z');
+          // Convert local date+time to an explicit UTC datetime string so backend stores UTC only.
+          // Build a Date from local inputs, then extract UTC components.
+          const local = new Date(`${this.scheduledDate}T${time}`);
+          const pad = (n) => String(n).padStart(2, '0');
+          const YYYY = local.getUTCFullYear();
+          const MM = pad(local.getUTCMonth() + 1);
+          const DD = pad(local.getUTCDate());
+          const hh = pad(local.getUTCHours());
+          const mm = pad(local.getUTCMinutes());
+          const ss = pad(local.getUTCSeconds());
+          scheduled_at = `${YYYY}-${MM}-${DD} ${hh}:${mm}:${ss}`;
         }
         const payload = {
           organization_ids: this.selectedOrganizations.map((org) => org.id),
@@ -312,22 +433,28 @@ export default {
         await axios.post(apiUrl + '/announcements/send', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        this.showSendModal = false;
-        this.$toast.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Announcement sent!',
-          life: 3000,
-        });
+        if (this.isAlive) {
+          this.showSendModal = false;
+          this.$toast &&
+            this.$toast.add &&
+            this.$toast.add({
+              severity: 'success',
+              summary: 'Success',
+              detail: 'Announcement sent!',
+              life: 3000,
+            });
+        }
         console.log('Announcement sent successfully');
       } catch (err) {
         console.error('Error sending notification:', err);
-        this.$toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to send announcement',
-          life: 4000,
-        });
+        if (this.isAlive && this.$toast && this.$toast.add) {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to send announcement',
+            life: 4000,
+          });
+        }
       }
     },
     async fetchOrganizations() {
@@ -338,10 +465,10 @@ export default {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Organizations response:', res.data);
-        this.organizations = res.data;
+        if (this.isAlive) this.organizations = res.data;
       } catch (err) {
         console.error('Error fetching organizations:', err);
-        this.organizations = [];
+        if (this.isAlive) this.organizations = [];
       }
     },
     async fetchGroups() {
@@ -352,10 +479,10 @@ export default {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Groups response:', res.data);
-        this.groups = res.data;
+        if (this.isAlive) this.groups = res.data;
       } catch (err) {
         console.error('Error fetching groups:', err);
-        this.groups = [];
+        if (this.isAlive) this.groups = [];
       }
     },
     async fetchNotifications() {
@@ -365,12 +492,14 @@ export default {
         const res = await axios.get(apiUrl + '/announcements', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        this.notifications = Array.isArray(res.data)
-          ? res.data
-          : res.data.notifications || [];
+        if (this.isAlive) {
+          this.notifications = Array.isArray(res.data)
+            ? res.data
+            : res.data.notifications || [];
+        }
       } catch (err) {
         console.error('Error fetching notifications:', err);
-        this.notifications = [];
+        if (this.isAlive) this.notifications = [];
       }
     },
   },
@@ -378,10 +507,15 @@ export default {
     // No watchers - selections are independent
   },
   mounted() {
+    this.isAlive = true;
     this.fetchOrganizations();
     this.fetchGroups();
     this.fetchNotifications();
     console.log('Mounted: fetching organizations, groups, notifications');
+  },
+  beforeUnmount() {
+    // lifecycle guard
+    this.isAlive = false;
   },
 };
 </script>
@@ -583,5 +717,46 @@ export default {
   .page {
     padding: 4px;
   }
+}
+
+.recipient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+.recipient-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.recipient-info {
+  display: flex;
+  flex-direction: column;
+}
+.recipient-name {
+  font-weight: 600;
+  color: #222;
+}
+.recipient-email {
+  font-size: 13px;
+  color: #666;
+}
+.recipient-status .status-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+.recipient-status .delivered svg {
+  filter: none;
+}
+.recipient-status .failed svg {
+  filter: none;
+}
+.recipient-status .pending {
+  color: #999;
 }
 </style>

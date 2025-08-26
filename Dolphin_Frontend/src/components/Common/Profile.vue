@@ -46,7 +46,9 @@
             <div class="profile-label">Role</div>
             <div class="profile-value">
               <span v-if="user.roles && user.roles.length">
-                {{ user.roles.map((r) => r.name).join(', ') }}
+                {{
+                  user.roles.map((r) => formatRoleLabel(r.name || r)).join(', ')
+                }}
               </span>
             </div>
           </div>
@@ -234,6 +236,7 @@ import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
 import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
 import storage from '@/services/storage';
+import { formatRole } from '@/utils/roles';
 
 export default {
   name: 'Profile',
@@ -321,6 +324,14 @@ export default {
     this.fetchCountries();
   },
   methods: {
+    // Expose formatRole to the template
+    formatRole(role) {
+      return formatRole(role);
+    },
+    // Template wrapper used in templates throughout the app
+    formatRoleLabel(role) {
+      return formatRole(role);
+    },
     async fetchCountries() {
       try {
         const apiUrl =

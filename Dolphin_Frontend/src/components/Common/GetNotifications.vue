@@ -131,6 +131,7 @@
 <script>
 import Pagination from '@/components/layout/Pagination.vue';
 import storage from '@/services/storage';
+import authMiddleware from '@/middleware/authMiddleware';
 import axios from 'axios';
 import { ref } from 'vue';
 
@@ -208,7 +209,48 @@ export default {
         const config = token
           ? { headers: { Authorization: `Bearer ${token}` } }
           : {};
-        const response = await axios.get(endpoint, config);
+        // If asking for "all" notifications, call the superadmin endpoint
+        // only when the current role is superadmin. Otherwise use the
+        // authenticated user's notifications endpoint to avoid 403.
+        if (this.tab === 'all') {
+          const role = authMiddleware.getRole();
+          if (role === 'superadmin') {
+            const storedUserId =
+              storage.get('userId') ||
+              storage.get('user_id') ||
+              storage.get('userId');
+            const uid = storedUserId ? parseInt(storedUserId, 10) : 0;
+            if (uid) {
+              endpoint = `/api/notifications?notifiable_type=${encodeURIComponent(
+                'App\\Models\\User'
+              )}&notifiable_id=${uid}`;
+            } else {
+              endpoint = '/api/notifications';
+            }
+          } else {
+            endpoint = '/api/notifications/user';
+          }
+        }
+
+        let response;
+        try {
+          response = await axios.get(endpoint, config);
+        } catch (err) {
+          // If server returns 403 for /api/notifications try the user-specific endpoint
+          if (
+            err.response &&
+            err.response.status === 403 &&
+            this.tab === 'all'
+          ) {
+            try {
+              response = await axios.get('/api/notifications/user', config);
+            } catch (err2) {
+              throw err2;
+            }
+          } else {
+            throw err;
+          }
+        }
         let notificationsArr = [];
         if (Array.isArray(response.data)) {
           notificationsArr = response.data;
@@ -315,14 +357,26 @@ export default {
             _rawData: d,
           };
         });
+        // Notifications have been updated; watchers will synchronize the
+        // stored count and emit domain events (avoid duplicate emits here).
       } catch (error) {
         this.notifications = [];
-        console.error('Failed to fetch notifications:', error);
+        // Provide more detailed error info for debugging (403 body etc.)
+        console.error(
+          'Failed to fetch notifications:',
+          error,
+          error && error.response && error.response.data
+        );
+        const serverMsg =
+          (error &&
+            error.response &&
+            (error.response.data.message || error.response.data.error)) ||
+          null;
         this.$nextTick(() => {
           this.$notify &&
             this.$notify({
               type: 'error',
-              message: 'Failed to fetch notifications.',
+              message: serverMsg || 'Failed to fetch notifications.',
             });
         });
       }
@@ -369,8 +423,7 @@ export default {
         await axios.post('/api/notifications/mark-all-read', {}, config);
         // Refresh notifications
         await this.fetchNotifications();
-        // notify other components (Navbar) to refresh unread count immediately
-        window.dispatchEvent(new Event('notification-updated'));
+        // Notification count will be synchronized via the watcher -> updateNotificationCount()
       } catch (error) {
         console.error('Error marking all as read:', error);
         this.$notify &&
@@ -396,8 +449,7 @@ export default {
         try {
           await axios.post(`/api/announcements/${notif.id}/read`, {}, config);
           await this.fetchNotifications();
-          // notify navbar to update badge immediately
-          window.dispatchEvent(new Event('notification-updated'));
+          // Notification count update is handled by the notifications watcher -> updateNotificationCount()
         } catch (error) {
           console.error('Failed to mark notification as read:', error);
           this.$notify &&
@@ -425,10 +477,12 @@ export default {
     togglePageDropdown() {
       this.showPageDropdown = !this.showPageDropdown;
     },
+    // single authoritative method for updating stored notification count
     updateNotificationCount() {
       storage.set('notificationCount', this.notifications.length);
+      // Broadcast a storage event for cross-tab listeners
       window.dispatchEvent(new Event('storage'));
-      // Notify other components (like Navbar) to fetch fresh unread count
+      // Broadcast a domain event for in-window subscribers (Navbar)
       window.dispatchEvent(new Event('notification-updated'));
     },
     // ...existing code...
@@ -476,7 +530,11 @@ export default {
     },
     updateNotificationCount() {
       storage.set('notificationCount', this.notifications.length);
+      // Let other tabs/components know the count changed.
       window.dispatchEvent(new Event('storage'));
+      // Also emit a domain-level event so listeners that rely on it
+      // (Navbar.fetchUnreadCount) can react immediately.
+      window.dispatchEvent(new Event('notification-updated'));
     },
   },
   watch: {
@@ -495,8 +553,15 @@ export default {
     },
   },
   mounted() {
-    this.fetchNotifications();
-    this.updateNotificationCount();
+    // Fetch notifications only when arriving at notifications page or after login
+    if (
+      storage.get('showDashboardWelcome') ||
+      this.$route.name === 'GetNotification' ||
+      this.$route.name === 'Notifications'
+    ) {
+      this.fetchNotifications();
+      storage.remove('showDashboardWelcome');
+    }
   },
   watch: {
     tab() {
