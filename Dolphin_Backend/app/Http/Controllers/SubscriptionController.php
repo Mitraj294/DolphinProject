@@ -57,6 +57,15 @@ class SubscriptionController extends Controller
     public function getCurrentPlan(Request $request)
     {
         $user = $request->user();
+        $orgId = $request->query('org_id') ?: $request->input('org_id');
+        // If org_id provided and the current user is superadmin, resolve the owning user
+        if ($orgId && $user && $user->hasRole('superadmin')) {
+            $org = \App\Models\Organization::find($orgId);
+            if ($org && $org->user_id) {
+                $user = \App\Models\User::find($org->user_id);
+            }
+        }
+        if (!$user) return response()->json(null);
         $current = $user->subscriptions()
             ->where('status', 'active')
             ->orderByDesc('created_at')
@@ -74,9 +83,31 @@ class SubscriptionController extends Controller
                 $nextBill = $subEnd;
             }
         }
+        // Derive a friendly plan name and billing period for the frontend
+        $planName = $current->plan ?? '';
+        if (!empty($current->description)) {
+            if (stripos($current->description, 'basic') !== false) {
+                $planName = 'Basic';
+            } elseif (stripos($current->description, 'standard') !== false) {
+                $planName = 'Standard';
+            }
+        }
+        // Determine period: check description first, then amount heuristic
+        $period = '';
+        if (!empty($current->description)) {
+            if (stripos($current->description, 'month') !== false) $period = 'Month';
+            elseif (stripos($current->description, 'year') !== false) $period = 'Year';
+        }
+        if (empty($period)) {
+            $amt = floatval($current->amount ?? 0);
+            $period = $amt >= 1000 ? 'Year' : 'Month';
+        }
+
         return response()->json([
             'plan' => $current->plan ?? '',
+            'plan_name' => $planName,
             'amount' => $current->amount ?? '',
+            'period' => $period,
             'status' => $current->status ?? '',
             'payment_method' => $current->payment_method ?? '',
             'start' => $current->subscription_start ?? $current->created_at,
@@ -93,6 +124,15 @@ class SubscriptionController extends Controller
     public function getBillingHistory(Request $request)
     {
         $user = $request->user();
+        $orgId = $request->query('org_id') ?: $request->input('org_id');
+        // If org_id provided and user is superadmin, resolve org owner
+        if ($orgId && $user && $user->hasRole('superadmin')) {
+            $org = \App\Models\Organization::find($orgId);
+            if ($org && $org->user_id) {
+                $user = \App\Models\User::find($org->user_id);
+            }
+        }
+        if (!$user) return response()->json([]);
         $subs = $user->subscriptions()->orderByDesc('created_at')->get();
         $history = $subs->map(function($sub) {
             // Try to extract payment method details for display

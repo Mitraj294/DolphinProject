@@ -115,9 +115,10 @@ const routes = [
     meta: { layout: 'main' }
   },
   {
-    path: '/assessments/send-assessment',
+    path: '/assessments/send-assessment/:id?',
     name: 'SendAssessmentAssessments',
-    component: SendAssessment
+    component: SendAssessment,
+    props: true,
   },
   {
     path: '/user-permission',
@@ -146,13 +147,13 @@ const routes = [
   },
 
   {
-    path: '/leads/:email',
+    path: '/leads/:id',
     name: 'LeadDetail',
     component: () => import('@/components/Common/Leads_Assessment/LeadDetail.vue'),
     props: true
   },
   {
-    path: '/leads/edit-lead',
+    path: '/leads/:id/edit',
     name: 'EditLead',
     component: () => import('@/components/Common/Leads_Assessment/EditLead.vue'),
     props: true
@@ -194,9 +195,10 @@ const routes = [
     component: () => import('@/components/Common/Leads_Assessment/LeadCapture.vue'),
   },
   {
-    path: '/leads/send-assessment',
+    path: '/leads/send-assessment/:id?',
     name: 'SendAssessment',
-    component: SendAssessment
+    component: SendAssessment,
+    props: true,
   },
   {
     path: '/leads/schedule-demo',
@@ -233,21 +235,32 @@ router.addRoute({
 
 //if no route matches, redirect to /dashboard
 router.beforeEach((to, from, next) => {
+
+  // If user already has role saved and valid, redirect root/login to dashboard
+  const authToken = storage.get('authToken');
+  const role = storage.get('role');
+  if ((to.path === '/' || to.path === '/login') && role && PERMISSIONS[role]) {
+    return next('/dashboard');
+  }
+
   // Allow public routes (e.g., forgot-password) for everyone
   if (to.meta && to.meta.public) {
     return next();
   }
 
-  // Get user role from encrypted storage
-  const role = storage.get('role');
-
-  // login / thank you / register for everyone
-  if (to.path === '/' || to.path === '/thankyou' || to.path === '/register') {
+  // login / thank you / register for everyone (thankyou/register are public entry points)
+  if (to.path === '/thankyou' || to.path === '/register') {
     return next();
   }
 
-  // If no role, redirect to login
+  // If no role, redirect to login.
+  // But if the target is already the login page ('/'), allow it to proceed
+  // to avoid repeatedly redirecting to the same route which causes an
+  // infinite redirect loop.
   if (!role || !PERMISSIONS[role]) {
+    if (to.path === '/' || to.path === '/login') {
+      return next();
+    }
     return next('/');
   }
 

@@ -54,21 +54,23 @@
                     }}</b>
                   </div>
                   <div class="lead-detail-list-row">
-                    <span>Primary User</span>
+                    <span>Contract Start</span>
                     <b>{{
-                      orgUser?.name ||
-                      orgUser?.full_name ||
-                      (orgUserDetails &&
-                        orgUserDetails.first_name +
-                          ' ' +
-                          orgUserDetails.last_name) ||
-                      'N/A'
+                      formatContractDate(
+                        orgData?.contract_start ||
+                          orgData?.contract_start_date ||
+                          leadData.contract_start
+                      ) || 'N/A'
                     }}</b>
                   </div>
                   <div class="lead-detail-list-row">
-                    <span>Primary Email</span>
+                    <span>Contract End</span>
                     <b>{{
-                      orgUser?.email || orgUserDetails?.email || 'N/A'
+                      formatContractDate(
+                        orgData?.contract_end ||
+                          orgData?.contract_end_date ||
+                          leadData.contract_end
+                      ) || 'N/A'
                     }}</b>
                   </div>
                   <div class="lead-detail-list-row">
@@ -76,24 +78,32 @@
                     <b>
                       <template
                         v-if="
+                          (orgData &&
+                            (orgData.address ||
+                              orgData.city ||
+                              orgData.state ||
+                              orgData.zip ||
+                              orgData.country)) ||
+                          addressDisplay.length
+                        "
+                      >
+                        {{
                           orgData &&
                           (orgData.address ||
                             orgData.city ||
                             orgData.state ||
                             orgData.zip ||
                             orgData.country)
-                        "
-                      >
-                        {{
-                          [
-                            orgData.address,
-                            orgData.city,
-                            orgData.state,
-                            orgData.zip,
-                            orgData.country,
-                          ]
-                            .filter(Boolean)
-                            .join(', ')
+                            ? [
+                                orgData.address,
+                                orgData.city,
+                                orgData.state,
+                                orgData.zip,
+                                orgData.country,
+                              ]
+                                .filter(Boolean)
+                                .join(', ')
+                            : addressDisplay.join(', ')
                         }}
                       </template>
                       <template v-else>N/A</template>
@@ -110,10 +120,16 @@
                     <b>{{ leadData.size }}</b>
                   </div>
                   <div class="lead-detail-list-row">
-                    <span>Contract Start</span><b></b>
+                    <span>Contract Start</span
+                    ><b>{{
+                      formatContractDate(leadData.contract_start) || 'N/A'
+                    }}</b>
                   </div>
                   <div class="lead-detail-list-row">
-                    <span>Contract End</span><b></b>
+                    <span>Contract End</span
+                    ><b>{{
+                      formatContractDate(leadData.contract_end) || 'N/A'
+                    }}</b>
                   </div>
                   <div class="lead-detail-list-row">
                     <span>Address</span>
@@ -190,16 +206,55 @@ export default {
       if (this.countryName) arr.push(this.countryName);
       return arr.filter((f) => f && String(f).trim().length > 0);
     },
+    primaryUserDisplay() {
+      // Prefer orgUser.name, then orgUser.full_name, then user details names, then lead contact, then N/A
+      if (this.orgUser && (this.orgUser.name || this.orgUser.full_name)) {
+        return this.orgUser.name || this.orgUser.full_name;
+      }
+      if (
+        this.orgUserDetails &&
+        (this.orgUserDetails.first_name || this.orgUserDetails.last_name)
+      ) {
+        const fn = this.orgUserDetails.first_name || '';
+        const ln = this.orgUserDetails.last_name || '';
+        const full = (fn + ' ' + ln).trim();
+        if (full) return full;
+      }
+      if (this.leadData && this.leadData.contact) return this.leadData.contact;
+      return 'N/A';
+    },
   },
   methods: {
     goToEditLead() {
-      this.$router.push({
-        path: '/leads/edit-lead',
-        query: {
-          ...this.leadData,
-          id: this.$route.query.id || this.leadData.id || '',
-        },
-      });
+      const id =
+        this.$route.params.id || this.$route.query.id || this.leadData.id || '';
+      if (!id) return;
+      this.$router.push({ name: 'EditLead', params: { id } });
+    },
+    formatContractDate(dateVal) {
+      if (!dateVal) return null;
+      // accept timestamps or 'YYYY-MM-DD' or Date objects
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return null;
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+      // format like: 31 AUG ,2025 (kept spacing to match your example)
+      return `${day} ${mon} ,${yr}`;
     },
     async lookupLocationNames() {
       const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -308,44 +363,70 @@ export default {
   },
   async created() {
     // If id is present, fetch lead details from backend
-    const id = this.$route.query.id || this.lead.id;
+    const id = this.$route.params.id || this.$route.query.id || this.lead.id;
     if (id) {
       try {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
-        const res = await axios.get(`${API_BASE_URL}/api/leads`, {
+        const res = await axios.get(`${API_BASE_URL}/api/leads/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const found = Array.isArray(res.data)
-          ? res.data.find((l) => l.id == id)
-          : null;
-        if (found) {
+        const payload = res.data || null;
+        if (payload) {
+          // support new response shape { lead, organization, orgUser, orgUserDetails }
+          const leadObj = payload.lead ? payload.lead : payload;
           this.localLead = {
             contact:
-              (found.first_name || '') +
-              (found.last_name ? ' ' + found.last_name : ''),
-            email: found.email || '',
-            phone: found.phone || '',
-            source: found.find_us || '',
-            status: found.status || '',
-            organization: found.org_name || '',
-            size: found.org_size || '',
-            address: found.address !== undefined ? found.address : '',
-            city: found.city !== undefined ? found.city : '',
-            state: found.state !== undefined ? found.state : '',
-            zip: found.zip !== undefined ? found.zip : '',
-            country: found.country !== undefined ? found.country : '',
-            country_id: found.country_id || null,
-            state_id: found.state_id || null,
-            city_id: found.city_id || null,
+              (leadObj.first_name || '') +
+              (leadObj.last_name ? ' ' + leadObj.last_name : ''),
+            email: leadObj.email || '',
+            phone: leadObj.phone || '',
+            source: leadObj.find_us || '',
+            status: leadObj.status || '',
+            organization: leadObj.org_name || '',
+            size: leadObj.org_size || '',
+            address: leadObj.address !== undefined ? leadObj.address : '',
+            city: leadObj.city !== undefined ? leadObj.city : '',
+            state: leadObj.state !== undefined ? leadObj.state : '',
+            zip: leadObj.zip !== undefined ? leadObj.zip : '',
+            country: leadObj.country !== undefined ? leadObj.country : '',
+            country_id: leadObj.country_id || null,
+            state_id: leadObj.state_id || null,
+            city_id: leadObj.city_id || null,
+            id: leadObj.id || null,
+            first_name: leadObj.first_name || '',
+            last_name: leadObj.last_name || '',
           };
+          // If backend included organization/user info, use it
+          if (payload.organization) {
+            this.orgData = payload.organization;
+            this.orgUser = payload.orgUser || null;
+            this.orgUserDetails = payload.orgUserDetails || null;
+            this.isOrganizationCreated = true;
+            this.organizationChecked = true;
+          }
           ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
             if (this.localLead[f] === undefined) this.localLead[f] = '';
           });
           await this.lookupLocationNames();
-          await this.fetchOrganizationIfExists();
+          // only call fetchOrganizationIfExists if backend did not return org info
+          if (!this.isOrganizationCreated)
+            await this.fetchOrganizationIfExists();
+          // If the page was opened with extra query params (contact/email/etc),
+          // replace the URL to the canonical /leads/:id to remove them.
+          try {
+            if (
+              this.$route &&
+              this.$route.query &&
+              Object.keys(this.$route.query).length
+            ) {
+              this.$router.replace({ name: 'LeadDetail', params: { id } });
+            }
+          } catch (e) {
+            // ignore routing replace errors
+          }
           return;
         }
       } catch (e) {

@@ -78,7 +78,7 @@
                   </div>
                   <div class="org-detail-list-row">
                     <span>Last Contacted</span
-                    ><b>{{ orgDetail.last_contacted }}</b>
+                    ><b>{{ formatDateTime(orgDetail.last_contacted) }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Certified Staff</span
@@ -116,7 +116,28 @@
               >
                 <div class="org-detail-box-info">
                   <div class="org-detail-box-label">Billing Status</div>
-                  <div class="org-detail-box-value">Standard ($2500/Year)</div>
+                  <div class="org-detail-box-value">
+                    <template v-if="currentPlan">
+                      <div
+                        style="
+                          text-align: left;
+                          display: flex;
+                          justify-content: flex-start;
+                        "
+                      >
+                        {{
+                          currentPlan.plan_name || currentPlan.plan || 'Plan'
+                        }}
+                      </div>
+                      <div style="font-weight: 500; font-size: 16px">
+                        ${{ formatAmount(currentPlan.amount) }}/{{
+                          currentPlan.period ||
+                          (currentPlan.amount >= 1000 ? 'Year' : 'Month')
+                        }}
+                      </div>
+                    </template>
+                    <template v-else>None</template>
+                  </div>
                 </div>
                 <div class="org-detail-box-action">
                   <button
@@ -124,9 +145,10 @@
                     @click="
                       $router.push({
                         name: 'BillingDetails',
-                        query: { orgName: orgDetail.org_name },
+                        query: { orgId: orgDetail.id },
                       })
                     "
+                    v-if="orgDetail && orgDetail.id"
                   >
                     <img
                       src="@/assets/images/Billing Status view details.svg"
@@ -179,6 +201,7 @@ export default {
       countryName: '',
       stateName: '',
       cityName: '',
+      currentPlan: null,
     };
   },
   computed: {
@@ -224,6 +247,7 @@ export default {
   async mounted() {
     await this.fetchOrganization();
     await this.lookupLocationNames();
+    await this.fetchOrgBillingPreview();
   },
   methods: {
     async fetchOrganization() {
@@ -273,6 +297,28 @@ export default {
         this.orgDetail = {};
       }
     },
+    async fetchOrgBillingPreview() {
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const authToken = storage.get('authToken');
+        const headers = authToken
+          ? { Authorization: `Bearer ${authToken}` }
+          : {};
+        const orgId =
+          this.orgDetail && this.orgDetail.id
+            ? this.orgDetail.id
+            : this.$route.params.id || null;
+        if (!orgId) return;
+        const res = await axios.get(
+          `${API_BASE_URL}/api/billing/current?org_id=${orgId}`,
+          { headers }
+        );
+        this.currentPlan = res && res.data ? res.data : null;
+      } catch (e) {
+        this.currentPlan = null;
+      }
+    },
     async lookupLocationNames() {
       // Only lookup if IDs are present
       const API_BASE_URL = 'http://127.0.0.1:8000';
@@ -319,11 +365,109 @@ export default {
       if (!this.countryName)
         this.countryName = details.country || this.orgDetail.country || '';
     },
-    formatDate(dateStr) {
-      if (!dateStr) return '-';
-      const d = new Date(dateStr);
-      if (isNaN(d)) return dateStr;
-      return d.toLocaleDateString();
+    planLabel(planObj) {
+      // prefer backend-provided friendly fields when present
+      if (!planObj) return 'None';
+      const name = planObj.plan_name || planObj.plan || 'Plan';
+      const amount = planObj.amount || planObj.plan_amount || null;
+      const period = planObj.period || '';
+      if (!amount) return `${name}`;
+      return `${name} ($${this.formatAmount(amount)}/${
+        period || (parseFloat(amount) >= 1000 ? 'Year' : 'Month')
+      })`;
+    },
+    formatAmount(amount) {
+      if (amount === null || amount === undefined || amount === '') return '';
+      const num = typeof amount === 'number' ? amount : parseFloat(amount);
+      if (isNaN(num)) return amount;
+      // show without thousands sep to match existing UI
+      return num.toFixed(2);
+    },
+    formatDate(dateVal) {
+      if (!dateVal) return null;
+      // Parse DB date as UTC when in 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS' form
+      const m = String(dateVal).match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+      );
+      let d;
+      if (m) {
+        const Y = parseInt(m[1], 10);
+        const Mo = parseInt(m[2], 10) - 1;
+        const D = parseInt(m[3], 10);
+        const hh = m[4] ? parseInt(m[4], 10) : 0;
+        const mm = m[5] ? parseInt(m[5], 10) : 0;
+        const ss = m[6] ? parseInt(m[6], 10) : 0;
+        d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
+      } else {
+        d = new Date(dateVal);
+      }
+      if (isNaN(d.getTime())) return null;
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+      // format like: 31 AUG ,2025 (kept spacing to match your example)
+      return `${day} ${mon},${yr}`;
+    },
+    formatDateTime(dateVal) {
+      if (!dateVal) return null;
+      // Parse DB datetimes as UTC when in common SQL format
+      const m = String(dateVal).match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+      );
+      let d;
+      if (m) {
+        const Y = parseInt(m[1], 10);
+        const Mo = parseInt(m[2], 10) - 1;
+        const D = parseInt(m[3], 10);
+        const hh = m[4] ? parseInt(m[4], 10) : 0;
+        const mm = m[5] ? parseInt(m[5], 10) : 0;
+        const ss = m[6] ? parseInt(m[6], 10) : 0;
+        d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
+      } else {
+        d = new Date(dateVal);
+      }
+      if (isNaN(d.getTime())) return null;
+
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+
+      let hr = d.getHours();
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      hr = hr % 12;
+      hr = hr ? hr : 12; // the hour '0' should be '12'
+      const strTime = `${hr}:${min} ${ampm}`;
+
+      return `${day} ${mon},${yr} ${strTime}`;
     },
   },
 };

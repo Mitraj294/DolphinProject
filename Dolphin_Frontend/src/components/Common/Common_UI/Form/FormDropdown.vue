@@ -17,28 +17,35 @@
       class="form-input-with-icon"
       @click="toggleDropdown"
       :disabled="disabled"
+      :style="inputStyle"
     />
     <span class="form-dropdown-chevron">
       <i class="fas fa-chevron-down"></i>
     </span>
-    <div
+    <teleport
+      to="body"
       v-if="showDropdown"
-      class="dropdown-list"
     >
-      <input
-        class="dropdown-search"
-        placeholder="Search"
-        v-model="search"
-      />
       <div
-        v-for="option in filteredOptions"
-        :key="option.value"
-        class="dropdown-item"
-        @click="selectOption(option)"
+        ref="dropdownEl"
+        class="dropdown-list"
+        :style="dropdownStyle"
       >
-        <span>{{ option.text }}</span>
+        <input
+          class="dropdown-search"
+          placeholder="Search"
+          v-model="search"
+        />
+        <div
+          v-for="option in filteredOptions"
+          :key="option.value"
+          class="dropdown-item"
+          @click="selectOption(option)"
+        >
+          <span>{{ option.text }}</span>
+        </div>
       </div>
-    </div>
+    </teleport>
   </div>
 </template>
 
@@ -51,11 +58,15 @@ export default {
     icon: { type: String, default: '' },
     placeholder: { type: String, default: 'Select' },
     disabled: { type: Boolean, default: false },
+    // allow callers to override horizontal padding in px (left/right)
+    paddingLeft: { type: [Number, String], default: 36 },
+    paddingRight: { type: [Number, String], default: 36 },
   },
   data() {
     return {
       showDropdown: false,
       search: '',
+      dropdownStyle: {},
     };
   },
   computed: {
@@ -66,6 +77,12 @@ export default {
       }
       // fallback for slot
       return this.placeholder;
+    },
+    inputStyle() {
+      // ensure numeric value and append 'px'
+      const left = Number(this.paddingLeft) || 36;
+      const right = Number(this.paddingRight) || 36;
+      return { padding: `0 ${right}px 0 ${left}px` };
     },
     filteredOptions() {
       let opts = [];
@@ -101,6 +118,10 @@ export default {
     toggleDropdown() {
       if (this.disabled) return;
       this.showDropdown = !this.showDropdown;
+      if (this.showDropdown) {
+        // update position on open
+        this.$nextTick(() => this.updateDropdownPosition());
+      }
     },
     selectOption(option) {
       this.$emit('update:modelValue', option.value);
@@ -111,16 +132,48 @@ export default {
     handleClickOutside(event) {
       if (!this.showDropdown) return;
       const root = this.$refs.dropdownRoot;
-      if (root && !root.contains(event.target)) {
+      const dropdownEl = this.$refs.dropdownEl;
+      const clickedInsideRoot = root && root.contains(event.target);
+      const clickedInsideDropdown =
+        dropdownEl && dropdownEl.contains(event.target);
+      if (!clickedInsideRoot && !clickedInsideDropdown) {
         this.showDropdown = false;
       }
+    },
+    updateDropdownPosition() {
+      // position the teleported dropdown relative to the input's root element
+      const root = this.$refs.dropdownRoot;
+      const el = this.$refs.dropdownEl;
+      if (!root || !el) return;
+      const rect = root.getBoundingClientRect();
+      const top = rect.bottom + window.scrollY + 6; // small offset
+      const left = rect.left + window.scrollX;
+      const width = rect.width;
+      // apply fixed-positioning so it stays in viewport during scroll
+      this.dropdownStyle = {
+        position: 'absolute',
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${width}px`,
+        zIndex: 99999,
+      };
     },
   },
   mounted() {
     document.addEventListener('mousedown', this.handleClickOutside);
+    // keep position updated on resize/scroll
+    window.addEventListener('resize', this.updateDropdownPosition);
+    window.addEventListener('scroll', this.updateDropdownPosition, true);
   },
-  beforeDestroy() {
+  watch: {
+    showDropdown(newVal) {
+      if (newVal) this.$nextTick(() => this.updateDropdownPosition());
+    },
+  },
+  beforeUnmount() {
     document.removeEventListener('mousedown', this.handleClickOutside);
+    window.removeEventListener('resize', this.updateDropdownPosition);
+    window.removeEventListener('scroll', this.updateDropdownPosition, true);
   },
 };
 </script>

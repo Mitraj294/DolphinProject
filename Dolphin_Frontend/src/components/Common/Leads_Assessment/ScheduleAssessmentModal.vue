@@ -581,7 +581,7 @@ export default {
   padding: 12px 18px;
   font-size: 15px;
 }
-@media (max-width: 900px) {
+@media (max-width: 700px) {
   .modal-card {
     min-width: 0;
     max-width: calc(100vw - 32px);

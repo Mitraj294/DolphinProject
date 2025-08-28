@@ -147,10 +147,18 @@ export default {
     return {
       dropdownOpen: false,
       showLogoutConfirm: false,
+      overridePageTitle: null,
       roleName: authMiddleware.getRole(),
       isVerySmallScreen: false,
       notificationCount: 0,
-      assessmentNameCache: {},
+
+      leadNameCache: {},
+      leadNameFetching: {},
+      // Small cache for organization names so Navbar can show "Edit organization : <name>"
+      orgNameCache: {},
+      orgNameFetching: {},
+      // lifecycle flag to avoid mutating state after unmount
+      isNavbarAlive: false,
       // bound handlers for window events (so `this` stays correct)
       _boundFetchUnread: null,
       _boundUpdateNotificationCount: null,
@@ -159,6 +167,7 @@ export default {
   },
   computed: {
     pageTitle() {
+      if (this.overridePageTitle) return this.overridePageTitle;
       const routeName = this.$route.name;
       if (routeName === 'UserPermission') {
         return 'Users + Permission';
@@ -172,14 +181,53 @@ export default {
         return 'Lead Details';
       }
       if (routeName === 'EditLead') {
+        // Try to display the lead's name when route param id is present
+        const leadId = this.$route.params.id || this.$route.query.id;
+        if (leadId) {
+          const cached = this.leadNameCache[leadId];
+          if (cached) return `Edit Lead : ${cached}`;
+          // If we're already fetching, show a placeholder
+          if (this.leadNameFetching[leadId]) return 'Edit Lead';
+          // Trigger async fetch (non-blocking) and return base title for now
+          if (this.isNavbarAlive) this.fetchLeadName(leadId);
+          return 'Edit Lead';
+        }
         return 'Edit Lead';
       }
       if (routeName === 'OrganizationDetail') {
-        const orgName = this.$route.params.orgName || '';
-        if (orgName) return `${orgName} Organization Details`;
+        // Prefer explicit name from route params/queries when available
+        const orgParamName =
+          this.$route.params.orgName || this.$route.query.orgName || '';
+        if (orgParamName) return `Organization Details: ${orgParamName}`;
+        // If an id is present, try to show cached organization name as "Organization Details: <name>"
+        const orgId =
+          this.$route.params.id ||
+          this.$route.query.id ||
+          this.$route.params.orgId;
+        if (orgId) {
+          const cached = this.orgNameCache[orgId];
+          if (cached) return `Organization Details: ${cached}`;
+          if (this.orgNameFetching[orgId]) return 'Organization Details';
+          if (this.isNavbarAlive) this.fetchOrgName(orgId);
+          return 'Organization Details';
+        }
         return 'Organization Details';
       }
       if (routeName === 'OrganizationEdit') {
+        // Prefer explicit override emitted by the page
+        // If route includes an id param, try to show "Edit organization : <name>"
+        const orgId =
+          this.$route.params.id ||
+          this.$route.query.id ||
+          this.$route.params.orgId;
+        if (orgId) {
+          const cached = this.orgNameCache[orgId];
+          if (cached) return `Edit organization : ${cached}`;
+          if (this.orgNameFetching[orgId]) return 'Edit organization';
+          // Trigger async fetch and show base title immediately
+          if (this.isNavbarAlive) this.fetchOrgName(orgId);
+          return 'Edit organization';
+        }
         const orgName = this.$route.params.orgName || '';
         if (orgName) return `${orgName} Organization Details`;
         return 'Organization Details';
@@ -238,13 +286,7 @@ export default {
       if (routeName === 'AssessmentSummary') {
         const assessmentId = this.$route.params.assessmentId;
         if (!assessmentId) return 'Assessment Summary';
-        if (
-          this.assessmentNameCache &&
-          this.assessmentNameCache[assessmentId]
-        ) {
-          return `${this.assessmentNameCache[assessmentId]} Summary`;
-        }
-        // If not cached, fetch and update cache
+
         this.fetchAssessmentName(assessmentId);
         return `Assessment ${assessmentId} Summary`;
       }
@@ -275,6 +317,14 @@ export default {
   },
 
   methods: {
+    // simple debounce helper for methods invoked by window events
+    _debounce(fn, wait = 200) {
+      let t = null;
+      return (...args) => {
+        if (t) clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, args), wait);
+      };
+    },
     async fetchUnreadCount() {
       try {
         let token = storage.get('authToken');
@@ -301,28 +351,90 @@ export default {
         // ignore errors silently; keep existing badge
       }
     },
-    async fetchAssessmentName(assessmentId) {
-      if (!assessmentId || this.assessmentNameCache[assessmentId]) return;
+
+    async fetchLeadName(leadId) {
+      if (!leadId) return null;
+      // prevent duplicate concurrent fetches per id
+      if (this.leadNameFetching[leadId]) return null;
+      this.leadNameFetching = { ...this.leadNameFetching, [leadId]: true };
       try {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        // Fetch all assessments and cache their names
-        const res = await fetch(`${API_BASE_URL}/api/assessments`);
-        const data = await res.json();
-        if (Array.isArray(data.assessments)) {
-          data.assessments.forEach((a) => {
-            if (a.id && a.name) {
-              this.$set(this.assessmentNameCache, a.id.toString(), a.name);
-            }
-          });
-        }
-        // If the requested assessmentId is now cached, force update
-        if (this.assessmentNameCache[assessmentId]) {
-          this.$forceUpdate && this.$forceUpdate();
+        let token = storage.get('authToken');
+        if (token && typeof token === 'object' && token.token)
+          token = token.token;
+        const config = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
+        const res = await axios.get(
+          `${API_BASE_URL}/api/leads/${leadId}`,
+          config
+        );
+        const payload = res && res.data ? res.data : null;
+        const leadObj = payload && payload.lead ? payload.lead : payload;
+        if (leadObj) {
+          const name =
+            (
+              (leadObj.first_name || '') +
+              ' ' +
+              (leadObj.last_name || '')
+            ).trim() ||
+            leadObj.contact ||
+            leadObj.email ||
+            '';
+          if (name && this.isNavbarAlive) {
+            // assign directly to reactive object
+            this.leadNameCache = { ...this.leadNameCache, [leadId]: name };
+          }
         }
       } catch (e) {
-        // Ignore error, fallback to ID
+        // silent; leave base title
+      } finally {
+        if (this.isNavbarAlive) {
+          const copy = { ...this.leadNameFetching };
+          delete copy[leadId];
+          this.leadNameFetching = copy;
+        }
       }
+      return null;
+    },
+    async fetchOrgName(orgId) {
+      if (!orgId) return null;
+      if (this.orgNameFetching[orgId]) return null;
+      this.orgNameFetching = { ...this.orgNameFetching, [orgId]: true };
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        let token = storage.get('authToken');
+        if (token && typeof token === 'object' && token.token)
+          token = token.token;
+        const config = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
+        const res = await axios.get(
+          `${API_BASE_URL}/api/organizations/${orgId}`,
+          config
+        );
+        const payload = res && res.data ? res.data : null;
+        // backend may return organization under payload.organization or payload directly
+        const orgObj =
+          payload && payload.organization ? payload.organization : payload;
+        if (orgObj) {
+          const name = orgObj.org_name || orgObj.name || orgObj.title || '';
+          if (name && this.isNavbarAlive) {
+            this.orgNameCache = { ...this.orgNameCache, [orgId]: name };
+          }
+        }
+      } catch (e) {
+        // ignore
+      } finally {
+        if (this.isNavbarAlive) {
+          const copy = { ...this.orgNameFetching };
+          delete copy[orgId];
+          this.orgNameFetching = copy;
+        }
+      }
+      return null;
     },
     toggleDropdown() {
       this.dropdownOpen = !this.dropdownOpen;
@@ -403,32 +515,44 @@ export default {
     },
   },
   mounted() {
+    // mark alive so async fetches can safely write to state
+    this.isNavbarAlive = true;
     document.addEventListener('mousedown', this.handleClickOutside);
     window.addEventListener('resize', this.checkScreen);
     this.checkScreen();
     this.updateNotificationCount();
-    // initial fetch of unread count
-    this.fetchUnreadCount();
+    // initial fetch of unread count only when set by login flow
+    // Login.vue sets `showDashboardWelcome` in storage on successful login.
+    // Instead of calling the API directly here, fire the domain event so
+    // the debounced handler handles the request (avoids duplicate calls).
+    if (storage.get('showDashboardWelcome')) {
+      this.fetchUnreadCount();
+      storage.remove('showDashboardWelcome');
+    }
     // bind handlers so `this` is preserved when invoked by window events
     this._boundFetchUnread = this.fetchUnreadCount.bind(this);
     this._boundUpdateNotificationCount =
       this.updateNotificationCount.bind(this);
-    this._boundAuthUpdated = () => {
-      // Recompute roleName and let Vue recompute computed properties
+    // When auth context changes (impersonation), refresh role and badge.
+    this._boundAuthUpdated = this._debounce(() => {
       this.roleName = authMiddleware.getRole();
       this.updateNotificationCount();
-      // Force a UI update if needed
+      try {
+        this.fetchUnreadCount();
+      } catch (e) {}
       this.$forceUpdate && this.$forceUpdate();
-    };
-    // refresh when tab/window gains focus
-    window.addEventListener('focus', this._boundFetchUnread);
-    // refresh when other components dispatch a notification update
+    }, 500);
+    // refresh when other components dispatch a notification update (mark read actions)
+    // Use a debounced wrapper to avoid multiple simultaneous network calls
+    this._boundFetchUnread = this._debounce(
+      this.fetchUnreadCount.bind(this),
+      500
+    );
     window.addEventListener('notification-updated', this._boundFetchUnread);
     // refresh when auth context changes (impersonation/revert)
     window.addEventListener('auth-updated', this._boundAuthUpdated);
-    // storage event (cross-tab) and focus should update local count
+    // storage event (cross-tab) should update local count
     window.addEventListener('storage', this._boundUpdateNotificationCount);
-    window.addEventListener('focus', this._boundUpdateNotificationCount);
     // On mount, if on summary page, fetch assessment name
     if (
       this.$route.name === 'AssessmentSummary' &&
@@ -439,16 +563,23 @@ export default {
     if (this.showLogoutConfirm) {
       document.body.classList.add('logout-overlay-active');
     }
+
+    // Listen for page title overrides from pages
+    if (this.$root && this.$root.$on) {
+      this.$root.$on('page-title-override', (val) => {
+        this.overridePageTitle = val;
+      });
+    }
   },
   beforeDestroy() {
+    // prevent background async callbacks from mutating state after unmount
+    this.isNavbarAlive = false;
     document.removeEventListener('mousedown', this.handleClickOutside);
     window.removeEventListener('resize', this.checkScreen);
     if (this._boundUpdateNotificationCount) {
       window.removeEventListener('storage', this._boundUpdateNotificationCount);
-      window.removeEventListener('focus', this._boundUpdateNotificationCount);
     }
     if (this._boundFetchUnread) {
-      window.removeEventListener('focus', this._boundFetchUnread);
       window.removeEventListener(
         'notification-updated',
         this._boundFetchUnread
@@ -458,6 +589,7 @@ export default {
       window.removeEventListener('auth-updated', this._boundAuthUpdated);
     }
     document.body.classList.remove('logout-overlay-active');
+    if (this.$root && this.$root.$off) this.$root.$off('page-title-override');
   },
 };
 </script>

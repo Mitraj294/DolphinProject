@@ -54,7 +54,17 @@
                     <td data-label="Organization">{{ lead.organization }}</td>
                     <td data-label="Size">{{ lead.size }}</td>
                     <td data-label="Source">{{ lead.source }}</td>
-                    <td data-label="Status">{{ lead.status }}</td>
+                    <td data-label="Status">
+                      <span
+                        class="status-badge"
+                        :class="
+                          lead.status &&
+                          lead.status.toLowerCase().replace(/\s+/g, '-')
+                        "
+                      >
+                        {{ lead.status || 'Lead Stage' }}
+                      </span>
+                    </td>
                     <td data-label="Notes">
                       <button
                         class="btn-view"
@@ -195,6 +205,7 @@ export default {
       notesModalMode: 'add', // 'add' or 'view'
       notesInput: '',
       currentLead: null,
+      currentLeadId: null,
       currentLeadIdx: null,
       sortKey: '',
       sortAsc: true,
@@ -287,6 +298,32 @@ export default {
       const lead = this.leads[idx];
       if (option === 'Send Assessment') {
         // Pass all lead details as query params
+        // If lead is persisted, navigate using canonical id param only.
+        if (lead.id) {
+          // prefer named route if available
+          try {
+            this.$router.push({
+              name: 'SendAssessment',
+              params: { id: lead.id },
+            });
+            return;
+          } catch (e) {
+            // fallback to path with id as param
+            if (this.$route.path.startsWith('/assessments')) {
+              this.$router.push({
+                path: `/assessments/send-assessment`,
+                params: { id: lead.id },
+              });
+            } else {
+              this.$router.push({
+                path: `/leads/send-assessment`,
+                params: { id: lead.id },
+              });
+            }
+            return;
+          }
+        }
+        // For unsaved leads, keep existing behavior and pass details as query.
         const query = {
           contact: lead.contact,
           email: lead.email,
@@ -325,10 +362,12 @@ export default {
       }
     },
     goToLeadDetail(lead) {
+      // Navigate to lead detail by id (preferred). Keep some basic query info
+      // for backward compatibility, but route param will be the canonical id.
+      const id = lead.id || lead.email || '';
       this.$router.push({
         name: 'LeadDetail',
-        params: { email: lead.email },
-        query: { ...lead },
+        params: { id },
       });
     },
     goToPage(page) {
@@ -346,8 +385,29 @@ export default {
       try {
         document.body.style.overflow = '';
       } catch (e) {}
+      // Save a reference and the lead id (preferred) so we can reliably
+      // update the correct lead even after sorting/pagination changes.
       this.currentLead = lead;
-      this.currentLeadIdx = idx + (this.currentPage - 1) * this.pageSize;
+      this.currentLeadId = lead.id || null;
+      // Find the correct index in the main leads array. Prefer id, fall back
+      // to matching by email/phone/organization for unsaved leads.
+      if (this.currentLeadId) {
+        this.currentLeadIdx = this.leads.findIndex(
+          (l) => l.id === this.currentLeadId
+        );
+      } else {
+        // best-effort matching for leads without id
+        this.currentLeadIdx = this.leads.findIndex(
+          (l) =>
+            (l.email && l.email === lead.email) ||
+            (l.phone && l.phone === lead.phone) ||
+            (l.contact && l.contact === lead.contact)
+        );
+        // if still not found, fallback to positional mapping (old behavior)
+        if (this.currentLeadIdx === -1) {
+          this.currentLeadIdx = idx + (this.currentPage - 1) * this.pageSize;
+        }
+      }
       if (lead.notesAction === 'View') {
         this.notesModalMode = 'view';
       } else {
@@ -358,9 +418,16 @@ export default {
     },
     async submitNotes() {
       // Save new notes (add)
-      const lead = this.leads[this.currentLeadIdx];
+      // Resolve the lead to update from stored id or index
+      let lead = null;
+      if (this.currentLeadId) {
+        lead = this.leads.find((l) => l.id === this.currentLeadId);
+      }
+      if (!lead && this.currentLeadIdx != null && this.currentLeadIdx >= 0) {
+        lead = this.leads[this.currentLeadIdx];
+      }
       if (!lead || !lead.id) {
-        // update locally and close
+        // update locally and close for leads that aren't persisted yet
         if (lead) {
           lead.notes = this.notesInput;
           lead.notesAction = 'View';
@@ -389,8 +456,14 @@ export default {
       }
     },
     async saveNotes() {
-      // Save edited notes
-      const lead = this.leads[this.currentLeadIdx];
+      // Save edited notes. Resolve lead the same way as submitNotes.
+      let lead = null;
+      if (this.currentLeadId) {
+        lead = this.leads.find((l) => l.id === this.currentLeadId);
+      }
+      if (!lead && this.currentLeadIdx != null && this.currentLeadIdx >= 0) {
+        lead = this.leads[this.currentLeadIdx];
+      }
       if (!lead || !lead.id) {
         if (lead) lead.notes = this.notesInput;
         this.closeNotesModal();
@@ -419,6 +492,7 @@ export default {
       this.notesInput = '';
       this.currentLead = null;
       this.currentLeadIdx = null;
+      this.currentLeadId = null;
     },
     sortBy(key) {
       if (this.sortKey === key) {
@@ -651,5 +725,30 @@ export default {
 .table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 125px; /* fixed equal width for all badges */
+  height: 30px; /* consistent height */
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  text-align: center;
+  white-space: nowrap;
+  padding: 0 8px; /* horizontal padding retained if text needs it */
+  box-sizing: border-box;
+}
+.status-badge.lead-stage {
+  background: #6c757d;
+}
+.status-badge.assessment-sent {
+  background: #007bff;
+}
+.status-badge.registered {
+  background: #28a745;
 }
 </style>

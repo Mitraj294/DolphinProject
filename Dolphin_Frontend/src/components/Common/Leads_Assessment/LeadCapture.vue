@@ -153,14 +153,14 @@
             <div class="lead-capture-actions">
               <button
                 type="button"
-                class="btn btn-secondary"
+                class="org-edit-cancel"
                 @click="$router.push('/leads')"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                class="btn btn-primary"
+                class="org-edit-update"
               >
                 Save Lead
               </button>
@@ -553,5 +553,40 @@ export default {
   margin-bottom: 0;
   box-sizing: border-box;
   transition: border 0.18s;
+}
+
+.org-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.org-edit-cancel {
+  background: #f5f5f5;
+  color: #888;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 32px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.org-edit-cancel:hover {
+  background: #e0e0e0;
+}
+.org-edit-update {
+  background: #0074c2;
+  color: #fff;
+  border: none;
+  border-radius: 24px;
+  padding: 10px 32px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.org-edit-update:hover {
+  background: #005fa3;
 }
 </style>

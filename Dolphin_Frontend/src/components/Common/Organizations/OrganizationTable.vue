@@ -38,23 +38,7 @@
               <td>{{ org.main_contact }}</td>
               <td>{{ formatDate(org.contractStart) }}</td>
               <td>{{ formatDate(org.contractEnd) }}</td>
-              <td>
-                {{
-                  org.last_contacted
-                    ? (() => {
-                        const d = new Date(org.last_contacted);
-                        if (isNaN(d)) return org.last_contacted;
-                        return d.toLocaleString(undefined, {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        });
-                      })()
-                    : ''
-                }}
-              </td>
+              <td>{{ formatDateTime(org.last_contacted) }}</td>
 
               <td>
                 <button
@@ -201,18 +185,92 @@ export default {
         params: { id: org.id },
       });
     },
-    formatDate(dateStr) {
-      if (!dateStr) return '';
-      try {
-        const d = new Date(dateStr);
-        if (isNaN(d)) {
-          // Fallback: try to split on 'T' for ISO-like strings
-          return (dateStr && dateStr.split && dateStr.split('T')[0]) || dateStr;
-        }
-        return d.toISOString().slice(0, 10);
-      } catch (e) {
-        return (dateStr && dateStr.split && dateStr.split('T')[0]) || dateStr;
+    formatDate(dateVal) {
+      if (!dateVal) return null;
+      // accept timestamps or 'YYYY-MM-DD' or Date objects
+      // If backend sends 'YYYY-MM-DD HH:MM:SS' (UTC), parse as UTC and then show local
+      const m = String(dateVal).match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+      );
+      let d;
+      if (m) {
+        const Y = parseInt(m[1], 10);
+        const Mo = parseInt(m[2], 10) - 1;
+        const D = parseInt(m[3], 10);
+        const hh = m[4] ? parseInt(m[4], 10) : 0;
+        const mm = m[5] ? parseInt(m[5], 10) : 0;
+        const ss = m[6] ? parseInt(m[6], 10) : 0;
+        d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
+      } else {
+        d = new Date(dateVal);
       }
+      if (isNaN(d.getTime())) return null;
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+      // format like: 31 AUG,2025 (kept spacing to match your example)
+      return `${day} ${mon},${yr}`;
+    },
+    formatDateTime(dateVal) {
+      if (!dateVal) return null;
+      // Parse DB 'YYYY-MM-DD HH:MM:SS' as UTC, otherwise fallback to Date parsing
+      const m = String(dateVal).match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+      );
+      let d;
+      if (m) {
+        const Y = parseInt(m[1], 10);
+        const Mo = parseInt(m[2], 10) - 1;
+        const D = parseInt(m[3], 10);
+        const hh = m[4] ? parseInt(m[4], 10) : 0;
+        const mm = m[5] ? parseInt(m[5], 10) : 0;
+        const ss = m[6] ? parseInt(m[6], 10) : 0;
+        d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
+      } else {
+        d = new Date(dateVal);
+      }
+      if (isNaN(d.getTime())) return null;
+
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+
+      let hr = d.getHours();
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      hr = hr % 12;
+      hr = hr ? hr : 12; // the hour '0' should be '12'
+      const strTime = `${hr}:${min} ${ampm}`;
+
+      return `${day} ${mon},${yr} ${strTime}`;
     },
     goToPage(page) {
       if (page === '...' || page < 1 || page > this.totalPages) return;

@@ -61,6 +61,50 @@ class LeadController extends Controller
         return response()->json(Lead::all());
     }
     /**
+     * Return a single lead by id.
+     */
+    public function show($id)
+    {
+        $lead = Lead::find($id);
+        if (!$lead) {
+            return response()->json(['message' => 'Lead not found'], 404);
+        }
+
+        // Try to find an organization associated with this lead's email.
+        // Strategy: find a user with the same email, then check organizations.user_id.
+        $org = null;
+        $orgUser = null;
+        $orgUserDetails = null;
+        try {
+            $userModel = '\App\\Models\\User';
+            $user = $userModel::where('email', $lead->email)->first();
+            if ($user) {
+                $orgModel = '\App\\Models\\Organization';
+                $org = $orgModel::where('user_id', $user->id)->first();
+                if ($org) {
+                    $orgUser = $user;
+                    // try to load user details if the relation or model exists
+                    $detailsModel = '\App\\Models\\UserDetail';
+                    if (class_exists($detailsModel)) {
+                        $orgUserDetails = $detailsModel::where('user_id', $user->id)->first();
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('LeadController::show organization lookup failed: ' . $e->getMessage());
+        }
+
+        // Compose response: include lead and, if found, organization and primary user details
+        $resp = ['lead' => $lead];
+        if ($org) {
+            $resp['organization'] = $org;
+            $resp['orgUser'] = $orgUser;
+            $resp['orgUserDetails'] = $orgUserDetails;
+        }
+
+        return response()->json($resp);
+    }
+    /**
      * Prefill endpoint for registration form: returns all lead data by lead_id or email
      */
     public function prefill(Request $request)

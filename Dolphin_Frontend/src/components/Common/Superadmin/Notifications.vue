@@ -21,10 +21,17 @@
             <table class="table">
               <TableHeader
                 :columns="[
-                  { label: 'Notification Title', key: 'body' },
-                  { label: 'Date & Time', key: 'sent_at', width: '225px' },
+                  { label: 'Notification Title', key: 'body', sortable: true },
+                  {
+                    label: 'Date & Time',
+                    key: 'sent_at',
+                    width: '225px',
+                    sortable: true,
+                  },
                   { label: 'Action', key: 'action' },
                 ]"
+                :activeSortKey="sortKey"
+                :sortAsc="sortAsc"
                 @sort="sortBy"
               />
               <tbody>
@@ -42,7 +49,10 @@
                   </td>
                   <td>{{ formatLocalDateTime(item.sent_at) }}</td>
                   <td>
-                    <button class="btn-view">
+                    <button
+                      class="btn-view"
+                      @click="openDetail(item)"
+                    >
                       <img
                         src="@/assets/images/Detail.svg"
                         alt="View"
@@ -64,62 +74,64 @@
             </table>
           </div>
         </div>
-        <Pagination
-          :pageSize="pageSize"
-          :pageSizes="[10, 25, 100]"
-          :showPageDropdown="showPageDropdown"
-          :currentPage="currentPage"
-          :totalPages="totalPages"
-          :paginationPages="paginationPages"
-          @goToPage="goToPage"
-          @selectPageSize="selectPageSize"
-          @togglePageDropdown="showPageDropdown = !showPageDropdown"
-        />
-        <div
-          v-if="showSendModal"
-          class="send-notification-modal-overlay"
-          @click.self="showSendModal = false"
+      </div>
+    </div>
+    <Pagination
+      :pageSize="pageSize"
+      :pageSizes="[10, 25, 100]"
+      :showPageDropdown="showPageDropdown"
+      :currentPage="currentPage"
+      :totalPages="totalPages"
+      :paginationPages="paginationPages"
+      @goToPage="goToPage"
+      @selectPageSize="selectPageSize"
+      @togglePageDropdown="showPageDropdown = !showPageDropdown"
+    />
+    <div
+      v-if="showSendModal"
+      class="modal-overlay"
+      @click.self="showSendModal = false"
+    >
+      <div class="modal-card">
+        <button
+          class="modal-close-btn"
+          @click="showSendModal = false"
         >
-          <div class="send-notification-modal">
-            <button
-              class="modal-close-btn"
-              @click="showSendModal = false"
-            >
-              &times;
-            </button>
-            <div class="modal-title">Send Notifications</div>
-            <div class="modal-desc">
-              Send a notification to selected organizations, admins, or groups.
-              You can also schedule it for later.
-            </div>
-            <textarea
-              class="modal-textarea"
-              placeholder="Type your notification here..."
-            ></textarea>
-            <div class="modal-row">
-              <div class="modal-field">
-                <FormLabel>Select Organizations</FormLabel>
-                <MultiSelectDropdown
-                  :options="organizations || []"
-                  :selectedItems="selectedOrganizations"
-                  @update:selectedItems="selectedOrganizations = $event"
-                  option-label="org_name"
-                  option-value="id"
-                  placeholder="Select organizations"
-                  :enableSelectAll="true"
-                />
-              </div>
-              <div class="modal-field">
-                <FormLabel>Select Group</FormLabel>
-                <MultiSelectDropdown
-                  :options="groups || []"
-                  :selectedItems="selectedGroups"
-                  @update:selectedItems="selectedGroups = $event"
-                  placeholder="Select groups"
-                  :enableSelectAll="true"
-                />
-              </div>
-              <!--
+          &times;
+        </button>
+        <div class="modal-title">Send Notifications</div>
+        <div class="modal-desc">
+          Send a notification to selected organizations, admins, or groups. You
+          can also schedule it for later.
+        </div>
+        <textarea
+          class="modal-textarea"
+          placeholder="Type your notification here..."
+        ></textarea>
+        <div class="modal-row">
+          <div class="modal-field">
+            <FormLabel>Select Organizations</FormLabel>
+            <MultiSelectDropdown
+              :options="organizations || []"
+              :selectedItems="selectedOrganizations"
+              @update:selectedItems="selectedOrganizations = $event"
+              option-label="org_name"
+              option-value="id"
+              placeholder="Select organizations"
+              :enableSelectAll="true"
+            />
+          </div>
+          <div class="modal-field">
+            <FormLabel>Select Group</FormLabel>
+            <MultiSelectDropdown
+              :options="groups || []"
+              :selectedItems="selectedGroups"
+              @update:selectedItems="selectedGroups = $event"
+              placeholder="Select groups"
+              :enableSelectAll="true"
+            />
+          </div>
+          <!--
                 This section renders a dropdown menu for selecting an admin user.
                 - The dropdown is bound to the `selectedAdmin` model.
                 - Options include a default "Select" prompt and two admin choices ("Admin 1" and "Admin 2").
@@ -135,39 +147,294 @@
                 </FormDropdown>
               </div>
                 -->
-            </div>
+        </div>
+        <div class="modal-row">
+          <div class="schedule-demo-field schedule-demo-schedule-field">
+            <FormLabel>Schedule</FormLabel>
             <div class="modal-row">
-              <div class="schedule-demo-field schedule-demo-schedule-field">
-                <FormLabel>Schedule</FormLabel>
-                <div class="modal-row">
-                  <div class="modal-field">
-                    <div class="form-box">
-                      <FormInput
-                        v-model="scheduledDate"
-                        type="date"
-                        placeholder="MM/DD/YYYY"
-                      />
+              <div class="modal-field">
+                <div class="form-box">
+                  <FormInput
+                    v-model="scheduledDate"
+                    type="date"
+                    placeholder="MM/DD/YYYY"
+                  />
+                </div>
+              </div>
+
+              <div class="modal-field">
+                <div class="form-box">
+                  <FormInput
+                    v-model="scheduledTime"
+                    type="time"
+                    placeholder="00:00"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button
+          class="btn btn-primary"
+          @click="sendNotification"
+        >
+          Send Notification
+        </button>
+      </div>
+    </div>
+
+    <!-- Notification Detail Modal -->
+    <div
+      v-if="showDetailModal && selectedNotification"
+      class="modal-overlay"
+      @click.self="closeDetail"
+    >
+      <div class="modal-card">
+        <button
+          class="modal-close-btn"
+          @click="closeDetail"
+        >
+          &times;
+        </button>
+        <div class="modal-title2">Notification Detail</div>
+        <div class="modal-desc">Details for the selected notification.</div>
+        <div
+          class="modal-title2 schedule-header"
+          style="font-size: 20px; font-weight: 450"
+        >
+          <div class="schedule-header-left">
+            <div>
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  max-width: 520px;
+                  margin-right: 12px;
+                "
+              >
+                {{ selectedNotification.body }}
+              </div>
+              -
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  margin-left: 12px;
+                "
+              >
+                {{
+                  formatLocalDateTime(
+                    selectedNotification.sent_at ||
+                      selectedNotification.created_at
+                  )
+                }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-table">
+            <div class="detail-value">
+              <div class="recipient-info"></div>
+              <div class="recipient-list">
+                <!-- 1) Members (group members) -->
+                <div
+                  v-if="
+                    selectedNotification &&
+                    selectedNotification.groups &&
+                    selectedNotification.groups.some(
+                      (g) => g.members && g.members.length
+                    )
+                  "
+                >
+                  <div class="section-title">Members</div>
+                  <div
+                    v-for="g in selectedNotification.groups"
+                    :key="'gm-' + g.id"
+                  >
+                    <div v-if="g.members && g.members.length">
+                      <div class="group-name">{{ g.name }}</div>
+                      <div
+                        v-for="m in g.members"
+                        :key="'m-' + (m.id || m.email)"
+                        class="recipient-row"
+                      >
+                        <div class="recipient-info">
+                          <div class="recipient-name">
+                            {{ m.name || m.full_name || m.email }}
+                          </div>
+                          <div
+                            class="recipient-email"
+                            v-if="m.email"
+                          >
+                            {{ m.email }}
+                          </div>
+                        </div>
+                        <div class="recipient-status">
+                          <span class="recipient-badge unread"
+                            >Yet to read</span
+                          >
+                          <span class="status-icon pending"></span>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                </div>
 
-                  <div class="modal-field">
-                    <div class="form-box">
-                      <FormInput
-                        v-model="scheduledTime"
-                        type="time"
-                        placeholder="00:00"
-                      />
+                <!-- 2) Groups -->
+                <div
+                  v-if="
+                    selectedNotification &&
+                    selectedNotification.groups &&
+                    selectedNotification.groups.length
+                  "
+                >
+                  <div class="section-title">Groups</div>
+                  <div
+                    v-for="g in selectedNotification.groups"
+                    :key="'g-' + g.id"
+                    class="recipient-row"
+                  >
+                    <div class="recipient-info">
+                      <div class="recipient-name">{{ g.name }}</div>
                     </div>
+                  </div>
+                </div>
+
+                <!-- separator -->
+                <div
+                  v-if="
+                    selectedNotification &&
+                    ((selectedNotification.organizations &&
+                      selectedNotification.organizations.length) ||
+                      (selectedNotification.admins &&
+                        selectedNotification.admins.length))
+                  "
+                  class="section-sep"
+                />
+
+                <!-- 3) Organizations -->
+                <div
+                  v-if="
+                    selectedNotification &&
+                    selectedNotification.organizations &&
+                    selectedNotification.organizations.length
+                  "
+                >
+                  <div class="section-title">Organizations</div>
+                  <div
+                    v-for="o in selectedNotification.organizations"
+                    :key="'o-' + o.id"
+                    class="recipient-row"
+                  >
+                    <div class="recipient-info">
+                      <div class="recipient-name">{{ o.name }}</div>
+                    </div>
+                    <div class="recipient-status">
+                      <span class="recipient-badge unread">Yet to read</span>
+                      <span class="status-icon pending"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 4) Admins -->
+                <div
+                  v-if="
+                    selectedNotification &&
+                    selectedNotification.admins &&
+                    selectedNotification.admins.length
+                  "
+                >
+                  <div class="section-title">Admins</div>
+                  <div
+                    v-for="a in selectedNotification.admins"
+                    :key="'a-' + a.id"
+                    class="recipient-row"
+                  >
+                    <div class="recipient-info">
+                      <div class="recipient-name">{{ a.name }}</div>
+                      <div
+                        class="recipient-email"
+                        v-if="a.email"
+                      >
+                        {{ a.email }}
+                      </div>
+                    </div>
+                    <div class="recipient-status">
+                      <span class="recipient-badge unread">Yet to read</span>
+                      <span class="status-icon pending"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Fallback: flat list from detailRecipients -->
+                <div
+                  v-if="
+                    !selectedNotification ||
+                    ((!selectedNotification.groups ||
+                      selectedNotification.groups.length === 0) &&
+                      (!selectedNotification.organizations ||
+                        selectedNotification.organizations.length === 0) &&
+                      (!selectedNotification.admins ||
+                        selectedNotification.admins.length === 0))
+                  "
+                >
+                  <div
+                    v-for="(r, ri) in detailRecipients"
+                    :key="ri"
+                    class="recipient-row"
+                  >
+                    <div class="recipient-info">
+                      <div class="recipient-name">{{ r.name }}</div>
+                      <div
+                        class="recipient-email"
+                        v-if="r.email"
+                      >
+                        {{ r.email }}
+                      </div>
+                    </div>
+                    <div class="recipient-status">
+                      <span
+                        class="recipient-badge"
+                        :class="{
+                          read: r.status === 'delivered' || r.status === 'read',
+                          unread: !(
+                            r.status === 'delivered' || r.status === 'read'
+                          ),
+                        }"
+                        >{{
+                          r.status === 'delivered' || r.status === 'read'
+                            ? 'Read'
+                            : 'Yet to read'
+                        }}</span
+                      >
+                      <span
+                        v-if="r.status === 'delivered'"
+                        class="status-icon delivered"
+                        v-html="tickSvg"
+                      ></span>
+                      <span
+                        v-else-if="r.status === 'failed'"
+                        class="status-icon failed"
+                        v-html="crossSvg"
+                      ></span>
+                      <span
+                        v-else
+                        class="status-icon pending"
+                      ></span>
+                    </div>
+                  </div>
+                  <div
+                    v-if="detailRecipients.length === 0"
+                    class="all-recipients"
+                  >
+                    All
                   </div>
                 </div>
               </div>
             </div>
-            <button
-              class="btn btn-primary"
-              @click="sendNotification"
-            >
-              Send Notification
-            </button>
           </div>
         </div>
       </div>
@@ -206,8 +473,12 @@ export default {
   },
   data() {
     return {
+      // lifecycle guard to prevent state updates after unmount
+      isAlive: false,
       showPageDropdown: false,
       showSendModal: false,
+      showDetailModal: false,
+      selectedNotification: null,
       pageSize: 10,
       currentPage: 1,
       sortKey: '',
@@ -260,6 +531,157 @@ export default {
         return pages;
       }
     },
+    // detailRecipients and svg getters
+    detailRecipients() {
+      const n = this.selectedNotification || {};
+      const list = [];
+
+      // If detailed groups/orgs/admins were merged by the detail endpoint, use them first
+      if (Array.isArray(n.groups) && n.groups.length) {
+        n.groups.forEach((g) => {
+          if (g.name) {
+            list.push({ name: g.name, email: '', status: 'pending' });
+          }
+          if (Array.isArray(g.members) && g.members.length) {
+            g.members.forEach((m) => {
+              list.push({
+                name: m.name || m.full_name || m.email || 'Unknown',
+                email: m.email || '',
+                status: m.status || 'pending',
+              });
+            });
+          }
+        });
+        // include admins if present
+        if (Array.isArray(n.admins) && n.admins.length) {
+          n.admins.forEach((a) => {
+            list.push({
+              name: a.name || a.full_name || a.email || 'Admin',
+              email: a.email || '',
+              status: 'pending',
+            });
+          });
+        }
+        if (Array.isArray(n.organizations) && n.organizations.length) {
+          n.organizations.forEach((o) => {
+            list.push({
+              name: o.name || o.org_name || o.title || `Org ${o.id}`,
+              email: '',
+              status: 'pending',
+            });
+          });
+        }
+        // dedupe below and return
+      }
+
+      // 1) If backend supplied explicit recipients array, prefer it.
+      if (Array.isArray(n.recipients) && n.recipients.length) {
+        n.recipients.forEach((r) => {
+          list.push({
+            name: r.name || r.full_name || r.email || 'Unknown',
+            email: r.email || '',
+            status: r.status || r.delivery_status || r.state || 'pending',
+          });
+        });
+        return list;
+      }
+
+      // 2) If backend returned raw emails array (strings), map them.
+      if (Array.isArray(n.emails) && n.emails.length) {
+        n.emails.forEach((e) => {
+          if (typeof e === 'string') {
+            list.push({ name: e, email: e, status: 'pending' });
+          } else if (e && e.email) {
+            list.push({
+              name: e.name || e.email,
+              email: e.email,
+              status: e.status || 'pending',
+            });
+          }
+        });
+        return list;
+      }
+
+      // 3) Map organization_ids -> organization names using fetched organizations
+      if (
+        Array.isArray(n.organization_ids) &&
+        n.organization_ids.length &&
+        Array.isArray(this.organizations)
+      ) {
+        n.organization_ids.forEach((oid) => {
+          const org = this.organizations.find(
+            (o) => o.id === oid || o.org_id === oid || o.id == oid
+          );
+          const name = org
+            ? org.org_name || org.name || org.title
+            : String(oid);
+          list.push({ name, email: '', status: 'pending' });
+        });
+        // continue - there may also be group ids
+      }
+
+      // 4) Map group_ids -> group names using fetched groups
+      if (
+        Array.isArray(n.group_ids) &&
+        n.group_ids.length &&
+        Array.isArray(this.groups)
+      ) {
+        n.group_ids.forEach((gid) => {
+          const g = this.groups.find(
+            (gr) => gr.id === gid || gr.id == gid || gr.group_id === gid
+          );
+          const name = g ? g.name || g.group_name || g.title : String(gid);
+          list.push({ name, email: '', status: 'pending' });
+        });
+      }
+
+      // 5) If backend provided names directly, use them (legacy fields)
+      if (Array.isArray(n.organization_names) && n.organization_names.length) {
+        n.organization_names.forEach((on) => {
+          list.push({ name: on, email: '', status: 'pending' });
+        });
+      }
+      if (Array.isArray(n.group_names) && n.group_names.length) {
+        n.group_names.forEach((gn) => {
+          list.push({ name: gn, email: '', status: 'pending' });
+        });
+      }
+
+      // 6) If member_names or members array exists, include them
+      if (Array.isArray(n.member_names) && n.member_names.length) {
+        n.member_names.forEach((mn) => {
+          list.push({ name: mn, email: '', status: 'pending' });
+        });
+      }
+      if (Array.isArray(n.members) && n.members.length) {
+        n.members.forEach((m) => {
+          list.push({
+            name: m.name || m.full_name || m.email || 'Unknown',
+            email: m.email || '',
+            status: m.status || 'pending',
+          });
+        });
+      }
+
+      // Remove duplicates (by name+email)
+      const seen = new Set();
+      const deduped = [];
+      list.forEach((it) => {
+        const key = `${it.name || ''}::${it.email || ''}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduped.push(it);
+        }
+      });
+
+      return deduped;
+    },
+    tickSvg() {
+      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17L4 12" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    },
+    crossSvg() {
+      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    },
   },
   methods: {
     goToPage(page) {
@@ -281,8 +703,107 @@ export default {
     },
     formatLocalDateTime(dateStr) {
       if (!dateStr) return '';
-      const date = new Date(dateStr.replace(' ', 'T') + 'Z');
-      return date.toLocaleString();
+      // If ISO with timezone or 'Z', let Date parse it
+      let d = null;
+      try {
+        if (/[T].*Z$/.test(dateStr) || /[T].*[+-]\d{2}:?\d{2}$/.test(dateStr)) {
+          d = new Date(dateStr);
+        } else {
+          // Try to parse 'YYYY-MM-DD HH:MM:SS' (assume it's UTC from DB)
+          const m = (dateStr || '').match(
+            /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
+          );
+          if (m) {
+            const year = parseInt(m[1], 10);
+            const month = parseInt(m[2], 10) - 1;
+            const day = parseInt(m[3], 10);
+            const hour = parseInt(m[4], 10);
+            const minute = parseInt(m[5], 10);
+            const second = m[6] ? parseInt(m[6], 10) : 0;
+            // create Date from UTC components, then use local getters for display
+            const utcMillis = Date.UTC(year, month, day, hour, minute, second);
+            d = new Date(utcMillis);
+          } else {
+            d = new Date(dateStr);
+          }
+        }
+      } catch (e) {
+        d = new Date(dateStr);
+      }
+      if (!d || isNaN(d.getTime())) return dateStr || '';
+
+      // Use local date/time getters so the shown value is in user's local timezone
+      const day = String(d.getDate()).padStart(2, '0');
+      const months = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ];
+      const mon = months[d.getMonth()];
+      const yr = d.getFullYear();
+
+      let hr = d.getHours();
+      const min = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hr >= 12 ? 'PM' : 'AM';
+      hr = hr % 12;
+      hr = hr ? hr : 12; // convert 0 -> 12
+      const strTime = `${hr}:${min} ${ampm}`;
+      return `${day} ${mon},${yr} ${strTime}`;
+    },
+    openDetail(item) {
+      if (!this.isAlive) return;
+      if (!item) {
+        this.selectedNotification = null;
+        this.showDetailModal = false;
+        return;
+      }
+      // Fetch detailed announcement info (relations) to render recipients clearly
+      const apiUrl = process.env.VUE_APP_API_URL || '/api';
+      const token = storage.get('authToken');
+      try {
+        axios
+          .get(`${apiUrl}/announcements/${item.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .then((res) => {
+            const d = res.data || {};
+            // Merge returned detail into selectedNotification for computed mapping
+            const merged = Object.assign({}, item, {
+              announcement_detail: d.announcement || null,
+              groups: d.groups || [],
+              organizations: d.organizations || [],
+              admins: d.admins || [],
+            });
+            this.selectedNotification = merged;
+            this.showDetailModal = true;
+          })
+          .catch((err) => {
+            // fallback to opening with basic item
+            console.warn(
+              'Failed to fetch announcement detail, opening basic view',
+              err
+            );
+            this.selectedNotification = item;
+            this.showDetailModal = true;
+          });
+      } catch (e) {
+        this.selectedNotification = item;
+        this.showDetailModal = true;
+      }
+    },
+    closeDetail() {
+      if (!this.isAlive) return;
+      this.showDetailModal = false;
+      this.selectedNotification = null;
     },
     async sendNotification() {
       try {
@@ -293,12 +814,17 @@ export default {
         if (this.scheduledDate && this.scheduledTime) {
           let time = this.scheduledTime;
           if (time.length === 5) time += ':00';
-          // Combine date and time as local, then convert to UTC ISO string
-          const localDateTime = new Date(`${this.scheduledDate}T${time}`);
-          scheduled_at = localDateTime
-            .toISOString()
-            .replace('T', ' ')
-            .replace(/\.\d+Z$/, 'Z');
+          // Convert local date+time to an explicit UTC datetime string so backend stores UTC only.
+          // Build a Date from local inputs, then extract UTC components.
+          const local = new Date(`${this.scheduledDate}T${time}`);
+          const pad = (n) => String(n).padStart(2, '0');
+          const YYYY = local.getUTCFullYear();
+          const MM = pad(local.getUTCMonth() + 1);
+          const DD = pad(local.getUTCDate());
+          const hh = pad(local.getUTCHours());
+          const mm = pad(local.getUTCMinutes());
+          const ss = pad(local.getUTCSeconds());
+          scheduled_at = `${YYYY}-${MM}-${DD} ${hh}:${mm}:${ss}`;
         }
         const payload = {
           organization_ids: this.selectedOrganizations.map((org) => org.id),
@@ -312,22 +838,28 @@ export default {
         await axios.post(apiUrl + '/announcements/send', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        this.showSendModal = false;
-        this.$toast.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Announcement sent!',
-          life: 3000,
-        });
+        if (this.isAlive) {
+          this.showSendModal = false;
+          this.$toast &&
+            this.$toast.add &&
+            this.$toast.add({
+              severity: 'success',
+              summary: 'Success',
+              detail: 'Announcement sent!',
+              life: 3000,
+            });
+        }
         console.log('Announcement sent successfully');
       } catch (err) {
         console.error('Error sending notification:', err);
-        this.$toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to send announcement',
-          life: 4000,
-        });
+        if (this.isAlive && this.$toast && this.$toast.add) {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to send announcement',
+            life: 4000,
+          });
+        }
       }
     },
     async fetchOrganizations() {
@@ -338,10 +870,10 @@ export default {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Organizations response:', res.data);
-        this.organizations = res.data;
+        if (this.isAlive) this.organizations = res.data;
       } catch (err) {
         console.error('Error fetching organizations:', err);
-        this.organizations = [];
+        if (this.isAlive) this.organizations = [];
       }
     },
     async fetchGroups() {
@@ -352,11 +884,21 @@ export default {
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log('Groups response:', res.data);
-        this.groups = res.data;
+        if (this.isAlive) this.groups = res.data;
       } catch (err) {
         console.error('Error fetching groups:', err);
-        this.groups = [];
+        if (this.isAlive) this.groups = [];
       }
+    },
+    // Helper used by template to determine read state
+    isRead(entity) {
+      if (!entity) return false;
+      // If backend provided a 'read' boolean, use it
+      if (typeof entity.read === 'boolean') return entity.read;
+      // Fallback: check for status fields
+      if (entity.status === 'read' || entity.status === 'delivered')
+        return true;
+      return false;
     },
     async fetchNotifications() {
       try {
@@ -365,12 +907,14 @@ export default {
         const res = await axios.get(apiUrl + '/announcements', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        this.notifications = Array.isArray(res.data)
-          ? res.data
-          : res.data.notifications || [];
+        if (this.isAlive) {
+          this.notifications = Array.isArray(res.data)
+            ? res.data
+            : res.data.notifications || [];
+        }
       } catch (err) {
         console.error('Error fetching notifications:', err);
-        this.notifications = [];
+        if (this.isAlive) this.notifications = [];
       }
     },
   },
@@ -378,16 +922,132 @@ export default {
     // No watchers - selections are independent
   },
   mounted() {
+    this.isAlive = true;
     this.fetchOrganizations();
     this.fetchGroups();
     this.fetchNotifications();
     console.log('Mounted: fetching organizations, groups, notifications');
+  },
+  beforeUnmount() {
+    // lifecycle guard
+    this.isAlive = false;
   },
 };
 </script>
 
 <style>
 @import '@/assets/global.css';
+@import '@/assets/modelcssnotificationandassesment.css';
+</style>
+
+<!-- Unified modal styles for consistency across components -->
+<style scoped>
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal-card {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 4px 32px rgba(33, 150, 243, 0.08);
+  padding: 36px 44px;
+  max-width: 720px;
+  width: 100%;
+  box-sizing: border-box;
+  position: relative;
+}
+.modal-close-btn,
+.modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: #888;
+  cursor: pointer;
+  z-index: 10;
+}
+.modal-title,
+.modal-title2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #222;
+}
+.modal-desc {
+  margin-bottom: 12px;
+  color: #555;
+}
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal-form-row {
+  display: flex;
+  gap: 12px;
+}
+.modal-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.modal-save-btn {
+  padding: 10px 28px;
+  border-radius: 20px;
+}
+
+@media (max-width: 700px) {
+  .modal-card {
+    min-width: 0;
+    max-width: calc(100vw - 32px);
+    width: calc(98vw - 32px);
+    padding: 20px 16px 20px 16px;
+    border-radius: 14px;
+    margin: 16px;
+  }
+}
+@media (max-width: 500px) {
+  .modal-card {
+    min-width: 0;
+    max-width: calc(100vw - 24px);
+    width: calc(98vw - 24px);
+    padding: 18px 12px 18px 12px;
+    border-radius: 12px;
+    margin: 12px;
+  }
+  .modal-title {
+    font-size: 20px;
+    margin-bottom: 18px;
+  }
+  .modal-form {
+    gap: 10px;
+    padding: 0;
+  }
+  .modal-form-row {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  .modal-save-btn {
+    padding: 8px 18px;
+    font-size: 15px;
+    border-radius: 14px;
+  }
+  .modal-close {
+    top: 10px;
+    right: 12px;
+    font-size: 26px;
+  }
+  .modal-form-actions {
+    margin-top: 10px;
+  }
+}
 </style>
 <style scoped>
 .no-data {
@@ -426,30 +1086,31 @@ export default {
   display: inline-block;
   vertical-align: middle;
 }
-.send-notification-modal {
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.13);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal-card {
   background: #fff;
   border-radius: 22px;
   box-shadow: 0 4px 32px 0 rgba(33, 150, 243, 0.1);
   padding: 40px 48px 32px 48px;
-  min-width: 320px;
+  min-width: 400px;
   max-width: 700px;
   width: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-}
-.send-notification-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(34, 34, 34, 0.18);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .modal-close-btn {
   position: absolute;
@@ -548,22 +1209,12 @@ export default {
   transition: border 0.2s;
 }
 @media (max-width: 900px) {
-  .send-notification-modal {
-    padding: 18px 8px;
-    border-radius: 14px;
-  }
   .modal-row {
     flex-direction: column;
     gap: 12px;
   }
 }
 @media (max-width: 600px) {
-  .send-notification-modal {
-    padding: 12px 2vw;
-    border-radius: 10px;
-    min-width: 0;
-    max-width: 98vw;
-  }
 }
 .page {
   padding: 0 32px 32px 32px;
@@ -583,5 +1234,269 @@ export default {
   .page {
     padding: 4px;
   }
+}
+
+.recipient-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow: auto;
+}
+.recipient-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.recipient-info {
+  display: flex;
+  flex-direction: column;
+}
+.recipient-name {
+  font-weight: 600;
+  color: #222;
+}
+.recipient-email {
+  font-size: 13px;
+  color: #666;
+}
+.recipient-status {
+  padding: 4px 8px;
+  margin-right: 40px;
+}
+.recipient-status .status-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+.recipient-status .delivered svg {
+  filter: none;
+}
+.recipient-status .failed svg {
+  filter: none;
+}
+.recipient-status .pending {
+  color: #999;
+}
+
+.recipient-badge {
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  color: #fff;
+}
+.recipient-badge.read {
+  background: #16a34a; /* green */
+}
+.recipient-badge.unread {
+  background: #dc2626; /* red */
+}
+
+.notification-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  width: 100%;
+  margin-top: 12px;
+}
+.detail-card {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 18px;
+}
+.detail-label {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 6px;
+}
+.detail-row > .detail-label {
+  margin-top: 8px;
+}
+.detail-value {
+  color: #222;
+}
+.detail-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.detail-row {
+  display: flex;
+  flex-direction: column;
+}
+.recipient-list {
+  max-height: 180px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.recipient-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #f0f0f0;
+}
+.all-recipients {
+  color: #222;
+}
+.modal-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 900px) {
+  .notification-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Table-like label/value layout */
+.detail-table {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 12px 24px;
+  align-items: start;
+  .detail-label {
+    text-align: left;
+  }
+  .detail-row > .detail-label {
+    margin-top: 8px;
+    text-align: left;
+  }
+}
+.detail-table .detail-label {
+  font-weight: 600;
+  color: #333;
+}
+.detail-table .detail-value {
+  color: #222;
+}
+.detail-table .recipient-list {
+  max-height: 220px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (max-width: 700px) {
+  .detail-table {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Simplified centered table-like rows (label left / value right) */
+
+.modal-title {
+  text-align: left;
+}
+.detail-table {
+  display: block;
+  width: 100%;
+  margin: 14px auto 0 auto;
+}
+.detail-table .detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+.detail-table .detail-row:last-child {
+  border-bottom: none;
+}
+.detail-table .detail-label {
+  flex: 0 0 38%;
+  color: #666;
+  font-weight: 600;
+}
+.detail-table .detail-value {
+  flex: 1 1 60%;
+  text-align: right;
+  color: #222;
+  word-break: break-word;
+}
+.recipient-list {
+  max-height: 340px;
+  overflow: auto;
+}
+.recipient-row {
+  background: transparent;
+  border: none;
+  padding: 4px 0;
+}
+.recipient-name {
+  font-weight: 500;
+}
+.modal-actions {
+  margin-top: 18px;
+  display: flex;
+  justify-content: center;
+}
+.org-edit-update {
+  padding: 8px 24px;
+}
+
+@media (max-width: 520px) {
+  /* Keep label and value on the same line but allow wrapping if needed */
+  .detail-table .detail-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+  .detail-table .detail-label {
+    flex: 0 0 35%;
+    max-width: 25%;
+    text-align: left;
+    color: #666;
+    font-weight: 600;
+  }
+  .detail-table .detail-value {
+    flex: 1 1 60%;
+    text-align: right;
+    color: #222;
+    word-break: break-word;
+    padding-left: 8px;
+  }
+}
+
+/* Fallback for very narrow screens: keep values readable by left-aligning them */
+@media (max-width: 360px) {
+  .detail-table .detail-value {
+    text-align: left;
+    margin-top: 4px;
+    width: 100%;
+  }
+  .detail-table .detail-label {
+    flex: 0 0 40%;
+    max-width: 25%;
+  }
+}
+
+/* Stronger selector to override earlier column rules and keep label/value on one line */
+.detail-table .detail-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px;
+}
+.detail-table .detail-label {
+  flex: 0 0 36% !important;
+  max-width: 25% !important;
+  text-align: left !important;
+}
+.detail-table .detail-value {
+  flex: 1 1 64% !important;
+  text-align: left !important;
+  padding-left: 8px !important;
 }
 </style>

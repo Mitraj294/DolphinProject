@@ -173,16 +173,19 @@ export default {
         const authToken = storage.get('authToken');
         const headers = {};
         if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+        // If orgId is supplied via query, request org-specific billing endpoints
+        const orgId = this.$route.query.orgId || null;
+        const planUrl = orgId
+          ? `${API_BASE_URL}/api/billing/current?org_id=${orgId}`
+          : `${API_BASE_URL}/api/billing/current`;
         // Fetch current plan
-        const planRes = await axios.get(`${API_BASE_URL}/api/billing/current`, {
-          headers,
-        });
+        const planRes = await axios.get(planUrl, { headers });
         this.currentPlan = planRes.data || null;
         // Fetch billing history
-        const historyRes = await axios.get(
-          `${API_BASE_URL}/api/billing/history`,
-          { headers }
-        );
+        const historyUrl = orgId
+          ? `${API_BASE_URL}/api/billing/history?org_id=${orgId}`
+          : `${API_BASE_URL}/api/billing/history`;
+        const historyRes = await axios.get(historyUrl, { headers });
         this.billingHistory = Array.isArray(historyRes.data)
           ? historyRes.data
           : [];

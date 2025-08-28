@@ -3,6 +3,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Assessment;
+use App\Models\Organization;
 
 class AssessmentController extends Controller
 {
@@ -63,7 +64,18 @@ class AssessmentController extends Controller
 
     public function show(Request $request)
     {
-        // Only return assessments for the logged-in user or user_id from request
+        // Prefer organization_id if provided. Otherwise return assessments
+        // for the logged-in user (or user_id from request).
+        $orgId = $request->input('organization_id') ?: $request->query('organization_id');
+        if ($orgId) {
+            $assessments = Assessment::where('organization_id', $orgId)
+                ->select('id', 'name', 'organization_id')
+                ->get();
+          
+            return response()->json(['assessments' => $assessments]);
+        }
+
+        // Fall back to user-specific behavior
         $user = $request->user();
         $userId = null;
         if ($user) {
@@ -90,7 +102,7 @@ class AssessmentController extends Controller
             return response()->json(['assessments' => []]);
         }
         $assessments = Assessment::where('user_id', $userId)
-            ->select('id', 'name')
+            ->select('id', 'name', 'organization_id')
             ->get();
         \Log::info('[AssessmentController@show] assessments returned', ['count' => $assessments->count(), 'ids' => $assessments->pluck('id')]);
         return response()->json(['assessments' => $assessments]);
@@ -98,15 +110,40 @@ class AssessmentController extends Controller
 
     public function store(Request $request)
     {
-       
+        // Validate input
+        $data = $request->validate([
+            'name' => 'required|string|max:255',
+            'organization_id' => 'nullable|integer|exists:organizations,id',
+            'question_ids' => 'nullable|array',
+        ]);
+
+        // Prefer provided organization_id, otherwise try to use the
+        // authenticated user's organization (if available).
+        $orgId = $data['organization_id'] ?? null;
+        if (!$orgId) {
+            // First, check the authenticated User model for an organization_id
+            if ($request->user() && isset($request->user()->organization_id)) {
+                $orgId = $request->user()->organization_id;
+            }
+            // Next, try to resolve the organization via Organization relation
+            if (!$orgId && $request->user()) {
+                try {
+                    $org = Organization::where('user_id', $request->user()->id)->first();
+                    if ($org) $orgId = $org->id;
+                } catch (\Exception $e) {
+                    // ignore lookup errors
+                }
+            }
+        }
+
         $assessment = Assessment::create([
-            'name' => $request->input('name'),
+            'name' => $data['name'],
             'user_id' => $request->user()->id ?? $request->input('user_id'),
-            'organization_id' => $request->input('organization_id'),
+            'organization_id' => $orgId,
         ]);
         // Attach questions if provided
-        if ($request->has('question_ids')) {
-            $assessment->questions()->attach($request->input('question_ids'));
+        if (!empty($data['question_ids'])) {
+            $assessment->questions()->attach($data['question_ids']);
         }
         return response()->json(['assessment' => $assessment->load('questions')], 201);
     }

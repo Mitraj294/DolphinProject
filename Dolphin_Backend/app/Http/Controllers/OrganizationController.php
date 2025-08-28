@@ -6,7 +6,10 @@ use App\Models\Organization;
 use App\Models\Country;
 use App\Models\State;
 use App\Models\City;
+use App\Models\User;
+use App\Models\UserDetail;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class OrganizationController extends Controller
 {
@@ -172,16 +175,88 @@ class OrganizationController extends Controller
 
     public function update(Request $request, $id)
     {
-        $org = Organization::findOrFail($id);
+        $org = Organization::with(['user', 'user.userDetails'])->findOrFail($id);
+
         $validated = $request->validate([
+            // organization table fields
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
             'sales_person' => 'nullable|string',
             'last_contacted' => 'nullable|date',
             'certified_staff' => 'nullable|integer',
+            // user / user_details fields (frontend sends these)
+            'first_name' => 'sometimes|nullable|string|max:255',
+            'last_name' => 'sometimes|nullable|string|max:255',
+            'admin_email' => 'sometimes|nullable|email|max:255',
+            'admin_phone' => 'sometimes|nullable|string|max:64',
+            'org_name' => 'sometimes|nullable|string|max:255',
+            'org_size' => 'sometimes|nullable|string|max:255',
+            'source' => 'sometimes|nullable|string|max:255',
+            'address' => 'sometimes|nullable|string|max:1024',
+            'city_id' => 'sometimes|nullable|integer|exists:cities,id',
+            'state_id' => 'sometimes|nullable|integer|exists:states,id',
+            'country_id' => 'sometimes|nullable|integer|exists:countries,id',
+            'zip' => 'sometimes|nullable|string|max:64',
         ]);
-        $org->update($validated);
-        return response()->json($org);
+
+        DB::beginTransaction();
+        try {
+            // Update allowed organization columns
+            $orgFields = array_filter($validated, function ($v, $k) {
+                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff']);
+            }, ARRAY_FILTER_USE_BOTH);
+            if (!empty($orgFields)) {
+                $org->update($orgFields);
+            }
+
+            // Update related user and user_details where applicable
+            $user = $org->user;
+            if ($user) {
+                $userUpdated = false;
+                if (array_key_exists('admin_email', $validated) && $validated['admin_email'] !== $user->email) {
+                    $user->email = $validated['admin_email'];
+                    $userUpdated = true;
+                }
+                if (array_key_exists('first_name', $validated) && $validated['first_name'] !== $user->first_name) {
+                    $user->first_name = $validated['first_name'];
+                    $userUpdated = true;
+                }
+                if (array_key_exists('last_name', $validated) && $validated['last_name'] !== $user->last_name) {
+                    $user->last_name = $validated['last_name'];
+                    $userUpdated = true;
+                }
+                if ($userUpdated) $user->save();
+
+                $details = $user->userDetails;
+                if (!$details) {
+                    $details = new UserDetail();
+                    $details->user_id = $user->id;
+                }
+                $detailUpdated = false;
+                if (array_key_exists('admin_phone', $validated)) { $details->phone = $validated['admin_phone']; $detailUpdated = true; }
+                if (array_key_exists('org_name', $validated)) { $details->org_name = $validated['org_name']; $detailUpdated = true; }
+                if (array_key_exists('org_size', $validated)) { $details->org_size = $validated['org_size']; $detailUpdated = true; }
+                if (array_key_exists('source', $validated)) { $details->find_us = $validated['source']; $detailUpdated = true; }
+                if (array_key_exists('address', $validated)) { $details->address = $validated['address']; $detailUpdated = true; }
+                if (array_key_exists('country_id', $validated)) { $details->country_id = $validated['country_id']; $detailUpdated = true; }
+                if (array_key_exists('state_id', $validated)) { $details->state_id = $validated['state_id']; $detailUpdated = true; }
+                if (array_key_exists('city_id', $validated)) { $details->city_id = $validated['city_id']; $detailUpdated = true; }
+                if (array_key_exists('zip', $validated)) { $details->zip = $validated['zip']; $detailUpdated = true; }
+                if ($detailUpdated) $details->save();
+            }
+
+            DB::commit();
+
+            // Return refreshed organization for frontend
+            $org = Organization::with(['user', 'user.userDetails', 'user.subscriptions' => function($q) {
+                $q->where('status', 'active')->orderByDesc('id');
+            }])->findOrFail($id);
+            return response()->json($org);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Failed to update organization', ['id' => $id, 'error' => $e->getMessage(), 'request' => $request->all()]);
+            return response()->json(['message' => 'Failed to update organization', 'error' => $e->getMessage()], 500);
+        }
     }
 
     public function destroy($id)

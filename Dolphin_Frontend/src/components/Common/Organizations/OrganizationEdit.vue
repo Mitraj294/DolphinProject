@@ -1,11 +1,11 @@
 <template>
   <MainLayout>
     <div class="page">
-      <div class="org-edit-outer">
-        <div class="org-edit-card">
-          <h2 class="org-edit-title">Edit Details</h2>
+      <div class="lead-capture-outer">
+        <div class="lead-capture-card">
+          <h2 class="lead-capture-card-title">Edit Organization</h2>
           <form
-            class="org-edit-form"
+            class="lead-capture-form"
             @submit.prevent="updateDetails"
           >
             <FormRow>
@@ -13,72 +13,79 @@
                 <FormLabel>Organization Name</FormLabel>
                 <FormInput
                   v-model="form.orgName"
-                  placeholder="Enter organization name"
+                  icon="fas fa-cog"
+                  placeholder="Flexi-Finders"
                 />
               </div>
               <div>
                 <FormLabel>Organization Size</FormLabel>
-                <FormDropdown v-model="form.orgSize">
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select organization size
-                  </option>
-                  <option>250+ Employees (Large)</option>
-                  <option>100-249 Employees (Medium)</option>
-                  <option>1-99 Employees (Small)</option>
-                </FormDropdown>
+                <FormDropdown
+                  v-model="form.orgSize"
+                  icon="fas fa-users"
+                  :options="[
+                    {
+                      value: '',
+                      text: 'Select ',
+                      disabled: true,
+                    },
+                    { value: 'Large', text: '250+ Employees (Large)' },
+                    { value: 'Medium', text: '100-249 Employees (Medium)' },
+                    { value: 'Small', text: '1-99 Employees (Small)' },
+                  ]"
+                />
               </div>
               <div>
                 <FormLabel>Source</FormLabel>
-                <FormDropdown v-model="form.source">
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select source
-                  </option>
-                  <option>Google</option>
-                  <option>Friend</option>
-                  <option>Other</option>
-                </FormDropdown>
+                <FormDropdown
+                  v-model="form.source"
+                  icon="fas fa-bullhorn"
+                  :options="[
+                    { value: '', text: 'Select', disabled: true },
+                    { value: 'Google', text: 'Google' },
+                    { value: 'Friend', text: 'Friend' },
+                    { value: 'Colleague', text: 'Colleague' },
+                    { value: 'Other', text: 'Other' },
+                  ]"
+                />
               </div>
             </FormRow>
             <FormRow>
               <div>
                 <FormLabel>Country</FormLabel>
-                <FormDropdown v-model="form.country">
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select country
-                  </option>
-                  <option>India</option>
-                  <option>United States</option>
-                  <option>Canada</option>
-                </FormDropdown>
+                <FormDropdown
+                  v-model="form.country_id"
+                  icon="fas fa-globe"
+                  @change="onCountryChange"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...countries.map((c) => ({ value: c.id, text: c.name })),
+                  ]"
+                />
               </div>
               <div>
                 <FormLabel>State</FormLabel>
-                <FormDropdown v-model="form.state">
-                  <option
-                    disabled
-                    value=""
-                  >
-                    Select state
-                  </option>
-                  <option>Gujarat</option>
-                  <option>UP</option>
-                  <option>MP</option>
-                </FormDropdown>
+                <FormDropdown
+                  v-model="form.state_id"
+                  icon="fas fa-map-marker-alt"
+                  @change="onStateChange"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...states.map((s) => ({ value: s.id, text: s.name })),
+                  ]"
+                />
               </div>
               <div>
                 <FormLabel>City</FormLabel>
-                <FormInput
-                  v-model="form.city"
-                  placeholder="Enter city"
+                <FormDropdown
+                  v-model="form.city_id"
+                  icon="fas fa-map-marker-alt"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...cities.map((city) => ({
+                      value: city.id,
+                      text: city.name,
+                    })),
+                  ]"
                 />
               </div>
             </FormRow>
@@ -86,7 +93,8 @@
               <div>
                 <FormLabel>Address</FormLabel>
                 <FormInput
-                  v-model="form.address1"
+                  v-model="form.address"
+                  icon="fas fa-map-marker-alt"
                   placeholder="Enter address"
                 />
               </div>
@@ -95,6 +103,7 @@
                 <FormLabel>PIN</FormLabel>
                 <FormInput
                   v-model="form.zip"
+                  icon="fas fa-map-pin"
                   placeholder="Enter PIN code"
                 />
               </div>
@@ -105,69 +114,97 @@
             <FormRow>
               <div>
                 <FormLabel>Contract Start</FormLabel>
-                <FormInput
-                  v-model="form.contractStart"
-                  disabled
-                />
+                <div
+                  class="disabled-clickable"
+                  @click="onDisabledClick"
+                >
+                  <FormInput
+                    v-model="form.contractStart"
+                    icon="fas fa-calendar-alt"
+                    disabled
+                  />
+                </div>
               </div>
               <div>
                 <FormLabel>Contract End</FormLabel>
-                <FormInput
-                  v-model="form.contractEnd"
-                  disabled
-                />
+                <div
+                  class="disabled-clickable"
+                  @click="onDisabledClick"
+                >
+                  <FormInput
+                    v-model="form.contractEnd"
+                    icon="fas fa-calendar-alt"
+                    disabled
+                  />
+                </div>
               </div>
-              <div><FormLabel>&nbsp;</FormLabel></div>
+              <div>
+                <FormLabel>Last Contacted</FormLabel>
+                <div
+                  class="disabled-clickable"
+                  @click="onDisabledClick"
+                >
+                  <FormInput
+                    v-model="form.lastContacted"
+                    icon="fas fa-history"
+                    disabled
+                    placeholder="Last contacted date"
+                  />
+                </div>
+              </div>
             </FormRow>
             <!-- Divider line -->
             <div class="org-edit-divider"></div>
             <!-- Admin/contact section: 2 rows of 3 fields -->
             <FormRow>
               <div>
-                <FormLabel>Main Contact</FormLabel>
+                <FormLabel>First Name</FormLabel>
                 <FormInput
-                  v-model="form.mainContact"
-                  placeholder="Enter main contact name"
+                  v-model="form.firstName"
+                  icon="fas fa-user"
+                  placeholder="Enter first name"
+                />
+              </div>
+              <div>
+                <FormLabel>Last Name</FormLabel>
+                <FormInput
+                  v-model="form.lastName"
+                  icon="fas fa-user"
+                  placeholder="Enter last name"
                 />
               </div>
               <div>
                 <FormLabel>Admin Email</FormLabel>
                 <FormInput
                   v-model="form.adminEmail"
+                  icon="fas fa-envelope"
                   type="email"
-                  disabled
                   placeholder="Admin email"
-                />
-              </div>
-              <div>
-                <FormLabel>Admin Phone</FormLabel>
-                <FormInput
-                  v-model="form.adminPhone"
-                  disabled
-                  placeholder="Admin phone"
                 />
               </div>
             </FormRow>
             <FormRow>
               <div>
-                <FormLabel>Sales Person</FormLabel>
+                <FormLabel>Admin Phone</FormLabel>
                 <FormInput
-                  v-model="form.salesPerson"
-                  placeholder="Enter sales person name"
+                  v-model="form.adminPhone"
+                  icon="fas fa-phone"
+                  placeholder="Admin phone"
                 />
               </div>
               <div>
-                <FormLabel>Last Contacted</FormLabel>
+                <FormLabel>Sales Person</FormLabel>
                 <FormInput
-                  v-model="form.lastContacted"
-                  disabled
-                  placeholder="Last contacted date"
+                  v-model="form.salesPerson"
+                  icon="fas fa-user-tie"
+                  placeholder="Enter sales person name"
                 />
               </div>
               <div>
                 <FormLabel>Certified Staff</FormLabel>
                 <FormInput
                   v-model="form.certifiedStaff"
+                  icon="fas fa-users"
                   type="number"
                   placeholder="Enter number of certified staff"
                 />
@@ -215,25 +252,42 @@ export default {
         orgName: '',
         orgSize: '',
         source: '',
-        address1: '',
-        address2: '',
-        city: '',
-        state: '',
+        address: '',
         zip: '',
-        country: '',
+        // Location IDs
+        country_id: null,
+        state_id: null,
+        city_id: null,
+        // Other fields
         contractStart: '',
         contractEnd: '',
-        mainContact: '',
+        firstName: '',
+        lastName: '',
         adminEmail: '',
         adminPhone: '',
         salesPerson: '',
         lastContacted: '',
         certifiedStaff: '',
       },
+      orgId: null,
+      countries: [],
+      states: [],
+      cities: [],
     };
   },
   mounted() {
+    this.fetchCountries();
     this.fetchOrganization();
+    // inform navbar of page title when loaded
+    this.$nextTick(() => {
+      const name = this.form.orgName || this.$route.params.orgName || '';
+      if (this.$root && this.$root.$emit) {
+        this.$root.$emit(
+          'page-title-override',
+          name ? `Edit organization : ${name}` : 'Edit organization'
+        );
+      }
+    });
   },
   methods: {
     async fetchOrganization() {
@@ -242,54 +296,199 @@ export default {
         const headers = authToken
           ? { Authorization: `Bearer ${authToken}` }
           : {};
-        // Get user_id from route or storage (assume orgName param is user_id for this patch)
-        const userId = this.$route.params.orgName;
-        let res = await axios.get('http://127.0.0.1:8000/api/organizations', {
-          headers,
-        });
-        if (res.data && Array.isArray(res.data)) {
-          // Find by user_id instead of org_name
-          const found = res.data.find(
-            (o) => String(o.user_id) === String(userId)
-          );
-          if (found) {
-            this.orgId = found.id; // Save org id for update
-            this.form = {
-              orgName: found.org_name || '',
-              orgSize: found.org_size || '',
-              source: found.source || '',
-              address1: found.address1 || '',
-              address2: found.address2 || '',
-              city: found.city || '',
-              state: found.state || '',
-              zip: found.zip || '',
-              country: found.country || '',
-              contractStart: found.contract_start
-                ? new Date(found.contract_start).toLocaleDateString()
-                : '',
-              contractEnd: found.contract_end
-                ? new Date(found.contract_end).toLocaleDateString()
-                : '',
-              mainContact: found.main_contact || '',
-              adminEmail: found.admin_email || '',
-              adminPhone: found.admin_phone || '',
-              salesPerson: found.sales_person || '',
-              lastContacted: found.last_contacted || '',
-              certifiedStaff: found.certified_staff || '',
-            };
-          }
+        const orgId = this.$route.params.id;
+        if (!orgId) return;
+
+        const res = await axios.get(
+          `http://127.0.0.1:8000/api/organizations/${orgId}`,
+          { headers }
+        );
+
+        const found = res.data;
+        if (found) {
+          // Prefer user object if it exists, otherwise fallback to org fields
+          const user = found.user || {};
+          const userDetails = user.user_details || {};
+
+          const fName = user.first_name || found.first_name || '';
+          const lName = user.last_name || found.last_name || '';
+
+          // Normalize org size to dropdown values ('Large','Medium','Small')
+          const rawOrgSize = found.org_size || userDetails.org_size || '';
+          let normalizedOrgSize = '';
+          if (/large/i.test(rawOrgSize)) normalizedOrgSize = 'Large';
+          else if (/medium/i.test(rawOrgSize)) normalizedOrgSize = 'Medium';
+          else if (/small/i.test(rawOrgSize) || /1-99|250\+/.test(rawOrgSize))
+            normalizedOrgSize = 'Small';
+
+          // Prefer explicit source field, fallback to find_us on org or user_details
+          const sourceVal =
+            found.source || found.find_us || userDetails.find_us || '';
+
+          // Prefer org-level location ids, otherwise use user_details values
+          const countryId = found.country_id || userDetails.country_id || null;
+          const stateId = found.state_id || userDetails.state_id || null;
+          const cityId = found.city_id || userDetails.city_id || null;
+
+          this.orgId = found.id; // Save org id for update
+          this.form = {
+            orgName: found.org_name || '',
+            orgSize: normalizedOrgSize || '',
+            source: sourceVal || '',
+            address: found.address || userDetails.address || '',
+            zip: found.zip || userDetails.zip || '',
+            country_id: countryId,
+            state_id: stateId,
+            city_id: cityId,
+            contractStart: found.contract_start
+              ? this.formatContractDate(found.contract_start)
+              : '',
+            contractEnd: found.contract_end
+              ? this.formatContractDate(found.contract_end)
+              : '',
+            firstName: fName || (found.main_contact || '').split(' ')[0] || '',
+            lastName:
+              lName ||
+              (found.main_contact || '').split(' ').slice(1).join(' ') ||
+              '',
+            adminEmail: user.email || found.admin_email || '',
+            adminPhone: userDetails.phone || found.admin_phone || '',
+            salesPerson: found.sales_person || '',
+            lastContacted: found.last_contacted
+              ? this.formatLastContacted(found.last_contacted)
+              : '',
+            certifiedStaff:
+              found.certified_staff || userDetails.certified_staff || '',
+          };
+          if (this.form.country_id) await this.fetchStates();
+          if (this.form.state_id) await this.fetchCities();
         }
       } catch (e) {
         // fallback: leave form as is
+        console.error('Failed to fetch organization details', e);
       }
     },
-    cancelEdit() {
-      const id =
-        this.orgId || this.$route.params.id || this.$route.params.orgName;
-      this.$router.push(`/organizations/${id}`);
+    formatContractDate(input) {
+      // expected input: ISO timestamp string
+      try {
+        // Parse DB datetimes as UTC when in SQL format, else fallback
+        const m = String(input).match(
+          /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+        );
+        let d;
+        if (m) {
+          const Y = parseInt(m[1], 10);
+          const Mo = parseInt(m[2], 10) - 1;
+          const D = parseInt(m[3], 10);
+          const hh = m[4] ? parseInt(m[4], 10) : 0;
+          const mm = m[5] ? parseInt(m[5], 10) : 0;
+          const ss = m[6] ? parseInt(m[6], 10) : 0;
+          d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
+        } else {
+          d = new Date(input);
+        }
+        const day = String(d.getDate()).padStart(2, '0');
+        const monthShort = d
+          .toLocaleString('en-GB', { month: 'short' })
+          .toUpperCase();
+        const year = d.getFullYear();
+        return `${day} ${monthShort},${year}`;
+      } catch (e) {
+        return input;
+      }
+    },
+    formatLastContacted(input) {
+      try {
+        // Parse DB datetimes as UTC when in SQL format
+        const m = String(input).match(
+          /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
+        );
+        let d;
+        if (m) {
+          const Y = parseInt(m[1], 10);
+          const Mo = parseInt(m[2], 10) - 1;
+          const D = parseInt(m[3], 10);
+          const hh = m[4] ? parseInt(m[4], 10) : 0;
+          const mm = m[5] ? parseInt(m[5], 10) : 0;
+          const ss = m[6] ? parseInt(m[6], 10) : 0;
+          d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
+        } else {
+          d = new Date(input);
+        }
+        const day = String(d.getDate()).padStart(2, '0');
+        const monthShort = d
+          .toLocaleString('en-GB', { month: 'short' })
+          .toUpperCase();
+        const year = d.getFullYear();
+        let hours = d.getHours();
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // 0 -> 12
+        return `${day} ${monthShort},${year} ${hours}:${minutes} ${ampm}`;
+      } catch (e) {
+        return input;
+      }
+    },
+    // Parse human-friendly contract date (e.g. "05 AUG,2025") to ISO string
+    parseContractInput(input) {
+      if (!input) return null;
+      try {
+        const cleaned = String(input).replace(/,/g, '').replace(/\s+/g, ' ');
+        const parts = cleaned.split(' '); // [day, MON, YYYY]
+        let d = null;
+        if (parts.length >= 3) {
+          const dateStr = `${parts[0]} ${parts[1]} ${parts[2]}`;
+          d = new Date(dateStr);
+        }
+        if (!d || isNaN(d.getTime())) {
+          d = new Date(input);
+        }
+        if (isNaN(d.getTime())) return null;
+        // Return MySQL DATETIME in UTC: 'YYYY-MM-DD HH:MM:SS'
+        const Y = d.getUTCFullYear();
+        const M = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const D = String(d.getUTCDate()).padStart(2, '0');
+        const h = String(d.getUTCHours()).padStart(2, '0');
+        const m = String(d.getUTCMinutes()).padStart(2, '0');
+        const s = String(d.getUTCSeconds()).padStart(2, '0');
+        return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+      } catch (e) {
+        return null;
+      }
+    },
+    // Parse lastContacted like "22 AUG,2025 9:42 AM" to ISO
+    parseLastContactedInput(input) {
+      if (!input) return null;
+      try {
+        const s = String(input).replace(/,/g, ' ');
+        const d = new Date(s);
+        if (isNaN(d.getTime())) return null;
+        const Y = d.getUTCFullYear();
+        const M = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const D = String(d.getUTCDate()).padStart(2, '0');
+        const h = String(d.getUTCHours()).padStart(2, '0');
+        const m = String(d.getUTCMinutes()).padStart(2, '0');
+        const s2 = String(d.getUTCSeconds()).padStart(2, '0');
+        return `${Y}-${M}-${D} ${h}:${m}:${s2}`;
+      } catch (e) {
+        return null;
+      }
+    },
+    onDisabledClick() {
+      const msg = 'This field is not editable.';
+      if (this.$toast && typeof this.$toast.add === 'function') {
+        this.$toast.add({
+          severity: 'info',
+          summary: 'Not editable',
+          detail: msg,
+          life: 3000,
+        });
+      } else {
+        alert(msg);
+      }
     },
     async updateDetails() {
-      // Send PUT request to update organization
       try {
         const authToken = storage.get('authToken');
         const headers = authToken
@@ -298,70 +497,142 @@ export default {
         // Find org id
         const orgId = this.orgId;
         if (!orgId) {
-          alert('Organization not found.');
+          if (this.$toast && typeof this.$toast.add === 'function') {
+            this.$toast.add({
+              severity: 'error',
+              summary: 'Update Failed',
+              detail: 'Organization not found.',
+              life: 3500,
+            });
+          }
           return;
         }
+        // Normalize org_size back to the display string the backend expects
+        let orgSizePayload = this.form.orgSize;
+        if (this.form.orgSize === 'Small')
+          orgSizePayload = '1-99 Employees (Small)';
+        else if (this.form.orgSize === 'Medium')
+          orgSizePayload = '100-249 Employees (Medium)';
+        else if (this.form.orgSize === 'Large')
+          orgSizePayload = '250+ Employees (Large)';
+
+        // Convert user-facing formatted dates back to ISO timestamp strings where possible
+        const contractStartISO = this.parseContractInput(
+          this.form.contractStart
+        );
+        const contractEndISO = this.parseContractInput(this.form.contractEnd);
+        const lastContactedISO = this.parseLastContactedInput(
+          this.form.lastContacted
+        );
+
         // Prepare payload (convert camelCase to snake_case for backend)
         const payload = {
           org_name: this.form.orgName,
-          size: this.form.orgSize,
-          source: this.form.source,
-          address1: this.form.address1,
-          address2: this.form.address2,
-          city: this.form.city,
-          state: this.form.state,
-          zip: this.form.zip,
-          country: this.form.country,
-          main_contact: this.form.mainContact,
-          admin_email: this.form.adminEmail,
-          admin_phone: this.form.adminPhone,
-          sales_person: this.form.salesPerson,
-          certified_staff: this.form.certifiedStaff,
+          // send backend-friendly org_size display string
+          org_size: orgSizePayload,
+          source: this.form.source || null,
+          address: this.form.address || null,
+          city_id: this.form.city_id || null,
+          state_id: this.form.state_id || null,
+          zip: this.form.zip || null,
+          country_id: this.form.country_id || null,
+          sales_person: this.form.salesPerson || null,
+          certified_staff: this.form.certifiedStaff || null,
+          first_name: this.form.firstName || null,
+          last_name: this.form.lastName || null,
+          admin_email: this.form.adminEmail || null,
+          admin_phone: this.form.adminPhone || null,
+          main_contact: `${this.form.firstName} ${this.form.lastName}`.trim(),
+          // include contract and last_contacted fields when available (or null to clear)
+          contract_start: contractStartISO,
+          contract_end: contractEndISO,
+          last_contacted: lastContactedISO,
         };
         await axios.put(
           `http://127.0.0.1:8000/api/organizations/${orgId}`,
           payload,
           { headers }
         );
-        // Redirect to the organization detail by id (fallback to orgName param)
-        const id =
-          this.orgId || this.$route.params.id || this.$route.params.orgName;
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'success',
+            summary: 'Updated',
+            detail: 'Organization updated successfully.',
+            life: 3500,
+          });
+        }
+        const id = this.orgId || this.$route.params.id;
+        // clear override and navigate
+        if (this.$root && this.$root.$emit)
+          this.$root.$emit('page-title-override', null);
         this.$router.push(`/organizations/${id}`);
       } catch (e) {
-        alert('Failed to update organization.');
+        console.error('Failed to update organization', e);
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Update Failed',
+            detail: 'Failed to update organization.',
+            life: 4500,
+          });
+        }
       }
     },
-    data() {
-      return {
-        form: {
-          orgName: '',
-          orgSize: '',
-          source: '',
-          address1: '',
-          address2: '',
-          city: '',
-          state: '',
-          zip: '',
-          country: '',
-          contractStart: '',
-          contractEnd: '',
-          mainContact: '',
-          adminEmail: '',
-          adminPhone: '',
-          salesPerson: '',
-          lastContacted: '',
-          certifiedStaff: '',
-        },
-        orgId: null, // Store org id for update
-      };
+    async fetchCountries() {
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const res = await axios.get(`${API_BASE_URL}/api/countries`);
+      this.countries = res.data;
+    },
+    async fetchStates() {
+      if (!this.form.country_id) {
+        this.states = [];
+        return;
+      }
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const res = await axios.get(
+        `${API_BASE_URL}/api/states?country_id=${this.form.country_id}`
+      );
+      this.states = res.data;
+    },
+    async fetchCities() {
+      if (!this.form.state_id) {
+        this.cities = [];
+        return;
+      }
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const res = await axios.get(
+        `${API_BASE_URL}/api/cities?state_id=${this.form.state_id}`
+      );
+      this.cities = res.data;
+    },
+    onCountryChange() {
+      this.form.state_id = null;
+      this.form.city_id = null;
+      this.states = [];
+      this.cities = [];
+      this.fetchStates();
+    },
+    onStateChange() {
+      this.form.city_id = null;
+      this.cities = [];
+      this.fetchCities();
     },
   },
 };
 </script>
 
 <style scoped>
-/* --- Layout and spacing to match OrganizationTable/Leads/Notifications --- */
-.org-edit-outer {
+/* Remove specific cancel button margin only on this page */
+.lead-capture-actions > .btn.btn-secondary {
+  margin-right: 0 !important;
+}
+</style>
+<style scoped>
+/* Using lead-capture classes for consistency */
+.lead-capture-outer {
   width: 100%;
   max-width: 1400px;
   min-width: 0;
@@ -374,7 +645,7 @@ export default {
   padding: 0;
 }
 
-.org-edit-card {
+.lead-capture-card {
   width: 100%;
   max-width: 1400px;
   min-width: 0;
@@ -391,74 +662,12 @@ export default {
   position: relative;
 }
 
-.org-edit-title {
+.lead-capture-card-title {
   font-size: 22px;
   font-weight: 600;
   margin-bottom: 24px;
   text-align: left;
-}
-
-.org-edit-form {
   width: 100%;
-}
-
-.org-edit-grid {
-  display: grid;
-  gap: 18px 24px;
-  margin-bottom: 0;
-}
-.org-edit-grid-3 {
-  grid-template-columns: repeat(3, 1fr);
-  margin-bottom: 18px;
-}
-.org-edit-grid-2 {
-  grid-template-columns: repeat(2, 1fr);
-  margin-bottom: 18px;
-}
-
-.org-edit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.org-edit-field label {
-  color: #888;
-  font-size: 15px;
-  font-weight: 400;
-  text-align: left;
-}
-
-.org-edit-field input,
-.org-edit-field select {
-  background: #fff;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 10px 14px;
-  font-size: 15px;
-  color: #222;
-  outline: none;
-  transition: border 0.2s;
-}
-
-.org-edit-field input:disabled {
-  color: #bdbdbd;
-  background: #f5f5f5;
-}
-
-.org-edit-field select {
-  appearance: none;
-  background: #fff
-    url('data:image/svg+xml;utf8,<svg fill="%23888" height="20" viewBox="0 0 20 20" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M7.293 7.293a1 1 0 011.414 0L10 8.586l1.293-1.293a1 1 0 111.414 1.414l-2 2a1 1 0 01-1.414 0l-2-2a1 1 0 010-1.414z"/></svg>')
-    no-repeat right 10px center/18px 18px;
-}
-
-.org-edit-field select option[disabled][value=''] {
-  color: #888;
-}
-
-.org-edit-field select:invalid {
-  color: #bdbdbd;
 }
 
 .org-edit-divider {
@@ -467,6 +676,33 @@ export default {
   margin: 24px 0 24px 0;
 }
 
+.lead-capture-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+/* Ensure form-box inside child form components has no left/right padding for this page */
+:deep(.form-box) {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Position the form-box so absolutely positioned icons inside inputs align properly */
+:deep(.form-box) {
+  position: relative !important;
+}
+
+/* Slightly nudge the input icon so it sits inside the input area */
+:deep(.form-input-icon) {
+  left: 12px !important;
+}
+
+/* Slightly darker disabled input text for better contrast on this page */
+:deep(.form-input:disabled),
+:deep(.form-input[disabled]) {
+  color: #6b6b6b !important; /* slightly light from black */
+}
 .org-edit-actions {
   display: flex;
   justify-content: flex-end;
@@ -501,24 +737,16 @@ export default {
 .org-edit-update:hover {
   background: #005fa3;
 }
-
 /* Responsive styles to match other pages */
 @media (max-width: 1400px) {
-  .org-edit-outer {
+  .lead-capture-outer {
     margin: 12px;
     max-width: 100%;
   }
-  .org-edit-card {
+  .lead-capture-card {
     max-width: 100%;
     border-radius: 14px;
     padding: 18px 8px 12px 8px;
-  }
-  .org-edit-grid {
-    gap: 12px 8px;
-  }
-  .org-edit-grid-3,
-  .org-edit-grid-2 {
-    margin-bottom: 12px;
   }
   .org-edit-divider {
     margin: 16px 0 16px 0;
@@ -526,18 +754,13 @@ export default {
 }
 
 @media (max-width: 900px) {
-  .org-edit-outer {
+  .lead-capture-outer {
     margin: 4px;
     max-width: 100%;
   }
-  .org-edit-card {
+  .lead-capture-card {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;
-  }
-  .org-edit-grid-3,
-  .org-edit-grid-2 {
-    grid-template-columns: 1fr;
-    margin-bottom: 12px;
   }
   .org-edit-divider {
     margin: 12px 0 12px 0;

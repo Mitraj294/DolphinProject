@@ -35,23 +35,15 @@
                 />
               </div>
             </FormRow>
+
             <div class="send-assessment-label">Editable Template</div>
             <div class="send-assessment-template-box">
-              <QuillEditor
+              <Editor
+                :key="editorKey"
+                v-if="editorReady"
                 v-model="templateContent"
-                :options="editorOptions"
-                class="editor-below"
+                editorStyle="height: 320px;"
               />
-              <div style="margin-top: 10px; color: #888; font-size: 14px">
-                <b>Note:</b> The email will be sent exactly as shown above. You
-                can edit the content and the registration link.
-              </div>
-              <div style="margin-top: 18px">
-                <div
-                  class="dummy-template-preview"
-                  v-html="templateContent"
-                ></div>
-              </div>
             </div>
 
             <div class="send-assessment-link-actions-row">
@@ -59,8 +51,9 @@
                 <button
                   type="submit"
                   class="btn btn-primary"
+                  :disabled="sending"
                 >
-                  Send Assessment
+                  {{ sending ? 'Sending...' : 'Send Assessment' }}
                 </button>
               </div>
             </div>
@@ -75,69 +68,80 @@
 import MainLayout from '@/components/layout/MainLayout.vue';
 import {
   FormInput,
-  FormDropdown,
   FormRow,
   FormLabel,
 } from '@/components/Common/Common_UI/Form';
-// Import Quill editor and styles
-import { QuillEditor } from '@vueup/vue-quill';
-import '@vueup/vue-quill/dist/vue-quill.snow.css';
-
+import Editor from 'primevue/editor';
 import axios from 'axios';
-import Quill from 'quill';
 
 export default {
   name: 'SendAssessment',
-  components: {
-    MainLayout,
-    QuillEditor,
-    FormInput,
-    FormDropdown,
-    FormRow,
-    FormLabel,
-  },
+  components: { MainLayout, Editor, FormInput, FormRow, FormLabel },
   data() {
     return {
       to: '',
-      subject: 'Complete Your Registration ',
-      defaultTemplate:
-        '<p>Hello, {{name}}</p><p>You have been invited to complete your registration.</p><p>Please click the link below to register:</p><p><a href="{{registrationLink}}" target="_blank">Complete Registration</a></p><p>If you did not request this, you can ignore this email.</p><br /><p>Thank you,<br />Dolphin Team</p>',
+      recipientName: '',
+      subject: 'Complete Your Registration',
       templateContent: '',
-
-      editorOptions: {
-        theme: 'snow',
-        modules: {
-          toolbar: [
-            [{ size: ['small', false, 'large', 'huge'] }],
-            [{ color: [] }],
-            ['bold', 'italic', 'underline'],
-            [{ list: 'ordered' }, { list: 'bullet' }],
-            ['link'],
-            [
-              { align: '' },
-              { align: 'center' },
-              { align: 'right' },
-              { align: 'justify' },
-            ],
-            ['clean'],
-          ],
-        },
-      },
       sending: false,
       registrationLink: '',
+      editorReady: false,
+      // This key is crucial. Changing it will force the editor to re-mount completely.
+      editorKey: 0,
     };
   },
   mounted() {
-    this.to = this.$route.query.email || '';
-    this.updateRegistrationLink();
-    // Get name from query or fallback
-    const name = this.$route.query.contact || this.$route.query.name || '';
-    // Prefill template with registration link and name
-    this.templateContent = this.defaultTemplate
-      .replace(/{{registrationLink}}/g, this.registrationLink)
-      .replace(/{{name}}/g, name);
+    const params = this.$route.params || {};
+    // If an id param is present, fetch lead details to prefill the form.
+    const leadId = params.id || this.$route.query.lead_id || null;
+    if (leadId) {
+      (async () => {
+        try {
+          const API_BASE_URL =
+            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+          const storage = require('@/services/storage').default;
+          const token = storage.get('authToken');
+          const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          });
+          const payload = res.data || null;
+          const leadObj = payload && payload.lead ? payload.lead : payload;
+          if (leadObj) {
+            this.to = leadObj.email || '';
+            this.recipientName = `${leadObj.first_name || ''} ${
+              leadObj.last_name || ''
+            }`.trim();
+          }
+        } catch (e) {
+          // fallback to query params below
+          // noop
+        }
+      })();
+    }
+
+    this.to = this.to || params.email || this.$route.query.email || '';
+    this.recipientName =
+      this.recipientName ||
+      params.contact ||
+      params.name ||
+      this.$route.query.contact ||
+      this.$route.query.name ||
+      '';
   },
-  watch: {},
+  watch: {
+    to: {
+      handler(newEmail) {
+        if (newEmail) {
+          this.fetchServerTemplate();
+        } else {
+          // If there's no recipient, hide the editor and clear content.
+          this.templateContent = '';
+          this.editorReady = false;
+        }
+      },
+      immediate: true, // This runs the watcher when the component is first created.
+    },
+  },
   methods: {
     updateRegistrationLink() {
       if (this.to) {
@@ -147,41 +151,88 @@ export default {
       } else {
         this.registrationLink = '';
       }
-      // Update templateContent registration link if already filled
-      if (this.templateContent) {
-        this.templateContent = this.templateContent.replace(
-          /href="[^"]*"/g,
-          `href="${this.registrationLink}"`
+    },
+
+    async fetchServerTemplate() {
+      if (!this.to) return;
+
+      // 1. Hide the current editor instance while we fetch new data.
+      this.editorReady = false;
+      this.updateRegistrationLink();
+
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const params = {
+          registration_link: this.registrationLink,
+          name:
+            this.recipientName ||
+            this.$route.query.contact ||
+            this.$route.query.name ||
+            '',
+        };
+        const res = await axios.get(
+          `${API_BASE_URL}/api/email-template/lead-registration`,
+          { params }
         );
+
+        let html = res.data || '';
+
+        // Parse the full HTML response to extract only the body content.
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, 'text/html');
+          const container = doc.querySelector('.email-container');
+          if (container) html = container.innerHTML;
+        } catch (e) {
+          console.error('HTML parsing failed, using raw template:', e);
+        }
+
+        // Set the data for the next editor instance.
+        this.templateContent = html;
+      } catch (e) {
+        console.error('Failed to fetch server template:', e?.message || e);
+        this.templateContent =
+          '<p>Error: Could not load the email template.</p>';
+      } finally {
+        // Increment the key to force re-mount of the editor.
+        this.editorKey += 1;
+        this.$nextTick(() => {
+          this.editorReady = true;
+        });
       }
     },
+
     async handleSendAssessment() {
-      let contentToSend = this.templateContent;
-      if (
-        !contentToSend ||
-        contentToSend.replace(/<(.|\n)*?>/g, '').trim() === ''
-      ) {
-        // Use default template with replacements if editor is empty
-        const name = this.$route.query.contact || this.$route.query.name || '';
-        contentToSend = this.defaultTemplate
-          .replace(/{{registrationLink}}/g, this.registrationLink)
-          .replace(/{{name}}/g, name);
-      }
+      if (this.sending) return;
       this.sending = true;
       try {
-        // Get name from query or fallback
-        const name = this.$route.query.contact || this.$route.query.name || '';
+        const name =
+          this.recipientName ||
+          (this.$route.params &&
+            (this.$route.params.contact || this.$route.params.name)) ||
+          this.$route.query.contact ||
+          this.$route.query.name ||
+          '';
+
+        const payload = {
+          to: this.to,
+          subject: this.subject,
+          body: this.templateContent,
+          registration_link: this.registrationLink,
+          name: name,
+        };
+
+        const leadId =
+          (this.$route.params && this.$route.params.id) ||
+          (this.$route.query && this.$route.query.lead_id);
+        if (leadId) payload.lead_id = leadId;
+
         await axios.post(
           `${
             process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
           }/api/leads/send-assessment`,
-          {
-            to: this.to,
-            subject: this.subject,
-            body: contentToSend,
-            registration_link: this.registrationLink,
-            name: name,
-          }
+          payload
         );
         this.$toast.add({
           severity: 'success',
@@ -191,18 +242,18 @@ export default {
         });
       } catch (error) {
         let detail = 'Failed to send assessment email.';
-        if (error && error.response && error.response.data) {
-          if (typeof error.response.data === 'string') {
-            detail += ' ' + error.response.data;
-          } else if (error.response.data.error) {
-            detail += ' ' + error.response.data.error;
-          } else if (error.response.data.message) {
-            detail += ' ' + error.response.data.message;
+        if (error?.response?.data) {
+          const data = error.response.data;
+          if (typeof data === 'string') {
+            detail += ` ${data}`;
+          } else if (data.error) {
+            detail += ` ${data.error}`;
+          } else if (data.message) {
+            detail += ` ${data.message}`;
           }
-        } else if (error && error.message) {
-          detail += ' ' + error.message;
+        } else if (error?.message) {
+          detail += ` ${error.message}`;
         }
-        // Also log to console for debugging
         console.error('Send Assessment Error:', error);
         this.$toast.add({
           severity: 'error',
@@ -219,6 +270,7 @@ export default {
 </script>
 
 <style scoped>
+/* Your existing styles are fine */
 .send-assessment-table-outer {
   width: 100%;
   max-width: 1400px;
@@ -311,13 +363,12 @@ export default {
   margin-top: 18px;
   text-align: left;
 }
-/* Improved editor box styling for better containment and appearance */
 .send-assessment-template-box {
   background: #fafafa;
   border-radius: 12px;
   border: 1.5px solid #e0e0e0;
   box-shadow: 0 1px 8px 0 rgba(33, 150, 243, 0.06);
-  padding: 18px 18px 32px 18px;
+  padding: 18px;
   margin-bottom: 18px;
   min-height: 180px;
   height: auto;
@@ -326,27 +377,6 @@ export default {
   flex-direction: column;
   gap: 18px;
   overflow: hidden;
-}
-.dummy-template-preview {
-  margin-bottom: 12px;
-  font-size: 15px;
-  color: #222;
-  text-align: left; /* Ensure left alignment */
-}
-
-.send-assessment-template-box ul {
-  margin: 0 0 12px 0;
-  padding-left: 18px;
-  color: #222;
-  font-size: 15px;
-  text-align: left;
-}
-.send-assessment-link-label {
-  font-size: 15px;
-  color: #222;
-  margin-bottom: 8px;
-  margin-top: 18px;
-  text-align: left;
 }
 .send-assessment-link-actions-row {
   display: flex;
@@ -357,98 +387,25 @@ export default {
   width: 100%;
   justify-content: flex-start;
 }
-.send-assessment-link-box {
-  flex: 0 0 320px;
-  max-width: 320px;
-  min-width: 180px;
-  margin: 0;
-  background: #fff;
-  border: 1px solid #e0e0e0;
-  border-radius: 10px;
-  padding: 8px 14px;
-  display: flex;
-  align-items: center;
-  min-height: 40px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-@media (max-width: 900px) {
-  .send-assessment-link-box {
-    min-width: 0;
-    max-width: 100%;
-    width: 100%;
-    padding: 8px 8px;
-    margin-bottom: 0;
-    min-height: 32px;
-    max-height: 40px;
-    height: auto;
-  }
-}
 .send-assessment-actions {
-  margin-left: auto;
-  margin-top: 0;
+  margin-left: 0;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
 }
 
-/* Responsive styles to match other pages */
 @media (max-width: 1400px) {
   .send-assessment-table-outer {
     margin: 12px;
     max-width: 100%;
   }
-  .send-assessment-table-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 18px 8px 12px 8px;
-  }
-  .send-assessment-row {
-    gap: 12px;
-  }
 }
 @media (max-width: 900px) {
-  .send-assessment-table-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
-  .send-assessment-table-card {
-    padding: 8px 2vw 8px 2vw;
-    border-radius: 10px;
-  }
   .send-assessment-row {
     flex-direction: column;
-    gap: 18px; /* Increased gap for better vertical spacing */
-    margin-bottom: 18px; /* Add bottom margin for separation */
-  }
-  .send-assessment-label {
-    margin-top: 18px;
-    margin-bottom: 10px; /* Slightly more space below label */
-  }
-  .send-assessment-template-box {
-    margin-bottom: 18px;
-    padding: 18px 8px 32px 8px; /* More bottom padding for editor */
-    gap: 14px; /* More space between preview and editor */
-  }
-  .send-assessment-link-actions-row {
-    flex-direction: column;
-    gap: 18px; /* More space between link and button */
-    align-items: stretch;
-    justify-content: flex-start;
-    margin-bottom: 0;
-    margin-top: 0;
-  }
-  .send-assessment-link-box {
-    min-width: 0;
-    max-width: 100%;
-    width: 100%;
-    padding: 8px 8px;
-    margin-bottom: 0;
-  }
-  .send-assessment-actions {
-    margin-left: 0;
-    justify-content: flex-end;
+    gap: 18px;
   }
 }
 </style>
+display: flex;

@@ -27,8 +27,7 @@
         <p>
             <a class="button" href="http://127.0.0.1:8080/get-notification">View Announcement</a>
         </p>
-!
-        <div class="muted">Thank you !<br />Regards,<br />{{ config('app.name', 'Dolphin') }}</div>
+        <div class="muted">Thank you !<br />Regards,<br />Dolphin</div>
 
     <div style="margin-top:18px; font-size:11px; color:#b0b7bd;">If you're having trouble clicking the "View Announcement" button, copy and paste the URL below into your web browser: http://127.0.0.1:8080/get-notification</div>
     </div>
