@@ -3,7 +3,10 @@
     class="common-modal-overlay"
     v-if="visible"
   >
-    <div class="common-modal-card">
+    <div
+      class="common-modal-card"
+      :style="computedModalStyle"
+    >
       <button
         class="common-modal-close"
         @click="$emit('close')"
@@ -29,6 +32,27 @@ export default {
   name: 'CommonModal',
   props: {
     visible: { type: Boolean, default: false },
+    // allow callers to customize modal sizing/padding via props
+    modalMinWidth: { type: [String, Number], default: undefined },
+    modalMaxWidth: { type: [String, Number], default: undefined },
+    modalPadding: { type: String, default: undefined },
+  },
+  computed: {
+    computedModalStyle() {
+      const s = {};
+      if (this.modalPadding) s.padding = this.modalPadding;
+      if (this.modalMinWidth !== undefined)
+        s.minWidth =
+          typeof this.modalMinWidth === 'number'
+            ? `${this.modalMinWidth}px`
+            : this.modalMinWidth;
+      if (this.modalMaxWidth !== undefined)
+        s.maxWidth =
+          typeof this.modalMaxWidth === 'number'
+            ? `${this.modalMaxWidth}px`
+            : this.modalMaxWidth;
+      return s;
+    },
   },
 };
 </script>
@@ -59,6 +83,12 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+}
+
+/* ensure modal never exceeds viewport height on small devices */
+.common-modal-card {
+  max-height: 92vh;
+  overflow-y: auto;
 }
 .common-modal-close {
   position: absolute;

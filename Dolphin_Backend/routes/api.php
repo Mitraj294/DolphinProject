@@ -109,6 +109,7 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/organizations/{id}', [OrganizationController::class, 'update']);
         Route::delete('/organizations/{id}', [OrganizationController::class, 'destroy']);
         Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
+    Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
         Route::post('/announcements/send', [NotificationController::class, 'send']);
         Route::get('/notifications', [NotificationController::class, 'allNotifications']);
     });

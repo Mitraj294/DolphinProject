@@ -683,24 +683,24 @@ export default {
 }
 
 /* Ensure form-box inside child form components has no left/right padding for this page */
-::v-deep .form-box {
+:deep(.form-box) {
   padding-left: 0 !important;
   padding-right: 0 !important;
 }
 
 /* Position the form-box so absolutely positioned icons inside inputs align properly */
-::v-deep .form-box {
+:deep(.form-box) {
   position: relative !important;
 }
 
 /* Slightly nudge the input icon so it sits inside the input area */
-::v-deep .form-input-icon {
+:deep(.form-input-icon) {
   left: 12px !important;
 }
 
 /* Slightly darker disabled input text for better contrast on this page */
-::v-deep .form-input:disabled,
-::v-deep .form-input[disabled] {
+:deep(.form-input:disabled),
+:deep(.form-input[disabled]) {
   color: #6b6b6b !important; /* slightly light from black */
 }
 .org-edit-actions {

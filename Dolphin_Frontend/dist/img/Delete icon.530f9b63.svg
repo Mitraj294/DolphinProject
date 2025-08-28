@@ -1,0 +1,10 @@
+<svg width="33" height="34" viewBox="0 0 33 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M27.1621 10.6074V30.8213C27.162 31.9256 26.2664 32.821 25.1621 32.8213H7.51953C6.41501 32.8213 5.5196 31.9258 5.51953 30.8213V10.6074H27.1621Z" stroke="#787878" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="1.42578" y1="5.8418" x2="31.2573" y2="5.8418" stroke="#787878" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<mask id="path-3-inside-1_19_126" fill="white">
+<path d="M10.8379 1.24512C10.8379 0.692833 11.2856 0.245117 11.8379 0.245117H20.8483C21.4006 0.245117 21.8483 0.692832 21.8483 1.24512V6.84263H10.8379V1.24512Z"/>
+</mask>
+<path d="M10.8379 1.24512C10.8379 0.692833 11.2856 0.245117 11.8379 0.245117H20.8483C21.4006 0.245117 21.8483 0.692832 21.8483 1.24512V6.84263H10.8379V1.24512Z" stroke="#787878" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" mask="url(#path-3-inside-1_19_126)"/>
+<line x1="12.2656" y1="16.4805" x2="12.2656" y2="26.9514" stroke="#787878" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<line x1="20.1016" y1="16.4805" x2="20.1016" y2="26.9514" stroke="#787878" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

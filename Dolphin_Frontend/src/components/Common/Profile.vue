@@ -78,6 +78,9 @@
         :visible="showEditModal"
         @close="showEditModal = false"
         @submit="updateProfile"
+        :modal-max-width="'96vw'"
+        :modal-min-width="'280px'"
+        modal-padding="18px"
       >
         <template #title>Edit Profile</template>
         <FormRow>
@@ -117,14 +120,17 @@
             v-model="editForm.country"
             :options="countries"
             placeholder="Select country"
+            :padding-left="16"
           />
         </FormRow>
         <template #actions>
           <button
             type="submit"
             class="btn btn-primary"
+            :disabled="isUpdatingProfile"
           >
-            <i class="fas fa-save"></i> Save
+            <i class="fas fa-save"></i>
+            {{ isUpdatingProfile ? ' Saving...' : ' Save' }}
           </button>
         </template>
         <div
@@ -284,6 +290,7 @@ export default {
       },
       countries: [],
       editMessage: '',
+      isUpdatingProfile: false,
       profileError: '', // <-- error message for profile fetch
       profileRaw: '', // <-- raw API response for debug
     };
@@ -570,6 +577,8 @@ export default {
     },
     async updateProfile() {
       this.editMessage = '';
+      if (this.isUpdatingProfile) return;
+      this.isUpdatingProfile = true;
       try {
         // Use the same token key for all requests
         const token = storage.get('authToken');
@@ -690,6 +699,7 @@ export default {
             life: 3000,
           });
         }, 350);
+        this.isUpdatingProfile = false;
       } catch (error) {
         let msg = 'Failed to update profile.';
         if (error.response && error.response.data) {
@@ -720,6 +730,7 @@ export default {
           detail: msg,
           life: 3500,
         });
+        this.isUpdatingProfile = false;
       }
     },
     async deleteAccount() {
@@ -880,6 +891,7 @@ export default {
   color: #888;
   font-weight: 400;
   font-size: 1rem;
+  text-align: left;
 }
 .profile-value {
   color: #222;
@@ -911,6 +923,7 @@ export default {
   margin-bottom: 8px;
 }
 .profile-form-label {
+  text-align: left;
   width: 170px;
   color: #888;
   font-size: 15px;
@@ -989,5 +1002,48 @@ export default {
   font-size: 1.08rem !important;
   font-weight: 500 !important;
   color: #1a1a1a !important;
+}
+
+/* Responsive tweaks for the edit modal inside Profile page */
+@media (max-width: 850px) {
+  /* keep the modal readable on small tablets */
+  .common-modal-card {
+    padding: 18px !important;
+    border-radius: 10px !important;
+    max-width: 96vw !important;
+  }
+  .common-modal-card .form-row {
+    grid-template-columns: 110px 1fr !important;
+    gap: 12px;
+  }
+  .common-modal-card .form-label {
+    width: 110px !important;
+    min-width: 90px !important;
+    font-size: 1rem !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* stack labels above inputs for narrow phones */
+  .common-modal-card .form-row {
+    display: block !important;
+    grid-template-columns: none !important;
+  }
+  .common-modal-card .form-label {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin-bottom: 8px !important;
+    font-size: 0.98rem !important;
+  }
+  .common-modal-card .form-box {
+    width: 100% !important;
+  }
+  .common-modal-card {
+    padding: 12px !important;
+  }
+  .common-modal-title {
+    font-size: 1.05rem !important;
+  }
 }
 </style>

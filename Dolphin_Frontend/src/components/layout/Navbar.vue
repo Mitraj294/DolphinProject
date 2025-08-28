@@ -151,8 +151,7 @@ export default {
       roleName: authMiddleware.getRole(),
       isVerySmallScreen: false,
       notificationCount: 0,
-      assessmentNameCache: {},
-      // Small cache for lead names so Navbar can show "Edit Lead : <name>"
+
       leadNameCache: {},
       leadNameFetching: {},
       // Small cache for organization names so Navbar can show "Edit organization : <name>"
@@ -287,13 +286,7 @@ export default {
       if (routeName === 'AssessmentSummary') {
         const assessmentId = this.$route.params.assessmentId;
         if (!assessmentId) return 'Assessment Summary';
-        if (
-          this.assessmentNameCache &&
-          this.assessmentNameCache[assessmentId]
-        ) {
-          return `${this.assessmentNameCache[assessmentId]} Summary`;
-        }
-        // If not cached, fetch and update cache
+
         this.fetchAssessmentName(assessmentId);
         return `Assessment ${assessmentId} Summary`;
       }
@@ -358,29 +351,7 @@ export default {
         // ignore errors silently; keep existing badge
       }
     },
-    async fetchAssessmentName(assessmentId) {
-      if (!assessmentId || this.assessmentNameCache[assessmentId]) return;
-      try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        // Fetch all assessments and cache their names
-        const res = await fetch(`${API_BASE_URL}/api/assessments`);
-        const data = await res.json();
-        if (Array.isArray(data.assessments)) {
-          data.assessments.forEach((a) => {
-            if (a.id && a.name) {
-              this.$set(this.assessmentNameCache, a.id.toString(), a.name);
-            }
-          });
-        }
-        // If the requested assessmentId is now cached, force update
-        if (this.assessmentNameCache[assessmentId]) {
-          this.$forceUpdate && this.$forceUpdate();
-        }
-      } catch (e) {
-        // Ignore error, fallback to ID
-      }
-    },
+
     async fetchLeadName(leadId) {
       if (!leadId) return null;
       // prevent duplicate concurrent fetches per id
@@ -555,7 +526,7 @@ export default {
     // Instead of calling the API directly here, fire the domain event so
     // the debounced handler handles the request (avoids duplicate calls).
     if (storage.get('showDashboardWelcome')) {
-      window.dispatchEvent(new Event('notification-updated'));
+      this.fetchUnreadCount();
       storage.remove('showDashboardWelcome');
     }
     // bind handlers so `this` is preserved when invoked by window events

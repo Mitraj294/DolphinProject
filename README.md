@@ -37,17 +37,12 @@ git push
 //////////////
 
 
-then super admin subscription thing also m,ange subscription and need to fix its paths and routes also
 notifications date wise filter
-role organizationadmin show this with proper name
+
 
 Notification VIEW DETAILS PAGE
-in NOTES LEADS INDEXING PROBLEM
 
 
 
 
-in pagination svg filter for disable and enable icons
-
-in user + permission management edit user role style
 

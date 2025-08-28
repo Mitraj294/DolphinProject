@@ -71,7 +71,7 @@ class AssessmentController extends Controller
             $assessments = Assessment::where('organization_id', $orgId)
                 ->select('id', 'name', 'organization_id')
                 ->get();
-            \Log::info('[AssessmentController@show] assessments returned by organization', ['organization_id' => $orgId, 'count' => $assessments->count(), 'ids' => $assessments->pluck('id')]);
+          
             return response()->json(['assessments' => $assessments]);
         }
 

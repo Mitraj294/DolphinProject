@@ -23,6 +23,7 @@
             type="email"
             v-model="email"
             placeholder="Email ID"
+            autocomplete="username"
             required
           />
         </div>
@@ -34,6 +35,7 @@
             :type="showPassword ? 'text' : 'password'"
             v-model="password"
             placeholder="Password"
+            autocomplete="current-password"
             required
           />
           <span
@@ -89,6 +91,7 @@ import { ROLES } from '@/permissions';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import storage from '@/services/storage';
+import { fetchCurrentUser } from '@/services/user';
 
 const API_BASE_URL =
   process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -126,6 +129,26 @@ export default {
     delete query.email;
     delete query.registrationSuccess;
     this.$router.replace({ query }).catch(() => {});
+
+    // If auth token exists in storage (shared across tabs via localStorage),
+    // validate it by fetching the current user and redirect to dashboard.
+    const token = storage.get('authToken');
+    if (token) {
+      fetchCurrentUser()
+        .then((user) => {
+          if (user) {
+            if (user.role) storage.set('role', user.role);
+            // navigate to dashboard
+            this.$router.push('/dashboard').catch(() => {});
+          } else {
+            // token invalid — remove it so user can login normally
+            storage.remove('authToken');
+          }
+        })
+        .catch(() => {
+          // ignore failures here; user stays on login
+        });
+    }
   },
   methods: {
     togglePassword() {

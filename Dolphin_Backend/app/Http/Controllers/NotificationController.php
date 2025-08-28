@@ -99,6 +99,89 @@ class NotificationController extends Controller {
         return response()->json($announcements);
     }
 
+    // Return a single announcement with related pivot data (organizations, groups, admins, members)
+    public function showAnnouncement($id)
+    {
+        try {
+            $announcement = Announcement::with(['organizations', 'groups', 'admins'])->findOrFail($id);
+
+            // For each attached group, attempt to load members (names and emails)
+            $groupDetails = [];
+            foreach ($announcement->groups as $g) {
+                $members = [];
+                if (method_exists($g, 'members')) {
+                    try {
+                        $members = $g->members()->get(['id', 'name', 'email'])->toArray();
+                    } catch (\Exception $e) {
+                        \Log::warning('[showAnnouncement] failed to load group members', ['group_id' => $g->id, 'error' => $e->getMessage()]);
+                    }
+                }
+                $groupDetails[] = [
+                    'id' => $g->id,
+                    'name' => $g->name ?? null,
+                    'members' => $members,
+                ];
+            }
+
+            // Precompute notifications for this announcement to determine per-user read state
+            $notifRows = \DB::table('notifications')
+                ->where('notifiable_type', 'App\\Models\\User')
+                ->whereRaw("JSON_EXTRACT(data, '$.announcement_id') = ?", [$announcement->id])
+                ->get();
+
+            $readUserIds = [];
+            foreach ($notifRows as $nr) {
+                if (!empty($nr->read_at)) {
+                    $readUserIds[] = $nr->notifiable_id;
+                }
+            }
+            $readUserIds = array_unique($readUserIds);
+
+            $orgDetails = [];
+            foreach ($announcement->organizations as $o) {
+                // Determine if any user in this organization has read the announcement
+                $orgUserIds = [];
+                if (method_exists($o, 'users')) {
+                    try {
+                        $orgUserIds = $o->users()->pluck('users.id')->toArray();
+                    } catch (\Exception $e) {
+                        \Log::warning('[showAnnouncement] failed to pluck org users', ['org_id' => $o->id, 'error' => $e->getMessage()]);
+                    }
+                }
+                $isRead = false;
+                if (!empty($orgUserIds) && !empty($readUserIds)) {
+                    if (count(array_intersect($orgUserIds, $readUserIds)) > 0) {
+                        $isRead = true;
+                    }
+                }
+                $orgDetails[] = [
+                    'id' => $o->id,
+                    'name' => $o->org_name ?? $o->name ?? null,
+                    'read' => $isRead,
+                ];
+            }
+
+            $adminDetails = [];
+            foreach ($announcement->admins as $a) {
+                $adminDetails[] = [
+                    'id' => $a->id,
+                    'name' => $a->name ?? $a->full_name ?? null,
+                    'email' => $a->email ?? null,
+                ];
+            }
+
+            return response()->json([
+                'announcement' => $announcement,
+                'groups' => $groupDetails,
+                'organizations' => $orgDetails,
+                'admins' => $adminDetails,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('[showAnnouncement] error', ['id' => $id, 'error' => $e->getMessage()]);
+            return response()->json(['error' => 'Announcement not found'], 404);
+        }
+    }
+
     // Send announcement to orgs, admins, groups
     public function send(Request $request)
     {

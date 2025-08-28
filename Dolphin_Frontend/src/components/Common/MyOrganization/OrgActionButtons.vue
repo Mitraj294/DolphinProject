@@ -535,24 +535,24 @@ export default {
 }
 
 /* Responsive styles for modals and form elements */
-@media (max-width: 900px) {
+@media (max-width: 700px) {
   .modal-card {
     min-width: 0;
     max-width: calc(100vw - 32px);
     width: calc(98vw - 32px);
     padding: 20px 16px 20px 16px;
     border-radius: 14px;
-    margin: 16px;
+    margin: 26px;
   }
 }
 @media (max-width: 600px) {
   .modal-card {
     min-width: 0;
-    max-width: calc(100vw - 24px);
+    max-width: calc(100vw - 32px);
     width: calc(98vw - 24px);
     padding: 18px 12px 18px 12px;
     border-radius: 12px;
-    margin: 12px;
+    margin: 22px;
   }
   .modal-title {
     font-size: 20px;
