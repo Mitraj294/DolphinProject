@@ -22,6 +22,12 @@
           @selectPageSize="selectPageSize"
           @goToPage="goToPage"
         />
+        <GroupDetails
+          :visible="showGroupModal"
+          :groupId="selectedGroup ? selectedGroup.id : null"
+          @close="closeGroupModal"
+          @view-member="(m) => { this.$emit('view-member', m); }"
+        />
       </div>
     </div>
   </MainLayout>
@@ -32,6 +38,7 @@ import MainLayout from '../../layout/MainLayout.vue';
 import MemberTable from './MemberTable.vue';
 import OrgActionButtons from './OrgActionButtons.vue';
 import Pagination from '../../layout/Pagination.vue';
+import GroupDetails from './GroupDetails.vue';
 import axios from 'axios';
 import storage from '@/services/storage';
 
@@ -42,11 +49,14 @@ export default {
     MemberTable,
     OrgActionButtons,
     Pagination,
+    GroupDetails,
   },
   data() {
     return {
       groups: [],
       members: [],
+      showGroupModal: false,
+      selectedGroup: null,
       pageSize: 10,
       pageSizes: [10, 25, 100],
       currentPage: 1,
@@ -60,6 +70,14 @@ export default {
     paginatedGroups() {
       const start = (this.currentPage - 1) * this.pageSize;
       return this.groups.slice(start, start + this.pageSize);
+    },
+    membersForSelectedGroup() {
+      if (!this.selectedGroup) return [];
+      // assume member object has group_id or groupId; try both
+      const gid = this.selectedGroup.id;
+      return this.members.filter(
+        (m) => m.group_id === gid || m.groupId === gid || m.group === gid
+      );
     },
   },
   methods: {
@@ -107,7 +125,13 @@ export default {
       }
     },
     viewGroup(group) {
-      alert(`Viewing group: ${group.name}`);
+      // show a modal card with group details and its members
+      this.selectedGroup = group || null;
+      this.showGroupModal = !!group;
+    },
+    closeGroupModal() {
+      this.showGroupModal = false;
+      this.selectedGroup = null;
     },
   },
   mounted() {

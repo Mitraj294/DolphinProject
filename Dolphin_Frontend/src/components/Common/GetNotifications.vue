@@ -301,7 +301,7 @@ export default {
 
         const filtered = notificationsArr.filter(isForUser);
 
-        this.notifications = filtered.map((n) => {
+        const mapped = filtered.map((n) => {
           // normalize data payload
           let d = n.data;
           if (typeof d === 'string') {
@@ -351,12 +351,19 @@ export default {
 
           return {
             id: n.id,
+            // keep the original created_at for reliable filtering
+            created_at: n.created_at,
             date: n.created_at ? this.formatDate(n.created_at) : '',
             body: bodyDisplay,
             read_at: n.read_at,
             _rawData: d,
           };
         });
+
+        // split into unread (notifications) and read (readNotifications) so tabs and
+        // date filtering work consistently. Keep original order from server.
+        this.notifications = mapped.filter((m) => !m.read_at);
+        this.readNotifications = mapped.filter((m) => !!m.read_at);
         // Notifications have been updated; watchers will synchronize the
         // stored count and emit domain events (avoid duplicate emits here).
       } catch (error) {
@@ -619,7 +626,7 @@ export default {
   border-radius: 32px;
   padding: 0 0 0 18px;
   height: 36px;
-  min-width: 340px;
+  min-width: 140px;
 }
 
 .notifications-date {

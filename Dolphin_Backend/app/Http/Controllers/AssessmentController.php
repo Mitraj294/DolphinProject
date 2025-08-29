@@ -16,11 +16,24 @@ class AssessmentController extends Controller
 
         // Group answers by member
         $members = [];
-        // Add all members with tokens
+        // Add all members with tokens. Use Eloquent withTrashed() so soft-deleted
+        // members are still resolved. If the member row is missing entirely then
+        // the name will be set to 'Unknown'. If a member exists but has empty
+        // first/last name, fall back to the member's email.
         foreach ($tokens as $token) {
             $memberId = $token->member_id;
-            $member = \DB::table('members')->where('id', $memberId)->first();
-            $memberName = $member ? trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) : 'Unknown';
+            $member = \App\Models\Member::withTrashed()->find($memberId);
+            $memberName = 'Unknown';
+            if ($member) {
+                $full = trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? ''));
+                if (strlen($full) > 0) {
+                    $memberName = $full;
+                } elseif (!empty($member->email)) {
+                    $memberName = $member->email;
+                } else {
+                    $memberName = 'Unknown';
+                }
+            }
             $members[$memberId] = [
                 'member_id' => $memberId,
                 'name' => $memberName,

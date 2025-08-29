@@ -154,9 +154,11 @@ export default {
 
       leadNameCache: {},
       leadNameFetching: {},
-      // Small cache for organization names so Navbar can show "Edit organization : <name>"
+
       orgNameCache: {},
       orgNameFetching: {},
+      assessmentNameCache: {},
+      assessmentNameFetching: {},
       // lifecycle flag to avoid mutating state after unmount
       isNavbarAlive: false,
       // bound handlers for window events (so `this` stays correct)
@@ -246,6 +248,40 @@ export default {
       if (routeName === 'Assessments') {
         return 'Assessments';
       }
+      if (routeName === 'AssessmentSummary') {
+        // Prefer an assessment object passed via route params/query (SPA navigation)
+        const assessmentParam =
+          this.$route.params.assessment || this.$route.query.assessment || null;
+        if (assessmentParam && assessmentParam.name) {
+          console.debug(
+            'Navbar: using assessment from route params for title',
+            assessmentParam
+          );
+          return `Assessment Summary :  ${assessmentParam.name} `;
+        }
+        // Try cached name
+        const assessmentId =
+          this.$route.params.assessmentId || this.$route.params.id;
+        if (assessmentId) {
+          const cached = this.assessmentNameCache[assessmentId];
+          if (cached) {
+            console.debug(
+              `Navbar: using cached assessment name for id=${assessmentId}`
+            );
+            return `Assessment Summary :  ${cached}`;
+          }
+          if (this.assessmentNameFetching[assessmentId]) {
+            console.debug(
+              `Navbar: assessment name fetch already in progress for id=${assessmentId}`
+            );
+            return 'Assessment Summary';
+          }
+          // trigger async fetch (non-blocking)
+          if (this.isNavbarAlive) this.fetchAssessmentName(assessmentId);
+          return 'Assessment Summary';
+        }
+        return 'Assessment Summary';
+      }
       if (routeName === 'TrainingResources') {
         return 'Training & Resources';
       }
@@ -283,13 +319,6 @@ export default {
         return 'Member Listing';
       }
 
-      if (routeName === 'AssessmentSummary') {
-        const assessmentId = this.$route.params.assessmentId;
-        if (!assessmentId) return 'Assessment Summary';
-
-        this.fetchAssessmentName(assessmentId);
-        return `Assessment ${assessmentId} Summary`;
-      }
       if (routeName === 'Profile') {
         return 'Profile';
       }
@@ -355,8 +384,8 @@ export default {
     async fetchLeadName(leadId) {
       if (!leadId) return null;
       // prevent duplicate concurrent fetches per id
-      if (this.leadNameFetching[leadId]) return null;
-      this.leadNameFetching = { ...this.leadNameFetching, [leadId]: true };
+      if (this.leadNameFetching[leadId]) return;
+      this.leadNameFetching[leadId] = true;
       try {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -384,24 +413,69 @@ export default {
             '';
           if (name && this.isNavbarAlive) {
             // assign directly to reactive object
-            this.leadNameCache = { ...this.leadNameCache, [leadId]: name };
+            this.leadNameCache[leadId] = name;
           }
         }
       } catch (e) {
         // silent; leave base title
       } finally {
         if (this.isNavbarAlive) {
-          const copy = { ...this.leadNameFetching };
-          delete copy[leadId];
-          this.leadNameFetching = copy;
+          delete this.leadNameFetching[leadId];
         }
       }
       return null;
     },
+    async fetchSummary() {
+      if (!this.assessmentId) return;
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await axios.get(
+          `${API_BASE_URL}/api/assessment/${this.assessmentId}/summary`
+        );
+        const data = res.data;
+
+        // Set navbar title from the fetched data
+        if (data.assessment && data.assessment.name) {
+          const assessmentName = data.assessment.name;
+          // Use the event bus to update the navbar title
+          if (this.$root && this.$root.$emit) {
+            this.$root.$emit(
+              'page-title-override',
+              `Assessment ${assessmentName} Summary`
+            );
+          }
+        }
+
+        // Transform backend data to frontend rows
+        this.rows = (data.members || []).map((member) => ({
+          name:
+            member.name ||
+            (member.member_id ? `Member #${member.member_id}` : 'Unknown'),
+          result:
+            member.answers && member.answers.length > 0
+              ? 'Submitted'
+              : 'Pending',
+          assessment: (member.answers || []).map((a) => ({
+            question: a.question,
+            answer: a.answer,
+          })),
+        }));
+        this.summary = data.summary || {
+          total_sent: 0,
+          submitted: 0,
+          pending: 0,
+        };
+      } catch (e) {
+        this.rows = [];
+        this.summary = { total_sent: 0, submitted: 0, pending: 0 };
+        console.error('Failed to fetch assessment summary:', e);
+      }
+    },
     async fetchOrgName(orgId) {
       if (!orgId) return null;
-      if (this.orgNameFetching[orgId]) return null;
-      this.orgNameFetching = { ...this.orgNameFetching, [orgId]: true };
+      if (this.orgNameFetching[orgId]) return;
+      this.orgNameFetching[orgId] = true;
       try {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -422,17 +496,64 @@ export default {
         if (orgObj) {
           const name = orgObj.org_name || orgObj.name || orgObj.title || '';
           if (name && this.isNavbarAlive) {
-            this.orgNameCache = { ...this.orgNameCache, [orgId]: name };
+            this.orgNameCache[orgId] = name;
           }
         }
       } catch (e) {
         // ignore
       } finally {
         if (this.isNavbarAlive) {
-          const copy = { ...this.orgNameFetching };
-          delete copy[orgId];
-          this.orgNameFetching = copy;
+          delete this.orgNameFetching[orgId];
         }
+      }
+      return null;
+    },
+    async fetchAssessmentName(assessmentId) {
+      if (!assessmentId) return null;
+      if (this.assessmentNameFetching[assessmentId]) return;
+      this.assessmentNameFetching[assessmentId] = true;
+      console.debug(`Navbar: fetchAssessmentName start id=${assessmentId}`);
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        let token = storage.get('authToken');
+        if (token && typeof token === 'object' && token.token)
+          token = token.token;
+        const config = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
+
+        // Try summary endpoint which usually contains assessment.name
+        const res = await axios.get(
+          `${API_BASE_URL}/api/assessment/${assessmentId}/summary`,
+          config
+        );
+        const data = res && res.data ? res.data : null;
+        const name =
+          data && data.assessment && data.assessment.name
+            ? data.assessment.name
+            : null;
+        if (name && this.isNavbarAlive) {
+          this.assessmentNameCache[assessmentId] = name;
+          console.debug(
+            `Navbar: cached assessment name for id=${assessmentId} -> ${name}`
+          );
+          // Emit override so pages depending on event update immediately
+          if (this.$root && this.$root.$emit) {
+            this.$root.$emit(
+              'page-title-override',
+              `Assessment ${name} Summary`
+            );
+          }
+        }
+      } catch (e) {
+        console.warn(
+          `Navbar: fetchAssessmentName failed for id=${assessmentId}`,
+          e && e.message ? e.message : e
+        );
+      } finally {
+        if (this.isNavbarAlive)
+          delete this.assessmentNameFetching[assessmentId];
       }
       return null;
     },
@@ -507,12 +628,6 @@ export default {
         document.body.classList.remove('logout-overlay-active');
       }
     },
-    $route(to) {
-      // If navigating to a new assessment summary, fetch the name
-      if (to.name === 'AssessmentSummary' && to.params.assessmentId) {
-        this.fetchAssessmentName(to.params.assessmentId);
-      }
-    },
   },
   mounted() {
     // mark alive so async fetches can safely write to state
@@ -553,13 +668,7 @@ export default {
     window.addEventListener('auth-updated', this._boundAuthUpdated);
     // storage event (cross-tab) should update local count
     window.addEventListener('storage', this._boundUpdateNotificationCount);
-    // On mount, if on summary page, fetch assessment name
-    if (
-      this.$route.name === 'AssessmentSummary' &&
-      this.$route.params.assessmentId
-    ) {
-      this.fetchAssessmentName(this.$route.params.assessmentId);
-    }
+
     if (this.showLogoutConfirm) {
       document.body.classList.add('logout-overlay-active');
     }
@@ -570,6 +679,32 @@ export default {
         this.overridePageTitle = val;
       });
     }
+
+    // If we landed directly on an AssessmentSummary route, attempt to fetch its name
+    try {
+      const rn = this.$route && this.$route.name;
+      if (rn === 'AssessmentSummary') {
+        const assessmentId =
+          this.$route.params.assessmentId || this.$route.params.id;
+        if (assessmentId && this.isNavbarAlive)
+          this.fetchAssessmentName(assessmentId);
+      }
+    } catch (e) {}
+
+    // Watch route changes to trigger fetches for AssessmentSummary pages
+    this.$watch(
+      () => this.$route && this.$route.fullPath,
+      (newVal, oldVal) => {
+        try {
+          const rn = this.$route && this.$route.name;
+          if (rn === 'AssessmentSummary') {
+            const aid =
+              this.$route.params.assessmentId || this.$route.params.id;
+            if (aid && this.isNavbarAlive) this.fetchAssessmentName(aid);
+          }
+        } catch (e) {}
+      }
+    );
   },
   beforeDestroy() {
     // prevent background async callbacks from mutating state after unmount

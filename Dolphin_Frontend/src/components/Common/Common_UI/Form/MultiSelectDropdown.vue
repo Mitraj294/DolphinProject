@@ -6,54 +6,85 @@
     <span class="form-input-icon">
       <i :class="icon"></i>
     </span>
-    <input
-      type="text"
-      :placeholder="placeholder"
-      readonly
-      :value="selectedItems.map((item) => item[optionLabel]).join(', ')"
-      class="form-input-with-icon"
-      @click="toggleDropdown"
-    />
-    <span class="form-dropdown-chevron">
-      <i class="fas fa-chevron-down"></i>
-    </span>
     <div
-      v-if="showDropdown"
-      class="dropdown-list"
+      class="selected-container"
+      @click="toggleDropdown"
     >
-      <input
-        class="dropdown-search"
-        placeholder="Search"
-        v-model="search"
-      />
-      <div
-        v-if="enableSelectAll"
-        class="dropdown-item"
-        @click="toggleSelectAll"
-      >
-        <span><strong>Select All</strong></span>
+      <template v-if="selectedItems && selectedItems.length">
         <span
-          class="dropdown-checkbox"
-          :class="{ checked: isAllSelected }"
-        ></span>
-      </div>
-      <div
-        v-for="item in filteredItems"
-        :key="item[optionValue]"
-        class="dropdown-item"
-        @click="toggleItem(item)"
-      >
-        <span>{{ item[optionLabel] }}</span>
-        <span
-          class="dropdown-checkbox"
-          :class="{
-            checked: selectedItems.some(
-              (i) => i[optionValue] === item[optionValue]
-            ),
-          }"
-        ></span>
-      </div>
+          v-for="(s, idx) in selectedItems"
+          :key="idx"
+          class="selected-chip"
+          @click.stop
+        >
+          <span class="chip-label">{{ labelFor(s) }}</span>
+          <button
+            class="chip-remove"
+            @click.stop.prevent="removeSelected(s)"
+          >
+            ×
+          </button>
+        </span>
+      </template>
+      <template v-else>
+        <span class="selected-placeholder">{{
+          placeholder || 'Select...'
+        }}</span>
+      </template>
     </div>
+    <span
+      class="form-dropdown-chevron"
+      @click.stop="toggleDropdown"
+      role="button"
+      tabindex="0"
+      @keydown.enter.prevent="toggleDropdown"
+    >
+      <i
+        class="fas fa-chevron-down"
+        aria-hidden="true"
+      ></i>
+    </span>
+    <teleport to="body">
+      <div
+        v-if="showDropdown"
+        ref="dropdownEl"
+        class="dropdown-list"
+        :style="dropdownStyle"
+      >
+        <input
+          class="dropdown-search"
+          placeholder="Search"
+          v-model="search"
+        />
+        <div
+          v-if="enableSelectAll"
+          class="dropdown-item"
+          @click="toggleSelectAll"
+        >
+          <span><strong>Select All</strong></span>
+          <span
+            class="dropdown-checkbox"
+            :class="{ checked: isAllSelected }"
+          ></span>
+        </div>
+        <div
+          v-for="item in filteredItems"
+          :key="item[optionValue]"
+          class="dropdown-item"
+          @click="toggleItem(item)"
+        >
+          <span>{{ item[optionLabel] }}</span>
+          <span
+            class="dropdown-checkbox"
+            :class="{
+              checked: selectedItems.some(
+                (i) => i[optionValue] === item[optionValue]
+              ),
+            }"
+          ></span>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -73,6 +104,7 @@ export default {
     return {
       showDropdown: false,
       search: '',
+      dropdownStyle: {},
     };
   },
   computed: {
@@ -92,16 +124,213 @@ export default {
         )
       );
     },
+    // Build a readable string for selected items; handles primitives, objects, id references,
+    // nested shapes, and circular objects via a safe stringify fallback.
+    selectedLabelString() {
+      if (!Array.isArray(this.selectedItems) || this.selectedItems.length === 0)
+        return '';
+
+      const safeStringify = (obj) => {
+        try {
+          const seen = new WeakSet();
+          return JSON.stringify(
+            obj,
+            (k, v) => {
+              if (v && typeof v === 'object') {
+                if (seen.has(v)) return '[Circular]';
+                seen.add(v);
+              }
+              return v;
+            },
+            2
+          );
+        } catch (e) {
+          // Fallback to building a short key:value string
+          try {
+            if (obj && typeof obj === 'object') {
+              const parts = Object.keys(obj)
+                .slice(0, 4)
+                .map((k) => `${k}:${String(obj[k])}`);
+              return parts.join(' ');
+            }
+          } catch (e2) {
+            // ignore
+          }
+          return String(obj);
+        }
+      };
+
+      const commonLabelKeys = [
+        this.optionLabel,
+        'name',
+        'label',
+        'title',
+        'role',
+        'display_name',
+        'text',
+      ];
+
+      const labels = this.selectedItems
+        .map((s) => {
+          if (s === null || s === undefined) return '';
+          // primitive selected (id or label)
+          if (typeof s === 'string' || typeof s === 'number') {
+            // try to resolve to option label by id
+            const opt = this.options.find((o) => o[this.optionValue] === s);
+            if (
+              opt &&
+              (typeof opt[this.optionLabel] === 'string' ||
+                typeof opt[this.optionLabel] === 'number')
+            )
+              return opt[this.optionLabel];
+            return String(s);
+          }
+
+          // object selected: try common label keys and nested shapes
+          if (typeof s === 'object') {
+            for (const key of commonLabelKeys) {
+              if (s && Object.prototype.hasOwnProperty.call(s, key)) {
+                const v = s[key];
+                if (typeof v === 'string' && v.trim()) return v.trim();
+                if (typeof v === 'number') return String(v);
+              }
+            }
+
+            // check nested common shapes (e.g., s.role.name)
+            for (const key of ['role', 'user', 'data']) {
+              if (s[key] && typeof s[key] === 'object') {
+                const nested = s[key];
+                const nestedVal = nested[this.optionLabel];
+                if (nestedVal !== undefined) {
+                  if (
+                    typeof nestedVal === 'string' ||
+                    typeof nestedVal === 'number'
+                  ) {
+                    return String(nestedVal);
+                  }
+                  return safeStringify(nestedVal);
+                }
+                if (nested.name !== undefined) {
+                  if (
+                    typeof nested.name === 'string' ||
+                    typeof nested.name === 'number'
+                  ) {
+                    return String(nested.name);
+                  }
+                  return safeStringify(nested.name);
+                }
+              }
+            }
+
+            // resolve via id lookup against options
+            if (s[this.optionValue] !== undefined) {
+              const opt = this.options.find(
+                (o) => o[this.optionValue] === s[this.optionValue]
+              );
+              if (
+                opt &&
+                (typeof opt[this.optionLabel] === 'string' ||
+                  typeof opt[this.optionLabel] === 'number')
+              )
+                return opt[this.optionLabel];
+            }
+
+            // Try to find any string value on the object
+            try {
+              const vals = Object.values(s || {});
+              const strVal = vals.find(
+                (v) => typeof v === 'string' && v.trim()
+              );
+              if (strVal) return strVal.trim();
+            } catch (e) {
+              // ignore
+            }
+
+            // Fallback to safe stringify
+            return safeStringify(s);
+          }
+          return String(s);
+        })
+        .filter((x) => x !== '');
+
+      return labels.join(', ');
+    },
   },
   mounted() {
     document.addEventListener('mousedown', this.handleClickOutside);
+    window.addEventListener('resize', this.updateDropdownPosition);
+    window.addEventListener('scroll', this.updateDropdownPosition, true);
   },
   beforeDestroy() {
     document.removeEventListener('mousedown', this.handleClickOutside);
+    window.removeEventListener('resize', this.updateDropdownPosition);
+    window.removeEventListener('scroll', this.updateDropdownPosition, true);
   },
   methods: {
+    labelFor(s) {
+      if (s === null || s === undefined) return '';
+
+      if (this.isPrimitive(s)) {
+        return this.labelForPrimitive(s);
+      }
+
+      if (typeof s === 'object') {
+        return this.labelForObject(s);
+      }
+
+      return String(s);
+    },
+
+    isPrimitive(val) {
+      return typeof val === 'string' || typeof val === 'number';
+    },
+
+    labelForPrimitive(val) {
+      const opt = this.options.find((o) => o[this.optionValue] === val);
+      if (opt && this.isPrimitive(opt[this.optionLabel])) {
+        return String(opt[this.optionLabel]);
+      }
+      return String(val);
+    },
+
+    labelForObject(obj) {
+      const lbl = obj[this.optionLabel] || obj.name || obj.label || obj.title;
+      if (lbl !== undefined) {
+        return this.stringifyLabel(lbl);
+      }
+
+      if (obj[this.optionValue] !== undefined) {
+        const opt = this.options.find(
+          (o) => o[this.optionValue] === obj[this.optionValue]
+        );
+        if (opt && opt[this.optionLabel]) {
+          return opt[this.optionLabel];
+        }
+      }
+
+      return JSON.stringify(obj);
+    },
+
+    stringifyLabel(lbl) {
+      if (this.isPrimitive(lbl)) return String(lbl);
+      try {
+        return JSON.stringify(lbl);
+      } catch {
+        return String(lbl);
+      }
+    },
+    removeSelected(item) {
+      const newSelected = this.selectedItems.filter((i) => {
+        const a = typeof i === 'object' ? i[this.optionValue] : i;
+        const b = typeof item === 'object' ? item[this.optionValue] : item;
+        return a !== b;
+      });
+      this.$emit('update:selectedItems', newSelected);
+    },
     toggleDropdown() {
       this.showDropdown = !this.showDropdown;
+      if (this.showDropdown)
+        this.$nextTick(() => this.updateDropdownPosition());
     },
     toggleItem(item) {
       // Compare items by the configured optionValue (defaults to 'id')
@@ -144,9 +373,29 @@ export default {
     handleClickOutside(event) {
       if (!this.showDropdown) return;
       const root = this.$refs.dropdownRoot;
-      if (root && !root.contains(event.target)) {
+      const dropdownEl = this.$refs.dropdownEl;
+      const clickedInsideRoot = root && root.contains(event.target);
+      const clickedInsideDropdown =
+        dropdownEl && dropdownEl.contains(event.target);
+      if (!clickedInsideRoot && !clickedInsideDropdown) {
         this.showDropdown = false;
       }
+    },
+    updateDropdownPosition() {
+      const root = this.$refs.dropdownRoot;
+      const el = this.$refs.dropdownEl;
+      if (!root || !el) return;
+      const rect = root.getBoundingClientRect();
+      const top = rect.bottom + window.scrollY + 6;
+      const left = rect.left + window.scrollX;
+      const width = rect.width;
+      this.dropdownStyle = {
+        position: 'absolute',
+        top: `${top}px`,
+        left: `${left}px`,
+        width: `${width}px`,
+        zIndex: 99999,
+      };
     },
   },
 };
@@ -191,6 +440,44 @@ export default {
   padding: 0 36px 0 36px; /* left for icon, right for chevron */
   box-sizing: border-box;
 }
+
+.selected-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 36px 6px 36px;
+  min-height: 44px;
+}
+.selected-chip {
+  display: inline-flex;
+  align-items: center;
+
+  background: #f6f6f6;
+  border-radius: 18px;
+  padding: 6px 10px;
+  font-size: 14px;
+  color: #444;
+}
+.chip-label {
+  max-width: 160px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip-remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.selected-placeholder {
+  color: #9a9a9a;
+  font-size: 14px;
+  padding-left: 2px;
+}
 .form-dropdown-chevron {
   position: absolute;
   right: 12px;
@@ -200,7 +487,8 @@ export default {
   font-size: 16px;
   display: flex;
   align-items: center;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   height: 100%;
   background: none;
   padding: 0;

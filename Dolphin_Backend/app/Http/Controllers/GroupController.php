@@ -73,4 +73,31 @@ class GroupController extends Controller
         }
         return response()->json($group->load('members'), 201);
     }
+
+    // Return a single group with members
+    public function show(Request $request, $id)
+    {
+        $user = $request->user();
+        $role = $user->roles()->first();
+        if (!$role) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
+
+        if ($role->name === 'superadmin') {
+            $group = Group::with('members')->findOrFail($id);
+            return response()->json(['group' => $group, 'members' => $group->members]);
+        } elseif ($role->name === 'organizationadmin') {
+            $orgId = $user->organization_id;
+            if (!$orgId) {
+                $org = \App\Models\Organization::where('user_id', $user->id)->first();
+                if ($org) $orgId = $org->id;
+            }
+            if (!$orgId) {
+                return response()->json(['error' => 'Organization not found for user.'], 400);
+            }
+            $group = Group::with('members')->where('organization_id', $orgId)->findOrFail($id);
+            return response()->json(['group' => $group, 'members' => $group->members]);
+        }
+        return response()->json(['error' => 'Unauthorized.'], 403);
+    }
 }

@@ -19,7 +19,7 @@ class AuthController extends Controller
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
             'last_name' => 'nullable|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
             'password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:password',
             'phone' => 'nullable|string|max:32',
@@ -200,7 +200,8 @@ class AuthController extends Controller
 
         // Validate top-level user.email if provided
         $validator = Validator::make($payload, [
-            'user.email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+            // ignore soft-deleted users when checking uniqueness
+            'user.email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id . ',id,deleted_at,NULL',
             'user_details.first_name' => 'sometimes|nullable|string|max:255',
             'user_details.last_name' => 'sometimes|nullable|string|max:255',
             'user_details.phone' => 'sometimes|nullable|string|max:32',

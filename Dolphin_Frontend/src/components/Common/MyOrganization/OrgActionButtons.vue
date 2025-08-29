@@ -270,8 +270,8 @@ export default {
           this.newMember.roles.length === 0
         ) {
           this.toast.add({
-            severity: 'error',
-            summary: 'Error',
+            severity: 'warn',
+            summary: 'Warning',
             detail: 'Please select a role for the member.',
             life: 4000,
           });
@@ -282,7 +282,10 @@ export default {
           last_name: this.newMember.lastName,
           email: this.newMember.email,
           phone: this.newMember.phone,
-          member_role: this.newMember.roles[0].name || this.newMember.roles[0],
+          // send role ids to match pivot-backed roles on the backend
+          member_role: Array.isArray(this.newMember.roles)
+            ? this.newMember.roles.map((r) => r.id || r.value || r)
+            : [],
           group_ids: Array.isArray(this.newMember.groups)
             ? this.newMember.groups.map((g) => g.id || g.value || g)
             : [],

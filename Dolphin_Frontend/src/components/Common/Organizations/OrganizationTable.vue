@@ -22,6 +22,7 @@
                 key: 'last_contacted',
                 sortable: true,
               },
+
               { label: 'Action', key: 'action' },
             ]"
             :activeSortKey="sortKey"

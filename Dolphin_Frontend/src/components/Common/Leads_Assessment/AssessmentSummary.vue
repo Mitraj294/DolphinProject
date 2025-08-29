@@ -179,28 +179,63 @@
 import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
-import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import axios from 'axios';
 
 export default {
   name: 'AssessmentSummaryPage',
   components: { MainLayout, Pagination, TableHeader },
-  setup() {
-    const route = useRoute();
-    const assessmentId = route.params.assessmentId;
-    const rows = ref([]);
-    const summary = ref({ total_sent: 0, submitted: 0, pending: 0 });
-    // Fetch summary data from backend
-    async function fetchSummary() {
+  data() {
+    return {
+      assessmentId: null,
+      rows: [],
+      summary: { total_sent: 0, submitted: 0, pending: 0 },
+      tableColumns: [
+        { label: 'Member Name', key: 'name' },
+        { label: 'Result', key: 'result' },
+        { label: 'Actions', key: 'actions' },
+      ],
+      pageSizes: [10, 25, 100],
+      pageSize: 10,
+      currentPage: 1,
+      showPageDropdown: false,
+      showModal: false,
+      selectedMember: {},
+    };
+  },
+  computed: {
+    totalPages() {
+      return Math.max(1, Math.ceil(this.rows.length / this.pageSize));
+    },
+    paginatedRows() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      return this.rows.slice(start, start + this.pageSize);
+    },
+  },
+  methods: {
+    async fetchSummary() {
+      if (!this.assessmentId) return;
       try {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        const res = await fetch(
-          `${API_BASE_URL}/api/assessment/${assessmentId}/summary`
+        const res = await axios.get(
+          `${API_BASE_URL}/api/assessment/${this.assessmentId}/summary`
         );
-        const data = await res.json();
+        const data = res.data;
+
+        // Set navbar title from the fetched data
+        if (data.assessment && data.assessment.name) {
+          const assessmentName = data.assessment.name;
+          // Use the event bus to update the navbar title
+          if (this.$root && this.$root.$emit) {
+            this.$root.$emit(
+              'page-title-override',
+              `Assessment ${assessmentName} Summary`
+            );
+          }
+        }
+
         // Transform backend data to frontend rows
-        rows.value = (data.members || []).map((member) => ({
+        this.rows = (data.members || []).map((member) => ({
           name:
             member.name ||
             (member.member_id ? `Member #${member.member_id}` : 'Unknown'),
@@ -213,91 +248,50 @@ export default {
             answer: a.answer,
           })),
         }));
-        summary.value = data.summary || {
+        this.summary = data.summary || {
           total_sent: 0,
           submitted: 0,
           pending: 0,
         };
       } catch (e) {
-        rows.value = [];
-        summary.value = { total_sent: 0, submitted: 0, pending: 0 };
+        this.rows = [];
+        this.summary = { total_sent: 0, submitted: 0, pending: 0 };
+        console.error('Failed to fetch assessment summary:', e);
       }
-    }
-    fetchSummary();
-
-    // Table columns for TableHeader
-    const tableColumns = [
-      { label: 'Member Name', key: 'name' },
-      { label: 'Result', key: 'result' },
-      { label: 'Actions', key: 'actions' },
-    ];
-
-    // Pagination state
-    const pageSizes = [10, 25, 100];
-    const pageSize = ref(10);
-    const currentPage = ref(1);
-    const showPageDropdown = ref(false);
-
-    const totalPages = computed(() =>
-      Math.max(1, Math.ceil(rows.value.length / pageSize.value))
-    );
-
-    const paginatedRows = computed(() => {
-      const start = (currentPage.value - 1) * pageSize.value;
-      return rows.value.slice(start, start + pageSize.value);
-    });
-
-    // Modal state
-    const showModal = ref(false);
-    const selectedMember = ref({});
-
-    function openModal(row) {
-      selectedMember.value = row;
-      showModal.value = true;
-    }
-    function closeModal() {
-      showModal.value = false;
-    }
-
-    function goToPage(page) {
-      if (page >= 1 && page <= totalPages.value) {
-        currentPage.value = page;
+    },
+    openModal(row) {
+      this.selectedMember = row;
+      this.showModal = true;
+    },
+    closeModal() {
+      this.showModal = false;
+    },
+    goToPage(page) {
+      if (page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
       }
+    },
+    selectPageSize(size) {
+      this.pageSize = size;
+      this.currentPage = 1;
+      this.showPageDropdown = false;
+    },
+    togglePageDropdown() {
+      this.showPageDropdown = !this.showPageDropdown;
+    },
+    sortBy() {
+      // No-op
+    },
+  },
+  created() {
+    this.assessmentId = this.$route.params.assessmentId;
+    this.fetchSummary();
+  },
+  beforeDestroy() {
+    // Reset the override when leaving the page
+    if (this.$root && this.$root.$emit) {
+      this.$root.$emit('page-title-override', null);
     }
-    function selectPageSize(size) {
-      pageSize.value = size;
-      currentPage.value = 1;
-      showPageDropdown.value = false;
-    }
-    function togglePageDropdown() {
-      showPageDropdown.value = !showPageDropdown.value;
-    }
-
-    // Sorting logic (optional, for TableHeader compatibility)
-    function sortBy() {
-      // No-op: implement if you want sorting
-    }
-
-    return {
-      assessmentId,
-      rows,
-      paginatedRows,
-      pageSizes,
-      pageSize,
-      currentPage,
-      totalPages,
-      showPageDropdown,
-      goToPage,
-      selectPageSize,
-      togglePageDropdown,
-      showModal,
-      selectedMember,
-      openModal,
-      closeModal,
-      tableColumns,
-      sortBy,
-      summary,
-    };
   },
 };
 </script>
@@ -413,7 +407,6 @@ export default {
   position: relative;
   vertical-align: middle;
   min-width: 100px;
-  border-bottom: 1.5px solid #ebebeb;
 }
 .rounded-th-left {
   border-top-left-radius: 24px;

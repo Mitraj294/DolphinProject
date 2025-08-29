@@ -3,10 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 class Organization extends Model
 {
+    use SoftDeletes;
     // Keep only fields that should remain on organizations table. Other contact/profile
     // information will be sourced from the owning user / user_details tables.
     protected $fillable = [

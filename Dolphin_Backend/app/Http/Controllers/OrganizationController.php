@@ -214,8 +214,15 @@ class OrganizationController extends Controller
             if ($user) {
                 $userUpdated = false;
                 if (array_key_exists('admin_email', $validated) && $validated['admin_email'] !== $user->email) {
-                    $user->email = $validated['admin_email'];
-                    $userUpdated = true;
+                    // Ensure new admin_email does not conflict with existing (non-trashed) users
+                    $exists = \App\Models\User::where('email', $validated['admin_email'])->whereNull('deleted_at')->first();
+                    if ($exists) {
+                        // keep existing email and log conflict; frontend should handle this error ideally
+                        \Log::warning('Organization update attempted to set admin_email that already exists for active user', ['admin_email' => $validated['admin_email'], 'org_id' => $org->id]);
+                    } else {
+                        $user->email = $validated['admin_email'];
+                        $userUpdated = true;
+                    }
                 }
                 if (array_key_exists('first_name', $validated) && $validated['first_name'] !== $user->first_name) {
                     $user->first_name = $validated['first_name'];
@@ -262,7 +269,7 @@ class OrganizationController extends Controller
     public function destroy($id)
     {
         $org = Organization::findOrFail($id);
-        $org->delete();
-        return response()->json(['message' => 'Organization deleted']);
+    $org->delete();
+    return response()->json(['message' => 'Organization soft deleted']);
     }
 }

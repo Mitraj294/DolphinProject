@@ -101,11 +101,11 @@
         />
         <MultiSelectDropdown
           :options="members"
-          :selectedItems="selectedMembers"
-          @update:selectedItems="selectedMembers = $event"
+          :selectedItems="internalSelectedMembers"
+          @update:selectedItems="internalSelectedMembers = $event"
           placeholder="Members"
           icon="fas fa-user"
-          :inputValue="selectedMembers.map((m) => m.name).join(', ')"
+          :inputValue="internalSelectedMembers.map((m) => m.name).join(', ')"
           :enableSelectAll="true"
         />
       </div>
@@ -149,7 +149,7 @@ export default {
       date: '',
       time: '',
       selectedGroups: [],
-      selectedMembers: [],
+      internalSelectedMembers: [],
       groups: [],
       members: [],
       loadingGroups: false,
@@ -298,7 +298,15 @@ export default {
       this.date = '';
       this.time = '';
       this.selectedGroups = [];
-      this.selectedMembers = [];
+      this.internalSelectedMembers = [];
+    },
+    // Watch the prop for changes and update the internal state
+    selectedMembers: {
+      handler(newVal) {
+        this.internalSelectedMembers = [...(newVal || [])];
+      },
+      immediate: true,
+      deep: true,
     },
     // Auto-select members when groups are selected
     selectedGroups: {
@@ -307,8 +315,8 @@ export default {
         if (this.isSyncingSelection) return;
         this.isSyncingSelection = true;
         if (!Array.isArray(newGroups) || newGroups.length === 0) {
-          if (this.selectedMembers.length > 0) {
-            this.selectedMembers = [];
+          if (this.internalSelectedMembers.length > 0) {
+            this.internalSelectedMembers = [];
             console.log('No groups selected, clearing selectedMembers');
           }
           this.isSyncingSelection = false;
@@ -342,22 +350,22 @@ export default {
           .map((m) => m.id)
           .sort()
           .join(',');
-        const currentIds = this.selectedMembers
+        const currentIds = this.internalSelectedMembers
           .map((m) => m.id)
           .sort()
           .join(',');
         if (autoIds !== currentIds) {
-          this.selectedMembers = autoSelectedMembers;
+          this.internalSelectedMembers = autoSelectedMembers;
           console.log(
             'selectedMembers set:',
-            this.selectedMembers.map((m) => m.name)
+            this.internalSelectedMembers.map((m) => m.name)
           );
         }
         this.isSyncingSelection = false;
       },
       deep: true,
     },
-    selectedMembers: {
+    internalSelectedMembers: {
       handler(newMembers) {
         if (this.isSyncingSelection) return;
         this.isSyncingSelection = true;
@@ -417,8 +425,8 @@ export default {
         time: this.time,
         send_at: sendAtUtc,
         groupIds: this.selectedGroups.map((g) => g.id),
-        memberIds: this.selectedMembers.map((m) => m.id),
-        selectedMembers: this.selectedMembers,
+        memberIds: this.internalSelectedMembers.map((m) => m.id),
+        selectedMembers: this.internalSelectedMembers,
       });
     },
   },
@@ -437,7 +445,7 @@ export default {
 }
 .justified-table {
   width: 100%;
-  border-collapse: collapse;
+
   margin-bottom: 18px;
   background: #f9f9f9;
   border-radius: 8px;

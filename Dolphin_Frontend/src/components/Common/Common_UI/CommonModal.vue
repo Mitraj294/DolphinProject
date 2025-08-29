@@ -304,6 +304,7 @@ export default {
   overflow-x: hidden;
   padding: 8px 0 8px 0;
   box-sizing: border-box;
+  overflow: visible;
 }
 .common-dropdown-search {
   width: 96%;

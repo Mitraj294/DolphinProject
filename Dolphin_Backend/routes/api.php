@@ -130,8 +130,10 @@ Route::middleware('auth:api')->group(function () {
     // Organization Admin specific routes (per permissions.js)
     Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {
         Route::get('/groups', [GroupController::class, 'index']);
+    Route::get('/groups/{id}', [GroupController::class, 'show']);
         Route::post('/groups', [GroupController::class, 'store']);
         Route::get('/members', [MemberController::class, 'index']);
+    Route::get('/members/{id}', [MemberController::class, 'show']);
         Route::post('/members', [MemberController::class, 'store']);
         Route::put('/members/{id}', [MemberController::class, 'update']);
         Route::delete('/members/{id}', [MemberController::class, 'destroy']);

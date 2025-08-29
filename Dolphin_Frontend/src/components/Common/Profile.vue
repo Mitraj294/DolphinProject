@@ -146,6 +146,15 @@
           class="profile-password-form"
           @submit.prevent="changePassword"
         >
+          <!-- Hidden username input for password managers and accessibility -->
+          <input
+            v-if="true"
+            class="visually-hidden"
+            type="text"
+            autocomplete="username"
+            aria-hidden="true"
+            tabindex="-1"
+          />
           <div class="profile-form-row">
             <label class="profile-form-label">Current Password*</label>
             <div class="profile-input-wrapper">
@@ -154,7 +163,7 @@
                 v-model="currentPassword"
                 required
                 placeholder="Enter current password"
-                autocomplete="current-password"
+                autocomplete="off"
               />
               <span
                 class="profile-eye-icon"
@@ -293,6 +302,7 @@ export default {
       isUpdatingProfile: false,
       profileError: '', // <-- error message for profile fetch
       profileRaw: '', // <-- raw API response for debug
+      usernameForPassword: '',
     };
   },
   computed: {
@@ -965,6 +975,19 @@ export default {
   color: #2e7d32;
   font-weight: 500;
   padding-left: 32px;
+}
+
+/* Visually hidden but accessible field for username (password manager helpers) */
+.visually-hidden {
+  position: absolute !important;
+  height: 1px;
+  width: 1px;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap; /* added line */
+  border: 0;
+  padding: 0;
+  margin: -1px;
 }
 @media (max-width: 900px) {
   .profile-outer {

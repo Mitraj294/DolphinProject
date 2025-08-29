@@ -36,11 +36,21 @@ git push
 
 //////////////
 
+/////
+./start-dev.sh
+ngrok http 8000
+ mysql -u  dolphin123 -p
 
+ cd Dolphin_Backend
+ php artisan queue:work
+ php artisan schedule:work
+
+ 
 notifications date wise filter
 
 
 Notification VIEW DETAILS PAGE
+
 
 
 

@@ -58,16 +58,20 @@
 
 .table {
     width: 100%;
-    border-collapse: collapse;
+
     table-layout: auto;
     /* let columns size naturally */
 }
 
-.table th,
+.table th {
+    padding: 16px;
+    text-align: left;
+}
+
 .table td {
     padding: 16px;
     text-align: left;
-    border-bottom: 1px solid #ebebeb;
+
 }
 
 .table th {

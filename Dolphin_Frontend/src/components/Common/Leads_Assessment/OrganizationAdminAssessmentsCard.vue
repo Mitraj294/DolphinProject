@@ -23,13 +23,14 @@
     </div>
     <div class="table-container">
       <table class="table">
+        <colgroup>
+          <col style="width: 25%" />
+          <col style="width: 75%" />
+        </colgroup>
         <TableHeader
           :columns="[
-            { label: 'Assessment Name', key: 'name', width: '250px' },
-
-            { label: 'Actions', key: 'actions', width: '250px' },
-            {},
-            {},
+            { label: 'Assessment Name', key: 'name', style: 'width: 30%' },
+            { label: 'Actions', key: 'actions', style: 'width: 70%' },
           ]"
         />
         <tbody>
@@ -50,24 +51,7 @@
               <div
                 v-if="item.schedule"
                 class="scheduled-details"
-              >
-                <span style="color: #f7c948; font-weight: bold; font-size: 18px"
-                  >Mail Scheduled</span
-                >
-                <div style="margin-top: 8px; font-size: 15px">
-                  <div>
-                    <strong>Subject:</strong>
-                    {{ item.schedule.subject || 'Assessment Scheduled' }}
-                  </div>
-                  <div>
-                    <strong>Send At:</strong> {{ item.schedule.send_at }}
-                  </div>
-                  <div>
-                    <strong>Status:</strong>
-                    {{ item.schedule.status || 'scheduled' }}
-                  </div>
-                </div>
-              </div>
+              ></div>
 
               <!-- unified button: label and click chosen at runtime to avoid template mismatch -->
               <button
@@ -76,7 +60,7 @@
                 :data-assessment-id="item.id"
                 :ref="'scheduleBtn-' + item.id"
                 @click="onScheduleButtonClick(item)"
-                style="margin-top: 10px"
+                style="min-width: 135px; max-width: 135px"
               >
                 <img
                   src="@/assets/images/Schedule.svg"
@@ -494,8 +478,6 @@ export default {
       showMembersDropdown: false,
       loading: false,
       toast: null,
-      // cache hover schedule checks to avoid repeated requests
-      scheduleHoverCache: {},
       // Schedule details state
       showScheduleDetailsModal: false,
       scheduleDetails: null,
@@ -673,6 +655,36 @@ export default {
     },
   },
   methods: {
+    // show toast; pass `highZ = true` as 5th arg to temporarily raise
+    // toast z-index above modals (adds a body class and removes it after life)
+    _showToast(severity, summary, detail, life = 3500, highZ = false) {
+      const toast = this.toast || this.$toast;
+      try {
+        if (highZ && typeof document !== 'undefined') {
+          document.body.classList.add('toast-above-modal');
+        }
+      } catch (e) {
+        // ignore in non-DOM environments
+      }
+
+      if (toast && typeof toast.add === 'function') {
+        toast.add({ severity, summary, detail, life });
+      } else {
+        alert(`${summary}: ${detail}`);
+      }
+
+      if (highZ && typeof window !== 'undefined') {
+        // Remove the body class shortly after the toast lifetime to avoid
+        // leaving global state set.
+        setTimeout(() => {
+          try {
+            document.body.classList.remove('toast-above-modal');
+          } catch (e) {
+            /* ignore */
+          }
+        }, life + 300);
+      }
+    },
     async openScheduleDetails(item) {
       // Fetch schedule details from backend
       try {
@@ -880,7 +892,7 @@ export default {
         ) {
           this.$router.push({
             name: 'AssessmentSummary',
-            params: { assessmentId: item.id },
+            params: { assessmentId: item.id, assessment: item },
           });
           return;
         }
@@ -892,51 +904,19 @@ export default {
         ) {
           const msg =
             'Assessment is not yet scheduled. Please schedule it first.';
-          if (this.toast && typeof this.toast.add === 'function') {
-            this.toast.add({
-              severity: 'info',
-              summary: 'Not Scheduled',
-              detail: msg,
-              life: 4000,
-            });
-          } else if (this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: 'info',
-              summary: 'Not Scheduled',
-              detail: msg,
-              life: 4000,
-            });
-          } else {
-            alert(msg);
-          }
+          this._showToast('info', 'Not Scheduled', msg, 4000);
           return;
         }
         // Defensive default: if response is malformed, allow navigation
         this.$router.push({
           name: 'AssessmentSummary',
-          params: { assessmentId: item.id },
+          params: { assessmentId: item.id, assessment: item },
         });
       } catch (e) {
         console.error('Schedule check error:', e);
         // On error, show toast and prevent navigation
         const msg = 'Could not verify schedule status. Try again later.';
-        if (this.toast && typeof this.toast.add === 'function') {
-          this.toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: msg,
-            life: 3500,
-          });
-        } else if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: msg,
-            life: 3500,
-          });
-        } else {
-          alert(msg);
-        }
+        this._showToast('error', 'Error', msg);
         return;
       }
     },
@@ -961,9 +941,17 @@ export default {
         this.newAssessment.selectedQuestionIds.includes(q.id)
       );
       if (!this.newAssessment.name || selectedQuestions.length === 0) {
-        alert('Please enter a name and select at least one question.');
+        // Use highZ=true so this validation toast appears above any open modal.
+        this._showToast(
+          'warn',
+          'Missing Data',
+          'Please enter a name and select at least one question.',
+          4000,
+          true
+        );
         return;
       }
+
       try {
         const authToken = storage.get('authToken');
         const res = await axios.post(
@@ -980,7 +968,7 @@ export default {
         }
         this.closeCreateModal();
       } catch (e) {
-        alert('Failed to create assessment.');
+        this._showToast('error', 'Error', 'Failed to create assessment.', 3500);
       }
     },
     async handleScheduleAssessment({
@@ -1131,49 +1119,41 @@ export default {
       // Fetch assessment schedules and map them into the assessments so
       // the template can show "Details" when a schedule exists for a row.
       try {
-        const schedulesRes = await axios.get(
-          base + '/api/assessment-schedules',
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
-        let schedulesList = [];
-        if (schedulesRes && Array.isArray(schedulesRes.data)) {
-          schedulesList = schedulesRes.data;
-        } else if (schedulesRes && Array.isArray(schedulesRes.data.schedules)) {
-          schedulesList = schedulesRes.data.schedules;
-        }
-
-        // Build a map by assessment_id for quick lookup
-        const schedMap = new Map();
-        (schedulesList || []).forEach((s) => {
+        // The bulk GET /api/assessment-schedules endpoint is not available (405 Method Not Allowed).
+        // Instead, we will fetch the schedule status for each assessment individually
+        // for the currently visible page to avoid making too many requests on load.
+        const pageItems = this.paginatedAssessments || [];
+        const scheduleChecks = pageItems.map(async (assessment) => {
           try {
-            const aid = Number(
-              s.assessment_id ||
-                s.assessment ||
-                s.assessmentId ||
-                s.assessment_id_raw
-            );
-            if (!isNaN(aid)) schedMap.set(aid, s);
+            const res = await axios.get(base + '/api/scheduled-email/show', {
+              params: { assessment_id: assessment.id },
+              headers: { Authorization: `Bearer ${authToken}` },
+            });
+            if (
+              res.data &&
+              (res.data.scheduled === true || res.data.scheduled === 1)
+            ) {
+              return { ...assessment, schedule: res.data };
+            }
+            return { ...assessment, schedule: null };
           } catch (e) {
-            // ignore malformed row
+            return { ...assessment, schedule: null };
           }
         });
 
-        // Attach schedule object (or null) to each assessment item
-        this.assessments = (this.assessments || []).map((a) => {
-          const id = Number(a.id);
-          if (!isNaN(id) && schedMap.has(id)) {
-            // Attach the schedule object so template and click-handler use it
-            return Object.assign({}, a, { schedule: schedMap.get(id) });
-          }
-          return Object.assign({}, a, { schedule: null });
-        });
-        console.log(
-          '[OrganizationAdminAssessmentsCard] mapped schedules into assessments',
-          this.assessments
+        const updatedPageItems = await Promise.all(scheduleChecks);
+        const updatedItemsMap = new Map(
+          updatedPageItems.map((item) => [item.id, item])
         );
-      } catch (err) {}
+        this.assessments = this.assessments.map((assessment) => {
+          return updatedItemsMap.get(assessment.id) || assessment;
+        });
+      } catch (err) {
+        console.warn(
+          '[OrganizationAdminAssessmentsCard] Failed to pre-fetch schedule statuses.',
+          err
+        );
+      }
       // Fetch questions
       const qres = await axios.get(
         (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
@@ -1281,7 +1261,7 @@ export default {
 
 .table {
   width: 100%;
-  border-collapse: collapse;
+
   table-layout: auto; /* let columns size naturally */
 }
 
@@ -1289,7 +1269,6 @@ export default {
 .table td {
   padding: 16px;
   text-align: left;
-  border-bottom: 1px solid #ebebeb;
 }
 
 .table th {
@@ -1790,7 +1769,8 @@ export default {
   align-items: center;
   width: 100%;
   gap: 20px;
-  padding: 0 8px;
+  padding-left: 8px;
+  padding-right: 28px;
   box-sizing: border-box;
 }
 .schedule-header-left {
@@ -1822,7 +1802,8 @@ export default {
     align-items: center;
     width: 100%;
     gap: 20px;
-    padding: 0 8px;
+    padding-left: 8px;
+    padding-right: 38px;
     box-sizing: border-box;
   }
   .schedule-header-right {
