@@ -23,6 +23,11 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
-        Passport::routes();
+    Passport::routes();
+    // Set token lifetimes to 8 hours (was default 1 year)
+    $eightHours = new \DateInterval('PT8H');
+    Passport::tokensExpireIn($eightHours);
+    Passport::refreshTokensExpireIn($eightHours);
+    Passport::personalAccessTokensExpireIn($eightHours);
     }
 }

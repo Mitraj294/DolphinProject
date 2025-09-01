@@ -289,61 +289,89 @@ export default {
               user.last_name ? ' ' + user.last_name : ''
             }`.trim()
           : user.name || user.email || 'this user';
+      const performImpersonate = async () => {
+        try {
+          const baseUrl =
+            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+          const res = await fetch(
+            `${baseUrl}/api/users/${user.id}/impersonate`,
+            {
+              method: 'POST',
+              headers: this.getAuthHeaders(),
+            }
+          );
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.message || 'Failed to impersonate user');
+          }
+          const data = await res.json();
+          const storage = require('@/services/storage').default;
+          // Move all current user keys to super* keys
+          storage.set('superAuthToken', storage.get('authToken'));
+          storage.set('superRole', storage.get('role'));
+          storage.set('superUserId', storage.get('userId'));
+          storage.set('superFirstName', storage.get('first_name') || '');
+          storage.set('superLastName', storage.get('last_name') || '');
+          storage.set('superUserName', storage.get('userName') || '');
+
+          // Set impersonated user's info as normal keys
+          storage.set('authToken', data.impersonated_token);
+          storage.set('role', data.impersonated_role);
+          storage.set('userId', data.user_id);
+          storage.set('first_name', data.impersonated_first_name || '');
+          storage.set('last_name', data.impersonated_last_name || '');
+          if (data.impersonated_first_name || data.impersonated_last_name) {
+            storage.set(
+              'userName',
+              `${data.impersonated_first_name || ''}${
+                data.impersonated_last_name
+                  ? ' ' + data.impersonated_last_name
+                  : ''
+              }`.trim()
+            );
+          } else {
+            storage.set('userName', data.impersonated_name);
+          }
+          // Notify other parts of the app (same-window) that auth info changed
+          try {
+            window.dispatchEvent(new Event('auth-updated'));
+          } catch (e) {
+            // ignore
+          }
+          // Reload to apply new context
+          this.$router.go(0);
+        } catch (e) {
+          if (this.toast && typeof this.toast.add === 'function') {
+            this.toast.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: e.message || 'Error impersonating user',
+              life: 0,
+            });
+          } else {
+            console.warn(e.message || 'Error impersonating user');
+          }
+        }
+      };
+
+      // Show confirmation; if confirmed, run performImpersonate
+      if (this.$confirm && typeof this.$confirm.require === 'function') {
+        this.$confirm.require({
+          message: `Are you sure you want to impersonate ${impersonatdisplayName}?`,
+          header: 'Confirm Impersonation',
+          icon: 'pi pi-user-secret',
+          accept: performImpersonate,
+        });
+        return;
+      }
+
+      // native fallback
       if (
-        !confirm(
+        confirm(
           `Are you sure you want to impersonate ${impersonatdisplayName}?`
         )
-      )
-        return;
-      try {
-        const baseUrl =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        const res = await fetch(`${baseUrl}/api/users/${user.id}/impersonate`, {
-          method: 'POST',
-          headers: this.getAuthHeaders(),
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          throw new Error(err.message || 'Failed to impersonate user');
-        }
-        const data = await res.json();
-        const storage = require('@/services/storage').default;
-        // Move all current user keys to super* keys
-        storage.set('superAuthToken', storage.get('authToken'));
-        storage.set('superRole', storage.get('role'));
-        storage.set('superUserId', storage.get('userId'));
-        storage.set('superFirstName', storage.get('first_name') || '');
-        storage.set('superLastName', storage.get('last_name') || '');
-        storage.set('superUserName', storage.get('userName') || '');
-
-        // Set impersonated user's info as normal keys
-        storage.set('authToken', data.impersonated_token);
-        storage.set('role', data.impersonated_role);
-        storage.set('userId', data.user_id);
-        storage.set('first_name', data.impersonated_first_name || '');
-        storage.set('last_name', data.impersonated_last_name || '');
-        if (data.impersonated_first_name || data.impersonated_last_name) {
-          storage.set(
-            'userName',
-            `${data.impersonated_first_name || ''}${
-              data.impersonated_last_name
-                ? ' ' + data.impersonated_last_name
-                : ''
-            }`.trim()
-          );
-        } else {
-          storage.set('userName', data.impersonated_name);
-        }
-        // Notify other parts of the app (same-window) that auth info changed
-        try {
-          window.dispatchEvent(new Event('auth-updated'));
-        } catch (e) {
-          // ignore
-        }
-        // Reload to apply new context
-        this.$router.go(0);
-      } catch (e) {
-        alert(e.message || 'Error impersonating user');
+      ) {
+        await performImpersonate();
       }
     },
 
@@ -405,32 +433,53 @@ export default {
 
     async deleteUser(user) {
       if (this.isDeleting) return;
-      if (!confirm(`Are you sure you want to delete ${user.name}?`)) return;
-      this.isDeleting = true;
-      try {
-        const baseUrl =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        const res = await fetch(`${baseUrl}/api/users/${user.id}/soft-delete`, {
-          method: 'PATCH',
-          headers: this.getAuthHeaders(),
+
+      const performDelete = async () => {
+        this.isDeleting = true;
+        try {
+          const baseUrl =
+            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+          const res = await fetch(
+            `${baseUrl}/api/users/${user.id}/soft-delete`,
+            {
+              method: 'PATCH',
+              headers: this.getAuthHeaders(),
+            }
+          );
+          if (!res.ok) throw new Error('Failed to delete user');
+          this.users = this.users.filter((u) => u.id !== user.id);
+          this.toast.add({
+            severity: 'success',
+            summary: 'Success',
+            detail: 'User deleted successfully!',
+            life: 3000,
+          });
+        } catch (e) {
+          this.toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: e.message || 'Error deleting user',
+            life: 4000,
+          });
+        } finally {
+          this.isDeleting = false;
+        }
+      };
+
+      // Use PrimeVue confirmation if available
+      if (this.$confirm && typeof this.$confirm.require === 'function') {
+        this.$confirm.require({
+          message: `Are you sure you want to delete ${user.name}?`,
+          header: 'Confirm Delete',
+          icon: 'pi pi-exclamation-triangle',
+          accept: performDelete,
         });
-        if (!res.ok) throw new Error('Failed to delete user');
-        this.users = this.users.filter((u) => u.id !== user.id);
-        this.toast.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'User deleted successfully!',
-          life: 3000,
-        });
-      } catch (e) {
-        this.toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: e.message || 'Error deleting user',
-          life: 4000,
-        });
-      } finally {
-        this.isDeleting = false;
+        return;
+      }
+
+      // native fallback
+      if (confirm(`Are you sure you want to delete ${user.name}?`)) {
+        await performDelete();
       }
     },
 
@@ -552,7 +601,6 @@ export default {
 <style scoped>
 .actions-scroll {
   max-width: 220px;
-  overflow-x: auto;
 }
 .actions-row {
   display: flex;

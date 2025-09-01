@@ -98,6 +98,8 @@ import {
   FormBox,
   FormPassword,
 } from '@/components/Common/Common_UI/Form';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 export default {
   name: 'AddPermission',
   components: {
@@ -108,6 +110,11 @@ export default {
     FormDropdown,
     FormBox,
     FormPassword,
+    Toast,
+  },
+  setup() {
+    const toast = useToast();
+    return { toast };
   },
   data() {
     return {
@@ -129,9 +136,12 @@ export default {
   methods: {
     handleAddPermission() {
       // Placeholder for add permission logic
-      alert(
-        `Permission added for ${this.form.organization}, ${this.form.email}, ${this.form.role}`
-      );
+      this.toast.add({
+        severity: 'success',
+        summary: 'Permission Added',
+        detail: `Permission added for ${this.form.organization}, ${this.form.email}, ${this.form.role}`,
+        life: 0,
+      });
     },
   },
 };

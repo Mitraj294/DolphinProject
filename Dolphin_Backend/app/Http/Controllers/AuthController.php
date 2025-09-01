@@ -113,7 +113,10 @@ class AuthController extends Controller
         // Issue Passport access token using password grant
         $tokenResult = $user->createToken('Personal Access Token');
         $token = $tokenResult->accessToken;
-        $expiresAt = $tokenResult->token->expires_at;
+        // Set token to expire 8 hours from creation
+        $expiresAt = \Carbon\Carbon::now()->addHours(0.05);
+        $tokenResult->token->expires_at = $expiresAt;
+        $tokenResult->token->save();
 
         // Eager load userDetails and roles for frontend
     // Load details and roles only. Resolve organization separately to avoid relationship recursion while serializing.

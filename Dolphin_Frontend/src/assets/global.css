@@ -157,43 +157,13 @@
     height: 100vh;
 }
 
-.logout-confirm-dialog {
-    background: #fff;
-    border-radius: 16px;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.10);
-    padding: 32px 32px 24px 32px;
-    min-width: 280px;
-    min-height: 120px;
-    max-width: 90vw;
-    max-height: 90vh;
-    box-sizing: border-box;
-    text-align: center;
-}
 
-.logout-confirm-title {
-    font-size: 1.1rem;
-    margin-bottom: 20px;
-    color: #222;
-}
-
-.logout-confirm-actions {
-    display: flex;
-    justify-content: center;
-    gap: 16px;
-}
-
-.logout-btn,
 .cancel-btn {
     padding: 8px 20px;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
     cursor: pointer;
-}
-
-.logout-btn {
-    background: #0164A5;
-    color: #fff;
 }
 
 .cancel-btn {

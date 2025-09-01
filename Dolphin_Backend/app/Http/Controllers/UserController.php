@@ -142,6 +142,7 @@ class UserController extends Controller
     /**
      * Impersonate a user by generating a new Passport token for them.
      * Only superadmins can do this.
+  
      */
     public function impersonate(Request $request, User $user)
     {

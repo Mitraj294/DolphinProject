@@ -485,7 +485,20 @@ export default {
           life: 3000,
         });
       } else {
-        alert(msg);
+        try {
+          if (this.$toast && typeof this.$toast.add === 'function') {
+            this.$toast.add({
+              severity: 'info',
+              summary: 'Info',
+              detail: msg,
+              life: 0,
+            });
+          } else {
+            console.warn(msg);
+          }
+        } catch (e) {
+          /* swallow */
+        }
       }
     },
     async updateDetails() {

@@ -201,9 +201,9 @@ export default {
         members: [],
       },
       roles: [
-        { id: 1, name: 'Manager' },
+        { id: 1, name: 'Owner' },
         { id: 2, name: 'CEO' },
-        { id: 3, name: 'Owner' },
+        { id: 3, name: 'Manager' },
         { id: 4, name: 'Support' },
       ],
       groups: [],

@@ -1,6 +1,7 @@
 <template>
   <div id="app">
     <Toast />
+    <ConfirmDialog />
     <component :is="layoutComponent">
       <router-view />
     </component>

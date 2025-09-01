@@ -110,28 +110,6 @@
         </transition>
       </div>
     </div>
-    <div
-      v-if="showLogoutConfirm"
-      class="logout-confirm-overlay"
-    >
-      <div class="logout-confirm-dialog">
-        <div class="logout-confirm-title">Are you sure you want to logout?</div>
-        <div class="logout-confirm-actions">
-          <button
-            class="btn btn-secondary"
-            @click="handleLogoutYes"
-          >
-            Yes
-          </button>
-          <button
-            class="btn btn-primary"
-            @click="handleLogoutCancel"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
   </nav>
 </template>
 
@@ -146,7 +124,6 @@ export default {
   data() {
     return {
       dropdownOpen: false,
-      showLogoutConfirm: false,
       overridePageTitle: null,
       roleName: authMiddleware.getRole(),
       isVerySmallScreen: false,
@@ -570,42 +547,62 @@ export default {
       }
     },
     confirmLogout(event) {
-      event.stopPropagation();
-      this.showLogoutConfirm = true;
+      if (event && event.stopPropagation) event.stopPropagation();
       this.dropdownOpen = false;
-    },
-    handleLogoutYes() {
-      // If impersonating, revert to superadmin instead of full logout
-      if (storage.get('superAuthToken')) {
-        storage.set('authToken', storage.get('superAuthToken'));
-        storage.set('role', storage.get('superRole'));
-        storage.set('userName', storage.get('superUserName'));
-        storage.set('userId', storage.get('superUserId'));
-        // Restore first_name and last_name from superFirstName/superLastName
-        storage.set('first_name', storage.get('superFirstName') || '');
-        storage.set('last_name', storage.get('superLastName') || '');
-        // Remove superadmin impersonation keys
-        storage.remove('superAuthToken');
-        storage.remove('superRole');
-        storage.remove('superUserName');
-        storage.remove('superUserId');
-        storage.remove('superFirstName');
-        storage.remove('superLastName');
-        this.showLogoutConfirm = false;
-        this.$router.push('/user-permission');
+      // Use PrimeVue ConfirmationService if available
+      if (this.$confirm && this.$confirm.require) {
+        this.$confirm.require({
+          message: 'Are you sure you want to logout?',
+          header: 'Confirm Logout',
+          icon: 'pi pi-sign-out',
+          accept: () => {
+            // If impersonating, revert to superadmin instead of full logout
+            if (storage.get('superAuthToken')) {
+              storage.set('authToken', storage.get('superAuthToken'));
+              storage.set('role', storage.get('superRole'));
+              storage.set('userName', storage.get('superUserName'));
+              storage.set('userId', storage.get('superUserId'));
+              // Restore first_name and last_name from superFirstName/superLastName
+              storage.set('first_name', storage.get('superFirstName') || '');
+              storage.set('last_name', storage.get('superLastName') || '');
+              // Remove superadmin impersonation keys
+              storage.remove('superAuthToken');
+              storage.remove('superRole');
+              storage.remove('superUserName');
+              storage.remove('superUserId');
+              storage.remove('superFirstName');
+              storage.remove('superLastName');
+              this.$router.push('/user-permission');
+            } else {
+              // Normal logout
+              storage.clear();
+              this.$router.push({ name: 'Login' });
+            }
+          },
+        });
       } else {
-        // Normal logout
-        storage.clear();
-        this.showLogoutConfirm = false;
-        this.$router.push({ name: 'Login' });
+        // Fallback to native confirm
+        const ok = window.confirm('Are you sure you want to logout?');
+        if (!ok) return;
+        if (storage.get('superAuthToken')) {
+          storage.set('authToken', storage.get('superAuthToken'));
+          storage.set('role', storage.get('superRole'));
+          storage.set('userName', storage.get('superUserName'));
+          storage.set('userId', storage.get('superUserId'));
+          storage.set('first_name', storage.get('superFirstName') || '');
+          storage.set('last_name', storage.get('superLastName') || '');
+          storage.remove('superAuthToken');
+          storage.remove('superRole');
+          storage.remove('superUserName');
+          storage.remove('superUserId');
+          storage.remove('superFirstName');
+          storage.remove('superLastName');
+          this.$router.push('/user-permission');
+        } else {
+          storage.clear();
+          this.$router.push({ name: 'Login' });
+        }
       }
-    },
-    handleLogoutCancel() {
-      this.showLogoutConfirm = false;
-    },
-    logout() {
-      this.showLogoutConfirm = false;
-      this.$router.push({ name: 'Login' });
     },
     checkScreen() {
       this.isVerySmallScreen = window.innerWidth <= 420;
@@ -620,15 +617,7 @@ export default {
       this.$router.push({ name: 'Profile' });
     },
   },
-  watch: {
-    showLogoutConfirm(newValue) {
-      if (newValue) {
-        document.body.classList.add('logout-overlay-active');
-      } else {
-        document.body.classList.remove('logout-overlay-active');
-      }
-    },
-  },
+  watch: {},
   mounted() {
     // mark alive so async fetches can safely write to state
     this.isNavbarAlive = true;
@@ -636,13 +625,16 @@ export default {
     window.addEventListener('resize', this.checkScreen);
     this.checkScreen();
     this.updateNotificationCount();
-    // initial fetch of unread count only when set by login flow
-    // Login.vue sets `showDashboardWelcome` in storage on successful login.
-    // Instead of calling the API directly here, fire the domain event so
-    // the debounced handler handles the request (avoids duplicate calls).
-    if (storage.get('showDashboardWelcome')) {
-      this.fetchUnreadCount();
-      storage.remove('showDashboardWelcome');
+    // initial fetch of unread count: if we have an auth token (normal login
+    // or impersonation), fetch unread notifications immediately so the
+    // badge is correct after a reload/impersonation.
+    try {
+      const token = storage.get('authToken');
+      if (token) {
+        this.fetchUnreadCount();
+      }
+    } catch (e) {
+      // ignore
     }
     // bind handlers so `this` is preserved when invoked by window events
     this._boundFetchUnread = this.fetchUnreadCount.bind(this);
@@ -669,9 +661,7 @@ export default {
     // storage event (cross-tab) should update local count
     window.addEventListener('storage', this._boundUpdateNotificationCount);
 
-    if (this.showLogoutConfirm) {
-      document.body.classList.add('logout-overlay-active');
-    }
+    // no-op: logout confirmation handled by PrimeVue ConfirmDialog
 
     // Listen for page title overrides from pages
     if (this.$root && this.$root.$on) {
@@ -723,7 +713,7 @@ export default {
     if (this._boundAuthUpdated) {
       window.removeEventListener('auth-updated', this._boundAuthUpdated);
     }
-    document.body.classList.remove('logout-overlay-active');
+    // cleanup: logout overlay class removed when overlay UI was removed
     if (this.$root && this.$root.$off) this.$root.$off('page-title-override');
   },
 };
@@ -892,60 +882,7 @@ export default {
   opacity: 0;
 }
 
-/* Logout confirmation dialog styles */
-.logout-confirm-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: auto;
-}
-.logout-confirm-dialog {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
-  padding: 32px 32px 24px 32px;
-  min-width: 280px;
-  min-height: 120px;
-  max-width: 90vw;
-  max-height: 90vh;
-  box-sizing: border-box;
-  text-align: center;
-  z-index: 9999;
-}
-.logout-confirm-title {
-  font-size: 1.1rem;
-  margin-bottom: 20px;
-  color: #222;
-}
-.logout-confirm-actions {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-}
-.btn {
-  padding: 8px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 1rem;
-  cursor: pointer;
-}
-.btn-danger {
-  background: #e53935;
-  color: #fff;
-}
-.btn-secondary {
-  background: #f5f5f5;
-  color: #222;
-}
+/* Logout confirmation is handled by PrimeVue ConfirmDialog */
 .navbar-badge {
   position: absolute;
   top: 0;
@@ -990,11 +927,6 @@ export default {
   .navbar-username {
     display: none !important;
   }
-}
-
-/* New style to disable pointer events on main content when overlay is active */
-body.logout-overlay-active .main-content {
-  pointer-events: none;
 }
 </style>
 

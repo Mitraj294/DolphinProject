@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import storage from './storage';
 
@@ -76,5 +75,25 @@ const authService = {
 
 // Initialize auth service
 authService.init();
+
+// Add a global Axios response interceptor to catch 401 Unauthorized responses.
+// On 401 we remove the saved token and redirect the user to the login page so
+// they can't continue using the app without authenticating again.
+axios.interceptors.response.use(
+    response => response,
+    error => {
+        if (error && error.response && error.response.status === 401) {
+            try {
+                authService.removeToken();
+            } catch (e) {
+                // ignore
+            }
+            // Redirect to the login route. Update path if your app uses a different route.
+            // Using window.location to ensure a full reload and clean state.
+            window.location.href = '/';
+        }
+        return Promise.reject(error);
+    }
+);
 
 export default authService;

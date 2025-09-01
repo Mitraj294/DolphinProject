@@ -22,7 +22,9 @@
             width: 100%;
           "
         >
-          <div class="group-value">{{ group ? group.name : '—' }}</div>
+          <div class="group-value">
+            {{ group ? group.name : '—' }}
+          </div>
           <div
             class="meta-item"
             style="text-align: right"
@@ -40,7 +42,7 @@
           </div>
         </div>
       </div>
-
+</br>
       <div class="group-section">
         <h4 class="section-title">Members</h4>
         <div
@@ -301,7 +303,7 @@ export default {
 }
 .no-data {
   padding: 12px;
-  background: #fff6f0;
+  background: #ffffff;
   border-radius: 8px;
   color: #666;
 }

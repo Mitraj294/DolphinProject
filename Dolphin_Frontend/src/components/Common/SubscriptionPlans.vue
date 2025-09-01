@@ -264,9 +264,15 @@
 import MainLayout from '@/components/layout/MainLayout.vue';
 import axios from 'axios';
 import storage from '@/services/storage';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 export default {
   name: 'SubscriptionPlans',
-  components: { MainLayout },
+  components: { MainLayout, Toast },
+  setup() {
+    const toast = useToast();
+    return { toast };
+  },
   data() {
     return {
       showPurchaseModal: false,
@@ -280,6 +286,7 @@ export default {
       userPlan: null, // will hold user's current plan amount (250 or 2500)
     };
   },
+  components: { MainLayout, Toast },
   computed: {
     basicBtnText() {
       if (this.userPlan === 250) return 'Current Plan';
@@ -362,10 +369,20 @@ export default {
         if (res.data && res.data.url) {
           window.location.href = res.data.url;
         } else {
-          alert('Could not start Stripe Checkout.');
+          this.toast.add({
+            severity: 'warn',
+            summary: 'Stripe',
+            detail: 'Could not start Stripe Checkout.',
+            life: 0,
+          });
         }
       } catch (e) {
-        alert('Stripe Checkout failed.');
+        this.toast.add({
+          severity: 'error',
+          summary: 'Stripe',
+          detail: 'Stripe Checkout failed.',
+          life: 0,
+        });
       } finally {
         this.isLoading = false;
       }

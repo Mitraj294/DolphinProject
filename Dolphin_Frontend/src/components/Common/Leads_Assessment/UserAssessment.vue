@@ -126,13 +126,17 @@
 import axios from 'axios';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
 
 export default {
   name: 'UserAssessment',
+  components: { Toast },
   setup() {
     const router = useRouter();
+    const toast = useToast();
     const step = ref(1);
     const questions = ref([]);
     const selectedWords = ref([]); // Array of arrays, one per question
@@ -219,7 +223,12 @@ export default {
         if (error.response && error.response.status === 401) {
           router.push('/login');
         } else {
-          alert('Failed to load assessment questions or answers.');
+          toast.add({
+            severity: 'error',
+            summary: 'Error',
+            detail: 'Failed to load assessment questions or answers.',
+            life: 0,
+          });
         }
       }
     };
@@ -242,7 +251,12 @@ export default {
       const storage = require('@/services/storage').default;
       const authToken = storage.get('authToken');
       if (!authToken) {
-        alert('You must be logged in to submit an assessment.');
+        toast.add({
+          severity: 'warn',
+          summary: 'Authentication',
+          detail: 'You must be logged in to submit an assessment.',
+          life: 0,
+        });
         router.push('/login');
         return;
       }
@@ -269,7 +283,12 @@ export default {
           errorMessage = 'Your session has expired. Please log in again.';
           router.push('/login');
         }
-        alert(errorMessage);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: errorMessage,
+          life: 0,
+        });
       }
     };
 
