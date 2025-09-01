@@ -78,9 +78,6 @@
         :visible="showEditModal"
         @close="showEditModal = false"
         @submit="updateProfile"
-        :modal-max-width="'96vw'"
-        :modal-min-width="'280px'"
-        modal-padding="18px"
       >
         <template #title>Edit Profile</template>
         <FormRow>

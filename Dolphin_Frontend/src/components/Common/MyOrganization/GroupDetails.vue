@@ -2,7 +2,7 @@
   <CommonModal
     :visible="visible"
     @close="$emit('close')"
-    modalMaxWidth="800px"
+    modalMaxWidth="700px"
   >
     <template #title>
       <div style="text-align: left">
