@@ -375,10 +375,10 @@
                 >
                   <thead>
                     <tr>
-                      <th style="width: 15%">Group</th>
-                      <th style="width: 20%">Name</th>
-                      <th style="width: 35%">Email</th>
-                      <th style="width: 30%">Role</th>
+                      <th style="width: 20%">Group</th>
+                      <th style="width: 30%">Name</th>
+                      <th style="width: 30%">Email</th>
+                      <th style="width: 20%">Role</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -509,30 +509,7 @@ export default {
         // Prefer explicit first/last name fields if present, otherwise fall back to m.name
         const first = (m.first_name || m.name || '').toString().trim();
         const last = (m.last_name || '').toString().trim();
-        // build a role string from several possible shapes returned by API
-        let role = '';
-        try {
-          if (Array.isArray(m.memberRoles) && m.memberRoles.length) {
-            role = m.memberRoles
-              .map((r) => (r && (r.name || r)) || '')
-              .filter(Boolean)
-              .join(', ');
-          } else if (
-            Array.isArray(m.member_role_ids) &&
-            m.member_role_ids.length
-          ) {
-            role = m.member_role_ids
-              .map((r) => (r && (r.name || r)) || '')
-              .filter(Boolean)
-              .join(', ');
-          } else if (m.member_role) {
-            role = String(m.member_role).trim();
-          } else if (m.role) {
-            role = String(m.role).trim();
-          }
-        } catch (err) {
-          role = (m.member_role || m.role || '') + '';
-        }
+        const role = (m.member_role || m.role || '').toString().trim();
         let full = first;
         if (last) full = full ? `${full} ${last}` : last;
         if (!full) full = m.email || m.id || 'Unknown';
@@ -549,33 +526,10 @@ export default {
         let name = first;
         if (last) name = name ? `${name} ${last}` : last;
         if (!name) name = m.email || `Member ${m.id}`;
-        // compute roles similar to memberNameMap to show all roles
-        let roleStr = '';
-        try {
-          if (Array.isArray(m.memberRoles) && m.memberRoles.length) {
-            roleStr = m.memberRoles
-              .map((r) => (r && (r.name || r)) || '')
-              .filter(Boolean)
-              .join(', ');
-          } else if (
-            Array.isArray(m.member_role_ids) &&
-            m.member_role_ids.length
-          ) {
-            roleStr = m.member_role_ids
-              .map((r) => (r && (r.name || r)) || '')
-              .filter(Boolean)
-              .join(', ');
-          } else {
-            roleStr = (m.member_role || m.role || '') + '';
-          }
-        } catch (err) {
-          roleStr = (m.member_role || m.role || '') + '';
-        }
-
         map[m.id] = {
           name,
           email: m.email || '',
-          role: roleStr.trim() || '',
+          role: (m.member_role || m.role || '').toString().trim() || '',
         };
       });
       return map;
@@ -715,31 +669,8 @@ export default {
 
       if (toast && typeof toast.add === 'function') {
         toast.add({ severity, summary, detail, life });
-      } else if (this.toast && typeof this.toast.add === 'function') {
-        this.toast.add({ severity: 'info', summary, detail, life: 0 });
       } else {
-        // Prefer toast; if not available, log a warning.
-        try {
-          if (this.toast && typeof this.toast.add === 'function') {
-            this.toast.add({
-              severity: severity || 'info',
-              summary,
-              detail,
-              life: 0,
-            });
-          } else if (this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: severity || 'info',
-              summary,
-              detail,
-              life: 0,
-            });
-          } else {
-            console.warn(`${summary}: ${detail}`);
-          }
-        } catch (e) {
-          // swallow
-        }
+        alert(`${summary}: ${detail}`);
       }
 
       if (highZ && typeof window !== 'undefined') {

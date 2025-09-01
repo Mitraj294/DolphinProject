@@ -172,32 +172,7 @@ export default {
         }));
       } catch (e) {
         if (e.response && e.response.status === 401) {
-          if (this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: 'warn',
-              summary: 'Session',
-              detail: 'Session expired or unauthorized. Please log in again.',
-              life: 0,
-            });
-          } else {
-            try {
-              if (this.$toast && typeof this.$toast.add === 'function') {
-                this.$toast.add({
-                  severity: 'warn',
-                  summary: 'Session',
-                  detail:
-                    'Session expired or unauthorized. Please log in again.',
-                  life: 0,
-                });
-              } else {
-                console.warn(
-                  'Session expired or unauthorized. Please log in again.'
-                );
-              }
-            } catch (e) {
-              /* swallow */
-            }
-          }
+          alert('Session expired or unauthorized. Please log in again.');
           this.$router.push({ name: 'Login' });
         } else {
           console.error('Error fetching organizations:', e);

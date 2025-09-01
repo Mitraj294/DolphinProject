@@ -201,9 +201,9 @@ export default {
         members: [],
       },
       roles: [
-        { id: 1, name: 'Manager' },
+        { id: 1, name: 'Owner' },
         { id: 2, name: 'CEO' },
-        { id: 3, name: 'Owner' },
+        { id: 3, name: 'Manager' },
         { id: 4, name: 'Support' },
       ],
       groups: [],
@@ -509,84 +509,12 @@ export default {
   min-width: 0;
   background: #f6f6f6;
   border-radius: 9px;
-  padding: 6px 12px;
+  padding: 0 16px;
+  height: 48px;
   display: flex;
-  align-items: flex-start; /* allow vertical growth when chips wrap */
+  align-items: center;
   box-sizing: border-box;
   position: relative;
-  min-height: 44px; /* baseline for single-line */
-  max-height: 240px;
-  overflow: hidden;
-}
-
-.form-box .selected-container {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  max-width: calc(100% - 56px);
-  overflow-x: auto;
-  padding: 6px 0;
-}
-
-.selected-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: #e6f0fa;
-  color: #0164a5;
-  border-radius: 20px;
-  padding: 6px 10px;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  margin-bottom: 6px;
-}
-
-.selected-placeholder {
-  color: #888;
-  font-size: 15px;
-  padding: 6px 8px;
-  display: inline-block;
-}
-
-.chip-label {
-  display: inline-block;
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.chip-remove {
-  background: transparent;
-  border: none;
-  color: #555;
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 4px;
-}
-
-.form-dropdown-chevron {
-  margin-left: 8px;
-  color: #888;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px;
-  align-self: flex-start; /* align with top when chips wrap */
-  margin-top: 6px;
-}
-
-.form-input-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  color: #888;
-  margin-right: 8px;
-  align-self: flex-start;
-  margin-top: 6px;
 }
 .modal-form-actions {
   width: 100%;
@@ -644,53 +572,11 @@ export default {
     width: 100%;
     margin-bottom: 0;
   }
-  /* Make form-box height dynamic on small screens so it grows with wrapped chips.
-     Keep a sensible max-height and allow internal scrolling if there are too many chips. */
   .form-box {
-    height: auto;
-    min-height: 44px;
-    max-height: 240px; /* prevents pushing modal too far */
-    padding: 8px 10px;
+    height: 40px;
+    padding: 0 8px;
     border-radius: 7px;
     font-size: 15px;
-    display: flex;
-    align-items: flex-start; /* allow chips to wrap and grow vertically */
-    box-sizing: border-box;
-    overflow: visible;
-  }
-
-  /* Selected items wrap onto multiple lines when needed */
-  .form-box .selected-container {
-    display: flex;
-    gap: 8px;
-    align-items: flex-start;
-    flex-wrap: wrap; /* allow wrapping */
-    overflow-x: hidden;
-    overflow-y: auto; /* scroll inside the container if too tall */
-    -webkit-overflow-scrolling: touch;
-    max-width: calc(100% - 52px);
-    padding: 4px 0;
-    white-space: normal;
-    box-sizing: border-box;
-  }
-
-  .selected-chip {
-    font-size: 13px;
-    padding: 6px 8px;
-    flex: 0 0 auto;
-  }
-
-  .selected-placeholder {
-    display: inline-block;
-    vertical-align: middle;
-    line-height: 1.2;
-  }
-
-  /* align icons/chevron to the top so they sit beside wrapped chips */
-  .form-dropdown-chevron,
-  .form-input-icon {
-    align-self: flex-start;
-    margin-top: 6px;
   }
   .modal-save-btn {
     padding: 8px 18px;

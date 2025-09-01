@@ -58,10 +58,13 @@ export default {
 </script>
 
 <style scoped>
-/* Responsive modal styles matching project modal behavior */
+/* Modal and dropdown styles moved from OrgActionButtons.vue */
 .common-modal-overlay {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: rgba(0, 0, 0, 0.13);
   display: flex;
   align-items: center;
@@ -71,40 +74,39 @@ export default {
 .common-modal-card {
   background: #fff;
   border-radius: 22px;
-  box-shadow: 0 4px 32px rgba(33, 150, 243, 0.08);
+  box-shadow: 0 4px 32px 0 rgba(33, 150, 243, 0.1);
   padding: 40px 48px 32px 48px;
-  min-width: 600px;
+  min-width: 400px;
   max-width: 700px;
   width: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  box-sizing: border-box;
-  max-height: calc(100vh - 120px);
-  overflow: auto;
 }
 
 .common-modal-close {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 24px;
+  right: 32px;
   background: none;
   border: none;
-  font-size: 28px;
+  font-size: 32px;
   color: #888;
   cursor: pointer;
   z-index: 10;
 }
-
-/* Title flows as normal content (not absolutely positioned) */
 .common-modal-title {
-  font-size: 26px;
-  font-weight: 600;
-  margin: 0 0 24px 0;
-  color: #222;
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  background: none;
+  border: none;
+  font-size: 32px;
+  color: #888;
+  cursor: pointer;
+  z-index: 10;
 }
-
 .common-modal-form {
   width: 100%;
   display: flex;
@@ -187,7 +189,7 @@ export default {
   border: none;
   border-radius: 9px;
   height: 48px;
-  padding: 0 12px;
+  padding: 0;
   font-size: 16px;
   color: #222;
   display: flex;
@@ -202,7 +204,11 @@ export default {
 .common-custom-dropdown-input .fas {
   color: #222;
   font-size: 18px;
-  margin-right: 6px;
+  margin-right: 1px;
+  position: static;
+  left: unset;
+  top: unset;
+  transform: none;
 }
 .common-custom-dropdown-input .fas.fa-chevron-down {
   margin-left: auto;
@@ -254,8 +260,33 @@ export default {
 .common-selected-tag .fas:hover {
   color: #0164a5;
 }
-
-/* Dropdown and list styles */
+@media (max-width: 900px) {
+  .common-modal-form_group.custom-dropdown {
+    padding: 8px 6px 12px 6px;
+    min-height: 60px;
+    border-radius: 14px;
+  }
+  .common-custom-dropdown-input {
+    height: 38px;
+    font-size: 15px;
+    padding: 0 10px 0 28px;
+    border-radius: 8px;
+  }
+  .common-selected-tags-below {
+    gap: 8px 10px;
+    min-height: 24px;
+  }
+  .common-selected-tag {
+    padding: 5px 14px 5px 10px;
+    font-size: 13px;
+    border-radius: 12px;
+    min-height: 22px;
+  }
+  .common-selected-tag .fas {
+    font-size: 13px;
+    margin-left: 6px;
+  }
+}
 .common-dropdown-list {
   position: absolute;
   top: 54px;
@@ -273,6 +304,7 @@ export default {
   overflow-x: hidden;
   padding: 8px 0 8px 0;
   box-sizing: border-box;
+  overflow: visible;
 }
 .common-dropdown-search {
   width: 96%;
@@ -351,53 +383,5 @@ export default {
   position: static;
   margin-left: auto;
   color: #888;
-}
-
-@media (max-width: 700px) {
-  .common-modal-card {
-    min-width: 0;
-    max-width: calc(100vw - 32px);
-    width: calc(98vw - 32px);
-    padding: 20px 16px;
-    border-radius: 14px;
-    margin: 12px;
-  }
-  .common-modal-title {
-    font-size: 20px;
-    margin-bottom: 16px;
-  }
-  .common-modal-form {
-    gap: 12px;
-  }
-  .common-modal-save-btn {
-    padding: 8px 18px;
-    font-size: 15px;
-    border-radius: 14px;
-  }
-}
-
-@media (max-width: 480px) {
-  .common-modal-card {
-    min-width: 0;
-    max-width: calc(100vw - 24px);
-    width: calc(98vw - 24px);
-    padding: 16px 12px;
-    border-radius: 12px;
-    margin: 8px;
-  }
-  .common-modal-close {
-    top: 10px;
-    right: 10px;
-    font-size: 22px;
-  }
-  .common-modal-title {
-    font-size: 18px;
-    margin-bottom: 12px;
-  }
-  .common-modal-form-group input,
-  .common-modal-form-group select {
-    font-size: 15px;
-    height: 42px;
-  }
 }
 </style>

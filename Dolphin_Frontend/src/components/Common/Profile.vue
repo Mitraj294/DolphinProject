@@ -78,6 +78,9 @@
         :visible="showEditModal"
         @close="showEditModal = false"
         @submit="updateProfile"
+        :modal-max-width="'96vw'"
+        :modal-min-width="'280px'"
+        modal-padding="18px"
       >
         <template #title>Edit Profile</template>
         <FormRow>
@@ -739,76 +742,58 @@ export default {
     },
     async deleteAccount() {
       this.editMessage = '';
-
-      const performDelete = async () => {
-        try {
-          const token = storage.get('authToken');
-          if (!token) {
-            this.toast.add({
-              severity: 'error',
-              summary: 'Auth Error',
-              detail: 'Not authenticated.',
-              life: 3000,
-            });
-            return;
-          }
-
-          await axios.delete(
-            `${
-              process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
-            }/api/profile`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-
-          this.toast.add({
-            severity: 'success',
-            summary: 'Account Deleted',
-            detail: 'Account deleted successfully.',
-            life: 3000,
-          });
-
-          // clear storage and redirect after short delay
-          setTimeout(() => {
-            storage.clear();
-            window.location.href = '/login';
-          }, 1200);
-        } catch (error) {
-          let msg = 'Failed to delete account.';
-          if (
-            error.response &&
-            error.response.data &&
-            error.response.data.message
-          ) {
-            msg = error.response.data.message;
-          }
-          this.toast.add({
-            severity: 'error',
-            summary: 'Delete Error',
-            detail: msg,
-            life: 3500,
-          });
-        }
-      };
-
-      // Use PrimeVue confirmation if available
-      if (this.$confirm && typeof this.$confirm.require === 'function') {
-        this.$confirm.require({
-          message:
-            'Are you sure you want to delete your account? This action cannot be undone.',
-          header: 'Confirm Delete',
-          icon: 'pi pi-exclamation-triangle',
-          accept: performDelete,
-        });
-        return;
-      }
-
-      // fallback native confirm
       if (
-        confirm(
+        !confirm(
           'Are you sure you want to delete your account? This action cannot be undone.'
         )
       ) {
-        await performDelete();
+        return;
+      }
+      try {
+        const token = storage.get('authToken');
+        if (!token) {
+          this.toast.add({
+            severity: 'error',
+            summary: 'Auth Error',
+            detail: 'Not authenticated.',
+            life: 3000,
+          });
+          return;
+        }
+        await axios.delete(
+          `${
+            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+          }/api/profile`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        this.toast.add({
+          severity: 'success',
+          summary: 'Account Deleted',
+          detail: 'Account deleted successfully.',
+          life: 3000,
+        });
+        // Optionally clear encrypted storage and redirect to login
+        setTimeout(() => {
+          storage.clear();
+          window.location.href = '/login';
+        }, 1200);
+      } catch (error) {
+        let msg = 'Failed to delete account.';
+        if (
+          error.response &&
+          error.response.data &&
+          error.response.data.message
+        ) {
+          msg = error.response.data.message;
+        }
+        this.toast.add({
+          severity: 'error',
+          summary: 'Delete Error',
+          detail: msg,
+          life: 3500,
+        });
       }
     },
   },

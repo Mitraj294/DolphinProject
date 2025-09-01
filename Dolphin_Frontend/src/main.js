@@ -9,7 +9,6 @@ import { fetchCurrentUser } from './services/user';
 // PrimeVue Imports
 import PrimeVue from 'primevue/config'; // Import PrimeVue configuration
 import ToastService from 'primevue/toastservice'; // Import ToastService
-import ConfirmationService from 'primevue/confirmationservice';
 
 // PrimeVue Styles (choose a theme and include primevue.min.css)
 import 'primevue/resources/themes/lara-light-blue/theme.css'; // Recommended theme, or choose another
@@ -25,11 +24,8 @@ const app = createApp(App);
 // Install PrimeVue and its services
 app.use(PrimeVue); // Initialize PrimeVue
 app.use(ToastService); // Install the ToastService globally
-app.use(ConfirmationService); // Install ConfirmationService globally
 import Toast from 'primevue/toast';
 app.component('Toast', Toast); // Register Toast globally
-import ConfirmDialog from 'primevue/confirmdialog';
-app.component('ConfirmDialog', ConfirmDialog); // Register ConfirmDialog globally
 import DatePicker from 'primevue/datepicker';
 app.component('DatePicker', DatePicker); // Register DatePicker globally
 

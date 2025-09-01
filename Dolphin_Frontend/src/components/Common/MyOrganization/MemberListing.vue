@@ -269,8 +269,6 @@ import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import axios from 'axios';
 import storage from '@/services/storage';
-import Toast from 'primevue/toast';
-import { useToast } from 'primevue/usetoast';
 import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
@@ -279,7 +277,6 @@ import MultiSelectDropdown from '@/components/Common/Common_UI/Form/MultiSelectD
 
 export default {
   name: 'MemberListing',
-  components: { Toast },
   components: {
     MainLayout,
     Pagination,
@@ -324,23 +321,13 @@ export default {
       },
       // available roles for selection (fallback static list)
       rolesForSelect: [
-        { id: 1, name: 'Owner' },
+        { id: 1, name: 'Manager' },
         { id: 2, name: 'CEO' },
-        { id: 3, name: 'Manager' },
+        { id: 3, name: 'Owner' },
         { id: 4, name: 'Support' },
       ],
       rolesForSelectMap: {},
     };
-  },
-
-  // create/use toast service for this component
-
-  created() {
-    try {
-      this.toast = useToast();
-    } catch (e) {
-      this.toast = null;
-    }
   },
   computed: {
     totalPages() {
@@ -607,36 +594,7 @@ export default {
         this.onSearch();
         this.showEditModal = false;
       } catch (e) {
-        if (this.toast && typeof this.toast.add === 'function') {
-          this.toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to update member.',
-            life: 0,
-          });
-        } else {
-          try {
-            if (this.toast && typeof this.toast.add === 'function') {
-              this.toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'Failed to update member.',
-                life: 0,
-              });
-            } else if (this.$toast && typeof this.$toast.add === 'function') {
-              this.$toast.add({
-                severity: 'error',
-                summary: 'Error',
-                detail: 'Failed to update member.',
-                life: 0,
-              });
-            } else {
-              console.warn('Failed to update member.');
-            }
-          } catch (err) {
-            /* swallow */
-          }
-        }
+        alert('Failed to update member.');
       }
     },
 
@@ -644,9 +602,9 @@ export default {
     prepareRolesMap() {
       // build a lookup of roles used by the app (could be fetched; for now infer from current members or default list)
       this.rolesForSelect = [
-        { id: 1, name: 'Owner' },
+        { id: 1, name: 'Manager' },
         { id: 2, name: 'CEO' },
-        { id: 3, name: 'Manager' },
+        { id: 3, name: 'Owner' },
         { id: 4, name: 'Support' },
       ];
       this.rolesForSelectMap = {};
@@ -661,60 +619,21 @@ export default {
     },
     async deleteMember(member) {
       this.isEditing = false;
-
-      const performDelete = async () => {
-        const authToken = storage.get('authToken');
-        const headers = {};
-        if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-        try {
-          await axios.delete(
-            (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-              `/api/members/${member.id}`,
-            { headers }
-          );
-          this.members = this.members.filter((m) => m.id !== member.id);
-          this.onSearch();
-          this.showMemberModal = false;
-          if (this.toast && typeof this.toast.add === 'function') {
-            this.toast.add({
-              severity: 'success',
-              summary: 'Deleted',
-              detail: 'Member deleted successfully.',
-              life: 3000,
-            });
-          }
-        } catch (e) {
-          if (this.toast && typeof this.toast.add === 'function') {
-            this.toast.add({
-              severity: 'error',
-              summary: 'Error',
-              detail:
-                (e &&
-                  e.response &&
-                  e.response.data &&
-                  e.response.data.message) ||
-                'Failed to delete member.',
-              life: 0,
-            });
-          } else {
-            console.warn('Failed to delete member.', e);
-          }
-        }
-      };
-
-      // Use PrimeVue ConfirmDialog when available; otherwise fall back to native confirm
-      if (this.$confirm && typeof this.$confirm.require === 'function') {
-        this.$confirm.require({
-          message: 'Are you sure you want to delete this member?',
-          header: 'Confirm Delete',
-          icon: 'pi pi-exclamation-triangle',
-          accept: performDelete,
-        });
-      } else {
-        // native fallback
-        if (confirm('Are you sure you want to delete this member?')) {
-          await performDelete();
-        }
+      if (!confirm('Are you sure you want to delete this member?')) return;
+      const authToken = storage.get('authToken');
+      const headers = {};
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      try {
+        await axios.delete(
+          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+            `/api/members/${member.id}`,
+          { headers }
+        );
+        this.members = this.members.filter((m) => m.id !== member.id);
+        this.onSearch();
+        this.showMemberModal = false;
+      } catch (e) {
+        alert('Failed to delete member.');
       }
     },
     onSearch() {

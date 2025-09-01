@@ -22,8 +22,7 @@ class AddSoftDeletesAndNullableUserId extends Migration
             'sessions',
             'subscriptions',
             'user_details',
-            // 'user_roles' is excluded because user_id is part of a composite primary key
-            // and making it nullable would cause MySQL errors. Skip changes here.
+            'user_roles',
         ];
 
         foreach ($tables as $table) {
