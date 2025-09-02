@@ -1,7 +1,1 @@
-{
-  "dependencies": {
-    "@primevue/forms": "^4.3.7",
-    "crypto-js": "^4.2.0",
-    "primevue": "^4.3.7"
-  }
-}
+{}

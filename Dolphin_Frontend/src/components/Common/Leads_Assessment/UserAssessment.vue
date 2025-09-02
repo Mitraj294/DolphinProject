@@ -126,13 +126,17 @@
 import axios from 'axios';
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import Toast from 'primevue/toast';
+import { useToast } from 'primevue/usetoast';
 
 const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
 
 export default {
   name: 'UserAssessment',
+  components: { Toast },
   setup() {
     const router = useRouter();
+    const toast = useToast();
     const step = ref(1);
     const questions = ref([]);
     const selectedWords = ref([]); // Array of arrays, one per question
@@ -219,7 +223,14 @@ export default {
         if (error.response && error.response.status === 401) {
           router.push('/login');
         } else {
-          alert('Failed to load assessment questions or answers.');
+          if (toast && typeof toast.add === 'function') {
+            toast.add({
+              severity: 'error',
+              summary: 'Load failed',
+              detail: 'Failed to load assessment questions or answers.',
+              sticky: true,
+            });
+          }
         }
       }
     };
@@ -242,7 +253,14 @@ export default {
       const storage = require('@/services/storage').default;
       const authToken = storage.get('authToken');
       if (!authToken) {
-        alert('You must be logged in to submit an assessment.');
+        if (toast && typeof toast.add === 'function') {
+          toast.add({
+            severity: 'warn',
+            summary: 'Not logged in',
+            detail: 'You must be logged in to submit an assessment.',
+            sticky: true,
+          });
+        }
         router.push('/login');
         return;
       }
@@ -269,7 +287,17 @@ export default {
           errorMessage = 'Your session has expired. Please log in again.';
           router.push('/login');
         }
-        alert(errorMessage);
+        if (toast && typeof toast.add === 'function') {
+          toast.add({
+            severity:
+              error.response && error.response.status === 401
+                ? 'warn'
+                : 'error',
+            summary: 'Submission failed',
+            detail: errorMessage,
+            sticky: true,
+          });
+        }
       }
     };
 

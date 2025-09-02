@@ -670,7 +670,24 @@ export default {
       if (toast && typeof toast.add === 'function') {
         toast.add({ severity, summary, detail, life });
       } else {
-        alert(`${summary}: ${detail}`);
+        if (this && this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({ severity, summary, detail, life });
+        } else if (
+          typeof window !== 'undefined' &&
+          window.$toast &&
+          typeof window.$toast.add === 'function'
+        ) {
+          window.$toast.add({ severity, summary, detail, life });
+        } else {
+          // fallback to console if no toast instance is available
+          console[
+            severity === 'error'
+              ? 'error'
+              : severity === 'warn'
+              ? 'warn'
+              : 'log'
+          ](`${summary}: ${detail}`);
+        }
       }
 
       if (highZ && typeof window !== 'undefined') {

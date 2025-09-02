@@ -1,6 +1,7 @@
 <template>
   <MainLayout>
     <div class="page">
+      <Toast />
       <div class="table-outer">
         <div class="table-card">
           <div class="table-header-bar">
@@ -161,7 +162,7 @@
                 class="btn btn-secondary"
                 @click="notesModalMode === 'add' ? submitNotes() : saveNotes()"
               >
-                {{ notesModalMode === 'add' ? 'Submit' : 'Save' }}
+                {{ notesModalMode === 'add' ? 'Submit' : 'Update' }}
               </button>
               <button
                 class="btn btn-primary"
@@ -182,9 +183,10 @@ import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import axios from 'axios';
+import Toast from 'primevue/toast';
 export default {
   name: 'Leads',
-  components: { MainLayout, Pagination, TableHeader },
+  components: { MainLayout, Pagination, TableHeader, Toast },
   data() {
     return {
       menuOpen: null,
@@ -448,9 +450,26 @@ export default {
         // update local copy
         lead.notes = this.notesInput;
         lead.notesAction = 'View';
+        // show success toast
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'success',
+            summary: 'Notes Saved',
+            detail: 'Notes added successfully.',
+            life: 3000,
+          });
+        }
       } catch (e) {
         console.error('Failed to submit notes', e);
         this.errorMessage = 'Failed to save notes.';
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Save Failed',
+            detail: 'Could not save notes. Try again.',
+            life: 4000,
+          });
+        }
       } finally {
         this.closeNotesModal();
       }
@@ -480,9 +499,25 @@ export default {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         lead.notes = this.notesInput;
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'success',
+            summary: 'Notes Updated',
+            detail: 'Notes updated successfully.',
+            life: 3000,
+          });
+        }
       } catch (e) {
         console.error('Failed to save notes', e);
         this.errorMessage = 'Failed to save notes.';
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Update Failed',
+            detail: 'Could not update notes. Try again.',
+            life: 4000,
+          });
+        }
       } finally {
         this.closeNotesModal();
       }

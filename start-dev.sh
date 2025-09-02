@@ -4,9 +4,35 @@
 HOST="127.0.0.1"
 
 
-# Start Laravel backend
+# Start Laravel backend and ensure it binds to port 8000.
 cd Dolphin_Backend
-php artisan serve --host=$HOST &
+# Desired backend port
+BACKEND_PORT=8000
+
+# If something is listening on BACKEND_PORT and is a known dev process, kill it so artisan can bind.
+if command -v lsof >/dev/null 2>&1; then
+    BACKEND_PID=$(lsof -nP -iTCP:$BACKEND_PORT -sTCP:LISTEN -t || true)
+    if [ -n "$BACKEND_PID" ]; then
+        CMD=$(ps -p "$BACKEND_PID" -o comm= 2>/dev/null || true)
+        if echo "$CMD" | grep -Eqi "php|artisan|php-fpm|node|gunicorn|uwsgi"; then
+            echo "Port $BACKEND_PORT is in use by PID $BACKEND_PID ($CMD) — stopping it so backend can bind to $BACKEND_PORT"
+            kill "$BACKEND_PID" || true
+            sleep 1
+            if lsof -nP -iTCP:$BACKEND_PORT -sTCP:LISTEN -t >/dev/null 2>&1; then
+                echo "Port $BACKEND_PORT still in use after kill. Backend may fail to start."
+            else
+                echo "Port $BACKEND_PORT freed for backend."
+            fi
+        else
+            echo "Port $BACKEND_PORT is in use by PID $BACKEND_PID ($CMD). Attempting to free it anyway."
+            kill "$BACKEND_PID" || true
+            sleep 1
+        fi
+    fi
+fi
+
+# Start artisan on the desired port
+php artisan serve --host=$HOST --port=$BACKEND_PORT &
 
 # Ensure Laravel scheduler cron job is present
 CRON_ENTRY="* * * * * cd $(pwd) && php artisan schedule:run >> /dev/null 2>&1"

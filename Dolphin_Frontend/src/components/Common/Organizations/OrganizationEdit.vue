@@ -485,7 +485,16 @@ export default {
           life: 3000,
         });
       } else {
-        alert(msg);
+        if (this.$root && typeof this.$root.$emit === 'function') {
+          this.$root.$emit('show-toast', {
+            severity: 'info',
+            summary: 'Not editable',
+            detail: msg,
+            life: 3000,
+          });
+        } else {
+          console.info(msg);
+        }
       }
     },
     async updateDetails() {

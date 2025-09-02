@@ -430,7 +430,15 @@ export default {
         await axios.post('/api/notifications/mark-all-read', {}, config);
         // Refresh notifications
         await this.fetchNotifications();
-        // Notification count will be synchronized via the watcher -> updateNotificationCount()
+        // Ensure badge updates immediately: update internal count and notify navbar
+        try {
+          this.updateNotificationCount();
+        } catch (e) {
+          // ignore
+        }
+        // Broadcast events for in-window and cross-tab listeners
+        window.dispatchEvent(new Event('notification-updated'));
+        window.dispatchEvent(new Event('storage'));
       } catch (error) {
         console.error('Error marking all as read:', error);
         this.$notify &&
@@ -456,7 +464,12 @@ export default {
         try {
           await axios.post(`/api/announcements/${notif.id}/read`, {}, config);
           await this.fetchNotifications();
-          // Notification count update is handled by the notifications watcher -> updateNotificationCount()
+          // Ensure badge updates immediately: update internal count and notify navbar
+          try {
+            this.updateNotificationCount();
+          } catch (e) {}
+          window.dispatchEvent(new Event('notification-updated'));
+          window.dispatchEvent(new Event('storage'));
         } catch (error) {
           console.error('Failed to mark notification as read:', error);
           this.$notify &&

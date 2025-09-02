@@ -56,11 +56,25 @@ class SendAssessmentController extends Controller
                 return response()->json(['error' => 'Invalid recipient email'], 400);
             }
 
-            // Send email directly using Blade view `emails.lead_registration`
-            Mail::send('emails.lead_registration', [
-                'registrationUrl' => $registrationUrl,
-                'body' => $validated['body'] ?? null,
-            ], function ($message) use ($to, $validated) {
+            // Send email
+            $htmlBody = $validated['body'] ?? '';
+
+           
+            $search = ['{{registrationUrl}}', '{{registration_link}}', '{{registration_url}}', '{{name}}'];
+            $replace = [$registrationUrl, $registrationUrl, $registrationUrl, $validated['name'] ?? ''];
+            $htmlBody = str_replace($search, $replace, $htmlBody);
+
+          
+            if (stripos($htmlBody, '<html') === false) {
+                $safeSubject = htmlspecialchars($validated['subject'] ?: 'Complete Your Registration', ENT_QUOTES, 'UTF-8');
+                $wrapper = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>' . $safeSubject . '</title>'
+                    . '<style>body{background:#f4f4f4;font-family:Arial,sans-serif;margin:0;padding:0}.email-container{max-width:600px;margin:36px auto;background:#fff;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);padding:28px 24px;color:#333}</style></head><body>'
+                    . $htmlBody
+                    . '</body></html>';
+                $htmlBody = $wrapper;
+            }
+
+            Mail::html($htmlBody, function ($message) use ($to, $validated) {
                 $message->to($to)
                     ->subject($validated['subject'] ?: 'Complete Your Registration');
             });
@@ -74,7 +88,7 @@ class SendAssessmentController extends Controller
                     $lead->save();
                 }
             } catch (\Exception $e) {
-                // Don't fail the request if status update fails; just log it
+                
                 Log::error('Failed to update lead status after sending assessment', ['error' => $e->getMessage(), 'lead_id' => $lead ? $lead->id : null]);
             }
 

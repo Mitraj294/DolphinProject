@@ -36,7 +36,8 @@ Route::get('/leads/prefill', [LeadController::class, 'prefill']);
 Route::get('/leads/find-us-options', [LeadController::class, 'findUsOptions']);
 Route::post('/leads/send-assessment', [\App\Http\Controllers\SendAssessmentController::class, 'send']);
 // Return rendered email templates for frontend editor prefills
-Route::get('/email-template/lead-registration', [\App\Http\Controllers\EmailTemplateController::class, 'leadRegistration']);
+Route::get('/email-template/lead-registration', [LeadController::class, 'leadRegistration']);
+
 Route::post('/schedule-email', [\App\Http\Controllers\ScheduledEmailController::class, 'store']);
 Route::get('/scheduled-email/show', [\App\Http\Controllers\ScheduledEmailController::class, 'show']);
 

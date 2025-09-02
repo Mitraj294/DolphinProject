@@ -237,149 +237,43 @@
         <div class="detail-row">
           <div class="detail-table">
             <div class="detail-value">
-              <div class="recipient-info"></div>
-              <div class="recipient-list">
-                <!-- 1) Members (group members) -->
-                <div
-                  v-if="
-                    selectedNotification &&
-                    selectedNotification.groups &&
-                    selectedNotification.groups.some(
-                      (g) => g.members && g.members.length
-                    )
-                  "
+              <!-- Render recipients as a compact table grouped by group -->
+              <div class="recipient-table-wrap">
+                <table
+                  class="recipient-table compact"
+                  v-if="recipientTableRows.length"
                 >
-                  <div class="section-title">Members</div>
-                  <div
-                    v-for="g in selectedNotification.groups"
-                    :key="'gm-' + g.id"
-                  >
-                    <div v-if="g.members && g.members.length">
-                      <div class="group-name">{{ g.name }}</div>
-                      <div
-                        v-for="m in g.members"
-                        :key="'m-' + (m.id || m.email)"
-                        class="recipient-row"
+                  <thead>
+                    <tr>
+                      <th style="width: 20%">Category</th>
+                      <th style="width: 30%">Name</th>
+                      <th style="width: 30%">Email</th>
+                      <th style="width: 20%">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr
+                      v-for="(row, idx) in recipientTableRows"
+                      :key="idx"
+                    >
+                      <td
+                        class="group-cell"
+                        v-if="row.showGroup"
+                        :rowspan="row.rowspan"
                       >
-                        <div class="recipient-info">
-                          <div class="recipient-name">
-                            {{ m.name || m.full_name || m.email }}
-                          </div>
-                          <div
-                            class="recipient-email"
-                            v-if="m.email"
-                          >
-                            {{ m.email }}
-                          </div>
-                        </div>
-                        <div class="recipient-status">
-                          <span class="recipient-badge unread"
-                            >Yet to read</span
-                          >
-                          <span class="status-icon pending"></span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                        {{ row.category || '' }}
+                      </td>
+                      <td>{{ row.name || '' }}</td>
+                      <td>{{ row.email || '' }}</td>
+                      <td>{{ row.status || '' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-                <!-- 2) Groups -->
+                <!-- Fallback: use simple recipient list if no structured rows available -->
                 <div
-                  v-if="
-                    selectedNotification &&
-                    selectedNotification.groups &&
-                    selectedNotification.groups.length
-                  "
-                >
-                  <div class="section-title">Groups</div>
-                  <div
-                    v-for="g in selectedNotification.groups"
-                    :key="'g-' + g.id"
-                    class="recipient-row"
-                  >
-                    <div class="recipient-info">
-                      <div class="recipient-name">{{ g.name }}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- separator -->
-                <div
-                  v-if="
-                    selectedNotification &&
-                    ((selectedNotification.organizations &&
-                      selectedNotification.organizations.length) ||
-                      (selectedNotification.admins &&
-                        selectedNotification.admins.length))
-                  "
-                  class="section-sep"
-                />
-
-                <!-- 3) Organizations -->
-                <div
-                  v-if="
-                    selectedNotification &&
-                    selectedNotification.organizations &&
-                    selectedNotification.organizations.length
-                  "
-                >
-                  <div class="section-title">Organizations</div>
-                  <div
-                    v-for="o in selectedNotification.organizations"
-                    :key="'o-' + o.id"
-                    class="recipient-row"
-                  >
-                    <div class="recipient-info">
-                      <div class="recipient-name">{{ o.name }}</div>
-                    </div>
-                    <div class="recipient-status">
-                      <span class="recipient-badge unread">Yet to read</span>
-                      <span class="status-icon pending"></span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 4) Admins -->
-                <div
-                  v-if="
-                    selectedNotification &&
-                    selectedNotification.admins &&
-                    selectedNotification.admins.length
-                  "
-                >
-                  <div class="section-title">Admins</div>
-                  <div
-                    v-for="a in selectedNotification.admins"
-                    :key="'a-' + a.id"
-                    class="recipient-row"
-                  >
-                    <div class="recipient-info">
-                      <div class="recipient-name">{{ a.name }}</div>
-                      <div
-                        class="recipient-email"
-                        v-if="a.email"
-                      >
-                        {{ a.email }}
-                      </div>
-                    </div>
-                    <div class="recipient-status">
-                      <span class="recipient-badge unread">Yet to read</span>
-                      <span class="status-icon pending"></span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Fallback: flat list from detailRecipients -->
-                <div
-                  v-if="
-                    !selectedNotification ||
-                    ((!selectedNotification.groups ||
-                      selectedNotification.groups.length === 0) &&
-                      (!selectedNotification.organizations ||
-                        selectedNotification.organizations.length === 0) &&
-                      (!selectedNotification.admins ||
-                        selectedNotification.admins.length === 0))
-                  "
+                  v-else
+                  class="recipient-list"
                 >
                   <div
                     v-for="(r, ri) in detailRecipients"
@@ -410,20 +304,6 @@
                             : 'Yet to read'
                         }}</span
                       >
-                      <span
-                        v-if="r.status === 'delivered'"
-                        class="status-icon delivered"
-                        v-html="tickSvg"
-                      ></span>
-                      <span
-                        v-else-if="r.status === 'failed'"
-                        class="status-icon failed"
-                        v-html="crossSvg"
-                      ></span>
-                      <span
-                        v-else
-                        class="status-icon pending"
-                      ></span>
                     </div>
                   </div>
                   <div
@@ -454,9 +334,13 @@ import {
 } from '@/components/Common/Common_UI/Form';
 import FormInput from '../Common_UI/Form/FormInput.vue';
 import MultiSelectDropdown from '../Common_UI/Form/MultiSelectDropdown.vue';
-import axios from 'axios';
-import storage from '@/services/storage';
 import Toast from 'primevue/toast';
+
+// mixins
+import notificationsCommonMixin from './mixins/notificationsCommonMixin';
+import notificationsSendMixin from './mixins/notificationsSendMixin';
+import notificationsDetailMixin from './mixins/notificationsDetailMixin';
+
 export default {
   name: 'Notifications',
   components: {
@@ -471,467 +355,11 @@ export default {
     MultiSelectDropdown,
     Toast,
   },
-  data() {
-    return {
-      // lifecycle guard to prevent state updates after unmount
-      isAlive: false,
-      showPageDropdown: false,
-      showSendModal: false,
-      showDetailModal: false,
-      selectedNotification: null,
-      pageSize: 10,
-      currentPage: 1,
-      sortKey: '',
-      sortAsc: true,
-      selectedOrganizations: [],
-      selectedAdmin: '',
-      selectedGroups: [],
-      scheduledDate: '',
-      scheduledTime: '',
-      organizations: [],
-      groups: [],
-      // orgGroupsMap and syncing logic removed to keep selections independent
-      notifications: [],
-    };
-  },
-  computed: {
-    totalPages() {
-      return Math.ceil(this.notifications.length / this.pageSize) || 1;
-    },
-    paginatedNotifications() {
-      let notifications = [...this.notifications];
-      if (this.sortKey) {
-        notifications.sort((a, b) => {
-          const aVal = a[this.sortKey] || '';
-          const bVal = b[this.sortKey] || '';
-          if (aVal < bVal) return this.sortAsc ? -1 : 1;
-          if (aVal > bVal) return this.sortAsc ? 1 : -1;
-          return 0;
-        });
-      }
-      const start = (this.currentPage - 1) * this.pageSize;
-      return notifications.slice(start, start + this.pageSize);
-    },
-    paginationPages() {
-      const total = this.totalPages;
-      if (total <= 7) {
-        return Array.from({ length: total }, (_, i) => i + 1);
-      } else {
-        const pages = [1];
-        if (this.currentPage > 4) pages.push('...');
-        for (
-          let i = Math.max(2, this.currentPage - 1);
-          i <= Math.min(total - 1, this.currentPage + 1);
-          i++
-        ) {
-          pages.push(i);
-        }
-        if (this.currentPage < total - 3) pages.push('...');
-        pages.push(total);
-        return pages;
-      }
-    },
-    // detailRecipients and svg getters
-    detailRecipients() {
-      const n = this.selectedNotification || {};
-      const list = [];
-
-      // If detailed groups/orgs/admins were merged by the detail endpoint, use them first
-      if (Array.isArray(n.groups) && n.groups.length) {
-        n.groups.forEach((g) => {
-          if (g.name) {
-            list.push({ name: g.name, email: '', status: 'pending' });
-          }
-          if (Array.isArray(g.members) && g.members.length) {
-            g.members.forEach((m) => {
-              list.push({
-                name: m.name || m.full_name || m.email || 'Unknown',
-                email: m.email || '',
-                status: m.status || 'pending',
-              });
-            });
-          }
-        });
-        // include admins if present
-        if (Array.isArray(n.admins) && n.admins.length) {
-          n.admins.forEach((a) => {
-            list.push({
-              name: a.name || a.full_name || a.email || 'Admin',
-              email: a.email || '',
-              status: 'pending',
-            });
-          });
-        }
-        if (Array.isArray(n.organizations) && n.organizations.length) {
-          n.organizations.forEach((o) => {
-            list.push({
-              name: o.name || o.org_name || o.title || `Org ${o.id}`,
-              email: '',
-              status: 'pending',
-            });
-          });
-        }
-        // dedupe below and return
-      }
-
-      // 1) If backend supplied explicit recipients array, prefer it.
-      if (Array.isArray(n.recipients) && n.recipients.length) {
-        n.recipients.forEach((r) => {
-          list.push({
-            name: r.name || r.full_name || r.email || 'Unknown',
-            email: r.email || '',
-            status: r.status || r.delivery_status || r.state || 'pending',
-          });
-        });
-        return list;
-      }
-
-      // 2) If backend returned raw emails array (strings), map them.
-      if (Array.isArray(n.emails) && n.emails.length) {
-        n.emails.forEach((e) => {
-          if (typeof e === 'string') {
-            list.push({ name: e, email: e, status: 'pending' });
-          } else if (e && e.email) {
-            list.push({
-              name: e.name || e.email,
-              email: e.email,
-              status: e.status || 'pending',
-            });
-          }
-        });
-        return list;
-      }
-
-      // 3) Map organization_ids -> organization names using fetched organizations
-      if (
-        Array.isArray(n.organization_ids) &&
-        n.organization_ids.length &&
-        Array.isArray(this.organizations)
-      ) {
-        n.organization_ids.forEach((oid) => {
-          const org = this.organizations.find(
-            (o) => o.id === oid || o.org_id === oid || o.id == oid
-          );
-          const name = org
-            ? org.org_name || org.name || org.title
-            : String(oid);
-          list.push({ name, email: '', status: 'pending' });
-        });
-        // continue - there may also be group ids
-      }
-
-      // 4) Map group_ids -> group names using fetched groups
-      if (
-        Array.isArray(n.group_ids) &&
-        n.group_ids.length &&
-        Array.isArray(this.groups)
-      ) {
-        n.group_ids.forEach((gid) => {
-          const g = this.groups.find(
-            (gr) => gr.id === gid || gr.id == gid || gr.group_id === gid
-          );
-          const name = g ? g.name || g.group_name || g.title : String(gid);
-          list.push({ name, email: '', status: 'pending' });
-        });
-      }
-
-      // 5) If backend provided names directly, use them (legacy fields)
-      if (Array.isArray(n.organization_names) && n.organization_names.length) {
-        n.organization_names.forEach((on) => {
-          list.push({ name: on, email: '', status: 'pending' });
-        });
-      }
-      if (Array.isArray(n.group_names) && n.group_names.length) {
-        n.group_names.forEach((gn) => {
-          list.push({ name: gn, email: '', status: 'pending' });
-        });
-      }
-
-      // 6) If member_names or members array exists, include them
-      if (Array.isArray(n.member_names) && n.member_names.length) {
-        n.member_names.forEach((mn) => {
-          list.push({ name: mn, email: '', status: 'pending' });
-        });
-      }
-      if (Array.isArray(n.members) && n.members.length) {
-        n.members.forEach((m) => {
-          list.push({
-            name: m.name || m.full_name || m.email || 'Unknown',
-            email: m.email || '',
-            status: m.status || 'pending',
-          });
-        });
-      }
-
-      // Remove duplicates (by name+email)
-      const seen = new Set();
-      const deduped = [];
-      list.forEach((it) => {
-        const key = `${it.name || ''}::${it.email || ''}`;
-        if (!seen.has(key)) {
-          seen.add(key);
-          deduped.push(it);
-        }
-      });
-
-      return deduped;
-    },
-    tickSvg() {
-      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17L4 12" stroke="#16A34A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    },
-    crossSvg() {
-      return '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6l12 12" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    },
-  },
-  methods: {
-    goToPage(page) {
-      if (page === '...' || page < 1 || page > this.totalPages) return;
-      this.currentPage = page;
-    },
-    selectPageSize(size) {
-      this.pageSize = size;
-      this.currentPage = 1;
-      this.showPageDropdown = false;
-    },
-    sortBy(key) {
-      if (this.sortKey === key) {
-        this.sortAsc = !this.sortAsc;
-      } else {
-        this.sortKey = key;
-        this.sortAsc = true;
-      }
-    },
-    formatLocalDateTime(dateStr) {
-      if (!dateStr) return '';
-      // If ISO with timezone or 'Z', let Date parse it
-      let d = null;
-      try {
-        if (/[T].*Z$/.test(dateStr) || /[T].*[+-]\d{2}:?\d{2}$/.test(dateStr)) {
-          d = new Date(dateStr);
-        } else {
-          // Try to parse 'YYYY-MM-DD HH:MM:SS' (assume it's UTC from DB)
-          const m = (dateStr || '').match(
-            /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
-          );
-          if (m) {
-            const year = parseInt(m[1], 10);
-            const month = parseInt(m[2], 10) - 1;
-            const day = parseInt(m[3], 10);
-            const hour = parseInt(m[4], 10);
-            const minute = parseInt(m[5], 10);
-            const second = m[6] ? parseInt(m[6], 10) : 0;
-            // create Date from UTC components, then use local getters for display
-            const utcMillis = Date.UTC(year, month, day, hour, minute, second);
-            d = new Date(utcMillis);
-          } else {
-            d = new Date(dateStr);
-          }
-        }
-      } catch (e) {
-        d = new Date(dateStr);
-      }
-      if (!d || isNaN(d.getTime())) return dateStr || '';
-
-      // Use local date/time getters so the shown value is in user's local timezone
-      const day = String(d.getDate()).padStart(2, '0');
-      const months = [
-        'JAN',
-        'FEB',
-        'MAR',
-        'APR',
-        'MAY',
-        'JUN',
-        'JUL',
-        'AUG',
-        'SEP',
-        'OCT',
-        'NOV',
-        'DEC',
-      ];
-      const mon = months[d.getMonth()];
-      const yr = d.getFullYear();
-
-      let hr = d.getHours();
-      const min = String(d.getMinutes()).padStart(2, '0');
-      const ampm = hr >= 12 ? 'PM' : 'AM';
-      hr = hr % 12;
-      hr = hr ? hr : 12; // convert 0 -> 12
-      const strTime = `${hr}:${min} ${ampm}`;
-      return `${day} ${mon},${yr} ${strTime}`;
-    },
-    openDetail(item) {
-      if (!this.isAlive) return;
-      if (!item) {
-        this.selectedNotification = null;
-        this.showDetailModal = false;
-        return;
-      }
-      // Fetch detailed announcement info (relations) to render recipients clearly
-      const apiUrl = process.env.VUE_APP_API_URL || '/api';
-      const token = storage.get('authToken');
-      try {
-        axios
-          .get(`${apiUrl}/announcements/${item.id}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          .then((res) => {
-            const d = res.data || {};
-            // Merge returned detail into selectedNotification for computed mapping
-            const merged = Object.assign({}, item, {
-              announcement_detail: d.announcement || null,
-              groups: d.groups || [],
-              organizations: d.organizations || [],
-              admins: d.admins || [],
-            });
-            this.selectedNotification = merged;
-            this.showDetailModal = true;
-          })
-          .catch((err) => {
-            // fallback to opening with basic item
-            console.warn(
-              'Failed to fetch announcement detail, opening basic view',
-              err
-            );
-            this.selectedNotification = item;
-            this.showDetailModal = true;
-          });
-      } catch (e) {
-        this.selectedNotification = item;
-        this.showDetailModal = true;
-      }
-    },
-    closeDetail() {
-      if (!this.isAlive) return;
-      this.showDetailModal = false;
-      this.selectedNotification = null;
-    },
-    async sendNotification() {
-      try {
-        const apiUrl = process.env.VUE_APP_API_URL || '/api';
-        const token = storage.get('authToken');
-        // Collect data from modal
-        let scheduled_at;
-        if (this.scheduledDate && this.scheduledTime) {
-          let time = this.scheduledTime;
-          if (time.length === 5) time += ':00';
-          // Convert local date+time to an explicit UTC datetime string so backend stores UTC only.
-          // Build a Date from local inputs, then extract UTC components.
-          const local = new Date(`${this.scheduledDate}T${time}`);
-          const pad = (n) => String(n).padStart(2, '0');
-          const YYYY = local.getUTCFullYear();
-          const MM = pad(local.getUTCMonth() + 1);
-          const DD = pad(local.getUTCDate());
-          const hh = pad(local.getUTCHours());
-          const mm = pad(local.getUTCMinutes());
-          const ss = pad(local.getUTCSeconds());
-          scheduled_at = `${YYYY}-${MM}-${DD} ${hh}:${mm}:${ss}`;
-        }
-        const payload = {
-          organization_ids: this.selectedOrganizations.map((org) => org.id),
-          group_ids: this.selectedGroups.map((group) => group.id),
-          body: this.$el.querySelector('.modal-textarea').value,
-        };
-        if (scheduled_at) {
-          payload.scheduled_at = scheduled_at;
-        }
-        console.log('Sending notification payload:', payload);
-        await axios.post(apiUrl + '/announcements/send', payload, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (this.isAlive) {
-          this.showSendModal = false;
-          this.$toast &&
-            this.$toast.add &&
-            this.$toast.add({
-              severity: 'success',
-              summary: 'Success',
-              detail: 'Announcement sent!',
-              life: 3000,
-            });
-        }
-        console.log('Announcement sent successfully');
-      } catch (err) {
-        console.error('Error sending notification:', err);
-        if (this.isAlive && this.$toast && this.$toast.add) {
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Failed to send announcement',
-            life: 4000,
-          });
-        }
-      }
-    },
-    async fetchOrganizations() {
-      try {
-        const apiUrl = process.env.VUE_APP_API_URL || '/api';
-        const token = storage.get('authToken');
-        const res = await axios.get(apiUrl + '/organizations', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('Organizations response:', res.data);
-        if (this.isAlive) this.organizations = res.data;
-      } catch (err) {
-        console.error('Error fetching organizations:', err);
-        if (this.isAlive) this.organizations = [];
-      }
-    },
-    async fetchGroups() {
-      try {
-        const apiUrl = process.env.VUE_APP_API_URL || '/api';
-        const token = storage.get('authToken');
-        const res = await axios.get(apiUrl + '/groups', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('Groups response:', res.data);
-        if (this.isAlive) this.groups = res.data;
-      } catch (err) {
-        console.error('Error fetching groups:', err);
-        if (this.isAlive) this.groups = [];
-      }
-    },
-    // Helper used by template to determine read state
-    isRead(entity) {
-      if (!entity) return false;
-      // If backend provided a 'read' boolean, use it
-      if (typeof entity.read === 'boolean') return entity.read;
-      // Fallback: check for status fields
-      if (entity.status === 'read' || entity.status === 'delivered')
-        return true;
-      return false;
-    },
-    async fetchNotifications() {
-      try {
-        const apiUrl = process.env.VUE_APP_API_URL || '/api';
-        const token = storage.get('authToken');
-        const res = await axios.get(apiUrl + '/announcements', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (this.isAlive) {
-          this.notifications = Array.isArray(res.data)
-            ? res.data
-            : res.data.notifications || [];
-        }
-      } catch (err) {
-        console.error('Error fetching notifications:', err);
-        if (this.isAlive) this.notifications = [];
-      }
-    },
-  },
-  watch: {
-    // No watchers - selections are independent
-  },
-  mounted() {
-    this.isAlive = true;
-    this.fetchOrganizations();
-    this.fetchGroups();
-    this.fetchNotifications();
-    console.log('Mounted: fetching organizations, groups, notifications');
-  },
-  beforeUnmount() {
-    // lifecycle guard
-    this.isAlive = false;
-  },
+  mixins: [
+    notificationsCommonMixin,
+    notificationsSendMixin,
+    notificationsDetailMixin,
+  ],
 };
 </script>
 
@@ -1048,8 +476,7 @@ export default {
     margin-top: 10px;
   }
 }
-</style>
-<style scoped>
+
 .no-data {
   text-align: center;
   color: #888;
@@ -1498,5 +925,26 @@ export default {
   flex: 1 1 64% !important;
   text-align: left !important;
   padding-left: 8px !important;
+}
+
+/* Recipient compact table styles */
+.recipient-table-wrap {
+  width: 100%;
+  overflow: auto;
+}
+.recipient-table.compact {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.recipient-table.compact th,
+.recipient-table.compact td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+.recipient-table.compact .group-cell {
+  font-weight: 600;
+  vertical-align: top;
 }
 </style>

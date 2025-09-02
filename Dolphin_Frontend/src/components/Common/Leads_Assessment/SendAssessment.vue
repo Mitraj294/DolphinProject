@@ -39,10 +39,10 @@
             <div class="send-assessment-label">Editable Template</div>
             <div class="send-assessment-template-box">
               <Editor
-                :key="editorKey"
                 v-if="editorReady"
-                v-model="templateContent"
-                editorStyle="height: 320px;"
+                v-html="templateContent"
+                :key="editorKey"
+                editorStyle="height: 320px"
               />
             </div>
 
@@ -82,7 +82,9 @@ export default {
       to: '',
       recipientName: '',
       subject: 'Complete Your Registration',
+
       templateContent: '',
+      defaultTemplate: '',
       sending: false,
       registrationLink: '',
       editorReady: false,
@@ -111,11 +113,34 @@ export default {
             this.recipientName = `${leadObj.first_name || ''} ${
               leadObj.last_name || ''
             }`.trim();
+            const leadDefault =
+              (res && res.data && res.data.defaultTemplate) ||
+              leadObj.defaultTemplate;
+            if (leadDefault) {
+              this.defaultTemplate = String(leadDefault);
+              // ensure registration link is prepared
+              this.updateRegistrationLink();
+              this.templateContent = this.defaultTemplate
+                .replace(
+                  /\{\{registration_link\}\}/g,
+                  this.registrationLink || ''
+                )
+                .replace(/\{\{name\}\}/g, this.recipientName || '');
+              console.debug(
+                'Applied lead defaultTemplate, length=',
+                this.templateContent.length
+              );
+              console.debug(
+                'template preview:',
+                this.templateContent.slice(0, 200)
+              );
+              this.editorKey += 1;
+              this.$nextTick(() => {
+                this.editorReady = true;
+              });
+            }
           }
-        } catch (e) {
-          // fallback to query params below
-          // noop
-        }
+        } catch (e) {}
       })();
     }
 
@@ -134,9 +159,11 @@ export default {
         if (newEmail) {
           this.fetchServerTemplate();
         } else {
-          // If there's no recipient, hide the editor and clear content.
-          this.templateContent = '';
-          this.editorReady = false;
+          // If there's no recipient, show the default template so editor isn't blank.
+          this.templateContent = this.defaultTemplate
+            .replace(/\{\{registration_link\}\}/g, '')
+            .replace(/\{\{name\}\}/g, '');
+          this.editorReady = true;
         }
       },
       immediate: true, // This runs the watcher when the component is first created.
@@ -161,6 +188,21 @@ export default {
       this.updateRegistrationLink();
 
       try {
+        // If a default template was provided by the lead API, prefer it and skip the template endpoint.
+        if (this.defaultTemplate && this.defaultTemplate.trim() !== '') {
+          let html = String(this.defaultTemplate || '');
+          // replace placeholders
+          html = html
+            .replace(/\{\{registration_link\}\}/g, this.registrationLink || '')
+            .replace(/\{\{name\}\}/g, this.recipientName || '');
+          this.templateContent = html;
+          this.editorKey += 1;
+          this.$nextTick(() => {
+            this.editorReady = true;
+          });
+          return;
+        }
+
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
         const params = {
@@ -171,12 +213,13 @@ export default {
             this.$route.query.name ||
             '',
         };
+
+        // request server template
         const res = await axios.get(
           `${API_BASE_URL}/api/email-template/lead-registration`,
           { params }
         );
-
-        let html = res.data || '';
+        let html = res && res.data ? String(res.data) : '';
 
         // Parse the full HTML response to extract only the body content.
         try {

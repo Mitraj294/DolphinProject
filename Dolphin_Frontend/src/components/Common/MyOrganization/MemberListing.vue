@@ -1,4 +1,6 @@
 <template>
+  <ConfirmDialog />
+  <Toast />
   <MainLayout>
     <div class="page">
       <div class="table-outer">
@@ -274,6 +276,8 @@ import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
 import MultiSelectDropdown from '@/components/Common/Common_UI/Form/MultiSelectDropdown.vue';
+import Toast from 'primevue/toast';
+import { useConfirm } from 'primevue/useconfirm';
 
 export default {
   name: 'MemberListing',
@@ -286,6 +290,11 @@ export default {
     FormLabel,
     FormInput,
     MultiSelectDropdown,
+    Toast,
+  },
+  setup() {
+    const confirm = useConfirm();
+    return { confirm };
   },
   data() {
     return {
@@ -594,7 +603,14 @@ export default {
         this.onSearch();
         this.showEditModal = false;
       } catch (e) {
-        alert('Failed to update member.');
+        if (this && this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Update failed',
+            detail: 'Failed to update member.',
+            sticky: true,
+          });
+        }
       }
     },
 
@@ -619,22 +635,45 @@ export default {
     },
     async deleteMember(member) {
       this.isEditing = false;
-      if (!confirm('Are you sure you want to delete this member?')) return;
-      const authToken = storage.get('authToken');
-      const headers = {};
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-      try {
-        await axios.delete(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            `/api/members/${member.id}`,
-          { headers }
-        );
-        this.members = this.members.filter((m) => m.id !== member.id);
-        this.onSearch();
-        this.showMemberModal = false;
-      } catch (e) {
-        alert('Failed to delete member.');
-      }
+      const memberDisplay =
+        member && (member.first_name || member.last_name)
+          ? `${member.first_name || ''} ${member.last_name || ''}`.trim()
+          : member.email || 'this member';
+
+      this.confirm.require({
+        message: `Are you sure you want to delete ${memberDisplay}?`,
+        header: 'Confirm Delete',
+        icon: 'pi pi-trash',
+        acceptLabel: 'Yes',
+        rejectLabel: 'No',
+        accept: async () => {
+          const authToken = storage.get('authToken');
+          const headers = {};
+          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+          try {
+            await axios.delete(
+              (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+                `/api/members/${member.id}`,
+              { headers }
+            );
+            this.members = this.members.filter((m) => m.id !== member.id);
+            this.onSearch();
+            this.showMemberModal = false;
+          } catch (e) {
+            if (this && this.$toast && typeof this.$toast.add === 'function') {
+              this.$toast.add({
+                severity: 'error',
+                summary: 'Delete failed',
+                detail: 'Failed to delete member.',
+                sticky: true,
+              });
+            }
+          }
+        },
+        reject: () => {
+          // no-op
+        },
+      });
     },
     onSearch() {
       const q = this.searchQuery.trim().toLowerCase();

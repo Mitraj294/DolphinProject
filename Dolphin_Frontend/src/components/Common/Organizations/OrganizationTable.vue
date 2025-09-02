@@ -1,5 +1,6 @@
 <template>
   <div class="table-outer">
+    <Toast />
     <div class="table-card">
       <div class="table-search-bar">
         <input
@@ -77,11 +78,12 @@
 <script>
 import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
+import Toast from 'primevue/toast';
 // Import the organization service
 
 export default {
   name: 'OrganizationTable',
-  components: { Pagination, TableHeader },
+  components: { Pagination, TableHeader, Toast },
   data() {
     return {
       search: '',
@@ -172,7 +174,14 @@ export default {
         }));
       } catch (e) {
         if (e.response && e.response.status === 401) {
-          alert('Session expired or unauthorized. Please log in again.');
+          if (this && this.$toast && typeof this.$toast.add === 'function') {
+            this.$toast.add({
+              severity: 'warn',
+              summary: 'Session expired',
+              detail: 'Session expired or unauthorized. Please log in again.',
+              sticky: true,
+            });
+          }
           this.$router.push({ name: 'Login' });
         } else {
           console.error('Error fetching organizations:', e);

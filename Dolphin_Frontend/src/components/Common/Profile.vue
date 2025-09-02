@@ -1,4 +1,5 @@
 <template>
+  <ConfirmDialog />
   <MainLayout>
     <div class="profile-outer">
       <div class="profile-card">
@@ -244,7 +245,9 @@
 import MainLayout from '@/components/layout/MainLayout.vue';
 import axios from 'axios';
 import Toast from 'primevue/toast';
+import ConfirmDialog from 'primevue/confirmdialog';
 import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
@@ -257,6 +260,7 @@ export default {
   name: 'Profile',
   components: {
     MainLayout,
+    ConfirmDialog,
     Toast,
     CommonModal,
     FormRow,
@@ -266,7 +270,8 @@ export default {
   },
   setup() {
     const toast = useToast();
-    return { toast };
+    const confirm = useConfirm();
+    return { toast, confirm };
   },
   data() {
     return {
@@ -742,59 +747,67 @@ export default {
     },
     async deleteAccount() {
       this.editMessage = '';
-      if (
-        !confirm(
-          'Are you sure you want to delete your account? This action cannot be undone.'
-        )
-      ) {
-        return;
-      }
-      try {
-        const token = storage.get('authToken');
-        if (!token) {
-          this.toast.add({
-            severity: 'error',
-            summary: 'Auth Error',
-            detail: 'Not authenticated.',
-            life: 3000,
-          });
-          return;
-        }
-        await axios.delete(
-          `${
-            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
-          }/api/profile`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
+      const message =
+        'Are you sure you want to delete your account? This action cannot be undone.';
+
+      this.confirm.require({
+        message,
+        header: 'Confirm Delete Account',
+        icon: 'pi pi-trash',
+        acceptLabel: 'Yes',
+        rejectLabel: 'No',
+        accept: async () => {
+          try {
+            const token = storage.get('authToken');
+            if (!token) {
+              this.toast.add({
+                severity: 'error',
+                summary: 'Auth Error',
+                detail: 'Not authenticated.',
+                life: 3000,
+              });
+              return;
+            }
+            await axios.delete(
+              `${
+                process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+              }/api/profile`,
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+            this.toast.add({
+              severity: 'success',
+              summary: 'Account Deleted',
+              detail: 'Account deleted successfully.',
+              life: 3000,
+            });
+            // Optionally clear encrypted storage and redirect to login
+            setTimeout(() => {
+              storage.clear();
+              window.location.href = '/login';
+            }, 1200);
+          } catch (error) {
+            let msg = 'Failed to delete account.';
+            if (
+              error.response &&
+              error.response.data &&
+              error.response.data.message
+            ) {
+              msg = error.response.data.message;
+            }
+            this.toast.add({
+              severity: 'error',
+              summary: 'Delete Error',
+              detail: msg,
+              life: 3500,
+            });
           }
-        );
-        this.toast.add({
-          severity: 'success',
-          summary: 'Account Deleted',
-          detail: 'Account deleted successfully.',
-          life: 3000,
-        });
-        // Optionally clear encrypted storage and redirect to login
-        setTimeout(() => {
-          storage.clear();
-          window.location.href = '/login';
-        }, 1200);
-      } catch (error) {
-        let msg = 'Failed to delete account.';
-        if (
-          error.response &&
-          error.response.data &&
-          error.response.data.message
-        ) {
-          msg = error.response.data.message;
-        }
-        this.toast.add({
-          severity: 'error',
-          summary: 'Delete Error',
-          detail: msg,
-          life: 3500,
-        });
-      }
+        },
+        reject: () => {
+          // no-op
+        },
+      });
     },
   },
 };

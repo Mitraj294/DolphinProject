@@ -1,5 +1,9 @@
 <template>
-  <nav class="navbar">
+  <ConfirmDialog />
+  <nav
+    v-bind="$attrs"
+    class="navbar"
+  >
     <div class="navbar-left">
       <span class="navbar-page">{{ pageTitle }}</span>
     </div>
@@ -110,30 +114,7 @@
         </transition>
       </div>
     </div>
-    <div
-      v-if="showLogoutConfirm"
-      class="logout-confirm-overlay"
-    >
-      <div class="logout-confirm-dialog">
-        <div class="logout-confirm-title">Are you sure you want to logout?</div>
-        <div class="logout-confirm-actions">
-          <button
-            type="button"
-            class="btn btn-secondary"
-            @click="handleLogoutYes"
-          >
-            Yes
-          </button>
-          <button
-            type="button"
-            class="btn btn-primary"
-            @click="handleLogoutCancel"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+    <!-- PrimeVue ConfirmDialog is used for logout confirmation -->
   </nav>
 </template>
 
@@ -142,13 +123,24 @@ import authMiddleware from '@/middleware/authMiddleware';
 import '@/assets/global.css';
 import storage from '@/services/storage';
 import axios from 'axios';
-
+import ConfirmDialog from 'primevue/confirmdialog';
+import { useConfirm } from 'primevue/useconfirm';
 export default {
   name: 'Navbar',
+  inheritAttrs: false,
+  props: {
+    sidebarExpanded: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  components: {
+    ConfirmDialog,
+  },
   data() {
     return {
       dropdownOpen: false,
-      showLogoutConfirm: false,
+      // showLogoutConfirm removed — PrimeVue Confirm will be used
       overridePageTitle: null,
       roleName: authMiddleware.getRole(),
       isVerySmallScreen: false,
@@ -168,6 +160,10 @@ export default {
       _boundUpdateNotificationCount: null,
       _boundAuthUpdated: null,
     };
+  },
+  setup() {
+    const confirm = useConfirm();
+    return { confirm };
   },
   computed: {
     pageTitle() {
@@ -573,8 +569,20 @@ export default {
     },
     confirmLogout(event) {
       event.stopPropagation();
-      this.showLogoutConfirm = true;
       this.dropdownOpen = false;
+      this.confirm.require({
+        message: 'Are you sure you want to logout?',
+        header: 'Confirm Logout',
+        icon: 'pi pi-sign-out',
+        acceptLabel: 'Yes',
+        rejectLabel: 'Cancel',
+        accept: () => {
+          this.handleLogoutYes();
+        },
+        reject: () => {
+          // no-op
+        },
+      });
     },
     handleLogoutYes() {
       // If impersonating, revert to superadmin instead of full logout
@@ -593,22 +601,14 @@ export default {
         storage.remove('superUserId');
         storage.remove('superFirstName');
         storage.remove('superLastName');
-        this.showLogoutConfirm = false;
         this.$router.push('/user-permission');
       } else {
         // Normal logout
         storage.clear();
-        this.showLogoutConfirm = false;
         this.$router.push({ name: 'Login' });
       }
     },
-    handleLogoutCancel() {
-      this.showLogoutConfirm = false;
-    },
-    logout() {
-      this.showLogoutConfirm = false;
-      this.$router.push({ name: 'Login' });
-    },
+    // handleLogoutCancel and logout removed: PrimeVue confirm used instead
     checkScreen() {
       this.isVerySmallScreen = window.innerWidth <= 420;
     },
@@ -622,15 +622,7 @@ export default {
       this.$router.push({ name: 'Profile' });
     },
   },
-  watch: {
-    showLogoutConfirm(newValue) {
-      if (newValue) {
-        document.body.classList.add('logout-overlay-active');
-      } else {
-        document.body.classList.remove('logout-overlay-active');
-      }
-    },
-  },
+  // no watchers needed for logout confirmation (PrimeVue confirm service used)
   mounted() {
     // mark alive so async fetches can safely write to state
     this.isNavbarAlive = true;
@@ -674,9 +666,7 @@ export default {
     // storage event (cross-tab) should update local count
     window.addEventListener('storage', this._boundUpdateNotificationCount);
 
-    if (this.showLogoutConfirm) {
-      document.body.classList.add('logout-overlay-active');
-    }
+    // no-op: logout overlay removed in favor of PrimeVue Confirm
 
     // Listen for page title overrides from pages
     if (this.$root && this.$root.$on) {

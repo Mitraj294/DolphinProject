@@ -4,12 +4,12 @@
     @close="$emit('close')"
     modalMaxWidth="700px"
   >
-    <template #title>
-      <div style="text-align: left">
-        <div style="font-size: 18px; font-weight: 600">Group Details</div>
+
+<div class="modal-card">
+        <div class="modal-title2">Group Details</div>
         <div class="modal-desc">Details for the selected group.</div>
-      </div>
-    </template>
+
+ 
 
     <div class="group-details">
       <div class="group-header-row">
@@ -117,6 +117,7 @@
         </div>
       </div>
     </div>
+</div>
   </CommonModal>
 </template>
 

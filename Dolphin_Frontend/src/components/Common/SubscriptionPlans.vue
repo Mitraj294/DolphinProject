@@ -362,10 +362,25 @@ export default {
         if (res.data && res.data.url) {
           window.location.href = res.data.url;
         } else {
-          alert('Could not start Stripe Checkout.');
+          if (this.$toast && typeof this.$toast.error === 'function') {
+            this.$toast.error('Could not start Stripe Checkout.');
+          } else if (this.$toast && typeof this.$toast === 'function') {
+            this.$toast('Could not start Stripe Checkout.', { type: 'error' });
+          } else {
+            console.warn(
+              'Toast not available: Could not start Stripe Checkout.'
+            );
+          }
         }
       } catch (e) {
-        alert('Stripe Checkout failed.');
+        if (this.$toast && typeof this.$toast.error === 'function') {
+          this.$toast.error('Stripe Checkout failed.');
+        } else if (this.$toast && typeof this.$toast === 'function') {
+          this.$toast('Stripe Checkout failed.', { type: 'error' });
+        } else {
+          this.$toast('Stripe Checkout failed.');
+        }
+        console.error('[Subscription] Stripe checkout error:', e);
       } finally {
         this.isLoading = false;
       }
