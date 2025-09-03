@@ -213,6 +213,7 @@ export default {
       sortAsc: true,
       loading: false,
       errorMessage: '',
+      _scrollableParents: null, // Store scrollable parent elements
     };
   },
   computed: {
@@ -547,15 +548,65 @@ export default {
       if (opening) {
         // set initial position and attach listeners
         this.updateMenuPosition(idx);
-        window.addEventListener('scroll', this._menuScrollHandler, {
-          passive: true,
-        });
+        this.attachScrollListeners();
         window.addEventListener('resize', this._menuResizeHandler);
       } else {
         // closing
         this.menuStyle = {};
-        window.removeEventListener('scroll', this._menuScrollHandler);
+        this.detachScrollListeners();
         window.removeEventListener('resize', this._menuResizeHandler);
+      }
+    },
+
+    // Find all scrollable parent elements
+    findScrollableParents(element) {
+      const scrollableParents = [];
+      let parent = element.parentElement;
+
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent);
+        const overflow = style.overflow + style.overflowX + style.overflowY;
+
+        if (overflow.includes('scroll') || overflow.includes('auto')) {
+          scrollableParents.push(parent);
+        }
+        parent = parent.parentElement;
+      }
+
+      // Always include window for document-level scrolling
+      scrollableParents.push(window);
+      return scrollableParents;
+    },
+
+    // Attach scroll listeners to all scrollable parents
+    attachScrollListeners() {
+      if (this.menuOpen === null) return;
+
+      const buttons = document.querySelectorAll('.leads-menu-btn');
+      const btn = buttons[this.menuOpen];
+      if (!btn) return;
+
+      // Find all scrollable parents
+      this._scrollableParents = this.findScrollableParents(btn);
+
+      // Attach scroll listeners to each scrollable parent
+      this._scrollableParents.forEach((scrollableElement) => {
+        scrollableElement.addEventListener('scroll', this._menuScrollHandler, {
+          passive: true,
+        });
+      });
+    },
+
+    // Remove scroll listeners from all scrollable parents
+    detachScrollListeners() {
+      if (this._scrollableParents) {
+        this._scrollableParents.forEach((scrollableElement) => {
+          scrollableElement.removeEventListener(
+            'scroll',
+            this._menuScrollHandler
+          );
+        });
+        this._scrollableParents = null;
       }
     },
     getMenuPosition(idx) {
@@ -572,7 +623,8 @@ export default {
         padding,
         Math.min(left, viewportWidth - menuWidth - padding)
       );
-      const top = rect.bottom + window.scrollY + 8;
+      // For fixed positioning, use rect.bottom directly (no scrollY needed)
+      const top = rect.bottom + 8;
       return {
         left: `${Math.round(left)}px`,
         top: `${Math.round(top)}px`,
@@ -584,16 +636,46 @@ export default {
       const buttons = document.querySelectorAll('.leads-menu-btn');
       const btn = buttons && buttons[idx] ? buttons[idx] : null;
       if (!btn) return;
+
       const rect = btn.getBoundingClientRect();
+
+      // Check if button is still visible in viewport
+      if (
+        rect.bottom < 0 ||
+        rect.top > window.innerHeight ||
+        rect.right < 0 ||
+        rect.left > window.innerWidth
+      ) {
+        // Button is not visible, hide menu
+        this.menuOpen = null;
+        return;
+      }
+
       const menuWidth = 220;
       const padding = 8;
       const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      // Calculate horizontal position
       let left = rect.left + rect.width / 2 - menuWidth / 2;
       left = Math.max(
         padding,
         Math.min(left, viewportWidth - menuWidth - padding)
       );
-      const top = rect.bottom + window.scrollY + 8;
+
+      // Calculate vertical position with fallback for bottom overflow
+      let top = rect.bottom + 8;
+      const menuHeight = 120; // Approximate menu height
+
+      // If menu would go below viewport, position it above the button
+      if (top + menuHeight > viewportHeight) {
+        top = rect.top - menuHeight - 8;
+        // If still not enough space above, position at viewport edge
+        if (top < padding) {
+          top = Math.max(padding, viewportHeight - menuHeight - padding);
+        }
+      }
+
       this.menuStyle = {
         left: `${Math.round(left)}px`,
         top: `${Math.round(top)}px`,
@@ -603,19 +685,34 @@ export default {
   },
   mounted() {
     document.addEventListener('click', this.handleGlobalClick);
-    // handlers for keeping menu aligned
+    // handlers for keeping menu aligned with throttling for better performance
     this._menuScrollHandler = () => {
-      if (this.menuOpen !== null) this.updateMenuPosition(this.menuOpen);
+      if (this.menuOpen !== null) {
+        // Use requestAnimationFrame for smooth updates
+        if (!this._scrollRAF) {
+          this._scrollRAF = requestAnimationFrame(() => {
+            this.updateMenuPosition(this.menuOpen);
+            this._scrollRAF = null;
+          });
+        }
+      }
     };
     this._menuResizeHandler = () => {
-      if (this.menuOpen !== null) this.updateMenuPosition(this.menuOpen);
+      if (this.menuOpen !== null) {
+        this.updateMenuPosition(this.menuOpen);
+      }
     };
     this.fetchLeads();
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleGlobalClick);
-    window.removeEventListener('scroll', this._menuScrollHandler);
+    this.detachScrollListeners();
     window.removeEventListener('resize', this._menuResizeHandler);
+    // Clean up any pending animation frame
+    if (this._scrollRAF) {
+      cancelAnimationFrame(this._scrollRAF);
+      this._scrollRAF = null;
+    }
   },
 };
 </script>

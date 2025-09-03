@@ -362,10 +362,13 @@ export default {
         if (res.data && res.data.url) {
           window.location.href = res.data.url;
         } else {
-          if (this.$toast && typeof this.$toast.error === 'function') {
-            this.$toast.error('Could not start Stripe Checkout.');
-          } else if (this.$toast && typeof this.$toast === 'function') {
-            this.$toast('Could not start Stripe Checkout.', { type: 'error' });
+          if (this.$toast && typeof this.$toast.add === 'function') {
+            this.$toast.add({
+              severity: 'error',
+              summary: 'Checkout Error',
+              detail: 'Could not start Stripe Checkout.',
+              life: 4000,
+            });
           } else {
             console.warn(
               'Toast not available: Could not start Stripe Checkout.'
@@ -373,12 +376,15 @@ export default {
           }
         }
       } catch (e) {
-        if (this.$toast && typeof this.$toast.error === 'function') {
-          this.$toast.error('Stripe Checkout failed.');
-        } else if (this.$toast && typeof this.$toast === 'function') {
-          this.$toast('Stripe Checkout failed.', { type: 'error' });
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Checkout Error',
+            detail: 'Stripe Checkout failed.',
+            life: 4000,
+          });
         } else {
-          this.$toast('Stripe Checkout failed.');
+          console.error('Toast not available: Stripe Checkout failed.');
         }
         console.error('[Subscription] Stripe checkout error:', e);
       } finally {

@@ -15,7 +15,13 @@
                   v-model="form.first_name"
                   icon="fas fa-user"
                   placeholder="Type here"
+                  required
                 />
+                <FormLabel
+                  v-if="errors.firstName"
+                  class="error-message"
+                  >{{ errors.firstName[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Last Name</FormLabel>
@@ -23,7 +29,13 @@
                   v-model="form.last_name"
                   icon="fas fa-user"
                   placeholder="Type here"
+                  required
                 />
+                <FormLabel
+                  v-if="errors.lastName"
+                  class="error-message"
+                  >{{ errors.lastName[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Email</FormLabel>
@@ -32,7 +44,12 @@
                   icon="fas fa-envelope"
                   type="email"
                   placeholder="abc@gmail.com"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.email"
+                  class="error-message"
+                  >{{ errors.email[0] }}</FormLabel
+                >
               </div>
             </FormRow>
             <FormRow>
@@ -42,7 +59,12 @@
                   v-model="form.phone"
                   icon="fas fa-phone"
                   placeholder="Type here"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.phone"
+                  class="error-message"
+                  >{{ errors.phone[0] }}</FormLabel
+                >
               </div>
 
               <div>
@@ -57,7 +79,12 @@
                     { value: 'Colleague', text: 'Colleague' },
                     { value: 'Other', text: 'Other' },
                   ]"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.find_us"
+                  class="error-message"
+                  >{{ errors.find_us[0] }}</FormLabel
+                >
               </div>
               <div></div>
             </FormRow>
@@ -68,7 +95,12 @@
                   v-model="form.org_name"
                   icon="fas fa-cog"
                   placeholder="Flexi-Finders"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.org_name"
+                  class="error-message"
+                  >{{ errors.org_name[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Organization Size</FormLabel>
@@ -90,7 +122,12 @@
                       text: '1-99 Employees (Small)',
                     },
                   ]"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.org_size"
+                  class="error-message"
+                  >{{ errors.org_size[0] }}</FormLabel
+                >
               </div>
               <div></div>
             </FormRow>
@@ -101,7 +138,12 @@
                   v-model="form.address"
                   icon="fas fa-map-marker-alt"
                   placeholder="Enter address"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.address"
+                  class="error-message"
+                  >{{ errors.address[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Country</FormLabel>
@@ -113,7 +155,13 @@
                     { value: null, text: 'Select', disabled: true },
                     ...countries.map((c) => ({ value: c.id, text: c.name })),
                   ]"
+                  required
                 />
+                <FormLabel
+                  v-if="errors.country_id"
+                  class="error-message"
+                  >{{ errors.country_id[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>State</FormLabel>
@@ -125,7 +173,12 @@
                     { value: null, text: 'Select', disabled: true },
                     ...states.map((s) => ({ value: s.id, text: s.name })),
                   ]"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.state_id"
+                  class="error-message"
+                  >{{ errors.state_id[0] }}</FormLabel
+                >
               </div>
             </FormRow>
             <FormRow>
@@ -141,7 +194,12 @@
                       text: city.name,
                     })),
                   ]"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.city_id"
+                  class="error-message"
+                  >{{ errors.city_id[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Zip Code</FormLabel>
@@ -149,7 +207,12 @@
                   v-model="form.zip"
                   icon="fas fa-map-marker-alt"
                   placeholder="Enter PIN code"
-                />
+                  required
+                /><FormLabel
+                  v-if="errors.zip"
+                  class="error-message"
+                  >{{ errors.zip[0] }}</FormLabel
+                >
               </div>
               <div></div>
             </FormRow>
@@ -221,6 +284,7 @@ export default {
       loading: false,
       successMessage: '',
       errorMessage: '',
+      errors: {},
     };
   },
   async created() {
@@ -427,13 +491,22 @@ export default {
         this.$router.push('/leads'); // Redirect back to leads list
       } catch (error) {
         console.error('Error updating lead:', error);
-        if (error.response && error.response.data) {
-          this.errorMessage =
-            error.response.data.message || 'Failed to update lead.';
-          if (error.response.data.errors) {
-            // Concatenate specific validation errors
-            for (const key in error.response.data.errors) {
-              this.errorMessage += ` ${error.response.data.errors[key][0]}`;
+        if (error.response) {
+          this.errors = error.response.data.errors;
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Validation Error',
+            detail: 'Please correct the highlighted errors.',
+            life: 5000,
+          });
+          if (error.response && error.response.data) {
+            this.errorMessage =
+              error.response.data.message || 'Failed to update lead.';
+            if (error.response.data.errors) {
+              // Concatenate specific validation errors
+              for (const key in error.response.data.errors) {
+                this.errorMessage;
+              }
             }
           }
         } else {
@@ -614,5 +687,10 @@ export default {
 }
 .org-edit-update:hover {
   background: #005fa3;
+}
+.error-message {
+  color: red;
+  font-size: 0.8em;
+  margin-left: 8px;
 }
 </style>

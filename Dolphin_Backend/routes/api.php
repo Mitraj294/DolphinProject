@@ -23,6 +23,7 @@ use App\Http\Controllers\NotificationController;
  These routes do not require any authentication.
 */
 Route::post('/register', [AuthController::class, 'register']);
+
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
 Route::post('/password/reset', [AuthController::class, 'resetPassword']);
@@ -82,6 +83,10 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/answers', [AnswerController::class, 'getUserAnswers']);
     Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
 
+    // Stripe endpoints: allow any authenticated user to create a checkout session or open customer portal
+    Route::post('/stripe/checkout-session', [StripeSubscriptionController::class, 'createCheckoutSession']);
+    Route::post('/stripe/customer-portal', [StripeSubscriptionController::class, 'createCustomerPortal']);
+
     // These routes are accessible to all roles, but the logic inside the controller may differ.
     Route::get('/subscription', [SubscriptionController::class, 'getUserSubscription']);
     Route::get('/user/subscription', [SubscriptionController::class, 'getUserSubscription']);
@@ -100,6 +105,8 @@ Route::middleware('auth:api')->group(function () {
     // Superadmin only routes
     Route::middleware('auth.role:superadmin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
+        Route::post('/users', [UserController::class, 'store']);
+        Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
         Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
         Route::patch('/users/{id}/soft-delete', [UserController::class, 'softDelete']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
@@ -121,8 +128,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/leads/{id}', [LeadController::class, 'show']);
         Route::get('/leads', [LeadController::class, 'index']);
         Route::patch('/leads/{id}', [LeadController::class, 'update']);
-        Route::post('/stripe/checkout-session', [StripeSubscriptionController::class, 'createCheckoutSession']);
-        Route::post('/stripe/customer-portal', [StripeSubscriptionController::class, 'createCustomerPortal']);
+        
     Route::post('/notifications/send', [NotificationController::class, 'send']);
 
         Route::post('/notifications/send', [NotificationController::class, 'send']);

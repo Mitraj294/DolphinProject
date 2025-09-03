@@ -50,8 +50,8 @@ const routes = [
   },
   {
     path: '/user-permission/add',
-    name: 'AddPermission',
-    component: () => import('@/components/Common/Superadmin/AddPermission.vue'),
+    name: 'AddUser',
+    component: () => import('@/components/Common/Superadmin/AddUser.vue'),
   },
   {
     path: '/',

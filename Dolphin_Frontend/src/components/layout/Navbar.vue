@@ -172,6 +172,9 @@ export default {
       if (routeName === 'UserPermission') {
         return 'Users + Permission';
       }
+      if (routeName === 'AddUser') {
+        return 'Add User';
+      }
       if (routeName === 'ScheduleClassTraining') {
         return 'Schedule Classes/Training';
       }

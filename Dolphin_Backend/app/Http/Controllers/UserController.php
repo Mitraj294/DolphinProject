@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\UserRole;
+use App\Models\UserDetail;
 
 class UserController extends Controller
 {
@@ -48,6 +49,73 @@ class UserController extends Controller
         });
         return response()->json(['users' => $users]);
     }
+
+    // Add a new user
+    public function store(Request $request)
+    {
+        // Debug: Log incoming request data
+        \Log::info('UserController::store - Request data:', $request->all());
+        
+        try {
+            $validatedData = $request->validate([
+                'email' => 'required|email|unique:users',
+                'first_name' => 'required|string|max:255',
+                'last_name' => 'required|string|max:255',
+                'phone' => 'nullable|string|max:20',
+                'role' => 'required|string|in:user,organizationadmin,dolphinadmin,superadmin,salesperson',
+            ]);
+
+            // Generate a random password and hash it
+            $plainPassword = \Illuminate\Support\Str::random(12);
+            $hashedPassword = \Illuminate\Support\Facades\Hash::make($plainPassword);
+
+            $user = User::create([
+                'email' => $validatedData['email'],
+                'first_name' => $validatedData['first_name'],
+                'last_name' => $validatedData['last_name'],
+                'password' => $hashedPassword,
+            ]);
+
+            // Create user details if phone is provided
+            if (!empty($validatedData['phone'])) {
+                $user->userDetails()->create([
+                    'phone' => $validatedData['phone'],
+                ]);
+            }
+
+            // Assign role - check if role exists, create if it doesn't
+            $role = Role::firstOrCreate(['name' => $validatedData['role']]);
+            UserRole::create([
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+            ]);
+
+            return response()->json([
+                'message' => 'User created successfully',
+                'user' => $user->load('roles', 'userDetails'),
+                'password' => $plainPassword,
+            ], 201);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Debug: Log validation errors
+            \Log::error('UserController::store - Validation failed:', [
+                'errors' => $e->errors(),
+                'request_data' => $request->all()
+            ]);
+            
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Error creating user',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    
 
     // Update a user's role (pivot table)
     public function updateRole(Request $request, $id)
@@ -128,6 +196,7 @@ class UserController extends Controller
         $user = User::findOrFail($id);
         $currentUser = $request->user();
         // If authenticated as superadmin, allow delete
+
         if ($currentUser && $currentUser->roles()->where('name', 'superadmin')->exists()) {
             $user->delete();
             return response()->json(['message' => 'User soft deleted by superadmin']);

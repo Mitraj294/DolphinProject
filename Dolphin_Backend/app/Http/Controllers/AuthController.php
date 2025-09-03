@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -92,6 +93,8 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
     }
+
+
 
     public function login(Request $request)
     {

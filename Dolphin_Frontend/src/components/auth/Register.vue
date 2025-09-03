@@ -81,140 +81,173 @@
       <form
         v-else-if="step === 2"
         @submit.prevent="goToStep3"
+        class="org-form"
       >
-        <FormLabel>Organization Name</FormLabel>
-        <div class="input-group org-name-group">
-          <span class="icon"><i class="fas fa-building"></i></span>
-          <input
-            type="text"
-            v-model="organization_name"
-            placeholder="Organization Name"
-            ref="orgNameInput"
-            required
-          />
-        </div>
-
-        <div class="input-group org-country-group styled-select">
-          <FormLabel>Organization Size</FormLabel>
-          <FormDropdown
-            v-model="organization_size"
-            icon="fas fa-users"
-            :options="[
-              { value: '', text: 'Select Organization Size', disabled: true },
-              {
-                value: 'Large',
-                text: '250+ Employees (Large)',
-              },
-              {
-                value: 'Medium',
-                text: '100-249 Employees (Medium)',
-              },
-              {
-                value: 'Small',
-                text: '1-99 Employees (Small)',
-              },
-            ]"
-          />
-        </div>
-
-        <div class="input-group org-findus-group">
-          <FormLabel>How did you find us?</FormLabel>
-          <FormDropdown
-            v-model="find_us"
-            icon="fas fa-search"
-            :options="[
-              { value: null, text: 'Select', disabled: true },
-              ...(findUsOptions.length
-                ? findUsOptions.map((o) => ({ value: o, text: o }))
-                : [
-                    { value: 'Google', text: 'Google' },
-                    { value: 'Friend', text: 'Friend' },
-                    { value: 'Colleague', text: 'Colleague' },
-                    { value: 'Other', text: 'Other' },
-                  ]),
-            ]"
-          />
-        </div>
-
-        <div class="input-group org-country-group styled-select">
-          <FormLabel>Country</FormLabel>
-          <FormDropdown
-            v-model="country"
-            icon="fas fa-globe"
-            :options="[
-              { value: null, text: 'Select', disabled: true },
-              ...countries.map((c) => ({ value: c.id, text: c.name })),
-            ]"
-            @change="onCountryChange"
-          />
-        </div>
-
-        <div class="input-group org-state-group styled-select">
-          <FormLabel>State</FormLabel>
-          <FormDropdown
-            v-model="organization_state"
-            icon="fas fa-flag"
-            :options="[
-              { value: null, text: 'Select', disabled: true },
-              ...states.map((s) => ({ value: s.id, text: s.name })),
-            ]"
-            @change="onStateChange"
-          />
-        </div>
-
-        <div class="input-group org-city-group styled-select">
-          <FormLabel>City</FormLabel>
-          <FormDropdown
-            v-model="organization_city"
-            icon="fas fa-city"
-            :options="[
-              { value: null, text: 'Select', disabled: true },
-              ...cities.map((city) => ({ value: city.id, text: city.name })),
-            ]"
-          />
-        </div>
-
-        <div>
-          <FormLabel>Organization Address</FormLabel>
-          <div class="input-group org-address-group">
-            <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
-            <input
-              type="text"
-              v-model="organization_address"
-              placeholder="Organization Address"
-              required
-            />
+        <!-- Organization Name - Full Width -->
+        <div class="form-row full-width">
+          <div class="form-field">
+            <FormLabel>Organization Name</FormLabel>
+            <div class="input-group org-name-group">
+              <span class="icon"><i class="fas fa-building"></i></span>
+              <input
+                type="text"
+                v-model="organization_name"
+                placeholder="Organization Name"
+                ref="orgNameInput"
+                required
+              />
+            </div>
           </div>
         </div>
 
-        <div class="input-group org-country-group styled-select">
-          <FormLabel>Zip Code</FormLabel>
-          <div class="input-group org-zip-group">
-            <span class="icon"><i class="fas fa-mail-bulk"></i></span>
-            <input
-              type="text"
-              v-model="organization_zip"
-              placeholder="Zip Code"
-              required
-            />
+        <!-- Two Column Layout -->
+        <div class="form-row two-columns">
+          <div class="form-field">
+            <FormLabel>Organization Size</FormLabel>
+            <div class="input-group org-country-group styled-select">
+              <FormDropdown
+                v-model="organization_size"
+                icon="fas fa-users"
+                :options="[
+                  {
+                    value: '',
+                    text: 'Select Organization Size',
+                    disabled: true,
+                  },
+                  {
+                    value: 'Large',
+                    text: '250+ Employees (Large)',
+                  },
+                  {
+                    value: 'Medium',
+                    text: '100-249 Employees (Medium)',
+                  },
+                  {
+                    value: 'Small',
+                    text: '1-99 Employees (Small)',
+                  },
+                ]"
+              />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <FormLabel>How did you find us?</FormLabel>
+            <div class="input-group org-findus-group">
+              <FormDropdown
+                v-model="find_us"
+                icon="fas fa-search"
+                :options="[
+                  { value: null, text: 'Select', disabled: true },
+                  ...(findUsOptions.length
+                    ? findUsOptions.map((o) => ({ value: o, text: o }))
+                    : [
+                        { value: 'Google', text: 'Google' },
+                        { value: 'Friend', text: 'Friend' },
+                        { value: 'Colleague', text: 'Colleague' },
+                        { value: 'Other', text: 'Other' },
+                      ]),
+                ]"
+              />
+            </div>
           </div>
         </div>
 
-        <!-- zip handled above with native input -->
-        <button
-          type="button"
-          class="login-btn"
-          @click="goToStep1"
-          style="margin-bottom: 8px"
-        >
-          Back
-        </button>
-        <button
-          type="submit"
-          class="login-btn"
-        >
-          Next
-        </button>
+        <!-- Country, State, City Row -->
+        <div class="form-row three-columns">
+          <div class="form-field">
+            <FormLabel>Country</FormLabel>
+            <div class="input-group org-country-group styled-select">
+              <FormDropdown
+                v-model="country"
+                icon="fas fa-globe"
+                :options="[
+                  { value: null, text: 'Select', disabled: true },
+                  ...countries.map((c) => ({ value: c.id, text: c.name })),
+                ]"
+                @change="onCountryChange"
+              />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <FormLabel>State</FormLabel>
+            <div class="input-group org-state-group styled-select">
+              <FormDropdown
+                v-model="organization_state"
+                icon="fas fa-flag"
+                :options="[
+                  { value: null, text: 'Select', disabled: true },
+                  ...states.map((s) => ({ value: s.id, text: s.name })),
+                ]"
+                @change="onStateChange"
+              />
+            </div>
+          </div>
+
+          <div class="form-field">
+            <FormLabel>City</FormLabel>
+            <div class="input-group org-city-group styled-select">
+              <FormDropdown
+                v-model="organization_city"
+                icon="fas fa-city"
+                :options="[
+                  { value: null, text: 'Select', disabled: true },
+                  ...cities.map((city) => ({
+                    value: city.id,
+                    text: city.name,
+                  })),
+                ]"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Address and Zip Row -->
+        <div class="form-row two-columns">
+          <div class="form-field address-field">
+            <FormLabel>Organization Address</FormLabel>
+            <div class="input-group org-address-group">
+              <span class="icon"><i class="fas fa-map-marker-alt"></i></span>
+              <input
+                type="text"
+                v-model="organization_address"
+                placeholder="Organization Address"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-field zip-field">
+            <FormLabel>Zip Code</FormLabel>
+            <div class="input-group org-zip-group">
+              <span class="icon"><i class="fas fa-mail-bulk"></i></span>
+              <input
+                type="text"
+                v-model="organization_zip"
+                placeholder="Zip Code"
+                required
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons Row -->
+        <div class="form-row full-width button-row">
+          <button
+            type="button"
+            class="login-btn back-btn"
+            @click="goToStep1"
+          >
+            Back
+          </button>
+          <button
+            type="submit"
+            class="login-btn next-btn"
+          >
+            Next
+          </button>
+        </div>
       </form>
 
       <!-- Step 3: Password -->
@@ -258,9 +291,8 @@
         </div>
         <button
           type="button"
-          class="login-btn"
+          class="login-btn back-btn"
           @click="goToStep2"
-          style="margin-bottom: 8px"
         >
           Back
         </button>
@@ -843,6 +875,11 @@ select {
   box-sizing: border-box;
 }
 
+/* Wider layout for Step 2 (Organization Info) */
+.login-card:has(.org-form) {
+  max-width: 780px;
+}
+
 .login-title {
   font-size: 2rem;
   font-weight: 600;
@@ -900,7 +937,7 @@ select {
   font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
-  margin-bottom: 32px;
+
   margin-top: 8px;
   transition: background 0.2s;
 }
@@ -913,7 +950,7 @@ select {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin-bottom: 16px;
+  margin: 16px;
   font-size: 1rem;
   color: #787878;
   font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
@@ -950,6 +987,75 @@ select {
   margin-top: 4px;
 }
 
+/* Organization Form Layout Styles */
+.org-form {
+  text-align: left;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+
+  width: 100%;
+}
+
+.form-row.full-width {
+  flex-direction: column;
+}
+
+.form-row.two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-row.three-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+.form-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-field .input-group {
+  margin-bottom: 16px;
+}
+
+.address-field {
+  flex: 2;
+}
+
+.zip-field {
+  flex: 1;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: space-between;
+}
+
+.back-btn {
+  flex: 1;
+}
+.next-btn {
+  flex: 1;
+  margin-bottom: 16px !important;
+  margin-top: 0 !important;
+}
+
+.back-btn {
+  background: #6c757d;
+}
+
+.back-btn:hover {
+  background: #5a6268;
+}
+
 @media (max-width: 1200px) {
   .bg-lines {
     width: 180px;
@@ -964,6 +1070,11 @@ select {
   .login-card {
     padding: 32px;
     max-width: 400px;
+  }
+
+  /* Wider layout for Step 2 on medium screens */
+  .login-card:has(.org-form) {
+    max-width: 700px;
   }
 }
 
@@ -981,6 +1092,7 @@ select {
   .login-card {
     padding: 24px;
     margin: 0 16px;
+    max-width: 95%;
   }
   .login-title {
     font-size: 1.8rem;
@@ -994,6 +1106,55 @@ select {
   .login-btn {
     font-size: 1rem;
     padding: 12px;
+  }
+
+  /* Mobile responsive for organization form */
+  .form-row.two-columns,
+  .form-row.three-columns {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .button-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .back-btn,
+  .next-btn {
+    width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  .form-row.three-columns {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .form-row.three-columns .form-field:last-child {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-height: 900px) {
+  .login-card {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    /* constrain card height and allow internal scrolling when vertical space is limited */
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .login-card::-webkit-scrollbar {
+    width: 4px;
+  }
+  .login-card::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .login-card::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
   }
 }
 </style>

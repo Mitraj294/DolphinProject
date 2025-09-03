@@ -305,4 +305,25 @@ export default {
     padding: 12px;
   }
 }
+@media (max-height: 900px) {
+  .login-card {
+    padding-top: 16px;
+    padding-bottom: 16px;
+    /* constrain card height and allow internal scrolling when vertical space is limited */
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .login-card::-webkit-scrollbar {
+    width: 4px;
+  }
+  .login-card::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .login-card::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 0, 0, 0.12);
+    border-radius: 8px;
+  }
+}
 </style>

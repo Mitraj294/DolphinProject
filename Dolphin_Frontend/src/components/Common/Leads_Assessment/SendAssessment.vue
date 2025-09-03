@@ -37,12 +37,15 @@
             </FormRow>
 
             <div class="send-assessment-label">Editable Template</div>
+
             <div class="send-assessment-template-box">
               <Editor
                 v-if="editorReady"
-                v-html="templateContent"
+                v-model="templateContent"
                 :key="editorKey"
-                editorStyle="height: 320px"
+                editorStyle="height: 420px"
+                :modules="editorModules"
+                @load="onEditorLoad"
               />
             </div>
 
@@ -82,94 +85,131 @@ export default {
       to: '',
       recipientName: '',
       subject: 'Complete Your Registration',
-
       templateContent: '',
-      defaultTemplate: '',
+      pendingTemplate: '', // Store template until editor is ready
       sending: false,
       registrationLink: '',
       editorReady: false,
+      quillInstance: null,
       // This key is crucial. Changing it will force the editor to re-mount completely.
       editorKey: 0,
+      editorModules: {
+        toolbar: {
+          container: [
+            [{ header: [1, 2, 3, 4, 5, 6, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ color: [] }, { background: [] }],
+            [{ align: [] }],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['blockquote', 'code-block'],
+            ['link', 'image'],
+            ['clean'],
+          ],
+          handlers: {
+            // Custom handlers can be added here if needed
+          },
+        },
+      },
     };
   },
+  // mounted() now only handles the initial trigger for loading data.
   mounted() {
-    const params = this.$route.params || {};
-    // If an id param is present, fetch lead details to prefill the form.
-    const leadId = params.id || this.$route.query.lead_id || null;
-    if (leadId) {
-      (async () => {
-        try {
-          const API_BASE_URL =
-            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-          const storage = require('@/services/storage').default;
-          const token = storage.get('authToken');
-          const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
-          });
-          const payload = res.data || null;
-          const leadObj = payload && payload.lead ? payload.lead : payload;
-          if (leadObj) {
-            this.to = leadObj.email || '';
-            this.recipientName = `${leadObj.first_name || ''} ${
-              leadObj.last_name || ''
-            }`.trim();
-            const leadDefault =
-              (res && res.data && res.data.defaultTemplate) ||
-              leadObj.defaultTemplate;
-            if (leadDefault) {
-              this.defaultTemplate = String(leadDefault);
-              // ensure registration link is prepared
-              this.updateRegistrationLink();
-              this.templateContent = this.defaultTemplate
-                .replace(
-                  /\{\{registration_link\}\}/g,
-                  this.registrationLink || ''
-                )
-                .replace(/\{\{name\}\}/g, this.recipientName || '');
-              console.debug(
-                'Applied lead defaultTemplate, length=',
-                this.templateContent.length
-              );
-              console.debug(
-                'template preview:',
-                this.templateContent.slice(0, 200)
-              );
-              this.editorKey += 1;
-              this.$nextTick(() => {
-                this.editorReady = true;
-              });
-            }
-          }
-        } catch (e) {}
-      })();
-    }
+    console.log('=== COMPONENT MOUNTED ===');
+    const leadId = this.$route.params.id || this.$route.query.lead_id || null;
+    console.log('Lead ID from route:', leadId);
 
-    this.to = this.to || params.email || this.$route.query.email || '';
-    this.recipientName =
-      this.recipientName ||
-      params.contact ||
-      params.name ||
-      this.$route.query.contact ||
-      this.$route.query.name ||
-      '';
+    if (leadId) {
+      console.log('Loading initial lead data for ID:', leadId);
+      this.loadInitialLeadData(leadId);
+    } else {
+      console.log('No lead ID, showing blank editor');
+      // If no lead is being loaded, just show a blank editor.
+      this.editorReady = true;
+    }
   },
   watch: {
-    to: {
-      handler(newEmail) {
-        if (newEmail) {
-          this.fetchServerTemplate();
-        } else {
-          // If there's no recipient, show the default template so editor isn't blank.
-          this.templateContent = this.defaultTemplate
-            .replace(/\{\{registration_link\}\}/g, '')
-            .replace(/\{\{name\}\}/g, '');
-          this.editorReady = true;
-        }
+    templateContent: {
+      handler(newValue, oldValue) {
+        console.log('=== TEMPLATE CONTENT WATCHER ===');
+        console.log('Old value length:', oldValue?.length || 0);
+        console.log('New value length:', newValue?.length || 0);
+        console.log('New value preview:', newValue?.substring(0, 100));
+        console.log('Quill instance exists:', !!this.quillInstance);
       },
-      immediate: true, // This runs the watcher when the component is first created.
+      immediate: true,
+    },
+    to(newEmail, oldEmail) {
+      console.log('=== TO EMAIL WATCHER ===');
+      console.log('Email changed from:', oldEmail, 'to:', newEmail);
+      // Only fetch a new template if the email has actually changed to a new value.
+      if (newEmail && newEmail !== oldEmail) {
+        console.log('Fetching server template for new email');
+        this.fetchServerTemplate();
+      }
     },
   },
   methods: {
+    // The main logic for loading the initial lead from the URL.
+    async loadInitialLeadData(leadId) {
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
+        const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        const leadObj = res.data?.lead;
+        const leadDefaultTemplate = res.data?.defaultTemplate;
+
+        console.log('=== LEAD DATA LOADED ===');
+        console.log('Lead object:', leadObj);
+        console.log('Default template exists:', !!leadDefaultTemplate);
+        console.log('Template length:', leadDefaultTemplate?.length);
+        console.log(
+          'Template preview:',
+          leadDefaultTemplate?.substring(0, 100)
+        );
+
+        if (leadObj && leadDefaultTemplate) {
+          this.to = leadObj.email || '';
+          this.recipientName = `${leadObj.first_name || ''} ${
+            leadObj.last_name || ''
+          }`.trim();
+
+          // DEBUGGING STEP: Check the browser console to ensure this log appears and the HTML looks correct.
+          console.log(
+            'Final HTML template being passed to the editor:',
+            leadDefaultTemplate
+          );
+
+          // Store the template to load when editor is ready
+          this.pendingTemplate = String(leadDefaultTemplate);
+          console.log('=== PENDING TEMPLATE SET ===');
+          console.log('Pending template length:', this.pendingTemplate.length);
+          console.log('Editor ready status before:', this.editorReady);
+
+          // Make editor ready
+          this.editorReady = true;
+          this.editorKey += 1;
+          console.log('=== EDITOR MOUNTING ===');
+          console.log('Editor ready set to:', this.editorReady);
+          console.log('Editor key incremented to:', this.editorKey);
+        } else {
+          // If the template is missing from the API for some reason, log it.
+          console.error(
+            'API response did not contain a lead object or the default template.'
+          );
+          this.editorReady = true; // Show the blank editor
+        }
+      } catch (e) {
+        console.error('Failed to load initial lead data:', e);
+        this.templateContent = '<p>Error: Could not load lead data.</p>';
+        this.editorReady = true;
+      }
+    },
+
     updateRegistrationLink() {
       if (this.to) {
         this.registrationLink = `${
@@ -180,65 +220,39 @@ export default {
       }
     },
 
+    // This function is now ONLY for fetching the GENERIC template when the user types a new email.
     async fetchServerTemplate() {
       if (!this.to) return;
 
-      // 1. Hide the current editor instance while we fetch new data.
       this.editorReady = false;
       this.updateRegistrationLink();
 
       try {
-        // If a default template was provided by the lead API, prefer it and skip the template endpoint.
-        if (this.defaultTemplate && this.defaultTemplate.trim() !== '') {
-          let html = String(this.defaultTemplate || '');
-          // replace placeholders
-          html = html
-            .replace(/\{\{registration_link\}\}/g, this.registrationLink || '')
-            .replace(/\{\{name\}\}/g, this.recipientName || '');
-          this.templateContent = html;
-          this.editorKey += 1;
-          this.$nextTick(() => {
-            this.editorReady = true;
-          });
-          return;
-        }
-
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
         const params = {
           registration_link: this.registrationLink,
-          name:
-            this.recipientName ||
-            this.$route.query.contact ||
-            this.$route.query.name ||
-            '',
+          name: this.recipientName,
         };
 
-        // request server template
         const res = await axios.get(
           `${API_BASE_URL}/api/email-template/lead-registration`,
           { params }
         );
-        let html = res && res.data ? String(res.data) : '';
+        let html = res?.data ? String(res.data) : '';
 
         // Parse the full HTML response to extract only the body content.
-        try {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, 'text/html');
-          const container = doc.querySelector('.email-container');
-          if (container) html = container.innerHTML;
-        } catch (e) {
-          console.error('HTML parsing failed, using raw template:', e);
-        }
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const container = doc.querySelector('.email-container');
+        if (container) html = container.innerHTML;
 
-        // Set the data for the next editor instance.
         this.templateContent = html;
       } catch (e) {
         console.error('Failed to fetch server template:', e?.message || e);
         this.templateContent =
           '<p>Error: Could not load the email template.</p>';
       } finally {
-        // Increment the key to force re-mount of the editor.
         this.editorKey += 1;
         this.$nextTick(() => {
           this.editorReady = true;
@@ -306,6 +320,122 @@ export default {
         });
       } finally {
         this.sending = false;
+      }
+    },
+
+    onEditorLoad(event) {
+      console.log('=== EDITOR LOAD EVENT FIRED ===');
+      console.log('Editor loaded, Quill instance:', event.instance);
+      console.log('Event object:', event);
+      console.log('Pending template exists:', !!this.pendingTemplate);
+      console.log('Pending template length:', this.pendingTemplate?.length);
+      console.log('Current templateContent:', this.templateContent);
+
+      this.quillInstance = event.instance;
+
+      // If we have pending template content, set it now
+      if (this.pendingTemplate) {
+        console.log('=== SETTING TEMPLATE CONTENT ===');
+        console.log('About to set template content');
+        console.log('Before - templateContent:', this.templateContent);
+
+        // Store the template for later use
+        const templateToSet = this.pendingTemplate;
+
+        // Use multiple timeouts to ensure Quill is ready and prevent it from clearing content
+        setTimeout(() => {
+          try {
+            console.log('Trying direct DOM manipulation method');
+            const editorRoot = this.quillInstance.root;
+
+            // First, disable Quill temporarily to prevent interference
+            this.quillInstance.disable();
+
+            // Set the content directly
+            editorRoot.innerHTML = templateToSet;
+            console.log('HTML set on root element');
+            console.log(
+              'Root innerHTML after setting:',
+              editorRoot.innerHTML.substring(0, 200)
+            );
+
+            // Re-enable Quill
+            this.quillInstance.enable();
+
+            // Force Quill to update and recognize the content
+            this.quillInstance.update();
+            console.log('Quill update called');
+
+            // Update the v-model after a small delay
+            setTimeout(() => {
+              this.templateContent = templateToSet;
+              console.log('Template content updated via v-model');
+              console.log(
+                'V-model content length:',
+                this.templateContent.length
+              );
+
+              // Final verification
+              setTimeout(() => {
+                console.log('FINAL VERIFICATION:');
+                console.log(
+                  'Quill root HTML:',
+                  this.quillInstance.root.innerHTML.substring(0, 200)
+                );
+                console.log(
+                  'Quill text length:',
+                  this.quillInstance.getText().length
+                );
+                console.log('V-model length:', this.templateContent.length);
+              }, 100);
+            }, 50);
+
+            console.log('Direct DOM method completed');
+          } catch (error) {
+            console.error('Error with direct DOM method:', error);
+
+            // Fallback: Try using Quill's API with a different approach
+            try {
+              console.log('Trying fallback: setContents with plain text');
+              const plainText = templateToSet
+                .replace(/<br[^>]*>/gi, '\n')
+                .replace(/<\/p>/gi, '\n\n')
+                .replace(/<[^>]*>/g, '')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .trim();
+
+              this.quillInstance.setText(plainText);
+              this.templateContent = plainText;
+              console.log('Plain text fallback completed');
+            } catch (error2) {
+              console.error('Error with fallback method:', error2);
+              // Final v-model update
+              this.templateContent = templateToSet;
+            }
+          }
+        }, 300); // Even longer delay to ensure Quill is fully ready
+
+        // Clear pending template
+        this.pendingTemplate = '';
+        console.log('Pending template cleared');
+
+        // Force Quill to update if needed
+        this.$nextTick(() => {
+          console.log('=== NEXT TICK AFTER TEMPLATE SET ===');
+          console.log(
+            'Quill delta contents:',
+            this.quillInstance?.getContents()
+          );
+          console.log(
+            'Quill HTML contents:',
+            this.quillInstance?.root?.innerHTML
+          );
+        });
+      } else {
+        console.log('=== NO PENDING TEMPLATE ===');
+        console.log('No pending template to set');
       }
     },
   },
@@ -450,5 +580,9 @@ export default {
     gap: 18px;
   }
 }
+
+/* Hide the default PrimeVue toolbar to prevent duplicate toolbars */
+:deep(.p-editor-toolbar) {
+  display: none !important;
+}
 </style>
-display: flex;

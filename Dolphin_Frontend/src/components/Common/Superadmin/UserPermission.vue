@@ -119,7 +119,12 @@
     @close="showEditModal = false"
     @submit="saveEditUser"
   >
-    <template #title>Edit User</template>
+    <div
+      class="profile-modal-header"
+      style="text-align: left"
+    >
+      <h1>Edit User</h1>
+    </div>
     <FormRow>
       <FormLabel>First Name</FormLabel>
       <FormInput
@@ -589,7 +594,7 @@ export default {
 
 <style scoped>
 .actions-scroll {
-  max-width: 250px;
+  max-width: 260px;
 
   overflow-x: auto;
 }
@@ -671,6 +676,11 @@ export default {
 @media (max-width: 900px) {
   .page {
     padding: 4px;
+  }
+  .actions-scroll {
+    max-width: 260px;
+
+    overflow-x: auto;
   }
 }
 /* Custom: Increase label width and font size in edit profile modal only */

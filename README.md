@@ -45,6 +45,7 @@ ngrok http 8000
  php artisan queue:work
  php artisan schedule:work
 
+
  
 notifications date wise filter
 
@@ -53,6 +54,21 @@ Notification VIEW DETAILS PAGE
 
 
 
+use
 
 
 
+
+modelValue	string	
+null
+Value of the content.
+
+
+name	parameters	returnType	description	
+update:modelValue	
+value: string
+void
+Emitted when the value changes.
+
+name	type	description
+htmlValue	string	Current value as html.
