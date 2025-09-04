@@ -35,7 +35,7 @@
             :type="showPassword ? 'text' : 'password'"
             v-model="password"
             placeholder="Password"
-            autocomplete="current-password"
+            :autocomplete="showPassword ? 'off' : 'current-password'"
             required
           />
           <span
@@ -47,7 +47,11 @@
         </div>
         <div class="options-row">
           <label class="remember-label">
-            <input type="checkbox" /> Remember me
+            <input
+              type="checkbox"
+              v-model="rememberMe"
+            />
+            Remember me
           </label>
           <router-link
             to="/forgot-password"
@@ -87,7 +91,6 @@
 <script>
 import axios from 'axios';
 
-import { ROLES } from '@/permissions';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import storage from '@/services/storage';
@@ -107,6 +110,7 @@ export default {
     return {
       email: '',
       password: '',
+      rememberMe: false,
       showPassword: false,
       currentYear: new Date().getFullYear(),
     };
@@ -159,37 +163,37 @@ export default {
         const response = await axios.post(`${API_BASE_URL}/api/login`, {
           email: this.email,
           password: this.password,
+          remember: this.rememberMe,
         });
 
-        const token = response.data.token;
+        const token = response.data.access_token; // access token
+        const refreshToken = response.data.refresh_token; // NEW: refresh token
         const role = response.data.user.role;
         const name = response.data.user.name;
         const firstName = response.data.user.first_name || '';
         const lastName = response.data.user.last_name || '';
+        const expiresAt = response.data.expires_at;
 
+        // Save tokens in storage
         storage.set('authToken', token);
+        storage.set('refreshToken', refreshToken); // NEW: store refresh token
+        if (expiresAt) {
+          storage.set('tokenExpiry', expiresAt);
+        }
         storage.set('role', role);
         storage.set('first_name', firstName);
         storage.set('last_name', lastName);
-        // Set userName as 'first_name last_name' if available, else fallback to name
-        if (firstName || lastName) {
-          storage.set(
-            'userName',
-            `${firstName}${lastName ? ' ' + lastName : ''}`.trim()
-          );
-        } else {
-          storage.set('userName', name);
-        }
+        storage.set(
+          'userName',
+          firstName || lastName ? `${firstName} ${lastName}`.trim() : name
+        );
 
-        // Set login success flag for dashboard toast
+        // Welcome toast
         storage.set('showDashboardWelcome', '1');
-
         this.toast.add({
           severity: 'success',
           summary: 'Login Successful',
-          detail: `Welcome, ${firstName || ''}${
-            lastName ? ' ' + lastName : !firstName ? name : ''
-          }!`,
+          detail: `Welcome, ${firstName} ${lastName}`.trim(),
           life: 3000,
         });
 
@@ -210,6 +214,44 @@ export default {
           detail: errorMessage,
           life: 4000,
         });
+      }
+    },
+    async refreshAccessToken() {
+      try {
+        const refreshToken = storage.get('refreshToken');
+        if (!refreshToken) {
+          throw new Error('No refresh token available');
+        }
+
+        const response = await axios.post(`${API_BASE_URL}/oauth/token`, {
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+          client_id: process.env.VUE_APP_CLIENT_ID,
+          client_secret: process.env.VUE_APP_CLIENT_SECRET,
+        });
+
+        const newAccessToken = response.data.access_token;
+        const newRefreshToken = response.data.refresh_token;
+
+        // Save new tokens
+        storage.set('authToken', newAccessToken);
+        storage.set('refreshToken', newRefreshToken);
+
+        return newAccessToken;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+
+        this.toast.add({
+          severity: 'error',
+          summary: 'Session Expired',
+          detail: 'Please log in again.',
+          life: 4000,
+        });
+        storage.clear(); // remove all tokens + user info
+        storage.clear();
+        this.$router.push('/login');
+
+        return null;
       }
     },
   },

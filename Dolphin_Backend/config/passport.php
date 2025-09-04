@@ -29,6 +29,7 @@ return [
     'private_key' => env('PASSPORT_PRIVATE_KEY'),
 
     'public_key' => env('PASSPORT_PUBLIC_KEY'),
+    
 
     /*
     |--------------------------------------------------------------------------
@@ -41,6 +42,7 @@ return [
     |
     */
 
-    'connection' => env('PASSPORT_CONNECTION'),
+    'password_client_id'     => env('PASSPORT_PASSWORD_CLIENT_ID'),
+    'password_client_secret' => env('PASSPORT_PASSWORD_CLIENT_SECRET'),
 
 ];

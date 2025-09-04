@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
@@ -15,8 +14,11 @@ class Kernel extends ConsoleKernel
  
         $schedule->command('assessment:send-scheduled-emails')->everyMinute();
 
-    // Use the artisan command to dispatch pending announcements
-    $schedule->command('announcements:dispatch-pending')->everyMinute()->description('Dispatch pending scheduled announcements');
+        // Use the artisan command to dispatch pending announcements
+        $schedule->command('announcements:dispatch-pending')->everyMinute()->description('Dispatch pending scheduled announcements');
+
+        // Clean up expired tokens daily at 2 AM
+        $schedule->command('tokens:cleanup --force')->dailyAt('02:00')->description('Clean up expired OAuth tokens');
 
     }
 
@@ -27,6 +29,6 @@ class Kernel extends ConsoleKernel
     {
     $this->load(__DIR__.'/Commands');
 
-        require base_path('routes/console.php');
+       require_once  base_path('routes/console.php');
     }
 }

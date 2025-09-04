@@ -20,14 +20,23 @@ class AuthServiceProvider extends ServiceProvider
     /**
      * Register any authentication / authorization services.
      */
-    public function boot(): void
+   public function boot()
     {
         $this->registerPolicies();
-    Passport::routes();
-    // Set token lifetimes to 8 hours (was default 1 year)
-    $eightHours = new \DateInterval('PT8H');
-    Passport::tokensExpireIn($eightHours);
-    Passport::refreshTokensExpireIn($eightHours);
-    Passport::personalAccessTokensExpireIn($eightHours);
+
+        // Enable password grant type (required in Passport >= 12)
+        Passport::enablePasswordGrant();
+
+        // Declare API scopes
+        Passport::tokensCan([
+            'impersonate' => 'Act as another user (impersonation)',
+        ]);
+
+        // Token expiry configuration
+        Passport::tokensExpireIn(now()->addHours(8));         // Access token = 8 hours
+        Passport::refreshTokensExpireIn(now()->addDays(7));   // Refresh token = 7 days
+
+        // Optional: set personal access token expiry
+        Passport::personalAccessTokensExpireIn(now()->addMonths(2));
     }
 }

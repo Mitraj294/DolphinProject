@@ -38,6 +38,7 @@
                   ]"
                   @sort="sortBy"
                 />
+
                 <tbody>
                   <tr
                     v-for="(lead, idx) in paginatedLeads"
@@ -299,59 +300,80 @@ export default {
     selectCustomAction(idx, option) {
       this.menuOpen = null;
       const lead = this.leads[idx];
+
+      // Handle different action types
       if (option === 'Send Assessment') {
-        // Pass all lead details as query params
-        // If lead is persisted, navigate using canonical id param only.
-        if (lead.id) {
-          // prefer named route if available
-          try {
-            this.$router.push({
-              name: 'SendAssessment',
-              params: { id: lead.id },
-            });
-            return;
-          } catch (e) {
-            // fallback to path with id as param
-            if (this.$route.path.startsWith('/assessments')) {
-              this.$router.push({
-                path: `/assessments/send-assessment`,
-                params: { id: lead.id },
-              });
-            } else {
-              this.$router.push({
-                path: `/leads/send-assessment`,
-                params: { id: lead.id },
-              });
-            }
-            return;
-          }
-        }
-        // For unsaved leads, keep existing behavior and pass details as query.
-        const query = {
-          contact: lead.contact,
-          email: lead.email,
-          phone: lead.phone,
-          organization: lead.organization,
-          size: lead.size,
-          source: lead.source,
-          status: lead.status,
-        };
-        if (this.$route.path.startsWith('/assessments')) {
-          this.$router.push({ path: '/assessments/send-assessment', query });
-        } else {
-          this.$router.push({ path: '/leads/send-assessment', query });
-        }
+        this.handleSendAssessment(lead);
         return;
       }
+
       if (option === 'Schedule Demo') {
         this.$router.push('/leads/schedule-demo');
         return;
       }
+
       if (option === 'Schedule Class/Training') {
         this.$router.push('/leads/schedule-class-training');
         return;
       }
+
+      // Default action
       this.$set(this.leads[idx], 'selectedCustomAction', option);
+    },
+
+    handleSendAssessment(lead) {
+      // Handle persisted leads with ID
+      if (lead.id) {
+        this.navigateToAssessmentWithId(lead);
+        return;
+      }
+
+      // Handle unsaved leads with query params
+      this.navigateToAssessmentWithQuery(lead);
+    },
+
+    navigateToAssessmentWithId(lead) {
+      try {
+        this.$router.push({
+          name: 'SendAssessment',
+          params: { id: lead.id },
+        });
+      } catch (e) {
+        console.error(
+          'Failed to navigate with named route, falling back to path-based navigation:',
+          e
+        );
+
+        const basePath = this.getAssessmentBasePath();
+        this.$router.push({
+          path: `${basePath}/send-assessment`,
+          query: { id: lead.id }, // Use query instead of params for path-based navigation
+        });
+      }
+    },
+
+    navigateToAssessmentWithQuery(lead) {
+      const query = {
+        contact: lead.contact,
+        email: lead.email,
+        phone: lead.phone,
+        organization: lead.organization,
+        size: lead.size,
+        source: lead.source,
+        status: lead.status,
+      };
+
+      const basePath = this.getAssessmentBasePath();
+      this.$router.push({
+        path: `${basePath}/send-assessment`,
+        query,
+      });
+    },
+
+    getAssessmentBasePath() {
+      return this.$route.path.startsWith('/assessments')
+        ? '/assessments'
+        : '/leads';
     },
     handleGlobalClick(e) {
       if (this.menuOpen !== null) {
@@ -387,13 +409,12 @@ export default {
       this.menuOpen = null;
       try {
         document.body.style.overflow = '';
-      } catch (e) {}
-      // Save a reference and the lead id (preferred) so we can reliably
-      // update the correct lead even after sorting/pagination changes.
-      this.currentLead = lead;
+      } catch (e) {
+        console.error('Failed to toggle body overflow', e);
+      }
+
       this.currentLeadId = lead.id || null;
-      // Find the correct index in the main leads array. Prefer id, fall back
-      // to matching by email/phone/organization for unsaved leads.
+
       if (this.currentLeadId) {
         this.currentLeadIdx = this.leads.findIndex(
           (l) => l.id === this.currentLeadId
@@ -416,6 +437,7 @@ export default {
       } else {
         this.notesModalMode = 'add';
       }
+
       this.notesInput = lead.notes || '';
       this.showNotesModal = true;
     },
@@ -544,7 +566,9 @@ export default {
       // Lock body scrolling when menu open
       try {
         document.body.style.overflow = opening ? 'hidden' : '';
-      } catch (e) {}
+      } catch (e) {
+        console.error('Failed to toggle body overflow', e);
+      }
       if (opening) {
         // set initial position and attach listeners
         this.updateMenuPosition(idx);

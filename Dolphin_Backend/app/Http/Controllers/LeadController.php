@@ -9,6 +9,21 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\LeadAssessmentRegistrationMail;
 
+class ValidationRules
+{
+    public const REQUIRED_INTEGER = 'required|integer';
+    public const REQUIRED_STRING = 'required|string';
+    public const REQUIRED_EMAIL = 'required|email';
+    public const OPTIONAL_INTEGER = 'nullable|integer';
+    public const REQUIRED_BOOLEAN = 'required|boolean';
+    public const REQUIRED_DATE = 'required|date';
+}
+
+class Message
+{
+    public const MESSAGE = 'Lead Not Found';
+}
+
 class LeadController extends Controller
 {
     public function update(Request $request, $id)
@@ -16,20 +31,20 @@ class LeadController extends Controller
         $lead = Lead::find($id);
        
         if (!$lead) {
-            return response()->json(['message' => 'Lead not found'], 404);
+            return response()->json(['message' =>  Message::MESSAGE], 404);
         }
         $data = $request->validate([
-            'first_name' => 'sometimes|string',
-            'last_name' => 'sometimes|string',
-            'email' => 'sometimes|email',
-            'phone' => 'sometimes|string',
-            'find_us' => 'sometimes|string',
-            'org_name' => 'sometimes|string',
-            'org_size' => 'sometimes|string',
-            'notes' => 'sometimes|string',
-            'address' => 'sometimes|string',
-            'country_id' => 'sometimes|integer|exists:countries,id',
-            'state_id' => 'sometimes|integer|exists:states,id',
+            'first_name' =>  ValidationRules::REQUIRED_STRING,
+            'last_name' => ValidationRules::OPTIONAL_STRING,
+            'email' => ValidationRules::REQUIRED_EMAIL,
+            'phone' => ValidationRules::OPTIONAL_STRING,
+            'find_us' => ValidationRules::OPTIONAL_STRING,
+            'org_name' => ValidationRules::OPTIONAL_STRING,
+            'org_size' => ValidationRules::OPTIONAL_STRING,
+            'notes' => ValidationRules::OPTIONAL_STRING,
+            'address' => ValidationRules::OPTIONAL_STRING,
+            'country_id' => ValidationRules::OPTIONAL_INTEGER,
+            'state_id' => ValidationRules::OPTIONAL_INTEGER,
             'city_id' => 'sometimes|integer|exists:cities,id',
             'zip' => 'sometimes|string',
         ]);
@@ -39,19 +54,19 @@ class LeadController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'first_name' => 'required|string',
-            'last_name' => 'required|string',
+            'first_name' => ValidationRules::REQUIRED_STRING,
+            'last_name' => ValidationRules::REQUIRED_STRING,
           'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
-            'phone' => 'required|string',
-            'find_us' => 'required|string',
-            'org_name' => 'required|string',
-            'org_size' => 'required|string',
-            'notes' => 'required|string',
-            'address' => 'required|string',
+            'phone' => ValidationRules::REQUIRED_STRING,
+            'find_us' => ValidationRules::REQUIRED_STRING,
+            'org_name' => ValidationRules::REQUIRED_STRING,
+            'org_size' => ValidationRules::REQUIRED_STRING,
+            'notes' => ValidationRules::REQUIRED_STRING,
+            'address' => ValidationRules::REQUIRED_STRING,
             'country_id' => 'required|integer|exists:countries,id',
             'state_id' => 'required|integer|exists:states,id',
             'city_id' => 'required|integer|exists:cities,id',
-            'zip' => 'required|string',
+            'zip' => ValidationRules::REQUIRED_STRING,
         ]);
         $lead = Lead::create($data);
         return response()->json(['message' => 'Lead saved successfully', 'lead' => $lead], 201);
@@ -68,7 +83,7 @@ class LeadController extends Controller
     {
         $lead = Lead::find($id);
         if (!$lead) {
-            return response()->json(['message' => 'Lead not found'], 404);
+            return response()->json(['message' =>  Message::MESSAGE,], 404);
         }
 
         // // Try to find an organization associated with this lead's email.
@@ -201,7 +216,7 @@ HTML;
             $lead = Lead::where('email', $request->input('email'))->first();
         }
         if (!$lead) {
-            return response()->json(['message' => 'Lead not found'], 404);
+            return response()->json(['message' =>  Message::MESSAGE,], 404);
         }
         // Log find_us presence/absence for debugging
         if (empty($lead->find_us)) {

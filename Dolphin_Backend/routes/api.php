@@ -63,11 +63,14 @@ Route::get('/cities/{id}', [\App\Http\Controllers\LocationController::class, 'ge
 Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
-    Route::patch('/profile', [AuthController::class, 'updateProfile']);
-    Route::get('/profile', [AuthController::class, 'profile']);
+    Route::get('/token/status', [AuthController::class, 'tokenStatus']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
-    Route::delete('/profile', [AuthController::class, 'deleteAccount']);
-
+   
+Route::prefix('profile')->group(function () {
+    Route::patch('/', [AuthController::class, 'updateProfile']);
+    Route::get('/', [AuthController::class, 'profile']);
+    Route::delete('/', [AuthController::class, 'deleteAccount']);
+});
     // Notifications for all users
     Route::get('/announcements/user', [NotificationController::class, 'userAnnouncements']);
     Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
@@ -106,18 +109,20 @@ Route::middleware('auth:api')->group(function () {
     Route::middleware('auth.role:superadmin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::post('/users', [UserController::class, 'store']);
-        Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
+        
         Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
         Route::patch('/users/{id}/soft-delete', [UserController::class, 'softDelete']);
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
         Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
         Route::get('/organizations', [OrganizationController::class, 'index']);
-        Route::get('/organizations/{id}', [OrganizationController::class, 'show']);
         Route::post('/organizations', [OrganizationController::class, 'store']);
-        Route::put('/organizations/{id}', [OrganizationController::class, 'update']);
-        Route::delete('/organizations/{id}', [OrganizationController::class, 'destroy']);
+        Route::prefix('organizations/{id}')->group(function(){
+            Route::get('/', [OrganizationController::class, 'show']);
+            Route::put('/', [OrganizationController::class, 'update']);
+            Route::delete('/', [OrganizationController::class, 'destroy']);
+        });
         Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
-    Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
+        Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
         Route::post('/announcements/send', [NotificationController::class, 'send']);
         Route::get('/notifications', [NotificationController::class, 'allNotifications']);
     });
@@ -137,13 +142,15 @@ Route::middleware('auth:api')->group(function () {
     // Organization Admin specific routes (per permissions.js)
     Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {
         Route::get('/groups', [GroupController::class, 'index']);
-    Route::get('/groups/{id}', [GroupController::class, 'show']);
+        Route::get('/groups/{id}', [GroupController::class, 'show']);
         Route::post('/groups', [GroupController::class, 'store']);
         Route::get('/members', [MemberController::class, 'index']);
-    Route::get('/members/{id}', [MemberController::class, 'show']);
         Route::post('/members', [MemberController::class, 'store']);
-        Route::put('/members/{id}', [MemberController::class, 'update']);
-        Route::delete('/members/{id}', [MemberController::class, 'destroy']);
+        Route::prefix('members/{id}')->group(function(){
+            Route::get('/', [MemberController::class, 'show']);
+            Route::put('/', [MemberController::class, 'update']);
+            Route::delete('/', [MemberController::class, 'destroy']);
+        });
     });
 
     // Allow assessment scheduling for dolphin admins, organization admins, and superadmins

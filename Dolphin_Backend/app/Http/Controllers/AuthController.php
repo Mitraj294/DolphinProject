@@ -11,28 +11,41 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+
+class ValidationRules
+{
+    public const REQUIRED_INTEGER = 'required|integer';
+    public const REQUIRED_STRING = 'required|string';
+    public const REQUIRED_EMAIL = 'required|email';
+    public const OPTIONAL_INTEGER = 'nullable|integer';
+    public const REQUIRED_BOOLEAN = 'required|boolean';
+    public const REQUIRED_DATE = 'required|date';
+    public const NULLABLE_STRING = 'nullable|string|max:255';
+
+}
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'nullable|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
+            'first_name' => ValidationRules::REQUIRED_STRING,
+            'last_name' => ValidationRules::NULLABLE_STRING,
+            'email' => ValidationRules::REQUIRED_EMAIL . '|unique:users,email,NULL,id,deleted_at,NULL',
             'password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:password',
-            'phone' => 'nullable|string|max:32',
-            'find_us' => 'nullable|string|max:255',
-            'org_name' => 'nullable|string|max:255',
-            'org_size' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:255',
+            'phone' => 'nullable|integer',
+            'find_us' => ValidationRules::NULLABLE_STRING,
+            'org_name' => ValidationRules::NULLABLE_STRING,
+            'org_size' => ValidationRules::NULLABLE_STRING,
+            'address' => ValidationRules::NULLABLE_STRING,
             // Accept numeric IDs for location fields coming from frontend
-            'country' => 'nullable|integer|exists:countries,id',
-            'state' => 'nullable|integer|exists:states,id',
-            'city' => 'nullable|integer|exists:cities,id',
-            'zip' => 'nullable|string|max:32',
+            'country' => ValidationRules::OPTIONAL_INTEGER . '|exists:countries,id',
+            'state' => ValidationRules::OPTIONAL_INTEGER . '|exists:states,id',
+            'city' => ValidationRules::OPTIONAL_INTEGER . '|exists:cities,id',
+            'zip' => ValidationRules::NULLABLE_STRING,
         ]);
 
         if ($validator->fails()) {
@@ -99,8 +112,9 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|string|email',
+            'email'    => 'required|email',
             'password' => 'required|string',
+            'remember' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {
@@ -113,65 +127,103 @@ class AuthController extends Controller
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
-        // Issue Passport access token using password grant
-        $tokenResult = $user->createToken('Personal Access Token');
-        $token = $tokenResult->accessToken;
-        // Set token to expire 8 hours from creation
-        $expiresAt = \Carbon\Carbon::now()->addHours(0.05);
-        $tokenResult->token->expires_at = $expiresAt;
-        $tokenResult->token->save();
-
-        // Eager load userDetails and roles for frontend
-    // Load details and roles only. Resolve organization separately to avoid relationship recursion while serializing.
-    $user = User::with(['userDetails.country', 'roles'])->find($user->id);
-        // For convenience, also provide top-level role and userDetails fields
-        $role = $user->roles->first()->name ?? 'user';
-    $details = $user->userDetails;
-        // Persist last_contacted (date+time) on the user's organization for real logins
-        $org = null;
+        // Issue token via an internal kernel request to avoid self-HTTP deadlocks in dev server
         try {
-            // Resolve organization via direct query to avoid eager-loading cycles
-            $org = Organization::where('user_id', $user->id)->first();
-            if ($org) {
-                $org->last_contacted = now();
-                $org->save();
+            $tokenParams = [
+                'grant_type'    => 'password',
+                'client_id'     => config('passport.password_client_id'),
+                'client_secret' => config('passport.password_client_secret'),
+                'username'      => $request->email,
+                'password'      => $request->password,
+                'scope'         => '',
+            ];
+            
+            // Send as form params so the framework populates the POST bag
+            $server = [
+                'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+                'HTTP_ACCEPT'  => 'application/json',
+            ];
+            $tokenRequest = \Illuminate\Http\Request::create('/oauth/token', 'POST', $tokenParams, [], [], $server);
+            $response = app()->handle($tokenRequest);
+        } catch (\Throwable $e) {
+            \Log::error('OAuth token dispatch failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'error' => 'Unable to generate token',
+                'details' => 'Token dispatch failed.'
+            ], 500);
+        }
+
+        if (method_exists($response, 'getStatusCode') ? $response->getStatusCode() >= 400 : false) {
+            try {
+                \Log::error('OAuth token error response', [
+                    'status' => $response->getStatusCode(),
+                    'body' => $response->getContent(),
+                ]);
+            } catch (\Throwable $e) {
+                \Log::error('Failed to log OAuth token error response', [
+                    'email' => $request->input('email'),
+                    'error' => $e->getMessage(),
+                ]);
             }
-        } catch (\Exception $e) {
-            // ignore failures to avoid breaking login
+            return response()->json([
+                'error'   => 'Unable to generate token',
+                'details' => json_decode($response->getContent(), true)
+            ], $response->getStatusCode());
+        }
+
+        $tokenData = json_decode($response->getContent(), true);
+
+        // Fix eager loading - remove the nested country relationship for now
+        $user = User::with(['userDetails', 'roles'])->find($user->id);
+        $role = $user->roles->first()->name ?? 'user';
+        $details = $user->userDetails;
+
+        $org = Organization::where('user_id', $user->id)->first();
+        if ($org) {
+            $org->last_contacted = now();
+            $org->save();
+        }
+
+        Log::info('Login endpoint hit', [
+            'email' => $request->input('email'),
+            'time'  => now()->toDateTimeString(),
+        ]);
+
+        // Get country information safely
+        $countryName = '';
+        if ($details && $details->country_id) {
+            $country = \App\Models\Country::find($details->country_id);
+            $countryName = $country ? $country->name : '';
         }
 
         return response()->json([
-            'message' => 'Login successful',
-            'token' => $token,
-            'expires_at' => $expiresAt,
+            'message'       => 'Login successful',
+            'access_token'  => $tokenData['access_token'],
+            'refresh_token' => $tokenData['refresh_token'],
+            'expires_in'    => $tokenData['expires_in'],
+        // Compatibility fields for older frontend code
+        'token'         => $tokenData['access_token'],
+        'expires_at'    => now()->addSeconds(intval($tokenData['expires_in'] ?? 0))->toISOString(),
             'user' => [
-                'id' => $user->id,
-                'email' => $user->email,
-                'role' => $role,
-                'roles' => $user->roles,
-                // Provide authoritative name fields from users table
-                'first_name' => $user->first_name ?? '',
-                'last_name' => $user->last_name ?? '',
-                'phone' => $details->phone ?? '',
-                'country' => $details->country ?? '',
-                'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
-                'userDetails' => $details,
-                // Include organization_id for frontend convenience (may be null)
-                'organization_id' => $org ? $org->id : null,
+                'id'             => $user->id,
+                'email'          => $user->email,
+                'role'           => $role,
+                'roles'          => $user->roles,
+                'first_name'     => $user->first_name ?? '',
+                'last_name'      => $user->last_name ?? '',
+                'phone'          => $details->phone ?? '',
+                'country'        => $countryName,
+                'name'           => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
+                'userDetails'    => $details,
+                'organization_id'=> $org?->id,
             ],
-
         ]);
-        \Log::info('Login endpoint hit', [
-            'email' => $request->input('email'),
-            'time' => now()->toDateTimeString()
-        ]);
-        return response()->json([
-            // ...existing code...
-        ], 200);
     }
 
 
-        public function profile(Request $request)
+    public function profile(Request $request)
     {
         $user = $request->user();
         // Eager load userDetails and roles
@@ -242,7 +294,9 @@ class AuthController extends Controller
                     }
                     // Do not store phone on users table anymore; keep phone in user_details
                 }
-                if ($shouldSaveUser) $user->save();
+                if ($shouldSaveUser) {
+                    $user->save();
+                }
             }
 
             // Update/insert user_details
@@ -250,20 +304,22 @@ class AuthController extends Controller
             if (!empty($detailsData)) {
                 $userDetail = UserDetail::firstOrNew(['user_id' => $user->id]);
                 // Names are authoritative on users table; only persist other profile fields here
-                if (isset($detailsData['first_name'])) {
-                    // sync to users table instead
-                    if ($detailsData['first_name'] !== $user->first_name) {
+                if ((isset($detailsData['first_name'])) &&   ($detailsData['first_name'] !== $user->first_name)  ) {
+                
+                
                         $user->first_name = $detailsData['first_name'];
                         $user->save();
-                    }
+                    
                 }
-                if (isset($detailsData['last_name'])) {
-                    if ($detailsData['last_name'] !== $user->last_name) {
+                if ((isset($detailsData['last_name']))  &&   ($detailsData['last_name'] !== $user->last_name) ) {
+                  
                         $user->last_name = $detailsData['last_name'];
                         $user->save();
-                    }
+                    
                 }
-                if (isset($detailsData['phone'])) $userDetail->phone = $detailsData['phone'];
+                if (isset($detailsData['phone'])) {
+                    $userDetail->phone = $detailsData['phone'];
+                }
                 // Frontend sends country as string id; store in country_id if numeric-like
                 if (isset($detailsData['country'])) {
                     $countryVal = $detailsData['country'];
@@ -276,7 +332,7 @@ class AuthController extends Controller
 
                     if (is_numeric($countryVal)) {
                         $userDetail->country_id = intval($countryVal);
-                    } else if (is_string($countryVal) && trim($countryVal) !== '') {
+                    } elseif  (is_string($countryVal) && trim($countryVal) !== '') {
                         $countryVal = trim($countryVal);
                         // Try to resolve by name first (most common). Only attempt other columns if they exist.
                         $countryModel = \App\Models\Country::where('name', $countryVal)->first();
@@ -299,11 +355,11 @@ class AuthController extends Controller
                 }
                 // Email is authoritative on users table. If frontend provided an
                 // email under user_details, use it to update the users.email.
-                if (isset($detailsData['email'])) {
-                    if ($detailsData['email'] !== $user->email) {
+                if ((isset($detailsData['email'])) &&  ($detailsData['email'] !== $user->email) ) {
+                   
                         $user->email = $detailsData['email'];
                         $user->save();
-                    }
+                    
                 }
 
                 $userDetail->user_id = $user->id;
@@ -355,7 +411,7 @@ class AuthController extends Controller
 
     public function sendResetLinkEmail(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate(['email' => ValidationRules::REQUIRED_EMAIL]);
         $status = Password::sendResetLink($request->only('email'));
         return $status === Password::RESET_LINK_SENT
             ? response()->json(['message' => __($status)])
@@ -366,7 +422,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'token' => 'required',
-            'email' => 'required|email',
+            'email' => ValidationRules::REQUIRED_EMAIL,
             'password' => 'required|min:8|confirmed',
         ]);
         $status = Password::reset(
@@ -390,18 +446,16 @@ class AuthController extends Controller
         return response()->json(['message' => 'Account deleted successfully']);
     }
 
-        /**
-     * Return the authenticated user's info with role from user_roles table
-     */
+   
     public function user(Request $request)
     {
         $user = $request->user();
         $user = User::with(['userDetails', 'roles'])->find($user->id);
         $role = $user->roles->first()->name ?? 'user';
         $details = $user->userDetails;
-    // Resolve organization id for the convenience endpoint
-    $org = Organization::where('user_id', $user->id)->first();
-    return response()->json([
+ 
+        $org = Organization::where('user_id', $user->id)->first();
+        return response()->json([
             'id' => $user->id,
             'email' => $user->email,
             'role' => $role,
@@ -421,6 +475,22 @@ class AuthController extends Controller
     {
         $request->user()->token()->revoke();
         return response()->json(['message' => 'Successfully logged out']);
+    }
+
+    /**
+     * Check token status and return expiration info
+     */
+    public function tokenStatus(Request $request)
+    {
+        $user = $request->user();
+        $token = $user->token();
+        
+        return response()->json([
+            'valid' => true,
+            'expires_at' => $token->expires_at,
+            'expires_in_seconds' => \Carbon\Carbon::now()->diffInSeconds($token->expires_at, false),
+            'user_id' => $user->id,
+        ]);
     }
 
 }

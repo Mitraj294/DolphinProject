@@ -142,7 +142,9 @@ class AssessmentController extends Controller
             if (!$orgId && $request->user()) {
                 try {
                     $org = Organization::where('user_id', $request->user()->id)->first();
-                    if ($org) $orgId = $org->id;
+                    if  ($org) {
+                        $orgId = $org->id;
+                    }
                 } catch (\Exception $e) {
                     // ignore lookup errors
                 }

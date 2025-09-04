@@ -65,7 +65,7 @@ class SubscriptionController extends Controller
                 $user = \App\Models\User::find($org->user_id);
             }
         }
-        if (!$user) return response()->json(null);
+        if (!$user) { return response()->json(null); }
         $current = $user->subscriptions()
             ->where('status', 'active')
             ->orderByDesc('created_at')
@@ -95,8 +95,8 @@ class SubscriptionController extends Controller
         // Determine period: check description first, then amount heuristic
         $period = '';
         if (!empty($current->description)) {
-            if (stripos($current->description, 'month') !== false) $period = 'Month';
-            elseif (stripos($current->description, 'year') !== false) $period = 'Year';
+            if (stripos($current->description, 'month') !== false) { $period = 'Month'; }
+            elseif (stripos($current->description, 'year') !== false) { $period = 'Year'; }
         }
         if (empty($period)) {
             $amt = floatval($current->amount ?? 0);
@@ -132,7 +132,7 @@ class SubscriptionController extends Controller
                 $user = \App\Models\User::find($org->user_id);
             }
         }
-        if (!$user) return response()->json([]);
+        if (!$user) { return response()->json([]); }
         $subs = $user->subscriptions()->orderByDesc('created_at')->get();
         $history = $subs->map(function($sub) {
             // Try to extract payment method details for display

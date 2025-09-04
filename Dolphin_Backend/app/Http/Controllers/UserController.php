@@ -127,14 +127,14 @@ class UserController extends Controller
             $first_name = $request->input('first_name');
             $last_name = $request->input('last_name');
             $updates = [];
-            if ($email) $updates['email'] = $email;
+            if ($email){ $updates['email'] = $email;}
             if (!empty($updates)) {
                 $user->update($updates);
             }
             // Update names on users table (user_details no longer stores first/last name)
             $userUpdates = [];
-            if ($first_name !== null && $first_name !== $user->first_name) $userUpdates['first_name'] = $first_name;
-            if ($last_name !== null && $last_name !== $user->last_name) $userUpdates['last_name'] = $last_name;
+            if ($first_name !== null && $first_name !== $user->first_name) { $userUpdates['first_name'] = $first_name; }
+            if ($last_name !== null && $last_name !== $user->last_name) { $userUpdates['last_name'] = $last_name; }
             if (!empty($userUpdates)) {
                 $user->update($userUpdates);
             }
@@ -226,15 +226,13 @@ class UserController extends Controller
         }
 
         try {
-            // Revoke existing tokens for the user to be impersonated (optional)
-            if (method_exists($user, 'tokens')) {
-                foreach ($user->tokens as $token) {
-                    $token->delete();
-                }
-            }
-
-            // Create a new token for the impersonated user
-            $token = $user->createToken('ImpersonationToken')->accessToken;
+            // Do NOT revoke the user's existing tokens; issue a separate impersonation token
+            // Create a new, scoped, short-lived token for the impersonated user
+            $tokenResult = $user->createToken('ImpersonationToken', ['impersonate']);
+            $accessToken = $tokenResult->accessToken;
+            $tokenModel = $tokenResult->token;
+            $tokenModel->expires_at = now()->addHours(3); // short-lived impersonation
+            $tokenModel->save();
 
             // Get the role of the impersonated user (first role or 'user')
             $impersonatedRole = $user->roles()->first()->name ?? 'user';
@@ -251,11 +249,13 @@ class UserController extends Controller
             return response()->json([
                 'message' => 'Impersonation successful.',
                 'user_id' => $user->id,
-                'impersonated_token' => $token,
+                'impersonated_token' => $accessToken,
                 'impersonated_role' => $impersonatedRole,
                 'impersonated_first_name' => $impersonatedFirst,
                 'impersonated_last_name' => $impersonatedLast,
                 'impersonated_name' => $combinedName,
+                'expires_at' => $tokenModel->expires_at ? $tokenModel->expires_at->toISOString() : null,
+                'expires_in' => \Carbon\Carbon::now()->diffInSeconds($tokenModel->expires_at, false),
             ]);
         } catch (\Exception $e) {
             \Log::error('Error during impersonation: ' . $e->getMessage(), [

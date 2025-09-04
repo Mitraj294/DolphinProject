@@ -12,7 +12,7 @@ use Stripe\Customer;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Organization;
-use Illuminate\Support\Facades\Log; 
+use Illuminate\Support\Facades\Log;
 
 class StripeSubscriptionController extends Controller
 {
@@ -70,11 +70,11 @@ class StripeSubscriptionController extends Controller
             Log::info('Stripe Webhook Event Received:', ['type' => $event->type, 'id' => $event->id]);
         } catch (\UnexpectedValueException $e) {
         
-            \Log::error('Stripe Webhook Invalid Payload: ' . $e->getMessage(), ['payload' => $payload]); 
+            \Log::error('Stripe Webhook Invalid Payload: ' . $e->getMessage(), ['payload' => $payload]);
             return response('Invalid payload', 400);
         } catch (\Stripe\Exception\SignatureVerificationException $e) {
          
-            \Log::error('Stripe Webhook Invalid Signature: ' . $e->getMessage(), ['signature' => $sig_header, 'payload' => $payload]); 
+            \Log::error('Stripe Webhook Invalid Signature: ' . $e->getMessage(), ['signature' => $sig_header, 'payload' => $payload]);
             return response('Invalid signature', 400);
         }
 
@@ -82,7 +82,7 @@ class StripeSubscriptionController extends Controller
         if ($event->type === 'checkout.session.completed') {
             $session = $event->data->object;
             // ADDED: Log full session payload
-            Log::info('Checkout Session Completed Payload:', (array) $session); 
+            Log::info('Checkout Session Completed Payload:', (array) $session);
 
             // Retrieve subscription and customer details from Stripe
             \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
@@ -164,9 +164,7 @@ class StripeSubscriptionController extends Controller
                 // Create organization if not exists for this user
                 $orgExists = \App\Models\Organization::where('user_id', $user->id)->first();
                 if (!$orgExists) {
-                    $details = $user->userDetails;
-                    // Create org record with minimal persistent fields. Contact/profile
-                    // information remains on the user's user_details/users records.
+                
                     $orgData = [
                         'contract_start' => null,
                         'contract_end' => null,
@@ -224,7 +222,7 @@ class StripeSubscriptionController extends Controller
         }
 
         // Handle invoice.paid event for more complete subscription/payment info
-           elseif ($event->type === 'invoice.paid') { 
+           elseif ($event->type === 'invoice.paid') {
             $invoice = $event->data->object;
             
     
@@ -280,7 +278,7 @@ class StripeSubscriptionController extends Controller
                             if ($type === 'card' && $charge->payment_method_details->card) {
                                 $brand = $charge->payment_method_details->card->brand ?? '';
                                 $last4 = $charge->payment_method_details->card->last4 ?? '';
-                                $paymentMethod = ucfirst($brand) . ' ****' . $last4;
+                                $paymentMethod = ucfirst($brand) . ' *****' . $last4;
                             } else {
                                 $paymentMethod = $type;
                             }
@@ -307,13 +305,13 @@ class StripeSubscriptionController extends Controller
             // Fallback: If payment_intent not found or didn't provide method, try customer's default payment method
                 if (empty($paymentMethod) && $invoice->customer) {
                 // ADDED: Log fallback attempt
-                Log::info('Attempting fallback for payment method via customer default. Customer ID: ' . $invoice->customer); 
+                Log::info('Attempting fallback for payment method via customer default. Customer ID: ' . $invoice->customer);
                 try {
                     $customer = \Stripe\Customer::retrieve($invoice->customer);
                     if ($customer->invoice_settings && $customer->invoice_settings->default_payment_method) {
                         $defaultPaymentMethodId = $customer->invoice_settings->default_payment_method;
                         // ADDED: Log default payment method ID
-                        Log::info('Customer default_payment_method ID: ' . $defaultPaymentMethodId); 
+                        Log::info('Customer default_payment_method ID: ' . $defaultPaymentMethodId);
                         $pm = \Stripe\PaymentMethod::retrieve($defaultPaymentMethodId);
                         if ($pm->type === 'card' && $pm->card) {
                             $paymentMethod = $pm->card->brand . ' ****' . $pm->card->last4;
@@ -321,10 +319,10 @@ class StripeSubscriptionController extends Controller
                             $paymentMethod = $pm->type;
                         }
                         // ADDED: Log final fallback payment method
-                        Log::info('Payment method from customer default (before DB save): ' . ($paymentMethod ?? 'NULL')); 
+                        Log::info('Payment method from customer default (before DB save): ' . ($paymentMethod ?? 'NULL'));
                     } else {
                    
-                        Log::warning('Customer has no default_payment_method set in invoice_settings for customer ID: ' . $invoice->customer); 
+                        Log::warning('Customer has no default_payment_method set in invoice_settings for customer ID: ' . $invoice->customer);
                     }
                 } catch (\Stripe\Exception\ApiErrorException $e) {
                     \Log::error('Stripe API error retrieving Customer default payment method for invoice.paid: ' . $e->getMessage(), ['customer_id' => $invoice->customer]);
@@ -410,6 +408,6 @@ class StripeSubscriptionController extends Controller
         }
 
         
-  return response('Webhook handled', 200); 
+  return response('Webhook handled', 200);
     }
 }

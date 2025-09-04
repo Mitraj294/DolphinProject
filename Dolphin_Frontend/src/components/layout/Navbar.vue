@@ -579,6 +579,12 @@ export default {
         icon: 'pi pi-sign-out',
         acceptLabel: 'Yes',
         rejectLabel: 'Cancel',
+        acceptProps: {
+          style: 'background-color: red; color: white; font-weight: bold;',
+        },
+        rejectProps: {
+          style: 'background-color: gray;',
+        },
         accept: () => {
           this.handleLogoutYes();
         },
@@ -988,6 +994,39 @@ export default {
   .navbar-username {
     display: none !important;
   }
+}
+
+.p-button {
+  color: #ffffff;
+  background: #e53935;
+  border: 1px solid #e53935;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s,
+    box-shadow 0.2s;
+  border-radius: 6px;
+  outline-color: transparent;
+}
+.p-button:not(:disabled):hover {
+  background: #ff0000;
+  color: #ffffff;
+  border-color: #e00f0f;
+}
+.p-button:disabled {
+  background: #ff0000;
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.p-button.p-button-text {
+  background: transparent;
+  color: #e00f0f;
+  border: none;
+  padding: 0.75rem 1.25rem;
+}
+.p-button:hover {
+  background: #ff0000;
+  color: #ffffff;
+  border-color: #e00f0f;
 }
 </style>
 

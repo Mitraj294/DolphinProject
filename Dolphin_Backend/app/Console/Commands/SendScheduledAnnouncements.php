@@ -33,7 +33,9 @@ class SendScheduledAnnouncements extends Command
                 if (!empty($orgAdminEmail)) {
                     $memberEmails[] = $orgAdminEmail;
                     $adminUser = \App\Models\User::where('email', $orgAdminEmail)->first();
-                    if ($adminUser) $userIds[] = $adminUser->id;
+                    if ($adminUser) {
+                        $userIds[] = $adminUser->id;
+                    }
                 }
             }
             // Only collect group member emails if groups are attached to the announcement

@@ -232,9 +232,6 @@
               </button>
             </div>
           </form>
-          <!-- Success and error messages are now handled by PrimeVue Toast -->
-          <!-- <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
-          <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div> -->
         </div>
       </div>
     </div>

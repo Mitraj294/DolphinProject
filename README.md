@@ -36,33 +36,44 @@ git push
 
 //////////////
 
-/////
 ./start-dev.sh
 ngrok http 8000
  mysql -u  dolphin123 -p
-
+SELECT * FROM `oauth_access_tokens` 
  cd Dolphin_Backend
  php artisan queue:work
  php artisan schedule:work
 
 
- 
+
+///////////////////
+if by mistake we lost clients data in
+"oauth_clients" table then run below commands
+
+first
+cd /home/digilab/Dolphin/Dolphin_Backend
+php artisan passport:client --personal --name="Dolphin Personal Access Client"
+php artisan passport:client --password --name="Dolphin Password Grant Client"
+
+then# Replace with the values printed above
+echo 'PASSPORT_PASSWORD_CLIENT_ID=YOUR_CLIENT_ID' >> .env
+echo 'PASSPORT_PASSWORD_CLIENT_SECRET=YOUR_CLIENT_SECRET' >> .env
+
+and clear caches
+php artisan config:clear && php artisan cache:clear && php artisan optimize:clear
+///////////////////
+
+
+
+
 notifications date wise filter
-
-
 Notification VIEW DETAILS PAGE
 
-
-
 use
-
-
-
 
 modelValue	string	
 null
 Value of the content.
-
 
 name	parameters	returnType	description	
 update:modelValue	

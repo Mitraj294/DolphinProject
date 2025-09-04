@@ -124,9 +124,13 @@ export default {
               'If this email is registered, a reset link has been sent.',
             life: 3500,
           });
+
           this.email = '';
           this.cooldown = 30;
           this.startCooldown();
+          setTimeout(() => {
+            this.$router.push('/login');
+          }, 1000);
         })
         .catch(() => {
           this.loading = false;

@@ -9,18 +9,28 @@ use App\Models\Member;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\AssessmentAnswerLinkNotification;
 
+class ValidationRules
+{
+    public const REQUIRED_INTEGER = 'required|integer';
+    public const REQUIRED_STRING = 'required|string';
+    public const REQUIRED_EMAIL = 'required|email';
+    public const OPTIONAL_INTEGER = 'nullable|integer';
+    public const REQUIRED_BOOLEAN = 'required|boolean';
+    public const REQUIRED_DATE = 'required|date';
+}
+
 class ScheduledEmailController extends Controller
 {
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'recipient_email' => 'required|email',
-            'subject' => 'required|string',
-            'body' => 'required|string',
-            'send_at' => 'required|date',
-            'assessment_id' => 'required|integer',
-            'group_id' => 'required|integer',
-            'member_id' => 'required|integer'
+            'recipient_email' => ValidationRules::REQUIRED_EMAIL,
+            'subject' => ValidationRules::REQUIRED_STRING,
+            'body' => ValidationRules::REQUIRED_STRING,
+            'send_at' => ValidationRules::REQUIRED_DATE,
+            'assessment_id' => ValidationRules::REQUIRED_INTEGER,
+            'group_id' => ValidationRules::REQUIRED_INTEGER,
+            'member_id' => ValidationRules::REQUIRED_INTEGER
         ]);
 
         // Lookup member by email
@@ -89,10 +99,9 @@ class ScheduledEmailController extends Controller
             $scheduled = ScheduledEmail::where('recipient_email', $recipientEmail)->first();
             if ($scheduled) {
                 return response()->json(['scheduled' => true, 'data' => $scheduled]);
-            } else {
-                return response()->json(['scheduled' => false]);
             }
         }
+
         // If neither param is provided, return not scheduled
         return response()->json(['scheduled' => false]);
     }

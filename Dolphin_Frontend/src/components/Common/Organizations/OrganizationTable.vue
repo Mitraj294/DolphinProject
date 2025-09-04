@@ -155,9 +155,20 @@ export default {
       try {
         const storage = (await import('@/services/storage.js')).default;
         const authToken = storage.get('authToken');
-        const headers = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
+
+        // Check if token exists and is not expired
+        if (!authToken) {
+          this.$toast.add({
+            severity: 'warn',
+            summary: 'Authentication Required',
+            detail: 'Please log in to view organizations.',
+            sticky: true,
+          });
+          this.$router.push({ name: 'Login' });
+          return;
+        }
+
+        const headers = { Authorization: `Bearer ${authToken}` };
         const axios = (await import('axios')).default;
         const res = await axios.get('http://127.0.0.1:8000/api/organizations', {
           headers,
@@ -182,9 +193,30 @@ export default {
               sticky: true,
             });
           }
+          // Clear storage and redirect to login
+          const storage = (await import('@/services/storage.js')).default;
+          storage.clear();
           this.$router.push({ name: 'Login' });
+        } else if (e.message === 'Token expired') {
+          // This error comes from our token interceptor
+          if (this && this.$toast && typeof this.$toast.add === 'function') {
+            this.$toast.add({
+              severity: 'warn',
+              summary: 'Session expired',
+              detail: 'Your session has expired. Please log in again.',
+              sticky: true,
+            });
+          }
         } else {
           console.error('Error fetching organizations:', e);
+          if (this && this.$toast && typeof this.$toast.add === 'function') {
+            this.$toast.add({
+              severity: 'error',
+              summary: 'Error',
+              detail: 'Failed to load organizations. Please try again.',
+              life: 5000,
+            });
+          }
         }
         this.organizations = [];
       }
