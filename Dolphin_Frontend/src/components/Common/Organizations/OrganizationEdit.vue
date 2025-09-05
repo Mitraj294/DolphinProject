@@ -28,9 +28,18 @@
                       text: 'Select ',
                       disabled: true,
                     },
-                    { value: 'Large', text: '250+ Employees (Large)' },
-                    { value: 'Medium', text: '100-249 Employees (Medium)' },
-                    { value: 'Small', text: '1-99 Employees (Small)' },
+                    {
+                      value: '250+ Employees (Large)',
+                      text: '250+ Employees (Large)',
+                    },
+                    {
+                      value: '100-249 Employees (Medium)',
+                      text: '100-249 Employees (Medium)',
+                    },
+                    {
+                      value: '1-99 Employees (Small)',
+                      text: '1-99 Employees (Small)',
+                    },
                   ]"
                 />
               </div>
@@ -518,11 +527,11 @@ export default {
         }
         // Normalize org_size back to the display string the backend expects
         let orgSizePayload = this.form.orgSize;
-        if (this.form.orgSize === 'Small')
+        if (this.form.orgSize === '1-99 Employees (Small)')
           orgSizePayload = '1-99 Employees (Small)';
-        else if (this.form.orgSize === 'Medium')
+        else if (this.form.orgSize === '100-249 Employees (Medium)')
           orgSizePayload = '100-249 Employees (Medium)';
-        else if (this.form.orgSize === 'Large')
+        else if (this.form.orgSize === '250+ Employees (Large)')
           orgSizePayload = '250+ Employees (Large)';
 
         // Convert user-facing formatted dates back to ISO timestamp strings where possible

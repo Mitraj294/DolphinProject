@@ -20,9 +20,9 @@
         v-if="step === 1"
         @submit.prevent="goToStep2"
       >
-        <div>
+        <div style="margin-bottom: 32px;">
           <FormLabel>First Name</FormLabel>
-          <div class="input-group name-group">
+          <div class="input-group name-group" style="margin-bottom: 0px !important">
             <span class="icon"><i class="fas fa-user"></i></span>
             <input
               type="text"
@@ -31,42 +31,74 @@
               ref="firstNameInput"
               required
             />
+            <FormLabel
+              v-if="errors.first_name"
+              class="error-message1
+              "
+              >{{ errors.first_name[0] }}</FormLabel
+            >
           </div>
         </div>
-        <div>
+        <div  style="margin-bottom: 32px" >
           <FormLabel>Last Name</FormLabel>
-          <div class="input-group name-group">
+          <div class="input-group name-group"  style="margin-bottom: 0px !important">
             <span class="icon"><i class="fas fa-user"></i></span>
             <input
               type="text"
               v-model="last_name"
               placeholder="Last Name"
+              ref="lastNameInput"
               required
             />
+            <div >
+              <FormLabel
+                v-if="errors.last_name"
+                class="error-message1
+                "
+                >{{ errors.last_name[0] }}</FormLabel>
+            </div>
           </div>
         </div>
-        <div>
+        <div style="margin-bottom: 32px;">
           <FormLabel>Email ID</FormLabel>
-          <div class="input-group email-group">
+          <div class="input-group email-group" style="margin-bottom: 0px !important">
             <span class="icon"><i class="fas fa-envelope"></i></span>
             <input
               type="email"
               v-model="email"
               placeholder="Email ID"
+              ref="emailInput"
               required
+              aria-required="true"
             />
+        
           </div>
+              <div >
+              <FormLabel
+                v-if="errors.email"
+                class="error-message1
+                "
+                >{{ errors.email[0] }}</FormLabel
+              >
+            </div>
         </div>
-        <div>
+        <div  style="margin-bottom: 32px; ">
           <FormLabel>Phone Number</FormLabel>
-          <div class="input-group phone-group">
+          <div class="input-group phone-group " style="margin-bottom: 0px !important">
             <span class="icon"><i class="fas fa-phone"></i></span>
             <input
               type="tel"
               v-model="phone"
               placeholder="Phone Number"
+              ref="phoneInput"
               required
             />
+            <FormLabel
+              v-if="errors.phone"
+              class="error-message1
+              "
+              >{{ errors.phone[0] }}</FormLabel
+            >
           </div>
         </div>
         <button
@@ -95,7 +127,13 @@
                 placeholder="Organization Name"
                 ref="orgNameInput"
                 required
-              />
+              />   <div >
+              <FormLabel
+                v-if="errors.organization_name"
+                class="error-message1
+                "
+                >{{ errors.organization_name[0] }}</FormLabel
+              ></div>
             </div>
           </div>
         </div>
@@ -108,6 +146,7 @@
               <FormDropdown
                 v-model="organization_size"
                 icon="fas fa-users"
+                ref="orgSizeSelect"
                 :options="[
                   {
                     value: '',
@@ -115,19 +154,25 @@
                     disabled: true,
                   },
                   {
-                    value: 'Large',
+                    value: '250+ Employees (Large)',
                     text: '250+ Employees (Large)',
                   },
                   {
-                    value: 'Medium',
+                    value: '100-249 Employees (Medium)',
                     text: '100-249 Employees (Medium)',
                   },
                   {
-                    value: 'Small',
+                    value: '1-99 Employees (Small)',
                     text: '1-99 Employees (Small)',
                   },
                 ]"
-              />
+              /><div>
+              <FormLabel
+                v-if="errors.org_size"
+                class="error-message1
+                "
+                >{{ errors.org_size[0] }}</FormLabel
+              >  </div>
             </div>
           </div>
 
@@ -137,6 +182,7 @@
               <FormDropdown
                 v-model="find_us"
                 icon="fas fa-search"
+                ref="findUsSelect"
                 :options="[
                   { value: null, text: 'Select', disabled: true },
                   ...(findUsOptions.length
@@ -149,6 +195,12 @@
                       ]),
                 ]"
               />
+              <FormLabel
+                v-if="errors.find_us"
+                class="error-message1
+                "
+                >{{ errors.find_us[0] }}</FormLabel
+              >
             </div>
           </div>
         </div>
@@ -161,12 +213,20 @@
               <FormDropdown
                 v-model="country"
                 icon="fas fa-globe"
+                ref="countrySelect"
                 :options="[
                   { value: null, text: 'Select', disabled: true },
                   ...countries.map((c) => ({ value: c.id, text: c.name })),
                 ]"
                 @change="onCountryChange"
-              />
+                required
+              /> <div >
+              <FormLabel
+                v-if="errors.country"
+                class="error-message1
+                "
+                >{{ errors.country[0] }}</FormLabel
+              >  </div> 
             </div>
           </div>
 
@@ -176,12 +236,20 @@
               <FormDropdown
                 v-model="organization_state"
                 icon="fas fa-flag"
+                ref="stateSelect"
                 :options="[
                   { value: null, text: 'Select', disabled: true },
                   ...states.map((s) => ({ value: s.id, text: s.name })),
                 ]"
                 @change="onStateChange"
-              />
+                required
+              /> <div >
+              <FormLabel
+                v-if="errors.state"
+                class="error-message1
+                "
+                >{{ errors.state[0] }}</FormLabel
+              > </div> 
             </div>
           </div>
 
@@ -191,6 +259,7 @@
               <FormDropdown
                 v-model="organization_city"
                 icon="fas fa-city"
+                ref="citySelect"
                 :options="[
                   { value: null, text: 'Select', disabled: true },
                   ...cities.map((city) => ({
@@ -198,7 +267,14 @@
                     text: city.name,
                   })),
                 ]"
-              />
+                required
+              /><div>
+              <FormLabel
+                v-if="errors.organization_city"
+                class="error-message1
+                "
+                >{{ errors.organization_city[0] }}</FormLabel
+              ></div>
             </div>
           </div>
         </div>
@@ -213,8 +289,16 @@
                 type="text"
                 v-model="organization_address"
                 placeholder="Organization Address"
-                required
+                ref="orgAddressInput"
+     
               />
+              <div>
+            <FormLabel
+                v-if="errors.organization_address"
+                class="error-message1
+                "
+                >{{ errors.organization_address[0] }}</FormLabel>
+                </div>
             </div>
           </div>
 
@@ -226,8 +310,15 @@
                 type="text"
                 v-model="organization_zip"
                 placeholder="Zip Code"
-                required
-              />
+                ref="orgZipInput"
+           
+              /><div>
+              <FormLabel
+                v-if="errors.organization_zip"
+                class="error-message1
+                "
+                >{{ errors.organization_zip[0] }}</FormLabel
+              ></div>
             </div>
           </div>
         </div>
@@ -255,12 +346,15 @@
         v-else-if="step === 3"
         @submit.prevent="handleRegister"
       >
-        <div class="input-group password-group">
+      <div style="margin-bottom: 32px;">
+         <FormLabel>Password</FormLabel>
+        <div class="input-group password-group"  style="margin-bottom: 0px !important" >
           <span class="icon"><i class="fas fa-lock"></i></span>
           <input
             :type="showPassword ? 'text' : 'password'"
             v-model="password"
             placeholder="Password"
+            ref="passwordInput"
             required
           />
           <span
@@ -271,12 +365,23 @@
             <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
           </span>
         </div>
-        <div class="input-group password-group">
-          <span class="icon"><i class="fas fa-lock"></i></span>
-          <input
-            :type="showConfirmPassword ? 'text' : 'password'"
-            v-model="confirm_password"
-            placeholder="Confirm Password"
+      <div>
+          <FormLabel
+            v-if="errors.password"
+            class="error-message1
+            "
+            >{{ errors.password[0] }}</FormLabel
+          ></div></div>
+
+        <div style="margin-bottom: 32px;">
+          <FormLabel>Confirm Password</FormLabel>
+          <div class="input-group password-group"  style="margin-bottom: 0px !important">
+            <span class="icon"><i class="fas fa-lock"></i></span>
+            <input
+              :type="showConfirmPassword ? 'text' : 'password'"
+              v-model="confirm_password"
+              placeholder="Confirm Password"
+            ref="confirmPasswordInput"
             required
           />
           <span
@@ -288,7 +393,14 @@
               :class="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
             ></i>
           </span>
-        </div>
+        </div><div>
+          <FormLabel
+            v-if="errors.confirm_password"
+            class="error-message1
+            "
+            >{{ errors.confirm_password[0] }}</FormLabel
+          /></div></div>
+       
         <button
           type="button"
           class="login-btn back-btn"
@@ -369,6 +481,10 @@ export default {
       findUsOptions: [],
       showPassword: false,
       showConfirmPassword: false,
+           loading: false,
+      successMessage: '',
+      errorMessage: '',
+      errors: {},
     };
   },
   methods: {
@@ -391,138 +507,179 @@ export default {
         }, 50);
       });
     },
-    focusRef(refName) {
+    focusRef(refName, opts = { scroll: true }) {
       const ref = this.$refs[refName];
       if (!ref) return;
-      // if component instance has focus method
-      try {
-        if (typeof ref.focus === 'function') {
-          ref.focus();
-          return;
+      const doFocus = (el) => {
+        if (!el) return false;
+        try {
+          if (opts.scroll && el.scrollIntoView) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          if (typeof el.focus === 'function') {
+            el.focus();
+            return true;
+          }
+        } catch (e) {
+          console.warn('Error focusing element', e);
         }
-      } catch (e) {
-        // ignore
+        return false;
+      };
+      // Direct element or component with focus
+      if (doFocus(ref)) return;
+      // Component root or raw element
+      const el = ref.$el || ref;
+      if (!el) return;
+      // Try common focusables inside component
+      const candidate =
+        (el.querySelector &&
+          el.querySelector(
+            'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
+          )) ||
+        null;
+      if (doFocus(candidate)) return;
+      // Fallback to root
+      doFocus(el);
+    },
+    normalizeValidationErrors(errs) {
+      if (!errs || typeof errs !== 'object') return {};
+      const out = { ...errs };
+      // Map backend keys to UI field keys
+      if (errs.org_name) out.organization_name = errs.org_name;
+      if (errs.org_size) out.org_size = errs.org_size;
+      if (errs.address) out.organization_address = errs.address;
+      if (errs.zip) out.organization_zip = errs.zip;
+      if (errs.state && !out.organization_state)
+        out.organization_state = errs.state;
+      if (errs.city && !out.organization_city)
+        out.organization_city = errs.city;
+      return out;
+    },
+  navigateToFirstError(errors) {
+      const step1 = ['first_name', 'last_name', 'email', 'phone'];
+      const step2 = [
+        'organization_name',
+        'org_size',
+        'find_us',
+        'country',
+        'state',
+        'organization_state',
+        'city',
+        'organization_city',
+        'organization_address',
+        'organization_zip',
+      ];
+      const step3 = ['password', 'confirm_password'];
+      const firstIn = (arr) => arr.find((k) => errors && errors[k]);
+      let targetStep = 1;
+      let targetRef = null;
+      const s1 = firstIn(step1);
+      const s2 = firstIn(step2);
+      const s3 = firstIn(step3);
+  if (s1) {
+        const map = {
+          first_name: 'firstNameInput',
+          last_name: 'lastNameInput',
+          email: 'emailInput',
+          phone: 'phoneInput',
+        };
+        targetRef = map[s1] || 'firstNameInput';
+      } else if (s2) {
+        targetStep = 2;
+        const map = {
+          organization_name: 'orgNameInput',
+          org_size: 'orgSizeSelect',
+          find_us: 'findUsSelect',
+          country: 'countrySelect',
+          state: 'stateSelect',
+          organization_state: 'stateSelect',
+          city: 'citySelect',
+          organization_city: 'citySelect',
+          organization_address: 'orgAddressInput',
+          organization_zip: 'orgZipInput',
+        };
+        targetRef = map[s2] || 'countrySelect';
+      } else if (s3) {
+        targetStep = 3;
+        const map = {
+          password: 'passwordInput',
+          confirm_password: 'confirmPasswordInput',
+        };
+        targetRef = map[s3] || 'passwordInput';
       }
-      // if it's a Vue component proxy, try $el
-      try {
-        const el = ref.$el || ref;
-        const input = el && el.querySelector ? el.querySelector('input') : null;
-        if (input && typeof input.focus === 'function') {
-          input.focus();
-          return;
-        }
-        if (el && typeof el.focus === 'function') {
-          el.focus();
-          return;
-        }
-      } catch (e) {
-        // ignore
-      }
+      if (this.step !== targetStep) this.step = targetStep;
+      this.$nextTick(() => {
+        if (targetRef) this.focusRef(targetRef, { scroll: true });
+      });
     },
     async handleRegister() {
       try {
-        const response = await axios.post(`${API_BASE_URL}/api/register`, {
-          first_name: this.first_name,
-          last_name: this.last_name,
-          email: this.email,
-          phone: this.phone,
-          password: this.password,
-          confirm_password: this.confirm_password,
-          org_name: this.organization_name,
-          org_size: this.organization_size,
-          address: this.organization_address,
-          city: this.organization_city,
-          state: this.organization_state,
-          zip: this.organization_zip,
-          country: this.country,
-          find_us: this.find_us,
-        });
+        const response = await axios.post(
+          `${API_BASE_URL}/api/register`,
+          this.buildRegistrationPayload()
+        );
         if (response.status === 201) {
           this.$router.push({
             name: 'Login',
-            query: {
-              email: this.email,
-              registrationSuccess: true,
-            },
+            query: { email: this.email, registrationSuccess: true },
           });
         }
       } catch (error) {
-        console.error('Registration failed:', error);
-        let errorMessage = 'Registration failed. Please try again.';
-        if (error.response && error.response.data) {
-          const data = error.response.data;
-          // log raw response body for debugging
-          console.error('Registration error response data:', data);
-          // Laravel validator may return a plain object of field => [messages]
-          if (data.message) {
-            errorMessage = data.message;
-          }
-          if (data.errors) {
-            errorMessage = Object.values(data.errors).flat().join(' ');
-          } else if (typeof data === 'object') {
-            // Flatten any arrays of messages inside the object
-            const flat = Object.values(data).flat();
-            if (flat.length) errorMessage = flat.join(' ');
-          } else if (typeof data === 'string') {
-            errorMessage = data;
-          }
-          if (error.response.status === 422) {
-            // validation error
-            console.warn('Validation failed (422) during registration');
-          }
-        } else if (error.message) {
-          errorMessage = error.message;
-        }
+        const msg = this.processRegistrationError(error);
         this.toast.add({
           severity: 'error',
           summary: 'Registration Error',
-          detail: errorMessage,
+          detail: msg,
           life: 6000,
         });
       }
     },
+    buildRegistrationPayload() {
+      return {
+        first_name: this.first_name,
+        last_name: this.last_name,
+        email: this.email,
+        phone: this.phone,
+        password: this.password,
+        confirm_password: this.confirm_password,
+        org_name: this.organization_name,
+        org_size: this.organization_size,
+        address: this.organization_address,
+        city: this.organization_city,
+        state: this.organization_state,
+        zip: this.organization_zip,
+        country: this.country,
+        find_us: this.find_us,
+      };
+    },
+    processRegistrationError(error) {
+      console.error('Registration failed:', error);
+      let errorMessage = 'Registration failed. Please try again.';
+      const data = error?.response?.data;
+      if (data) {
+        console.error('Registration error response data:', data);
+        const rawErrors = data.errors || (typeof data === 'object' ? data : null);
+        const normalized = this.normalizeValidationErrors(rawErrors);
+        if (normalized && Object.keys(normalized).length) {
+          this.errors = normalized;
+          this.navigateToFirstError(this.errors);
+        }
+        if (data.message) errorMessage = data.message;
+        else if (data.errors) errorMessage = Object.values(data.errors).flat().join(' ');
+        else if (typeof data === 'object') {
+          const flat = Object.values(data).flat();
+          if (flat.length) errorMessage = flat.join(' ');
+        } else if (typeof data === 'string') errorMessage = data;
+       
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      return errorMessage;
+    },
     async prefillFromLead() {
       // Try to get lead data from query params or API
       const params = this.$route.query;
-      // If all data is in query params, use them (fallback)
-      let prefilled = false;
-      if (
-        params.first_name ||
-        params.last_name ||
-        params.phone ||
-        params.organization_name ||
-        params.find_us
-      ) {
-        if (params.country) this.country = params.country;
-        if (params.first_name) this.first_name = params.first_name;
-        if (params.last_name) this.last_name = params.last_name;
-        if (params.email) this.email = params.email;
-        if (params.phone) this.phone = params.phone;
-        if (params.organization_name)
-          this.organization_name = params.organization_name;
-        if (params.organization_size)
-          this.organization_size = params.organization_size;
-        if (params.organization_address)
-          this.organization_address = params.organization_address;
-        if (params.organization_city)
-          this.organization_city = params.organization_city;
-        if (params.organization_state)
-          this.organization_state = params.organization_state;
-        if (params.organization_zip)
-          this.organization_zip = params.organization_zip;
-        if (params.find_us) this.find_us = params.find_us;
-        // normalize find_us coming from query params
-        if (this.find_us) {
-          this.find_us = this.normalizeFindUs(this.find_us);
-        }
-        // normalize organization size coming from query params
-        if (this.organization_size) {
-          this.organization_size = this.normalizeOrgSize(
-            this.organization_size
-          );
-        }
-        prefilled = true;
-      }
+      let prefilled = this.setFromParams(params);
       // Always try backend prefill if email, lead_id, or token is present
       if (params.lead_id || params.token || params.email) {
         try {
@@ -534,64 +691,65 @@ export default {
             },
           });
           if (res.data && res.data.lead) {
-            const lead = res.data.lead;
-            this.first_name = lead.first_name || '';
-            this.last_name = lead.last_name || '';
-            this.email = lead.email || '';
-            this.phone = lead.phone || '';
-            this.organization_name = lead.organization_name || '';
-            this.organization_size = lead.organization_size || '';
-            this.organization_address = lead.organization_address || '';
-            // Prefill country -> state -> city sequence (accept multiple key names)
-            this.country = lead.country_id || lead.country || this.country;
-            this.organization_state =
-              lead.organization_state_id ||
-              lead.state_id ||
-              lead.organization_state ||
-              this.organization_state;
-            this.organization_city =
-              lead.organization_city_id ||
-              lead.city_id ||
-              lead.organization_city ||
-              this.organization_city;
-            this.organization_zip = lead.organization_zip || '';
-            this.find_us = lead.find_us || '';
-            // normalize find_us from lead
-            if (this.find_us) {
-              this.find_us = this.normalizeFindUs(this.find_us);
-            }
-            // normalize organization size from lead
-            if (this.organization_size) {
-              this.organization_size = this.normalizeOrgSize(
-                this.organization_size
-              );
-            }
+            this.setFromLead(res.data.lead);
             prefilled = true;
           }
         } catch (e) {
-          // fallback to query params if API fails
+          console.warn('Prefill API failed, falling back to params', e);
         }
       }
       // Fallback: prefill from query params if backend prefill did not work
-      if (!prefilled) {
-        if (params.first_name) this.first_name = params.first_name;
-        if (params.last_name) this.last_name = params.last_name;
-        if (params.email) this.email = params.email;
-        if (params.phone) this.phone = params.phone;
-        if (params.organization_name)
-          this.organization_name = params.organization_name;
-        if (params.organization_size)
-          this.organization_size = params.organization_size;
-        if (params.organization_address)
-          this.organization_address = params.organization_address;
-        if (params.organization_city)
-          this.organization_city = params.organization_city;
-        if (params.organization_state)
-          this.organization_state = params.organization_state;
-        if (params.organization_zip)
-          this.organization_zip = params.organization_zip;
-        if (params.find_us) this.find_us = params.find_us;
-      }
+      if (!prefilled) this.setFromParams(params);
+    },
+    setFromParams(params = {}) {
+      let changed = false;
+      const set = (key, paramKey = key) => {
+        if (params[paramKey] !== undefined) {
+          this[key] = params[paramKey];
+          changed = true;
+        }
+      };
+      set('country');
+      set('first_name');
+      set('last_name');
+      set('email');
+      set('phone');
+      set('organization_name');
+      set('organization_size');
+      set('organization_address');
+      set('organization_city');
+      set('organization_state');
+      set('organization_zip');
+      set('find_us');
+      if (this.find_us) this.find_us = this.normalizeFindUs(this.find_us);
+      if (this.organization_size)
+        this.organization_size = this.normalizeOrgSize(this.organization_size);
+      return changed;
+    },
+    setFromLead(lead = {}) {
+      this.first_name = lead.first_name || '';
+      this.last_name = lead.last_name || '';
+      this.email = lead.email || '';
+      this.phone = lead.phone || '';
+      this.organization_name = lead.organization_name || '';
+      this.organization_size = lead.organization_size || '';
+      this.organization_address = lead.organization_address || '';
+      this.country = lead.country_id || lead.country || this.country;
+      this.organization_state =
+        lead.organization_state_id ||
+        lead.state_id ||
+        lead.organization_state ||
+        this.organization_state;
+      this.organization_city =
+        lead.organization_city_id ||
+        lead.city_id ||
+        lead.organization_city ||
+        this.organization_city;
+      this.organization_zip = lead.organization_zip || '';
+      this.find_us = lead.find_us || '';
+      if (this.find_us) this.find_us = this.normalizeFindUs(this.find_us);
+      if (this.organization_size)
+        this.organization_size = this.normalizeOrgSize(this.organization_size);
     },
     normalizeOrgSize(pref) {
       if (!pref && pref !== 0) return '';
@@ -897,7 +1055,8 @@ select {
 
 .input-group {
   position: relative;
-  margin-bottom: 24px;
+    margin-bottom: 32px;
+ 
 }
 .input-group input {
   width: 100%;
@@ -1039,9 +1198,7 @@ select {
   justify-content: space-between;
 }
 
-.back-btn {
-  flex: 1;
-}
+
 .next-btn {
   flex: 1;
   margin-bottom: 16px !important;
@@ -1049,6 +1206,7 @@ select {
 }
 
 .back-btn {
+    flex: 1;
   background: #6c757d;
 }
 
@@ -1156,5 +1314,12 @@ select {
     background-color: rgba(0, 0, 0, 0.12);
     border-radius: 8px;
   }
+}
+.error-message1
+ {
+    color: red;
+    font-size: 1em;
+    margin-top: 8px;
+
 }
 </style>

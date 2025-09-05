@@ -32,7 +32,7 @@ class AuthController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'first_name' => ValidationRules::REQUIRED_STRING,
-            'last_name' => ValidationRules::NULLABLE_STRING,
+            'last_name' => ValidationRules::REQUIRED_STRING,
             'email' => ValidationRules::REQUIRED_EMAIL . '|unique:users,email,NULL,id,deleted_at,NULL',
             'password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:password',
@@ -42,9 +42,9 @@ class AuthController extends Controller
             'org_size' => ValidationRules::NULLABLE_STRING,
             'address' => ValidationRules::NULLABLE_STRING,
             // Accept numeric IDs for location fields coming from frontend
-            'country' => ValidationRules::OPTIONAL_INTEGER . '|exists:countries,id',
-            'state' => ValidationRules::OPTIONAL_INTEGER . '|exists:states,id',
-            'city' => ValidationRules::OPTIONAL_INTEGER . '|exists:cities,id',
+            'country' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
+            'state' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
+            'city' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
             'zip' => ValidationRules::NULLABLE_STRING,
         ]);
 
@@ -117,7 +117,7 @@ class AuthController extends Controller
             'remember' => 'nullable|boolean',
         ]);
 
-        if ($validator->fails()) {
+        if ($validator->fails()  ) {
             return response()->json($validator->errors(), 422);
         }
 

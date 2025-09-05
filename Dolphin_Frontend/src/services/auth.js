@@ -61,6 +61,7 @@ const authService = {
             }
             return { user, token };
         } catch (error) {
+            console.error   ('Login error:', error);    
             throw error;
         }
 

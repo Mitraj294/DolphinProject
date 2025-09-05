@@ -30,9 +30,9 @@
                       key: 'organization',
                       sortable: true,
                     },
-                    { label: 'Size', key: 'size' },
+                    { label: 'Size', key: 'size', sortable: true },
                     { label: 'Source', key: 'source' },
-                    { label: 'Status', key: 'status' },
+                    { label: 'Status', key: 'status', sortable: true },
                     { label: 'Notes', key: 'notes' },
                     { label: '', key: 'actions' },
                   ]"

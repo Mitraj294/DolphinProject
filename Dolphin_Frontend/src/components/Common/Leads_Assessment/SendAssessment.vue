@@ -47,6 +47,12 @@
                 :modules="editorModules"
                 @load="onEditorLoad"
               />
+              <textarea
+                v-else
+                v-model="templateContent"
+                rows="20"
+                style="width: 100%; font-family: monospace"
+              />
             </div>
 
             <div class="send-assessment-link-actions-row">

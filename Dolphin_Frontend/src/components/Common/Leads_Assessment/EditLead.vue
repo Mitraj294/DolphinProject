@@ -110,20 +110,21 @@
                   :options="[
                     { value: null, text: 'Select', disabled: true },
                     {
-                      value: 'Large',
+                      value: '250+ Employees (Large)',
                       text: '250+ Employees (Large)',
                     },
                     {
-                      value: 'Medium',
+                      value: '100-249 Employees (Medium)',
                       text: '100-249 Employees (Medium)',
                     },
                     {
-                      value: 'Small',
+                      value: '1-99 Employees (Small)',
                       text: '1-99 Employees (Small)',
                     },
                   ]"
                   required
-                /><FormLabel
+                />
+                <FormLabel
                   v-if="errors.org_size"
                   class="error-message"
                   >{{ errors.org_size[0] }}</FormLabel
@@ -490,12 +491,7 @@ export default {
         console.error('Error updating lead:', error);
         if (error.response) {
           this.errors = error.response.data.errors;
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Validation Error',
-            detail: 'Please correct the highlighted errors.',
-            life: 5000,
-          });
+
           if (error.response && error.response.data) {
             this.errorMessage =
               error.response.data.message || 'Failed to update lead.';
@@ -511,8 +507,8 @@ export default {
         }
         // Use PrimeVue Toast for error notification
         this.$toast.add({
-          severity: 'error',
-          summary: 'Error',
+          severity: 'warn',
+          summary: 'Fill the required fields',
           detail: this.errorMessage,
           life: 5000,
         });
@@ -687,7 +683,7 @@ export default {
 }
 .error-message {
   color: red;
-  font-size: 0.8em;
-  margin-left: 8px;
+  font-size: 1em;
+  margin-top: 10px;
 }
 </style>

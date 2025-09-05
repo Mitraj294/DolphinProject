@@ -83,9 +83,9 @@
                   required
                 />
                 <FormLabel
-                  v-if="errors.findUs"
+                  v-if="errors.find_us"
                   class="error-message"
-                  >{{ errors.findUs[0] }}</FormLabel
+                  >{{ errors.find_us[0] }}</FormLabel
                 >
               </div>
               <div></div>
@@ -112,24 +112,24 @@
                   icon="fas fa-users"
                   :options="[
                     {
-                      value: 'Large',
+                      value: '250+ Employees (Large)',
                       text: '250+ Employees (Large)',
                     },
                     {
-                      value: 'Medium',
+                      value: '100-249 Employees (Medium)',
                       text: '100-249 Employees (Medium)',
                     },
                     {
-                      value: 'Small',
+                      value: '1-99 Employees (Small)',
                       text: '1-99 Employees (Small)',
                     },
                   ]"
                   required
                 />
                 <FormLabel
-                  v-if="errors.orgSize"
+                  v-if="errors.org_size"
                   class="error-message"
-                  >{{ errors.orgSize[0] }}</FormLabel
+                  >{{ errors.org_size[0] }}</FormLabel
                 >
               </div>
               <div></div>
@@ -469,24 +469,16 @@ export default {
         console.error('Error saving lead:', error);
         if (error.response && error.response.status === 422) {
           this.errors = error.response.data.errors;
-          this.toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: 'Please correct the highlighted errors.',
-            life: 5000,
-          });
-          if (error.response && error.response.data) {
-            this.errorMessage =
-              error.response.data.message || 'Failed to save lead.';
-            if (error.response.data.errors) {
-              for (const key in error.response.data.errors) {
-                this.errorMessage += ` ${error.response.data.errors[key][0]}`;
-              }
-            }
-          }
         } else {
           this.errorMessage = 'An unexpected error occurred.';
         }
+        // Use PrimeVue Toast for error notification
+        this.$toast.add({
+          severity: 'warn',
+          summary: 'Fill the required fields',
+          detail: this.errorMessage,
+          life: 5000,
+        });
       } finally {
         this.loading = false;
       }
@@ -682,7 +674,7 @@ export default {
 }
 .error-message {
   color: red;
-  font-size: 0.8em;
-  margin-left: 8px;
+  font-size: 1em;
+  margin-top: 10px;
 }
 </style>

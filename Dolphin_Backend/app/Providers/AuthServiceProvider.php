@@ -28,15 +28,20 @@ class AuthServiceProvider extends ServiceProvider
         Passport::enablePasswordGrant();
 
         // Declare API scopes
-        Passport::tokensCan([
-            'impersonate' => 'Act as another user (impersonation)',
-        ]);
+    Passport::tokensCan([
+        'impersonate' => 'Act as another user (impersonation)',
+    ]);
 
-        // Token expiry configuration
-        Passport::tokensExpireIn(now()->addHours(8));         // Access token = 8 hours
-        Passport::refreshTokensExpireIn(now()->addDays(7));   // Refresh token = 7 days
 
-        // Optional: set personal access token expiry
-        Passport::personalAccessTokensExpireIn(now()->addMonths(2));
+    if (request()->boolean('remember')) {
+        Passport::tokensExpireIn(now()->addDays(7));
+        Passport::refreshTokensExpireIn(now()->addDays(30));
+    } else {
+        Passport::tokensExpireIn(now()->addHours(8));
+        Passport::refreshTokensExpireIn(now()->addDays(7));
+    }
+
+    // Optional: set personal access token expiry
+    Passport::personalAccessTokensExpireIn(now()->addMonths(2));
     }
 }

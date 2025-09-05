@@ -45,6 +45,30 @@
             <i :class="showPassword ? 'fas fa-eye' : 'fas fa-eye-slash'"></i>
           </span>
         </div>
+        <div>
+          <FormLabel
+            v-if="errorMessage"
+            class="error-message1"
+          >
+            {{ errorMessage }}
+            <button
+              type="button"
+              class="close-error"
+              @click="errorMessage = ''"
+              aria-label="Dismiss error"
+              style="
+                background: none;
+                border: none;
+                padding: 0;
+                margin-left: 8px;
+                cursor: pointer;
+                font-size: 1rem;
+              "
+            >
+              &times;
+            </button>
+          </FormLabel>
+        </div>
         <div class="options-row">
           <label class="remember-label">
             <input
@@ -95,13 +119,13 @@ import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import storage from '@/services/storage';
 import { fetchCurrentUser } from '@/services/user';
-
+import { FormLabel } from '@/components/Common/Common_UI/Form';
 const API_BASE_URL =
   process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
 
 export default {
   name: 'Login',
-  components: { Toast },
+  components: { Toast, FormLabel },
   setup() {
     const toast = useToast();
     return { toast };
@@ -113,6 +137,11 @@ export default {
       rememberMe: false,
       showPassword: false,
       currentYear: new Date().getFullYear(),
+      loading: false,
+      successMessage: '',
+      errorMessage: '',
+      errors: {},
+      error: '',
     };
   },
   mounted() {

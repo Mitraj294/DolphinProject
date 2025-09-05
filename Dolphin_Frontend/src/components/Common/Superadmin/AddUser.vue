@@ -18,6 +18,11 @@
                   placeholder="Type here"
                   required
                 />
+                <FormLabel
+                  v-if="errors.first_name"
+                  class="error-message1"
+                  >{{ errors.first_name[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Last Name</FormLabel>
@@ -27,6 +32,11 @@
                   placeholder="Type here"
                   required
                 />
+                <FormLabel
+                  v-if="errors.last_name"
+                  class="error-message1"
+                  >{{ errors.last_name[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Email</FormLabel>
@@ -37,6 +47,18 @@
                   placeholder="abc@gmail.com"
                   required
                 />
+                <div>
+                  <FormLabel
+                    v-if="errors.email"
+                    class="error-message1"
+                  >
+                    {{
+                      Array.isArray(errors.email)
+                        ? errors.email[0]
+                        : errors.email
+                    }}
+                  </FormLabel>
+                </div>
               </div>
             </FormRow>
             <FormRow>
@@ -48,6 +70,11 @@
                   placeholder="Type here"
                   required
                 />
+                <FormLabel
+                  v-if="errors.phone"
+                  class="error-message1"
+                  >{{ errors.phone[0] }}</FormLabel
+                >
               </div>
               <div>
                 <FormLabel>Select User Role</FormLabel>
@@ -59,7 +86,11 @@
                     ...roleOptions,
                   ]"
                   required
-                />
+                /><FormLabel
+                  v-if="errors.role"
+                  class="error-message1"
+                  >{{ errors.role[0] }}</FormLabel
+                >
               </div>
               <div></div>
             </FormRow>
@@ -131,6 +162,10 @@ export default {
         { value: 'salesperson', text: 'Sales Person' },
         { value: 'user', text: 'User' },
       ],
+
+      successMessage: '',
+      errorMessage: '',
+      errors: {},
     };
   },
   methods: {

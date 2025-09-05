@@ -15,6 +15,7 @@ class ValidationRules
     public const REQUIRED_STRING = 'required|string';
     public const REQUIRED_EMAIL = 'required|email';
     public const OPTIONAL_INTEGER = 'nullable|integer';
+    public const OPTIONAL_STRING = 'nullable|string';
     public const REQUIRED_BOOLEAN = 'required|boolean';
     public const REQUIRED_DATE = 'required|date';
 }
@@ -33,20 +34,33 @@ class LeadController extends Controller
         if (!$lead) {
             return response()->json(['message' =>  Message::MESSAGE], 404);
         }
+        // If this is a PATCH request with only 'notes' provided, validate and update just that field.
+        // This avoids triggering full required-field validation for partial notes updates from the frontend.
+        if ($request->isMethod('patch')) {
+            $payloadKeys = array_keys($request->all());
+            $onlyNotes = !empty($payloadKeys) && collect($payloadKeys)->every(function ($k) { return $k === 'notes'; });
+            if ($request->has('notes') && $onlyNotes) {
+                $data = $request->validate([
+                    'notes' => ValidationRules::OPTIONAL_STRING,
+                ]);
+                $lead->update($data);
+                return response()->json(['message' => 'Notes updated successfully', 'lead' => $lead]);
+            }
+        }
         $data = $request->validate([
             'first_name' =>  ValidationRules::REQUIRED_STRING,
-            'last_name' => ValidationRules::OPTIONAL_STRING,
+            'last_name' => ValidationRules::REQUIRED_STRING,
             'email' => ValidationRules::REQUIRED_EMAIL,
-            'phone' => ValidationRules::OPTIONAL_STRING,
-            'find_us' => ValidationRules::OPTIONAL_STRING,
-            'org_name' => ValidationRules::OPTIONAL_STRING,
-            'org_size' => ValidationRules::OPTIONAL_STRING,
+            'phone' => ValidationRules::REQUIRED_STRING,
+            'find_us' => ValidationRules::REQUIRED_STRING,
+            'org_name' => ValidationRules::REQUIRED_STRING,
+            'org_size' => ValidationRules::REQUIRED_STRING,
             'notes' => ValidationRules::OPTIONAL_STRING,
-            'address' => ValidationRules::OPTIONAL_STRING,
-            'country_id' => ValidationRules::OPTIONAL_INTEGER,
-            'state_id' => ValidationRules::OPTIONAL_INTEGER,
-            'city_id' => 'sometimes|integer|exists:cities,id',
-            'zip' => 'sometimes|string',
+            'address' => ValidationRules::REQUIRED_STRING,
+            'country_id' => ValidationRules::REQUIRED_INTEGER,
+            'state_id' => ValidationRules::REQUIRED_INTEGER,
+            'city_id' => ValidationRules::REQUIRED_INTEGER,
+            'zip' => ValidationRules::REQUIRED_STRING,
         ]);
         $lead->update($data);
         return response()->json(['message' => 'Lead updated successfully', 'lead' => $lead]);
@@ -59,9 +73,9 @@ class LeadController extends Controller
           'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
             'phone' => ValidationRules::REQUIRED_STRING,
             'find_us' => ValidationRules::REQUIRED_STRING,
-            'org_name' => ValidationRules::REQUIRED_STRING,
+            'org_name' => 'required|string|max:255|unique:leads,org_name,NULL,id,deleted_at,NULL',
             'org_size' => ValidationRules::REQUIRED_STRING,
-            'notes' => ValidationRules::REQUIRED_STRING,
+            'notes' => ValidationRules::OPTIONAL_STRING,
             'address' => ValidationRules::REQUIRED_STRING,
             'country_id' => 'required|integer|exists:countries,id',
             'state_id' => 'required|integer|exists:states,id',
@@ -76,9 +90,7 @@ class LeadController extends Controller
     {
         return response()->json(Lead::all());
     }
-    /**
-     * Return a single lead by id.
-     */
+
     public function show($id)
     {
         $lead = Lead::find($id);
@@ -116,61 +128,51 @@ class LeadController extends Controller
                                 $registration_link = rtrim($frontendBase, '/') . '/register?' . http_build_query($queryParams);
                                 $safeLink = htmlspecialchars($registration_link, ENT_QUOTES, 'UTF-8');
                                 $safeName = htmlspecialchars($lead->first_name ?? $lead->email, ENT_QUOTES, 'UTF-8');
-                               $defaultTemplate = <<<HTML
+                                $defaultTemplate =  <<<HTML
 <div style="width:100%; padding:40px 0; background-color:#f6f9fc; font-family: Arial, sans-serif;"><div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:6px; padding:30px; box-shadow:0 2px 4px rgba(0,0,0,0.05);"><div style="font-size:20px; font-weight:bold; color:#333333; margin-bottom:15px;">Hello {$safeName},</div><div style="font-size:16px; color:#555555; line-height:1.5; margin-bottom:25px;">You’ve been invited to complete your signup. Please click the button below to enter your details and activate your account.</div><div style="text-align:center;"><a href="{$safeLink}" style="display:inline-block; padding:10px 20px; background-color:#0164A5; color:#ffffff; text-decoration:none; border-radius:50px; font-weight:bold;">Complete Signup</a></div><div style="font-size:13px; color:#888888; text-align:center; margin-top:30px;">If you did not request this, you can safely ignore this email.</div><div style="margin-top:12px; text-align:center; word-break:break-all; color:#007bff;"><a href="{$safeLink}" style="color:#007bff;"></a></div></div></div>
 HTML;
 
 
+            // ensure variables are defined so we don't hit "Undefined variable" when no organization/user is found
+            $org = null;
+            $orgUser = null;
+            $orgUserDetails = null;
 
-
-              
-                
-              
-
-     
-    // ensure variables are defined so we don't hit "Undefined variable" when no organization/user is found
-    $org = null;
-    $orgUser = null;
-    $orgUserDetails = null;
-
-    try {
-            $userModel = '\App\\Models\\User';
-            $user = $userModel::where('email', $lead->email)->first();
-            if ($user) {
-                $orgModel = '\App\\Models\\Organization';
-                $org = $orgModel::where('user_id', $user->id)->first();
-                if ($org) {
-                    $orgUser = $user;
-                    // try to load user details if the relation or model exists
-                    $detailsModel = '\App\\Models\\UserDetail';
-                    if (class_exists($detailsModel)) {
-                        $orgUserDetails = $detailsModel::where('user_id', $user->id)->first();
+            try {
+                    $userModel = '\App\\Models\\User';
+                    $user = $userModel::where('email', $lead->email)->first();
+                    if ($user) {
+                        $orgModel = '\App\\Models\\Organization';
+                        $org = $orgModel::where('user_id', $user->id)->first();
+                        if ($org) {
+                            $orgUser = $user;
+                            // try to load user details if the relation or model exists
+                            $detailsModel = '\App\\Models\\UserDetail';
+                            if (class_exists($detailsModel)) {
+                                $orgUserDetails = $detailsModel::where('user_id', $user->id)->first();
+                            }
+                        }
                     }
+                } catch (\Exception $e) {
+                    Log::warning('LeadController::show organization lookup failed: ' . $e->getMessage());
                 }
+
+                // Compose response: include lead and, if found, organization and primary user details
+                $resp = ['lead' => $lead];
+                $resp['defaultTemplate'] = $defaultTemplate;
+
+            if ($org) {
+                $resp['organization'] = $org;
+                $resp['orgUser'] = $orgUser;
+                $resp['orgUserDetails'] = $orgUserDetails;
             }
-        } catch (\Exception $e) {
-            Log::warning('LeadController::show organization lookup failed: ' . $e->getMessage());
-        }
 
-        // Compose response: include lead and, if found, organization and primary user details
-        $resp = ['lead' => $lead];
-        $resp['defaultTemplate'] = $defaultTemplate;
-
-    if ($org) {
-        $resp['organization'] = $org;
-        $resp['orgUser'] = $orgUser;
-        $resp['orgUserDetails'] = $orgUserDetails;
+            return response()->json($resp);
     }
 
-    return response()->json($resp);
-}
-
-        /**
-         * Return an email template HTML for lead registration editor prefills.
-         * Public endpoint used by the frontend editor to fetch a ready-made template.
-         */
-        public function leadRegistration(Request $request)
-        {
+   
+    public function leadRegistration(Request $request)
+    {
                 $registration_link = $request->query('registration_link', rtrim(env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080')), '/') . '/register');
                 $name = $request->query('name', '');
 
@@ -178,35 +180,33 @@ HTML;
                 $safeName = htmlspecialchars($name ?: 'User', ENT_QUOTES, 'UTF-8');
 
                 $html = <<<HTML
-<!doctype html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Registration Invite</title>
-</head>
-<body>
-    <div class="email-container">
-        <div style="width:100%; padding:40px 0; background-color:#f6f9fc; font-family: Arial, sans-serif;">
-            <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:6px; padding:30px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-size:20px; font-weight:bold; color:#333333; margin-bottom:15px;">Hello {$safeName},</div>
-                <div style="font-size:16px; color:#555555; line-height:1.5; margin-bottom:25px;">You’ve been invited to complete your signup. Please click the button below to enter your details and activate your account.</div>
-                <div style="text-align:center;">
-                    <a href="{$safeLink}" style="display:inline-block; padding:10px 20px; background-color:#0164A5; color:#ffffff; text-decoration:none; border-radius:50px; font-weight:bold;">Complete Signup</a>
-                </div>
-                <div style="font-size:13px; color:#888888; text-align:center; margin-top:30px;">If you did not request this, you can safely ignore this email.</div>
-            </div>
-        </div>
-    </div>
-</body>
-</html>
-HTML;
+                <!doctype html>
+                <html>
+                <head>
+                    <meta charset="utf-8" />
+                    <meta name="viewport" content="width=device-width,initial-scale=1" />
+                    <title>Registration Invite</title>
+                </head>
+                <body>
+                    <div class="email-container">
+                        <div style="width:100%; padding:40px 0; background-color:#f6f9fc; font-family: Arial, sans-serif;">
+                            <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:6px; padding:30px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                                <div style="font-size:20px; font-weight:bold; color:#333333; margin-bottom:15px;">Hello {$safeName},</div>
+                                <div style="font-size:16px; color:#555555; line-height:1.5; margin-bottom:25px;">You’ve been invited to complete your signup. Please click the button below to enter your details and activate your account.</div>
+                                <div style="text-align:center;">
+                                    <a href="{$safeLink}" style="display:inline-block; padding:10px 20px; background-color:#0164A5; color:#ffffff; text-decoration:none; border-radius:50px; font-weight:bold;">Complete Signup</a>
+                                </div>
+                                <div style="font-size:13px; color:#888888; text-align:center; margin-top:30px;">If you did not request this, you can safely ignore this email.</div>
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                HTML;
 
                 return response($html, 200)->header('Content-Type', 'text/html');
-        }
-    /**
-     * Prefill endpoint for registration form: returns all lead data by lead_id or email
-     */
+    }
+   
     public function prefill(Request $request)
     {
         $lead = null;
@@ -241,9 +241,7 @@ HTML;
         ]]);
     }
 
-    /**
-     * Return distinct non-empty find_us values found in leads (public).
-     */
+   
     public function findUsOptions()
     {
         $values = Lead::whereNotNull('find_us')
