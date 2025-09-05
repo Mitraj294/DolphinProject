@@ -286,81 +286,113 @@ export default {
     };
   },
   async created() {
-    // Fetch countries on mount
     await this.fetchCountries();
-    // Prefill form from backend if id is present in params or query
-    const q = this.$route.query;
-    const leadId = this.$route.params.id || q.id;
+
+    const leadId = this.getLeadId();
     if (leadId) {
+      const success = await this.loadLeadFromApi(leadId);
+      if (success) return;
+    }
+
+    this.loadLeadFromQuery();
+  },
+
+  methods: {
+    //  Helper Methods
+    getLeadId() {
+      const q = this.$route.query;
+      return this.$route.params.id || q.id || null;
+    },
+
+    async loadLeadFromApi(leadId) {
       try {
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
+
         const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const payload = res.data || null;
-        const leadObj = payload && payload.lead ? payload.lead : payload;
-        if (leadObj) {
-          this.form.first_name = leadObj.first_name || '';
-          this.form.last_name = leadObj.last_name || '';
-          this.form.email = leadObj.email || '';
-          this.form.phone = leadObj.phone || '';
-          this.form.find_us = leadObj.find_us || '';
-          this.form.org_name = leadObj.org_name || '';
-          this.form.org_size = leadObj.org_size || '';
-          this.form.address = leadObj.address || '';
-          this.form.country_id = leadObj.country_id || null;
-          this.form.state_id = leadObj.state_id || null;
-          this.form.city_id = leadObj.city_id || null;
-          this.form.zip = leadObj.zip || '';
-          // Fetch states and cities for selected country/state
-          if (this.form.country_id) await this.fetchStates();
-          if (this.form.state_id) await this.fetchCities();
-          // set navbar override
-          this.$nextTick(() => {
-            const name = `${this.form.first_name || ''} ${
-              this.form.last_name || ''
-            }`.trim();
-            if (this.$root && this.$root.$emit) {
-              this.$root.$emit(
-                'page-title-override',
-                name ? `Edit Lead : ${name}` : 'Edit Lead'
-              );
-            }
-          });
-          return;
-        }
+
+        const payload = res.data || {};
+        const leadObj = payload.lead || payload;
+
+        if (!leadObj) return false;
+
+        this.fillForm(leadObj);
+
+        if (this.form.country_id) await this.fetchStates();
+        if (this.form.state_id) await this.fetchCities();
+
+        this.updatePageTitle(leadObj);
+        return true;
       } catch (e) {
-        // fallback to query params
+        console.error('Error fetching lead data:', e);
+        return false;
       }
-    }
-    // fallback to query params if no id or fetch failed
-    const lead = q.lead
-      ? typeof q.lead === 'string'
-        ? JSON.parse(q.lead)
-        : q.lead
-      : {};
-    this.form.first_name =
-      q.first_name || q.contact?.split(' ')[0] || lead.first_name || '';
-    this.form.last_name =
-      q.last_name || q.contact?.split(' ')[1] || lead.last_name || '';
-    this.form.email = q.email || lead.email || '';
-    this.form.phone = q.phone || lead.phone || '';
-    this.form.find_us = q.source || q.find_us || lead.find_us || '';
-    this.form.org_name = q.organization || q.org_name || lead.org_name || '';
-    this.form.org_size = q.size || q.org_size || lead.org_size || '';
-    this.form.address =
-      q.address || q.address_line || lead.address || lead.address_line || '';
-    this.form.country_id = q.country_id || lead.country_id || null;
-    this.form.state_id = q.state_id || lead.state_id || null;
-    this.form.city_id = q.city_id || lead.city_id || null;
-    this.form.zip = q.zip || lead.zip || '';
-    if (this.form.country_id) await this.fetchStates();
-    if (this.form.state_id) await this.fetchCities();
-  },
-  methods: {
+    },
+
+    loadLeadFromQuery() {
+      const q = this.$route.query;
+      let lead = {};
+
+      if (q.lead) {
+        try {
+          lead = typeof q.lead === 'string' ? JSON.parse(q.lead) : q.lead;
+        } catch (e) {
+          console.error('Failed to parse lead query param:', e);
+        }
+      }
+
+      this.fillForm({
+        first_name: q.first_name || q.contact?.split(' ')[0],
+        last_name: q.last_name || q.contact?.split(' ')[1],
+        email: q.email,
+        phone: q.phone,
+        find_us: q.source || q.find_us,
+        org_name: q.organization || q.org_name,
+        org_size: q.size || q.org_size,
+        address: q.address || q.address_line,
+        country_id: q.country_id,
+        state_id: q.state_id,
+        city_id: q.city_id,
+        zip: q.zip,
+        ...lead,
+      });
+
+      if (this.form.country_id) this.fetchStates();
+      if (this.form.state_id) this.fetchCities();
+    },
+
+    fillForm(leadObj) {
+      this.form = {
+        first_name: leadObj.first_name || '',
+        last_name: leadObj.last_name || '',
+        email: leadObj.email || '',
+        phone: leadObj.phone || '',
+        find_us: leadObj.find_us || '',
+        org_name: leadObj.org_name || '',
+        org_size: leadObj.org_size || '',
+        address: leadObj.address || leadObj.address_line || '',
+        country_id: leadObj.country_id || null,
+        state_id: leadObj.state_id || null,
+        city_id: leadObj.city_id || null,
+        zip: leadObj.zip || '',
+      };
+    },
+
+    updatePageTitle(leadObj) {
+      this.$nextTick(() => {
+        const name = `${leadObj.first_name || ''} ${
+          leadObj.last_name || ''
+        }`.trim();
+        this.$root?.$emit(
+          'page-title-override',
+          name ? `Edit Lead : ${name}` : 'Edit Lead'
+        );
+      });
+    },
     async fetchCountries() {
       const API_BASE_URL =
         process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -432,89 +464,82 @@ export default {
       }
     },
     async handleUpdateLead() {
+      this.resetMessages();
       this.loading = true;
-      this.successMessage = '';
-      this.errorMessage = '';
+
       try {
-        const storage = require('@/services/storage').default;
-        const token = storage.get('authToken');
-        if (!token) {
-          this.errorMessage = 'Authentication token not found. Please log in.';
-          this.loading = false;
-          // Show error toast
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Authentication Error',
-            detail: this.errorMessage,
-            life: 5000,
-          });
-          return;
-        }
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const token = this.getAuthToken();
+        if (!token) return this.handleAuthError();
 
-        const leadId = this.$route.params.id || this.$route.query.id;
-        if (!leadId) {
-          this.errorMessage = 'Lead ID not found in route query.';
-          this.loading = false;
-          // Show error toast
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Error',
-            detail: this.errorMessage,
-            life: 5000,
-          });
-          return;
-        }
+        const leadId = this.getLeadId();
+        if (!leadId) return this.handleMissingId();
 
-        const payload = { ...this.form };
-
-        const response = await axios.patch(
-          `${API_BASE_URL}/api/leads/${leadId}`,
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        this.successMessage =
-          response.data.message || 'Lead updated successfully!';
-        // Use PrimeVue Toast for success notification
-        this.$toast.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: this.successMessage,
-          life: 3000,
-        });
-        this.$router.push('/leads'); // Redirect back to leads list
+        const response = await this.updateLeadApi(leadId, token, this.form);
+        this.handleSuccess(response.data);
       } catch (error) {
-        console.error('Error updating lead:', error);
-        if (error.response) {
-          this.errors = error.response.data.errors;
-
-          if (error.response && error.response.data) {
-            this.errorMessage =
-              error.response.data.message || 'Failed to update lead.';
-            if (error.response.data.errors) {
-              // Concatenate specific validation errors
-              for (const key in error.response.data.errors) {
-                this.errorMessage;
-              }
-            }
-          }
-        } else {
-          this.errorMessage = 'An unexpected error occurred.';
-        }
-        // Use PrimeVue Toast for error notification
-        this.$toast.add({
-          severity: 'warn',
-          summary: 'Fill the required fields',
-          detail: this.errorMessage,
-          life: 5000,
-        });
+        this.handleError(error);
       } finally {
         this.loading = false;
       }
+    },
+    resetMessages() {
+      this.successMessage = '';
+      this.errorMessage = '';
+      this.errors = {};
+    },
+    getAuthToken() {
+      const storage = require('@/services/storage').default;
+      return storage.get('authToken');
+    },
+
+    handleAuthError() {
+      this.errorMessage = 'Authentication token not found. Please log in.';
+      this.showToast('error', 'Authentication Error', this.errorMessage);
+      this.loading = false;
+    },
+
+    handleMissingId() {
+      this.errorMessage = 'Lead ID not found in route query.';
+      this.showToast('error', 'Error', this.errorMessage);
+      this.loading = false;
+    },
+    async updateLeadApi(leadId, token, payload) {
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      return axios.patch(`${API_BASE_URL}/api/leads/${leadId}`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+    },
+    handleSuccess(data) {
+      this.successMessage = data.message || 'Lead updated successfully!';
+      this.showToast('success', 'Success', this.successMessage);
+      this.$router.push('/leads');
+    },
+    handleError(error) {
+      console.error('Error updating lead:', error);
+
+      if (error.response?.data) {
+        const { message, errors } = error.response.data;
+
+        this.errorMessage = message || 'Failed to update lead.';
+        this.errors = errors || {};
+
+        if (errors && typeof errors === 'object') {
+          const allMessages = Object.values(errors)
+            .flat()
+            .map(String)
+            .join(' ');
+          if (allMessages) this.errorMessage += ' ' + allMessages;
+        }
+      } else {
+        this.errorMessage = 'An unexpected error occurred.';
+      }
+
+      this.showToast('warn', 'Fill the required fields', this.errorMessage);
+    },
+
+    showToast(severity, summary, detail, life = 5000) {
+      this.$toast.add({ severity, summary, detail, life });
     },
   },
 };

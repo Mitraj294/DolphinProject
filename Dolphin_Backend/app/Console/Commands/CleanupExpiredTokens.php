@@ -42,11 +42,9 @@ class CleanupExpiredTokens extends Command
         $this->info("Found {$expiredCount} expired tokens.");
 
         // Ask for confirmation unless --force is used
-        if (!$this->option('force')) {
-            if (!$this->confirm("Do you want to delete {$expiredCount} expired tokens?")) {
-                $this->info('Cleanup cancelled.');
-                return 0;
-            }
+        if ((!$this->option('force')) && (!$this->confirm("Do you want to delete {$expiredCount} expired tokens?"))) {
+            $this->info('Cleanup cancelled.');
+            return 0;
         }
 
         // Delete expired tokens

@@ -39,7 +39,7 @@ return [
         'api' => [
             'driver' => 'passport',
             'provider' => 'users',
-            'hash' => false, // <-- ADD THIS LINE
+            'hash' => false,
         ],
     ],
     /*
@@ -95,7 +95,7 @@ return [
             'provider' => 'users',
             'table' => env('AUTH_PASSWORD_RESET_TOKEN_TABLE', 'password_reset_tokens'),
             'expire' => 60,
-            'throttle' => 30, // 30 seconds cooldown
+            'throttle' => 30,
         ],
     ],
 

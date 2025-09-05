@@ -6,13 +6,7 @@
           <div class="send-assessment-table-header">
             <div class="send-assessment-title">Send Assessment</div>
           </div>
-          <div
-            class="send-assessment-desc"
-            style="margin-bottom: 18px"
-          >
-            Lorem Ipsum is simply dummy text of the printing and typesetting
-            industry.
-          </div>
+
           <form
             class="send-assessment-form"
             @submit.prevent="handleSendAssessment"
@@ -40,18 +34,9 @@
 
             <div class="send-assessment-template-box">
               <Editor
-                v-if="editorReady"
                 v-model="templateContent"
-                :key="editorKey"
-                editorStyle="height: 420px"
-                :modules="editorModules"
-                @load="onEditorLoad"
-              />
-              <textarea
-                v-else
-                v-model="templateContent"
-                rows="20"
-                style="width: 100%; font-family: monospace"
+                :init="tinymceConfigSelfHosted"
+                @onInit="onTinyMCEInit"
               />
             </div>
 
@@ -80,8 +65,33 @@ import {
   FormRow,
   FormLabel,
 } from '@/components/Common/Common_UI/Form';
-import Editor from 'primevue/editor';
+import Editor from '@tinymce/tinymce-vue';
 import axios from 'axios';
+
+import 'tinymce/tinymce';
+import 'tinymce/themes/silver';
+import 'tinymce/icons/default';
+
+import 'tinymce/models/dom';
+
+// Import plugins
+import 'tinymce/plugins/advlist';
+import 'tinymce/plugins/autolink';
+import 'tinymce/plugins/lists';
+import 'tinymce/plugins/link';
+import 'tinymce/plugins/image';
+import 'tinymce/plugins/charmap';
+import 'tinymce/plugins/preview';
+import 'tinymce/plugins/anchor';
+import 'tinymce/plugins/searchreplace';
+import 'tinymce/plugins/visualblocks';
+import 'tinymce/plugins/code';
+import 'tinymce/plugins/fullscreen';
+import 'tinymce/plugins/insertdatetime';
+import 'tinymce/plugins/media';
+import 'tinymce/plugins/table';
+import 'tinymce/plugins/wordcount';
+import 'tinymce/plugins/help';
 
 export default {
   name: 'SendAssessment',
@@ -92,62 +102,92 @@ export default {
       recipientName: '',
       subject: 'Complete Your Registration',
       templateContent: '',
-      pendingTemplate: '', // Store template until editor is ready
       sending: false,
       registrationLink: '',
-      editorReady: false,
-      quillInstance: null,
-      // This key is crucial. Changing it will force the editor to re-mount completely.
-      editorKey: 0,
-      editorModules: {
-        toolbar: {
-          container: [
-            [{ header: [1, 2, 3, 4, 5, 6, false] }],
-            ['bold', 'italic', 'underline', 'strike'],
-            [{ color: [] }, { background: [] }],
-            [{ align: [] }],
-            [{ list: 'ordered' }, { list: 'bullet' }],
-            ['blockquote', 'code-block'],
-            ['link', 'image'],
-            ['clean'],
-          ],
-          handlers: {
-            // Custom handlers can be added here if needed
-          },
-        },
+      tinymceConfigSelfHosted: {
+        height: 500,
+
+        // Set the base URL for TinyMCE assets
+        base_url: '/tinymce',
+        suffix: '.min',
+
+        // Skin configuration
+        skin_url: '/tinymce/skins/ui/oxide',
+        content_css: '/tinymce/skins/content/default/content.css',
+
+        menubar: 'edit view insert format tools table help',
+
+        // Only FREE plugins (no premium features)
+        plugins: [
+          'advlist',
+          'autolink',
+          'lists',
+          'link',
+          'image',
+          'charmap',
+          'preview',
+          'anchor',
+          'searchreplace',
+          'visualblocks',
+          'code',
+          'fullscreen',
+          'insertdatetime',
+          'media',
+          'table',
+          'wordcount',
+          'help',
+        ],
+
+        // Simplified toolbar with only free features
+        toolbar:
+          'undo redo | formatselect | ' +
+          'bold italic underline strikethrough | ' +
+          'alignleft aligncenter alignright alignjustify | ' +
+          'bullist numlist outdent indent | ' +
+          'link image table | ' +
+          'code preview fullscreen | help',
+
+        // Email template settings
+        valid_elements: '*[*]',
+        cleanup: false,
+        convert_urls: false,
+        remove_script_host: false,
+        relative_urls: false,
+
+        // Basic formatting (free features only)
+        block_formats:
+          'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4; Heading 5=h5; Heading 6=h6; Preformatted=pre',
+
+        // UI settings
+        branding: false,
+        statusbar: false,
+        elementpath: false,
+        resize: 'both',
+        promotion: false,
+
+        content_style:
+          'body { font-family: Arial, sans-serif; font-size: 14px; margin: 20px; }',
+
+        // GPL license for self-hosted
+        license_key: 'gpl',
       },
     };
   },
   // mounted() now only handles the initial trigger for loading data.
   mounted() {
-    console.log('=== COMPONENT MOUNTED ===');
+    console.log('=== TINYMCE COMPONENT MOUNTED ===');
     const leadId = this.$route.params.id || this.$route.query.lead_id || null;
     console.log('Lead ID from route:', leadId);
 
     if (leadId) {
       console.log('Loading initial lead data for ID:', leadId);
       this.loadInitialLeadData(leadId);
-    } else {
-      console.log('No lead ID, showing blank editor');
-      // If no lead is being loaded, just show a blank editor.
-      this.editorReady = true;
     }
   },
   watch: {
-    templateContent: {
-      handler(newValue, oldValue) {
-        console.log('=== TEMPLATE CONTENT WATCHER ===');
-        console.log('Old value length:', oldValue?.length || 0);
-        console.log('New value length:', newValue?.length || 0);
-        console.log('New value preview:', newValue?.substring(0, 100));
-        console.log('Quill instance exists:', !!this.quillInstance);
-      },
-      immediate: true,
-    },
     to(newEmail, oldEmail) {
       console.log('=== TO EMAIL WATCHER ===');
       console.log('Email changed from:', oldEmail, 'to:', newEmail);
-      // Only fetch a new template if the email has actually changed to a new value.
       if (newEmail && newEmail !== oldEmail) {
         console.log('Fetching server template for new email');
         this.fetchServerTemplate();
@@ -172,11 +212,6 @@ export default {
         console.log('=== LEAD DATA LOADED ===');
         console.log('Lead object:', leadObj);
         console.log('Default template exists:', !!leadDefaultTemplate);
-        console.log('Template length:', leadDefaultTemplate?.length);
-        console.log(
-          'Template preview:',
-          leadDefaultTemplate?.substring(0, 100)
-        );
 
         if (leadObj && leadDefaultTemplate) {
           this.to = leadObj.email || '';
@@ -184,35 +219,12 @@ export default {
             leadObj.last_name || ''
           }`.trim();
 
-          // DEBUGGING STEP: Check the browser console to ensure this log appears and the HTML looks correct.
-          console.log(
-            'Final HTML template being passed to the editor:',
-            leadDefaultTemplate
-          );
-
-          // Store the template to load when editor is ready
-          this.pendingTemplate = String(leadDefaultTemplate);
-          console.log('=== PENDING TEMPLATE SET ===');
-          console.log('Pending template length:', this.pendingTemplate.length);
-          console.log('Editor ready status before:', this.editorReady);
-
-          // Make editor ready
-          this.editorReady = true;
-          this.editorKey += 1;
-          console.log('=== EDITOR MOUNTING ===');
-          console.log('Editor ready set to:', this.editorReady);
-          console.log('Editor key incremented to:', this.editorKey);
-        } else {
-          // If the template is missing from the API for some reason, log it.
-          console.error(
-            'API response did not contain a lead object or the default template.'
-          );
-          this.editorReady = true; // Show the blank editor
+          this.templateContent = String(leadDefaultTemplate);
+          console.log('Template content set for TinyMCE');
         }
       } catch (e) {
         console.error('Failed to load initial lead data:', e);
         this.templateContent = '<p>Error: Could not load lead data.</p>';
-        this.editorReady = true;
       }
     },
 
@@ -226,11 +238,9 @@ export default {
       }
     },
 
-    // This function is now ONLY for fetching the GENERIC template when the user types a new email.
     async fetchServerTemplate() {
       if (!this.to) return;
 
-      this.editorReady = false;
       this.updateRegistrationLink();
 
       try {
@@ -258,11 +268,6 @@ export default {
         console.error('Failed to fetch server template:', e?.message || e);
         this.templateContent =
           '<p>Error: Could not load the email template.</p>';
-      } finally {
-        this.editorKey += 1;
-        this.$nextTick(() => {
-          this.editorReady = true;
-        });
       }
     },
 
@@ -270,26 +275,8 @@ export default {
       if (this.sending) return;
       this.sending = true;
       try {
-        const name =
-          this.recipientName ||
-          (this.$route.params &&
-            (this.$route.params.contact || this.$route.params.name)) ||
-          this.$route.query.contact ||
-          this.$route.query.name ||
-          '';
-
-        const payload = {
-          to: this.to,
-          subject: this.subject,
-          body: this.templateContent,
-          registration_link: this.registrationLink,
-          name: name,
-        };
-
-        const leadId =
-          (this.$route.params && this.$route.params.id) ||
-          (this.$route.query && this.$route.query.lead_id);
-        if (leadId) payload.lead_id = leadId;
+        const name = this.computeRecipientName();
+        const payload = this.buildPayload(name);
 
         await axios.post(
           `${
@@ -297,6 +284,7 @@ export default {
           }/api/leads/send-assessment`,
           payload
         );
+
         this.$toast.add({
           severity: 'success',
           summary: 'Assessment Sent',
@@ -304,19 +292,7 @@ export default {
           life: 3500,
         });
       } catch (error) {
-        let detail = 'Failed to send assessment email.';
-        if (error?.response?.data) {
-          const data = error.response.data;
-          if (typeof data === 'string') {
-            detail += ` ${data}`;
-          } else if (data.error) {
-            detail += ` ${data.error}`;
-          } else if (data.message) {
-            detail += ` ${data.message}`;
-          }
-        } else if (error?.message) {
-          detail += ` ${error.message}`;
-        }
+        const detail = this.formatSendErrorDetail(error);
         console.error('Send Assessment Error:', error);
         this.$toast.add({
           severity: 'error',
@@ -329,127 +305,63 @@ export default {
       }
     },
 
-    onEditorLoad(event) {
-      console.log('=== EDITOR LOAD EVENT FIRED ===');
-      console.log('Editor loaded, Quill instance:', event.instance);
-      console.log('Event object:', event);
-      console.log('Pending template exists:', !!this.pendingTemplate);
-      console.log('Pending template length:', this.pendingTemplate?.length);
-      console.log('Current templateContent:', this.templateContent);
+    computeRecipientName() {
+      return (
+        this.recipientName ||
+        (this.$route.params &&
+          (this.$route.params.contact || this.$route.params.name)) ||
+        this.$route.query.contact ||
+        this.$route.query.name ||
+        ''
+      );
+    },
 
-      this.quillInstance = event.instance;
+    buildPayload(name) {
+      const payload = {
+        to: this.to,
+        subject: this.subject,
+        body: this.templateContent,
+        registration_link: this.registrationLink,
+        name,
+      };
 
-      // If we have pending template content, set it now
-      if (this.pendingTemplate) {
-        console.log('=== SETTING TEMPLATE CONTENT ===');
-        console.log('About to set template content');
-        console.log('Before - templateContent:', this.templateContent);
+      const leadId =
+        (this.$route.params && this.$route.params.id) ||
+        (this.$route.query && this.$route.query.lead_id);
+      if (leadId) payload.lead_id = leadId;
 
-        // Store the template for later use
-        const templateToSet = this.pendingTemplate;
+      return payload;
+    },
 
-        // Use multiple timeouts to ensure Quill is ready and prevent it from clearing content
-        setTimeout(() => {
-          try {
-            console.log('Trying direct DOM manipulation method');
-            const editorRoot = this.quillInstance.root;
-
-            // First, disable Quill temporarily to prevent interference
-            this.quillInstance.disable();
-
-            // Set the content directly
-            editorRoot.innerHTML = templateToSet;
-            console.log('HTML set on root element');
-            console.log(
-              'Root innerHTML after setting:',
-              editorRoot.innerHTML.substring(0, 200)
-            );
-
-            // Re-enable Quill
-            this.quillInstance.enable();
-
-            // Force Quill to update and recognize the content
-            this.quillInstance.update();
-            console.log('Quill update called');
-
-            // Update the v-model after a small delay
-            setTimeout(() => {
-              this.templateContent = templateToSet;
-              console.log('Template content updated via v-model');
-              console.log(
-                'V-model content length:',
-                this.templateContent.length
-              );
-
-              // Final verification
-              setTimeout(() => {
-                console.log('FINAL VERIFICATION:');
-                console.log(
-                  'Quill root HTML:',
-                  this.quillInstance.root.innerHTML.substring(0, 200)
-                );
-                console.log(
-                  'Quill text length:',
-                  this.quillInstance.getText().length
-                );
-                console.log('V-model length:', this.templateContent.length);
-              }, 100);
-            }, 50);
-
-            console.log('Direct DOM method completed');
-          } catch (error) {
-            console.error('Error with direct DOM method:', error);
-
-            // Fallback: Try using Quill's API with a different approach
-            try {
-              console.log('Trying fallback: setContents with plain text');
-              const plainText = templateToSet
-                .replace(/<br[^>]*>/gi, '\n')
-                .replace(/<\/p>/gi, '\n\n')
-                .replace(/<[^>]*>/g, '')
-                .replace(/&amp;/g, '&')
-                .replace(/&lt;/g, '<')
-                .replace(/&gt;/g, '>')
-                .trim();
-
-              this.quillInstance.setText(plainText);
-              this.templateContent = plainText;
-              console.log('Plain text fallback completed');
-            } catch (error2) {
-              console.error('Error with fallback method:', error2);
-              // Final v-model update
-              this.templateContent = templateToSet;
-            }
-          }
-        }, 300); // Even longer delay to ensure Quill is fully ready
-
-        // Clear pending template
-        this.pendingTemplate = '';
-        console.log('Pending template cleared');
-
-        // Force Quill to update if needed
-        this.$nextTick(() => {
-          console.log('=== NEXT TICK AFTER TEMPLATE SET ===');
-          console.log(
-            'Quill delta contents:',
-            this.quillInstance?.getContents()
-          );
-          console.log(
-            'Quill HTML contents:',
-            this.quillInstance?.root?.innerHTML
-          );
-        });
+    formatSendErrorDetail(error) {
+      let detail = 'Failed to send assessment email.';
+      if (error?.response?.data) {
+        const data = error.response.data;
+        if (typeof data === 'string') {
+          detail += ` ${data}`;
+        } else if (data.error) {
+          detail += ` ${data.error}`;
+        } else if (data.message) {
+          detail += ` ${data.message}`;
+        } else {
+          detail += ` ${JSON.stringify(data)}`;
+        }
+      } else if (error?.message) {
+        detail += ` ${error.message}`;
       } else {
-        console.log('=== NO PENDING TEMPLATE ===');
-        console.log('No pending template to set');
+        detail += ' An unknown error occurred.';
       }
+      return detail;
+    },
+
+    onTinyMCEInit(event, editor) {
+      console.log('TinyMCE initialized:', editor);
     },
   },
 };
 </script>
 
 <style scoped>
-/* Your existing styles are fine */
 .send-assessment-table-outer {
   width: 100%;
   max-width: 1400px;
@@ -585,10 +497,5 @@ export default {
     flex-direction: column;
     gap: 18px;
   }
-}
-
-/* Hide the default PrimeVue toolbar to prevent duplicate toolbars */
-:deep(.p-editor-toolbar) {
-  display: none !important;
 }
 </style>

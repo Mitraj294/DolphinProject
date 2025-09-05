@@ -232,6 +232,8 @@ export default {
         } else if (error.code === 'ERR_NETWORK') {
           errorMessage =
             'Network error - check if backend server is running and accessible';
+        } else {
+          errorMessage = error.message;
         }
 
         this.toast.add({

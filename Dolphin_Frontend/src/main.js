@@ -19,8 +19,6 @@ import ConfirmService from 'primevue/confirmationservice';
 // PrimeVue Styles (choose a theme and include primevue.min.css)
 import 'primevue/resources/themes/lara-light-blue/theme.css'; // Recommended theme, or choose another
 import 'primevue/resources/primevue.min.css'; // Core PrimeVue styles
-// Quill editor styles (required by PrimeVue Editor)
-import 'quill/dist/quill.snow.css';
 
 // Font Awesome and PrimeIcons
 import 'primeicons/primeicons.css'; // PrimeIcons for PrimeVue components
@@ -37,9 +35,6 @@ import Toast from 'primevue/toast';
 app.component('Toast', Toast); // Register Toast globally
 import ConfirmDialog from 'primevue/confirmdialog';
 app.component('ConfirmDialog', ConfirmDialog);
-// Register Editor globally so it's available in all components without local import
-import Editor from 'primevue/editor';
-app.component('Editor', Editor);
 // PrimeVue v3 uses the Calendar component for date selection. "primevue/datepicker" is not available
 // in this PrimeVue version, so import the Calendar component instead and register it globally.
 import Calendar from 'primevue/calendar';

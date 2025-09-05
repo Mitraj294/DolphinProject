@@ -606,6 +606,9 @@ export default {
           confirm_password: 'confirmPasswordInput',
         };
         targetRef = map[s3] || 'passwordInput';
+      }else {
+        // No errors found
+        return;
       }
       if (this.step !== targetStep) this.step = targetStep;
       this.$nextTick(() => {
@@ -664,9 +667,11 @@ export default {
           this.errors = normalized;
           this.navigateToFirstError(this.errors);
         }
-        if (data.message) errorMessage = data.message;
-        else if (data.errors) errorMessage = Object.values(data.errors).flat().join(' ');
-        else if (typeof data === 'object') {
+        if (data.message) {
+          errorMessage = data.message;
+        } else if (data.errors) {
+          errorMessage = Object.values(data.errors).flat().join(' ');
+        } else if (typeof data === 'object') {
           const flat = Object.values(data).flat();
           if (flat.length) errorMessage = flat.join(' ');
         } else if (typeof data === 'string') errorMessage = data;

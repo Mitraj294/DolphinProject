@@ -325,10 +325,16 @@ export default {
           // Normalize org size to dropdown values ('Large','Medium','Small')
           const rawOrgSize = found.org_size || userDetails.org_size || '';
           let normalizedOrgSize = '';
-          if (/large/i.test(rawOrgSize)) normalizedOrgSize = 'Large';
-          else if (/medium/i.test(rawOrgSize)) normalizedOrgSize = 'Medium';
-          else if (/small/i.test(rawOrgSize) || /1-99|250\+/.test(rawOrgSize))
+          if (/large/i.test(rawOrgSize)) {
+            normalizedOrgSize = 'Large';
+          } else if (/medium/i.test(rawOrgSize)) {
+            normalizedOrgSize = 'Medium';
+          } else if (
+            /small/i.test(rawOrgSize) ||
+            /1-99|250\+/.test(rawOrgSize)
+          ) {
             normalizedOrgSize = 'Small';
+          }
 
           // Prefer explicit source field, fallback to find_us on org or user_details
           const sourceVal =
@@ -527,13 +533,15 @@ export default {
         }
         // Normalize org_size back to the display string the backend expects
         let orgSizePayload = this.form.orgSize;
-        if (this.form.orgSize === '1-99 Employees (Small)')
+        if (this.form.orgSize === '1-99 Employees (Small)') {
           orgSizePayload = '1-99 Employees (Small)';
-        else if (this.form.orgSize === '100-249 Employees (Medium)')
+        } else if (this.form.orgSize === '100-249 Employees (Medium)') {
           orgSizePayload = '100-249 Employees (Medium)';
-        else if (this.form.orgSize === '250+ Employees (Large)')
+        } else if (this.form.orgSize === '250+ Employees (Large)') {
           orgSizePayload = '250+ Employees (Large)';
-
+        } else {
+          orgSizePayload = '';
+        }
         // Convert user-facing formatted dates back to ISO timestamp strings where possible
         const contractStartISO = this.parseContractInput(
           this.form.contractStart
@@ -704,10 +712,6 @@ export default {
 :deep(.form-box) {
   padding-left: 0 !important;
   padding-right: 0 !important;
-}
-
-/* Position the form-box so absolutely positioned icons inside inputs align properly */
-:deep(.form-box) {
   position: relative !important;
 }
 

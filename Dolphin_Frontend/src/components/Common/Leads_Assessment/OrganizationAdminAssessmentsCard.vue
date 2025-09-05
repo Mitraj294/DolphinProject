@@ -1728,9 +1728,17 @@ export default {
 .detail-table .detail-label {
   font-weight: 600;
   color: #333;
+  flex: 0 0 36% !important;
+  max-width: 40% !important;
+  text-align: left !important;
 }
+
 .detail-table .detail-value {
   color: #222;
+  word-break: break-word;
+  flex: 1 1 64% !important;
+  text-align: left !important;
+  padding-left: 8px !important;
 }
 .detail-table .recipient-list {
   max-height: 220px;
@@ -1757,26 +1765,17 @@ export default {
   margin: 14px auto 0 auto;
 }
 .detail-table .detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
   padding: 8px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
   max-width: 600px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px;
 }
 .detail-table .detail-row:last-child {
   border-bottom: none;
-}
-.detail-table .detail-label {
-  flex: 0 0 38%;
-  color: #666;
-  font-weight: 600;
-}
-.detail-table .detail-value {
-  flex: 1 1 60%;
-  text-align: right;
-  color: #222;
-  word-break: break-word;
 }
 
 /* Schedule header responsive layout */
@@ -1914,25 +1913,6 @@ export default {
   }
 }
 
-/* Stronger selector to override earlier column rules and keep label/value on one line */
-.detail-table .detail-row {
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  gap: 8px;
-}
-.detail-table .detail-label {
-  flex: 0 0 36% !important;
-  max-width: 40% !important;
-  text-align: left !important;
-}
-.detail-table .detail-value {
-  flex: 1 1 64% !important;
-  text-align: left !important;
-  padding-left: 8px !important;
-}
-
 /* Status badge */
 .recipient-badge {
   display: inline-block;
@@ -1980,15 +1960,14 @@ export default {
 .recipient-table.compact td:nth-child(4) {
   width: 10%; /* Role */
 }
-
-/* Stronger enforcement for this specific recipient table instance to
-   prevent it expanding beyond 600px. Uses the wrapper and attribute
-   selectors to make the rule specific and override other layout. */
 .recipient-table-wrap {
   max-width: 600px !important;
   width: 100% !important;
   margin: 0 auto !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
 }
+
 .recipient-table-wrap .recipient-table {
   max-width: 600px !important;
   table-layout: fixed !important;
@@ -2027,11 +2006,6 @@ export default {
   font-weight: 600;
   color: #666;
 }
-.recipient-table-wrap {
-  /* allow horizontal scrolling as a fallback */
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch;
-}
 
 /* If space allows, shrink long email addresses on very small screens */
 @media (max-width: 480px) {
@@ -2067,16 +2041,6 @@ export default {
   text-overflow: ellipsis;
 }
 
-/* wrapper to enforce max width and center the table */
-.recipient-table-wrap {
-  max-width: 600px;
-  margin: 0 auto;
-  width: 100%;
-}
-</style>
-
-<!-- Unified modal styles shared across components -->
-<style scoped>
 .modal-overlay {
   position: fixed;
   inset: 0;
