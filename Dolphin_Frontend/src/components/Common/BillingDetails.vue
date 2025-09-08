@@ -79,7 +79,10 @@
             <table class="table">
               <TableHeader
                 :columns="[
-                  { label: 'Payment Method', key: 'paymentMethod' },
+                  {
+                    label: 'Payment Method',
+                    key: 'paymentMethodType , paymentMethod',
+                  },
                   { label: 'Payment Date', key: 'paymentDate' },
                   { label: 'Subscription End', key: 'subscriptionEnd' },
                   { label: 'Amount', key: 'amount' },
@@ -92,7 +95,18 @@
                   v-for="(item, idx) in billingHistory"
                   :key="idx"
                 >
-                  <td>{{ item.paymentMethod }}</td>
+                  <td>
+                    <div v-if="item.paymentMethodType || item.paymentMethod">
+                      <span v-if="item.paymentMethodType">{{
+                        item.paymentMethodType.toUpperCase()
+                      }}</span>
+                      <br v-if="item.paymentMethodType && item.paymentMethod" />
+                      <span v-if="item.paymentMethod">{{
+                        item.paymentMethod
+                      }}</span>
+                    </div>
+                    <span v-else>-</span>
+                  </td>
 
                   <td>
                     {{ item.paymentDate ? formatDate(item.paymentDate) : '' }}

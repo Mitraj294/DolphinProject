@@ -26,7 +26,11 @@
           :visible="showGroupModal"
           :groupId="selectedGroup ? selectedGroup.id : null"
           @close="closeGroupModal"
-          @view-member="(m) => { this.$emit('view-member', m); }"
+          @view-member="
+            (m) => {
+              this.$emit('view-member', m);
+            }
+          "
         />
       </div>
     </div>
@@ -125,7 +129,6 @@ export default {
       }
     },
     viewGroup(group) {
-      // show a modal card with group details and its members
       this.selectedGroup = group || null;
       this.showGroupModal = !!group;
     },

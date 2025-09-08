@@ -170,7 +170,7 @@ class MemberController extends Controller
             // require email to be unique among non-deleted members only
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|unique:members,email,NULL,id,deleted_at,NULL',
-            'phone' => 'nullable|string',
+            'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'member_role' => 'required',
             'group_ids' => 'array',
             'group_ids.*' => 'exists:groups,id',

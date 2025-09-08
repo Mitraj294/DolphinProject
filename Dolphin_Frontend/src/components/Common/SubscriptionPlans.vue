@@ -406,9 +406,9 @@ export default {
 
 .subscription-plans-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -424,7 +424,7 @@ export default {
   margin: 0 auto;
   box-sizing: border-box;
   min-width: 0;
-  max-width: 1400px;
+
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -1032,10 +1032,6 @@ input:checked + .switch-slider:before {
 
 /* Responsive styles */
 @media (max-width: 1400px) {
-  .subscription-plans-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .subscription-plans-card {
     border-radius: 14px;
     max-width: 100%;
@@ -1052,10 +1048,6 @@ input:checked + .switch-slider:before {
   }
 }
 @media (max-width: 900px) {
-  .subscription-plans-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .subscription-plans-card {
     border-radius: 10px;
   }

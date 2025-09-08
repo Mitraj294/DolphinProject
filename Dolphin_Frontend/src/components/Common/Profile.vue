@@ -1,242 +1,246 @@
 <template>
   <ConfirmDialog />
   <MainLayout>
-    <div class="profile-outer">
-      <div class="profile-card">
-        <div class="profile-header">
-          <div class="profile-title">
-            <i class="fas fa-user-circle profile-avatar"></i>
-            <span>Profile</span>
+    <div class="page">
+      <div class="profile-outer">
+        <div class="profile-card">
+          <div class="profile-header">
+            <div class="profile-title">
+              <i class="fas fa-user-circle profile-avatar"></i>
+              <span>Profile</span>
+            </div>
+            <div>
+              <button
+                class="btn btn-primary"
+                @click="editAccount"
+              >
+                <i class="fas fa-pen-to-square"></i>
+                Edit
+              </button>
+            </div>
           </div>
-          <div>
-            <button
-              class="btn btn-primary"
-              @click="editAccount"
+          <div class="profile-info-table">
+            <div
+              v-if="profileError"
+              style="color: red; margin-bottom: 10px"
             >
-              <i class="fas fa-pen-to-square"></i>
-              Edit
+              {{ profileError }}
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-label">First Name</div>
+              <div class="profile-value">
+                {{ user.first_name || '' }}
+              </div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-label">Last Name</div>
+              <div class="profile-value">
+                {{ user.last_name || '' }}
+              </div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-label">Email</div>
+              <div class="profile-value">
+                {{ user.email || '' }}
+              </div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-label">Role</div>
+              <div class="profile-value">
+                <span v-if="user.roles && user.roles.length">
+                  {{
+                    user.roles
+                      .map((r) => formatRoleLabel(r.name || r))
+                      .join(', ')
+                  }}
+                </span>
+              </div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-label">Country</div>
+              <div class="profile-value">
+                {{ countryName }}
+              </div>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-label">Phone</div>
+              <div class="profile-value">
+                {{ user.userDetails?.phone || '' }}
+              </div>
+            </div>
+          </div>
+          <div class="profile-actions">
+            <button
+              class="btn btn-danger"
+              @click="deleteAccount"
+            >
+              <i class="fas fa-trash"></i>
+              Delete Account
             </button>
           </div>
         </div>
-        <div class="profile-info-table">
-          <div
-            v-if="profileError"
-            style="color: red; margin-bottom: 10px"
-          >
-            {{ profileError }}
-          </div>
-          <div class="profile-info-row">
-            <div class="profile-label">First Name</div>
-            <div class="profile-value">
-              {{ user.first_name || '' }}
-            </div>
-          </div>
-          <div class="profile-info-row">
-            <div class="profile-label">Last Name</div>
-            <div class="profile-value">
-              {{ user.last_name || '' }}
-            </div>
-          </div>
-          <div class="profile-info-row">
-            <div class="profile-label">Email</div>
-            <div class="profile-value">
-              {{ user.email || '' }}
-            </div>
-          </div>
-          <div class="profile-info-row">
-            <div class="profile-label">Role</div>
-            <div class="profile-value">
-              <span v-if="user.roles && user.roles.length">
-                {{
-                  user.roles.map((r) => formatRoleLabel(r.name || r)).join(', ')
-                }}
-              </span>
-            </div>
-          </div>
-          <div class="profile-info-row">
-            <div class="profile-label">Country</div>
-            <div class="profile-value">
-              {{ countryName }}
-            </div>
-          </div>
-          <div class="profile-info-row">
-            <div class="profile-label">Phone</div>
-            <div class="profile-value">{{ user.userDetails?.phone || '' }}</div>
-          </div>
-        </div>
-        <div class="profile-actions">
-          <button
-            class="btn btn-danger"
-            @click="deleteAccount"
-          >
-            <i class="fas fa-trash"></i>
-            Delete Account
-          </button>
-        </div>
-      </div>
-      <!-- Edit Profile Modal -->
-      <CommonModal
-        :visible="showEditModal"
-        @close="showEditModal = false"
-        @submit="updateProfile"
-        :modal-max-width="'700px'"
-        :modal-min-width="'280px'"
-        modal-padding="18px"
-      >
-        <div class="profile-modal-header">
-          <h1>Edit Profile</h1>
-        </div>
-        <FormRow>
-          <FormLabel>First Name</FormLabel>
-          <FormInput
-            v-model="editForm.first_name"
-            type="text"
-            required
-          />
-        </FormRow>
-        <FormRow>
-          <FormLabel>Last Name</FormLabel>
-          <FormInput
-            v-model="editForm.last_name"
-            type="text"
-            required
-          />
-        </FormRow>
-        <FormRow>
-          <FormLabel>Email</FormLabel>
-          <FormInput
-            v-model="editForm.email"
-            type="email"
-            required
-          />
-        </FormRow>
-        <FormRow>
-          <FormLabel>Phone</FormLabel>
-          <FormInput
-            v-model="editForm.phone"
-            type="text"
-          />
-        </FormRow>
-        <FormRow>
-          <FormLabel>Country</FormLabel>
-          <FormDropdown
-            v-model="editForm.country"
-            :options="countries"
-            placeholder="Select country"
-            :padding-left="16"
-          />
-        </FormRow>
-        <template #actions>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            :disabled="isUpdatingProfile"
-          >
-            <i class="fas fa-save"></i>
-            {{ isUpdatingProfile ? ' Saving...' : ' Save' }}
-          </button>
-        </template>
-        <div
-          v-if="editMessage"
-          class="profile-message"
+        <!-- Edit Profile Modal -->
+        <CommonModal
+          :visible="showEditModal"
+          @close="showEditModal = false"
+          @submit="updateProfile"
+          modal-padding="38px"
         >
-          {{ editMessage }}
-        </div>
-      </CommonModal>
-      <div class="profile-card">
-        <div class="profile-section-title">Change Password</div>
-        <form
-          class="profile-password-form"
-          @submit.prevent="changePassword"
-        >
-          <!-- Hidden username input for password managers and accessibility -->
-          <input
-            v-if="true"
-            class="visually-hidden"
-            type="text"
-            autocomplete="username"
-            aria-hidden="true"
-            tabindex="-1"
-          />
-          <div class="profile-form-row">
-            <label class="profile-form-label">Current Password*</label>
-            <div class="profile-input-wrapper">
-              <input
-                :type="showCurrentPassword ? 'text' : 'password'"
-                v-model="currentPassword"
-                required
-                placeholder="Enter current password"
-                autocomplete="off"
-              />
-              <span
-                class="profile-eye-icon"
-                @click="showCurrentPassword = !showCurrentPassword"
-              >
-                <i
-                  :class="
-                    showCurrentPassword ? 'fas fa-eye-slash' : 'fas fa-eye'
-                  "
-                ></i>
-              </span>
-            </div>
+          <div class="profile-modal-header">
+            <h1>Edit Profile</h1>
           </div>
-          <div class="profile-form-row">
-            <label class="profile-form-label">New Password*</label>
-            <div class="profile-input-wrapper">
-              <input
-                :type="showNewPassword ? 'text' : 'password'"
-                v-model="newPassword"
-                required
-                placeholder="Enter new password"
-                autocomplete="new-password"
-              />
-              <span
-                class="profile-eye-icon"
-                @click="showNewPassword = !showNewPassword"
-              >
-                <i
-                  :class="showNewPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
-                ></i>
-              </span>
-            </div>
-          </div>
-          <div class="profile-form-row">
-            <label class="profile-form-label">Confirm New Password*</label>
-            <div class="profile-input-wrapper">
-              <input
-                :type="showConfirmPassword ? 'text' : 'password'"
-                v-model="confirmPassword"
-                required
-                placeholder="Confirm new password"
-                autocomplete="new-password"
-              />
-              <span
-                class="profile-eye-icon"
-                @click="showConfirmPassword = !showConfirmPassword"
-              >
-                <i
-                  :class="
-                    showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'
-                  "
-                ></i>
-              </span>
-            </div>
-          </div>
-          <div class="profile-save-btn-row">
+          <FormRow>
+            <FormLabel>First Name</FormLabel>
+            <FormInput
+              v-model="editForm.first_name"
+              type="text"
+              required
+            />
+          </FormRow>
+          <FormRow>
+            <FormLabel>Last Name</FormLabel>
+            <FormInput
+              v-model="editForm.last_name"
+              type="text"
+              required
+            />
+          </FormRow>
+          <FormRow>
+            <FormLabel>Email</FormLabel>
+            <FormInput
+              v-model="editForm.email"
+              type="email"
+              required
+            />
+          </FormRow>
+          <FormRow>
+            <FormLabel>Phone</FormLabel>
+            <FormInput
+              v-model="editForm.phone"
+              type="text"
+            />
+          </FormRow>
+          <FormRow>
+            <FormLabel>Country</FormLabel>
+            <FormDropdown
+              v-model="editForm.country"
+              :options="countries"
+              placeholder="Select country"
+              :padding-left="16"
+            />
+          </FormRow>
+          <template #actions>
             <button
               type="submit"
               class="btn btn-primary"
+              :disabled="isUpdatingProfile"
             >
-              <i class="fas fa-key"></i>
-              Change Password
+              <i class="fas fa-save"></i>
+              {{ isUpdatingProfile ? ' Saving...' : ' Save' }}
             </button>
+          </template>
+          <div
+            v-if="editMessage"
+            class="profile-message"
+          >
+            {{ editMessage }}
           </div>
-        </form>
-        <div
-          v-if="message"
-          class="profile-message"
-        >
-          {{ message }}
+        </CommonModal>
+        <div class="profile-card">
+          <div class="profile-section-title">Change Password</div>
+          <form
+            class="profile-password-form"
+            @submit.prevent="changePassword"
+          >
+            <!-- Hidden username input for password managers and accessibility -->
+            <input
+              v-if="true"
+              class="visually-hidden"
+              type="text"
+              autocomplete="username"
+              aria-hidden="true"
+              tabindex="-1"
+            />
+            <div class="profile-form-row">
+              <label class="profile-form-label">Current Password*</label>
+              <div class="profile-input-wrapper">
+                <input
+                  :type="showCurrentPassword ? 'text' : 'password'"
+                  v-model="currentPassword"
+                  required
+                  placeholder="Enter current password"
+                  autocomplete="off"
+                />
+                <span
+                  class="profile-eye-icon"
+                  @click="showCurrentPassword = !showCurrentPassword"
+                >
+                  <i
+                    :class="
+                      showCurrentPassword ? 'fas fa-eye-slash' : 'fas fa-eye'
+                    "
+                  ></i>
+                </span>
+              </div>
+            </div>
+            <div class="profile-form-row">
+              <label class="profile-form-label">New Password*</label>
+              <div class="profile-input-wrapper">
+                <input
+                  :type="showNewPassword ? 'text' : 'password'"
+                  v-model="newPassword"
+                  required
+                  placeholder="Enter new password"
+                  autocomplete="new-password"
+                />
+                <span
+                  class="profile-eye-icon"
+                  @click="showNewPassword = !showNewPassword"
+                >
+                  <i
+                    :class="showNewPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"
+                  ></i>
+                </span>
+              </div>
+            </div>
+            <div class="profile-form-row">
+              <label class="profile-form-label">Confirm New Password*</label>
+              <div class="profile-input-wrapper">
+                <input
+                  :type="showConfirmPassword ? 'text' : 'password'"
+                  v-model="confirmPassword"
+                  required
+                  placeholder="Confirm new password"
+                  autocomplete="new-password"
+                />
+                <span
+                  class="profile-eye-icon"
+                  @click="showConfirmPassword = !showConfirmPassword"
+                >
+                  <i
+                    :class="
+                      showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'
+                    "
+                  ></i>
+                </span>
+              </div>
+            </div>
+            <div class="profile-save-btn-row">
+              <button
+                type="submit"
+                class="btn btn-primary"
+              >
+                <i class="fas fa-key"></i>
+                Change Password
+              </button>
+            </div>
+          </form>
+          <div
+            v-if="message"
+            class="profile-message"
+          >
+            {{ message }}
+          </div>
         </div>
       </div>
     </div>
@@ -861,13 +865,17 @@ export default {
   gap: 14px;
 }
 .profile-outer {
-  max-width: 900px;
-  margin: 48px auto;
+  width: 100%;
+
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  align-items: center;
+  box-sizing: border-box;
+
+  gap: 40px;
 }
 .profile-card {
+  width: 100%;
   background: #fff;
   border-radius: 16px;
   border: 1px solid #ebebeb;
@@ -1004,9 +1012,11 @@ export default {
 
 @media (max-width: 900px) {
   .profile-outer {
-    max-width: 98vw;
-    padding: 0 2vw;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
   }
+
   .profile-header,
   .profile-info-table,
   .profile-actions,

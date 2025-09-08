@@ -125,8 +125,7 @@ const chartOptions = {
 <style scoped>
 .org-admin-graphs-outer {
   width: 100%;
-  max-width: 1400px;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -142,7 +141,7 @@ const chartOptions = {
   margin: 0 auto;
   box-sizing: border-box;
   min-width: 0;
-  max-width: 1400px;
+
   padding: 32px 32px 32px;
   display: flex;
   flex-direction: column;
@@ -151,22 +150,13 @@ const chartOptions = {
 
 /* Responsive: shrink margin and padding on small screens */
 @media (max-width: 1400px) {
-  .org-admin-graphs-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .org-admin-graphs-card {
     border-radius: 14px;
     max-width: 100%;
-    padding: 12px 12px 12px 12px;
   }
 }
 
 @media (max-width: 900px) {
-  .org-admin-graphs-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .org-admin-graphs-card {
     border-radius: 10px;
     padding: 4px 4px 4px 4px;

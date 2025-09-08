@@ -215,7 +215,7 @@ export default {
   color: #222;
   background: transparent;
   font-family: inherit;
-  padding: 0 36px 0 36px; /* left for icon, right for chevron */
+  padding: 0 36px 0 16px; /* left for icon, right for chevron */
   box-sizing: border-box;
 }
 .form-dropdown-chevron {

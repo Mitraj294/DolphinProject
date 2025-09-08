@@ -135,21 +135,42 @@ class SubscriptionController extends Controller
         if (!$user) { return response()->json([]); }
         $subs = $user->subscriptions()->orderByDesc('created_at')->get();
         $history = $subs->map(function($sub) {
-            // Try to extract payment method details for display
-            $paymentMethod = $sub->payment_method ?? '';
+            // Use new specific payment method fields if available, fallback to old payment_method
+            $paymentMethodType = '';
+            $paymentMethod = '';
             $paymentEmail = '';
             $cardLast4 = '';
-            if ($paymentMethod && stripos($paymentMethod, 'paypal') !== false) {
-                $paymentEmail = $sub->customer_email ?? '';
-            } elseif ($paymentMethod && stripos($paymentMethod, 'card') !== false) {
-                // Try to get last4 from meta or description if available
-                if (!empty($sub->meta) && is_array($sub->meta) && isset($sub->meta['card_last4'])) {
-                    $cardLast4 = $sub->meta['card_last4'];
-                } elseif (isset($sub->description) && preg_match('/\d{4}/', $sub->description, $m)) {
-                    $cardLast4 = $m[0];
+            
+            // Check if we have detailed payment method information
+            if ($sub->payment_method_type && $sub->payment_method_brand && $sub->payment_method_last4) {
+                $paymentMethodType = $sub->payment_method_type;
+                
+                if ($sub->payment_method_type === 'card') {
+                    $paymentMethod = ucfirst($sub->payment_method_brand) . ' ****' . $sub->payment_method_last4;
+                    $cardLast4 = $sub->payment_method_last4;
+                } else {
+                    $paymentMethod = ucfirst($sub->payment_method_type);
+                }
+            } else {
+                // Fallback to old payment_method field
+                $paymentMethod = $sub->payment_method ?? '';
+                
+                if ($paymentMethod && stripos($paymentMethod, 'paypal') !== false) {
+                    $paymentMethodType = 'paypal';
+                    $paymentEmail = $sub->customer_email ?? '';
+                } elseif ($paymentMethod && stripos($paymentMethod, 'card') !== false) {
+                    $paymentMethodType = 'card';
+                    // Try to get last4 from meta or description if available
+                    if (!empty($sub->meta) && is_array($sub->meta) && isset($sub->meta['card_last4'])) {
+                        $cardLast4 = $sub->meta['card_last4'];
+                    } elseif (isset($sub->description) && preg_match('/\d{4}/', $sub->description, $m)) {
+                        $cardLast4 = $m[0];
+                    }
                 }
             }
+            
             return [
+                'paymentMethodType' => $paymentMethodType,
                 'paymentMethod' => $paymentMethod,
                 'paymentEmail' => $paymentEmail,
                 'cardLast4' => $cardLast4,

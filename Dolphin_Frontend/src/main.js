@@ -1,6 +1,7 @@
 // src/main.js
 import './assets/global.css';
 import './assets/table.css';
+import './assets/modelcssnotificationandassesment.css';
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';

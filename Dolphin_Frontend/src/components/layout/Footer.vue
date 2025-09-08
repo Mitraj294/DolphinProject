@@ -68,7 +68,7 @@ export default {
 }
 .footer-controls {
   width: 100%;
-  max-width: 1400px;
+
   display: flex !important;
   flex-direction: row;
   align-items: center;

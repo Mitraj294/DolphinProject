@@ -364,9 +364,9 @@ export default {
 <style scoped>
 .send-assessment-table-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -376,7 +376,7 @@ export default {
 }
 .send-assessment-table-card {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -476,7 +476,7 @@ export default {
   margin-bottom: 0;
   margin-top: 0;
   width: 100%;
-  justify-content: flex-start;
+  justify-content: flex-end;
 }
 .send-assessment-actions {
   margin-left: 0;
@@ -486,12 +486,6 @@ export default {
   justify-content: flex-end;
 }
 
-@media (max-width: 1400px) {
-  .send-assessment-table-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
-}
 @media (max-width: 900px) {
   .send-assessment-row {
     flex-direction: column;

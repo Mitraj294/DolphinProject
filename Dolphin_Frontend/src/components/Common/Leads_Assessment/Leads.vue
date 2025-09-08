@@ -768,7 +768,7 @@ export default {
   border-radius: 50%;
   transition: background 0.2s;
   width: 36px;
-  height: 36px;
+  height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;

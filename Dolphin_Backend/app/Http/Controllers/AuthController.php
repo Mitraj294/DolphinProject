@@ -36,7 +36,7 @@ class AuthController extends Controller
             'email' => ValidationRules::REQUIRED_EMAIL . '|unique:users,email,NULL,id,deleted_at,NULL',
             'password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:password',
-            'phone' => 'nullable|integer',
+            'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'find_us' => ValidationRules::NULLABLE_STRING,
             'org_name' => ValidationRules::NULLABLE_STRING,
             'org_size' => ValidationRules::NULLABLE_STRING,
@@ -262,7 +262,7 @@ class AuthController extends Controller
             'user.email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id . ',id,deleted_at,NULL',
             'user_details.first_name' => 'sometimes|nullable|string|max:255',
             'user_details.last_name' => 'sometimes|nullable|string|max:255',
-            'user_details.phone' => 'sometimes|nullable|string|max:32',
+            'user_details.phone' => 'sometimes|regex:/^[6-9]\d{9}$/',
             'user_details.country' => 'sometimes|nullable|string',
             'admin_email' => 'sometimes|nullable|email',
         ]);

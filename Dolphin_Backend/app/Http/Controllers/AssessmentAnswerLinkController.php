@@ -70,7 +70,7 @@ class AssessmentAnswerLinkController extends Controller
             ];
         });
 
-        // Get group details if available
+       
         $group = null;
         if ($tokenRow->group_id) {
             $group = \DB::table('groups')->where('id', $tokenRow->group_id)->first();

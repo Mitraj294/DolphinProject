@@ -92,15 +92,25 @@ class StripeSubscriptionController extends Controller
             $status = 'active';
             $paymentMethod = $session->payment_method_types[0] ?? null;
             $paymentMethodReadable = $paymentMethod;
+            $defaultPaymentMethodId = null;
+            $paymentMethodType = null;
+            $paymentMethodBrand = null;
+            $paymentMethodLast4 = null;
+            
             // Try to get more details from payment_intent if available
             if (!empty($session->payment_intent)) {
                 try {
                     $intent = \Stripe\PaymentIntent::retrieve($session->payment_intent);
                     if (!empty($intent->payment_method)) {
                         $pm = \Stripe\PaymentMethod::retrieve($intent->payment_method);
+                        $defaultPaymentMethodId = $pm->id;
+                        $paymentMethodType = $pm->type;
+                        
                         if ($pm->type === 'card' && $pm->card) {
                             $brand = $pm->card->brand ?? '';
                             $last4 = $pm->card->last4 ?? '';
+                            $paymentMethodBrand = $brand;
+                            $paymentMethodLast4 = $last4;
                             $paymentMethodReadable = ucfirst($brand) . ' ****' . $last4;
                         } else {
                             $paymentMethodReadable = $pm->type;
@@ -129,6 +139,29 @@ class StripeSubscriptionController extends Controller
                 $subscriptionEnd = $stripeSub->current_period_end ? date('Y-m-d H:i:s', $stripeSub->current_period_end) : null;
                 $plan = $stripeSub->items->data[0]->plan->id ?? $plan;
                 $status = $stripeSub->status ?? $status;
+                
+                // If payment method details are still missing, try subscription's default payment method
+                if (!$defaultPaymentMethodId && $stripeSub->default_payment_method) {
+                    try {
+                        $pm = \Stripe\PaymentMethod::retrieve($stripeSub->default_payment_method);
+                        $defaultPaymentMethodId = $pm->id;
+                        $paymentMethodType = $pm->type;
+                        
+                        if ($pm->type === 'card' && $pm->card) {
+                            $brand = $pm->card->brand ?? '';
+                            $last4 = $pm->card->last4 ?? '';
+                            $paymentMethodBrand = $brand;
+                            $paymentMethodLast4 = $last4;
+                            $paymentMethodReadable = ucfirst($brand) . ' ****' . $last4;
+                        } else {
+                            $paymentMethodReadable = ucfirst($pm->type);
+                        }
+                        
+                        Log::info('Payment method extracted from subscription default: ' . ($paymentMethodReadable ?? 'NULL'));
+                    } catch (\Exception $e) {
+                        \Log::error('Stripe API error retrieving subscription default payment method for checkout.session.completed: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
+                    }
+                }
             }
 
             // Get customer details
@@ -202,6 +235,10 @@ class StripeSubscriptionController extends Controller
                     'plan' => $plan,
                     'status' => $status,
                     'payment_method' => $paymentMethodReadable,
+                    'default_payment_method_id' => $defaultPaymentMethodId,
+                    'payment_method_type' => $paymentMethodType,
+                    'payment_method_brand' => $paymentMethodBrand,
+                    'payment_method_last4' => $paymentMethodLast4,
                     'payment_date' => $paymentDate,
                     'subscription_start' => $subscriptionStart,
                     'subscription_end' => $subscriptionEnd,
@@ -265,6 +302,10 @@ class StripeSubscriptionController extends Controller
             $customerEmail = null;
             $customerCountry = null;
             $paymentMethod = null;
+            $defaultPaymentMethodId = null;
+            $paymentMethodType = null;
+            $paymentMethodBrand = null;
+            $paymentMethodLast4 = null;
 
               // First attempt: Try to get payment method details from payment intent
             if ($invoice->payment_intent) {
@@ -275,9 +316,13 @@ class StripeSubscriptionController extends Controller
                         $charge = $paymentIntent->charges->data[0];
                         if ($charge->payment_method_details) {
                             $type = $charge->payment_method_details->type;
+                            $paymentMethodType = $type;
+                            
                             if ($type === 'card' && $charge->payment_method_details->card) {
                                 $brand = $charge->payment_method_details->card->brand ?? '';
                                 $last4 = $charge->payment_method_details->card->last4 ?? '';
+                                $paymentMethodBrand = $brand;
+                                $paymentMethodLast4 = $last4;
                                 $paymentMethod = ucfirst($brand) . ' *****' . $last4;
                             } else {
                                 $paymentMethod = $type;
@@ -287,9 +332,14 @@ class StripeSubscriptionController extends Controller
                     // Fallback: If not found, try PaymentIntent->payment_method
                     if (empty($paymentMethod) && !empty($paymentIntent->payment_method)) {
                         $pm = \Stripe\PaymentMethod::retrieve($paymentIntent->payment_method);
+                        $defaultPaymentMethodId = $pm->id;
+                        $paymentMethodType = $pm->type;
+                        
                         if ($pm->type === 'card' && $pm->card) {
                             $brand = $pm->card->brand ?? '';
                             $last4 = $pm->card->last4 ?? '';
+                            $paymentMethodBrand = $brand;
+                            $paymentMethodLast4 = $last4;
                             $paymentMethod = ucfirst($brand) . ' ****' . $last4;
                         } else {
                             $paymentMethod = $pm->type;
@@ -313,7 +363,11 @@ class StripeSubscriptionController extends Controller
                         // ADDED: Log default payment method ID
                         Log::info('Customer default_payment_method ID: ' . $defaultPaymentMethodId);
                         $pm = \Stripe\PaymentMethod::retrieve($defaultPaymentMethodId);
+                        $paymentMethodType = $pm->type;
+                        
                         if ($pm->type === 'card' && $pm->card) {
+                            $paymentMethodBrand = $pm->card->brand;
+                            $paymentMethodLast4 = $pm->card->last4;
                             $paymentMethod = $pm->card->brand . ' ****' . $pm->card->last4;
                         } else {
                             $paymentMethod = $pm->type;
@@ -349,6 +403,27 @@ class StripeSubscriptionController extends Controller
                 }
                 $plan = $stripeSub->items->data[0]->plan->id ?? null;
                 $status = $stripeSub->status ?? null;
+                
+                // If payment method details are still missing, try subscription's default payment method
+                if (!$defaultPaymentMethodId && $stripeSub->default_payment_method) {
+                    try {
+                        $pm = \Stripe\PaymentMethod::retrieve($stripeSub->default_payment_method);
+                        $defaultPaymentMethodId = $pm->id;
+                        $paymentMethodType = $pm->type;
+                        
+                        if ($pm->type === 'card' && $pm->card) {
+                            $paymentMethodBrand = $pm->card->brand;
+                            $paymentMethodLast4 = $pm->card->last4;
+                            $paymentMethod = ucfirst($pm->card->brand) . ' ****' . $pm->card->last4;
+                        } else {
+                            $paymentMethod = ucfirst($pm->type);
+                        }
+                        
+                        Log::info('Payment method extracted from subscription default for invoice.paid: ' . ($paymentMethod ?? 'NULL'));
+                    } catch (\Exception $e) {
+                        \Log::error('Stripe API error retrieving subscription default payment method for invoice.paid: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
+                    }
+                }
             }
             // Get customer details
             if ($stripeCustomerId) {
@@ -387,6 +462,10 @@ class StripeSubscriptionController extends Controller
                     'plan' => $plan,
                     'status' => $status,
                     'payment_method' => $paymentMethod,
+                    'default_payment_method_id' => $defaultPaymentMethodId,
+                    'payment_method_type' => $paymentMethodType,
+                    'payment_method_brand' => $paymentMethodBrand,
+                    'payment_method_last4' => $paymentMethodLast4,
                     'payment_date' => $paymentDate,
                     'subscription_start' => $subscriptionStart,
                     'subscription_end' => $subscriptionEnd,

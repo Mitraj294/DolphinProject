@@ -76,7 +76,7 @@ export default {
   color: #222;
   width: 100%;
   height: 44px;
-  padding: 0 16px 0 0;
+
   font-family: inherit;
   box-sizing: border-box;
 }

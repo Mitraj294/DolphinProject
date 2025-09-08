@@ -27,7 +27,7 @@ class RegisterRequest extends FormRequest
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:password',
-            'phone' => 'nullable|string|max:32',
+            'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'find_us' => 'nullable|string|max:255',
             'org_name' => 'nullable|string|max:255',
             'org_size' => 'nullable|string|max:255',

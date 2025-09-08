@@ -61,7 +61,7 @@ class UserController extends Controller
                 'email' => 'required|email|unique:users',
                 'first_name' => 'required|string|max:255',
                 'last_name' => 'required|string|max:255',
-                'phone' => 'nullable|string|max:20',
+                'phone' => 'required|regex:/^[6-9]\d{9}$/',
                 'role' => 'required|string|in:user,organizationadmin,dolphinadmin,superadmin,salesperson',
             ]);
 

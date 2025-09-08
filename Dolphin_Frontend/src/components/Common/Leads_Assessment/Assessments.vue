@@ -35,28 +35,14 @@ export default {
 <style scoped>
 .assessments-table-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 0 auto 64px auto; /* Only bottom margin */
+
   display: flex;
   flex-direction: column;
   align-items: center;
   box-sizing: border-box;
   background: none !important;
   padding: 0 !important;
-}
-
-/* Responsive: match other pages */
-@media (max-width: 1400px) {
-  .assessments-table-outer {
-    margin: 0 12px 12px 12px;
-    max-width: 100%;
-  }
-}
-@media (max-width: 900px) {
-  .assessments-table-outer {
-    margin: 0 4px 4px 4px;
-    max-width: 100%;
-  }
 }
 </style>

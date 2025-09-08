@@ -51,7 +51,7 @@ class LeadController extends Controller
             'first_name' =>  ValidationRules::REQUIRED_STRING,
             'last_name' => ValidationRules::REQUIRED_STRING,
             'email' => ValidationRules::REQUIRED_EMAIL,
-            'phone' => ValidationRules::REQUIRED_STRING,
+            'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'find_us' => ValidationRules::REQUIRED_STRING,
             'org_name' => ValidationRules::REQUIRED_STRING,
             'org_size' => ValidationRules::REQUIRED_STRING,
@@ -60,7 +60,7 @@ class LeadController extends Controller
             'country_id' => ValidationRules::REQUIRED_INTEGER,
             'state_id' => ValidationRules::REQUIRED_INTEGER,
             'city_id' => ValidationRules::REQUIRED_INTEGER,
-            'zip' => ValidationRules::REQUIRED_STRING,
+            'zip' => 'required|digits:6',
         ]);
         $lead->update($data);
         return response()->json(['message' => 'Lead updated successfully', 'lead' => $lead]);
@@ -71,16 +71,16 @@ class LeadController extends Controller
             'first_name' => ValidationRules::REQUIRED_STRING,
             'last_name' => ValidationRules::REQUIRED_STRING,
           'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
-            'phone' => ValidationRules::REQUIRED_STRING,
+            'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'find_us' => ValidationRules::REQUIRED_STRING,
-            'org_name' => 'required|string|max:255|unique:leads,org_name,NULL,id,deleted_at,NULL',
+            'org_name' => 'required|string|max:255',
             'org_size' => ValidationRules::REQUIRED_STRING,
             'notes' => ValidationRules::OPTIONAL_STRING,
             'address' => ValidationRules::REQUIRED_STRING,
             'country_id' => 'required|integer|exists:countries,id',
             'state_id' => 'required|integer|exists:states,id',
             'city_id' => 'required|integer|exists:cities,id',
-            'zip' => ValidationRules::REQUIRED_STRING,
+            'zip' => 'required|digits:6',
         ]);
         $lead = Lead::create($data);
         return response()->json(['message' => 'Lead saved successfully', 'lead' => $lead], 201);

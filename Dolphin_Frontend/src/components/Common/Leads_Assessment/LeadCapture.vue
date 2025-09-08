@@ -467,15 +467,20 @@ export default {
         this.$router.push('/leads');
       } catch (error) {
         console.error('Error saving lead:', error);
-        if (error.response && error.response.status === 422) {
-          this.errors = error.response.data.errors;
+
+        if (error.response?.data) {
+          const { message, errors } = error.response.data;
+
+          this.errorMessage = message || 'Failed to save lead.';
+          this.errors = errors || {};
         } else {
           this.errorMessage = 'An unexpected error occurred.';
         }
+
         // Use PrimeVue Toast for error notification
         this.$toast.add({
-          severity: 'warn',
-          summary: 'Fill the required fields',
+          severity: 'error',
+          summary: 'Validation Error',
           detail: this.errorMessage,
           life: 5000,
         });
@@ -512,9 +517,9 @@ export default {
 <style scoped>
 .lead-capture-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -525,7 +530,7 @@ export default {
 
 .lead-capture-card {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -562,10 +567,6 @@ export default {
 
 /* Responsive styles to match other pages */
 @media (max-width: 1400px) {
-  .lead-capture-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .lead-capture-card {
     max-width: 100%;
     border-radius: 14px;
@@ -574,10 +575,6 @@ export default {
 }
 
 @media (max-width: 900px) {
-  .lead-capture-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .lead-capture-card {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;

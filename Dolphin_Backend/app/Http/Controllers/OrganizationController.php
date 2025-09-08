@@ -188,7 +188,7 @@ class OrganizationController extends Controller
             'first_name' => 'sometimes|nullable|string|max:255',
             'last_name' => 'sometimes|nullable|string|max:255',
             'admin_email' => 'sometimes|nullable|email|max:255',
-            'admin_phone' => 'sometimes|nullable|string|max:64',
+            'admin_phone' =>  'sometimes|regex:/^[6-9]\d{9}$/',
             'org_name' => 'sometimes|nullable|string|max:255',
             'org_size' => 'sometimes|nullable|string|max:255',
             'source' => 'sometimes|nullable|string|max:255',

@@ -234,7 +234,6 @@ export default {
           }
         }
 
-        // Transform backend data to frontend rows
         this.rows = (data.members || []).map((member) => ({
           name:
             member.name ||
@@ -299,9 +298,9 @@ export default {
 <style scoped>
 .assessment-table-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -317,7 +316,7 @@ export default {
   margin: 0 auto;
   box-sizing: border-box;
   min-width: 0;
-  max-width: 1400px;
+
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -579,10 +578,6 @@ export default {
   }
 }
 @media (max-width: 900px) {
-  .assessment-table-outer {
-    margin: 0 4px 4px 4px;
-    max-width: 100%;
-  }
   .assessment-table-card {
     border-radius: 10px;
   }

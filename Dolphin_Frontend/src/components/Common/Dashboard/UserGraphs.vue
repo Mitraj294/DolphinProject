@@ -114,8 +114,7 @@ const adjustedSelf = ref('Adjusted Self 1');
 <style scoped>
 .user-graphs-outer {
   width: 100%;
-  max-width: 1400px;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -131,7 +130,7 @@ const adjustedSelf = ref('Adjusted Self 1');
   margin: 0 auto;
   box-sizing: border-box;
   min-width: 0;
-  max-width: 1400px;
+
   /* padding is handled by .user-graphs-content and .user-graph-section */
   display: flex;
   flex-direction: column;

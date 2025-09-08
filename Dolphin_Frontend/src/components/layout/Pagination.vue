@@ -184,7 +184,7 @@ export default {
 }
 .footer-controls {
   width: 100%;
-  max-width: 1400px;
+
   display: flex;
   align-items: center;
   justify-content: center;
@@ -230,9 +230,7 @@ export default {
   width: auto !important;
   max-width: 90vw;
   position: absolute;
-  left: 0;
   top: 100%;
-  min-width: 100%;
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 10px;

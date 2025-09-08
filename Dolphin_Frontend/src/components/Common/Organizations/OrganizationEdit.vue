@@ -660,9 +660,9 @@ export default {
 /* Using lead-capture classes for consistency */
 .lead-capture-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -673,7 +673,7 @@ export default {
 
 .lead-capture-card {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -761,10 +761,6 @@ export default {
 }
 /* Responsive styles to match other pages */
 @media (max-width: 1400px) {
-  .lead-capture-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .lead-capture-card {
     max-width: 100%;
     border-radius: 14px;
@@ -776,10 +772,6 @@ export default {
 }
 
 @media (max-width: 900px) {
-  .lead-capture-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .lead-capture-card {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;

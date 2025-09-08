@@ -476,20 +476,19 @@ export default {
 <style scoped>
 .org-detail-outer {
   width: 100%;
-  max-width: 1200px;
+
   min-width: 0;
-  margin: 48px auto 48px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
   box-sizing: border-box;
   background: none !important;
-  padding: 0 8px;
 }
 
 .org-detail-main-card {
   width: 100%;
-  max-width: 1200px;
+
   min-width: 0;
   background: #fff;
   border-radius: 20px;
@@ -803,16 +802,6 @@ export default {
 
 /* Responsive styles to match other pages */
 @media (max-width: 1400px) {
-  .org-detail-outer {
-    margin: 12px;
-    max-width: 100%;
-    padding: 0 4px;
-  }
-  .org-detail-main-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 12px 4px 8px 4px;
-  }
   .org-detail-main-cols {
     gap: 12px;
     padding-left: 6px;
@@ -828,15 +817,6 @@ export default {
 }
 
 @media (max-width: 900px) {
-  .org-detail-outer {
-    margin: 4px;
-    max-width: 100%;
-    padding: 0 2px;
-  }
-  .org-detail-main-card {
-    padding: 4px 0 4px 0;
-    border-radius: 8px;
-  }
   .org-detail-main-cols {
     gap: 6px;
     padding-left: 2px;

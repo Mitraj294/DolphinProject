@@ -12,21 +12,30 @@
             <FormRow>
               <div class="schedule-demo-field">
                 <FormLabel>Select Organization</FormLabel>
-                <FormDropdown v-model="organization">
+                <FormDropdown
+                  v-model="organization"
+                  icon="fas fa-building"
+                >
                   <option value="">Select</option>
                   <!-- Add more options here -->
                 </FormDropdown>
               </div>
               <div class="schedule-demo-field">
                 <FormLabel>Select Admin</FormLabel>
-                <FormDropdown v-model="admin">
+                <FormDropdown
+                  v-model="admin"
+                  icon="fas fa-user-tie"
+                >
                   <option value="">Select</option>
                   <!-- Add more options here -->
                 </FormDropdown>
               </div>
               <div class="schedule-demo-field">
                 <FormLabel>Select User</FormLabel>
-                <FormDropdown v-model="user">
+                <FormDropdown
+                  v-model="user"
+                  icon="fas fa-user"
+                >
                   <option value="">Select</option>
                   <!-- Add more options here -->
                 </FormDropdown>
@@ -42,7 +51,10 @@
               </div>
               <div class="schedule-demo-field">
                 <FormLabel>Select Method</FormLabel>
-                <FormDropdown v-model="method">
+                <FormDropdown
+                  v-model="method"
+                  icon="fas fa-cogs"
+                >
                   <option value="">Select</option>
                   <!-- Add more options here -->
                 </FormDropdown>
@@ -50,26 +62,16 @@
               <div class="schedule-demo-field schedule-demo-schedule-field">
                 <FormLabel>Schedule</FormLabel>
                 <div class="schedule-demo-schedule-inputs">
-                  <div class="form-box">
-                    <div class="form-input-noicon-wrap">
-                      <FormInput
-                        v-model="date"
-                        type="date"
-                        placeholder="MM/DD/YYYY"
-                        class="form-input"
-                      />
-                    </div>
-                  </div>
-                  <div class="form-box">
-                    <div class="form-input-noicon-wrap">
-                      <FormInput
-                        v-model="time"
-                        type="time"
-                        placeholder="00:00"
-                        class="form-input"
-                      />
-                    </div>
-                  </div>
+                  <FormInput
+                    v-model="date"
+                    type="date"
+                    placeholder="MM/DD/YYYY"
+                  />
+                  <FormInput
+                    v-model="time"
+                    type="time"
+                    placeholder="00:00"
+                  />
                 </div>
               </div>
             </FormRow>
@@ -117,9 +119,9 @@ export default {
 <style scoped>
 .schedule-demo-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -129,7 +131,7 @@ export default {
 }
 .schedule-demo-card {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -238,10 +240,6 @@ export default {
 
 /* Responsive styles to match other pages */
 @media (max-width: 1400px) {
-  .schedule-demo-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .schedule-demo-card {
     max-width: 100%;
     border-radius: 14px;
@@ -252,10 +250,6 @@ export default {
   }
 }
 @media (max-width: 900px) {
-  .schedule-demo-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .schedule-demo-card {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;

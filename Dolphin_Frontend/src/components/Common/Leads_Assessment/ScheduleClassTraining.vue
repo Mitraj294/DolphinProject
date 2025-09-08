@@ -1,77 +1,87 @@
 <template>
   <MainLayout>
-    <div class="schedule-demo-outer">
-      <div class="schedule-demo-card">
-        <h2 class="schedule-demo-title">Schedule Classes/Training</h2>
-        <div class="schedule-demo-desc">
-          Lorem Ipsum is simply dummy text of the printing and typesetting
-          industry.
-        </div>
-        <form class="schedule-demo-form">
-          <FormRow>
-            <div class="schedule-demo-field">
-              <FormLabel>Select Organization</FormLabel>
-              <FormDropdown v-model="organization">
-                <option value="">Select</option>
-                <!-- Add more options here -->
-              </FormDropdown>
-            </div>
-            <div class="schedule-demo-field">
-              <FormLabel>Select Admin</FormLabel>
-              <FormDropdown v-model="admin">
-                <option value="">Select</option>
-                <!-- Add more options here -->
-              </FormDropdown>
-            </div>
-            <div class="schedule-demo-field">
-              <FormLabel>Select User</FormLabel>
-              <FormDropdown v-model="user">
-                <option value="">Select</option>
-                <!-- Add more options here -->
-              </FormDropdown>
-            </div>
-          </FormRow>
-          <FormRow>
-            <div class="schedule-demo-field">
-              <FormLabel>Subject</FormLabel>
-              <FormInput
-                v-model="subject"
-                placeholder="Type here"
-              />
-            </div>
-            <div class="schedule-demo-field">
-              <FormLabel>Select Classes/Training</FormLabel>
-              <FormDropdown v-model="classType">
-                <option value="">Select</option>
-                <!-- Add more options here -->
-              </FormDropdown>
-            </div>
-            <div class="schedule-demo-field schedule-demo-schedule-field">
-              <FormLabel>Schedule</FormLabel>
-              <div class="schedule-demo-schedule-inputs">
+    <div class="page">
+      <div class="schedule-demo-outer">
+        <div class="schedule-demo-card">
+          <h2 class="schedule-demo-title">Schedule Classes/Training</h2>
+          <div class="schedule-demo-desc">
+            Lorem Ipsum is simply dummy text of the printing and typesetting
+            industry.
+          </div>
+          <form class="schedule-demo-form">
+            <FormRow>
+              <div class="schedule-demo-field">
+                <FormLabel>Select Organization</FormLabel>
+                <FormDropdown
+                  v-model="organization"
+                  icon="fas fa-building"
+                >
+                  <option value="">Select</option>
+                </FormDropdown>
+              </div>
+              <div class="schedule-demo-field">
+                <FormLabel>Select Admin</FormLabel>
+                <FormDropdown
+                  v-model="admin"
+                  icon="fas fa-user-tie"
+                >
+                  <option value="">Select</option>
+                </FormDropdown>
+              </div>
+              <div class="schedule-demo-field">
+                <FormLabel>Select User</FormLabel>
+                <FormDropdown
+                  v-model="user"
+                  icon="fas fa-user"
+                >
+                  <option value="">Select</option>
+                </FormDropdown>
+              </div>
+            </FormRow>
+            <FormRow>
+              <div class="schedule-demo-field">
+                <FormLabel>Subject</FormLabel>
                 <FormInput
-                  v-model="date"
-                  type="date"
-                  placeholder="MM/DD/YYYY"
-                />
-                <FormInput
-                  v-model="time"
-                  type="time"
-                  placeholder="00:00"
+                  v-model="subject"
+                  placeholder="Type here"
                 />
               </div>
+              <div class="schedule-demo-field">
+                <FormLabel>Select Classes/Training</FormLabel>
+                <FormDropdown
+                  v-model="classType"
+                  icon="fas fa-chalkboard-teacher"
+                >
+                  <option value="">Select</option>
+                </FormDropdown>
+              </div>
+              <div class="schedule-demo-field schedule-demo-schedule-field">
+                <FormLabel>Schedule</FormLabel>
+                <div class="schedule-demo-schedule-inputs">
+                  <FormInput
+                    v-model="date"
+                    type="date"
+                    placeholder="MM/DD/YYYY"
+                  />
+                  <FormInput
+                    v-model="time"
+                    type="time"
+                    placeholder="00:00"
+                  />
+                </div>
+              </div>
+            </FormRow>
+            <!-- Button moved outside FormRow for proper right alignment -->
+            <div class="schedule-demo-actions">
+              <button
+                type="submit"
+                class="btn btn-primary"
+              >
+                Schedule Classes/Training
+              </button>
             </div>
-          </FormRow>
-          <!-- Button moved outside FormRow for proper right alignment -->
-          <div class="schedule-demo-actions">
-            <button
-              type="submit"
-              class="btn btn-primary"
-            >
-              Schedule Classes/Training
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   </MainLayout>
@@ -105,9 +115,9 @@ export default {
 <style scoped>
 .schedule-demo-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -117,7 +127,7 @@ export default {
 }
 .schedule-demo-card {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -188,7 +198,7 @@ export default {
   min-width: 0;
   background: #f6f6f6;
   border-radius: 9px;
-  padding: 0 16px;
+
   height: 48px;
   display: flex;
   align-items: center;
@@ -217,12 +227,19 @@ export default {
   justify-content: flex-end;
   margin-top: 18px;
 }
-
+.form-input-with-icon {
+  width: 100%;
+  height: 44px;
+  font-size: 16px;
+  border: none;
+  outline: none;
+  color: #222;
+  background: transparent;
+  font-family: inherit;
+  padding: 0 36px 0 16px; /* left for icon, right for chevron */
+  box-sizing: border-box;
+}
 @media (max-width: 1400px) {
-  .schedule-demo-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .schedule-demo-card {
     max-width: 100%;
     border-radius: 14px;
@@ -233,10 +250,6 @@ export default {
   }
 }
 @media (max-width: 900px) {
-  .schedule-demo-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .schedule-demo-card {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;

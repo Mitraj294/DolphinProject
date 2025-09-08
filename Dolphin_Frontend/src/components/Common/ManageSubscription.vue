@@ -62,6 +62,7 @@ export default {
       const status = await fetchSubscriptionStatus();
       this.isSubscribed = status && status.status === 'active';
     } catch (e) {
+      console.error(e);
       this.isSubscribed = false;
     } finally {
       this.loading = false;
@@ -76,11 +77,12 @@ export default {
 </script>
 
 <style scoped>
+/* Base styles */
 .manage-subscription-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -89,6 +91,7 @@ export default {
 
 .manage-subscription-card {
   width: 100%;
+
   background: #fff;
   border-radius: 24px;
   border: 1px solid #ebebeb;
@@ -96,11 +99,8 @@ export default {
   overflow: visible;
   margin: 0 auto;
   box-sizing: border-box;
-  min-width: 0;
-  max-width: 1400px;
   display: flex;
   flex-direction: column;
-  gap: 0;
   position: relative;
   padding: 0;
 }
@@ -117,17 +117,19 @@ export default {
   min-height: 64px;
   box-sizing: border-box;
 }
+
 .manage-subscription-header-spacer {
   height: 18px;
   width: 100%;
   background: transparent;
   display: block;
 }
+
 .manage-subscription-container {
   width: 100%;
   min-height: 320px;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   box-sizing: border-box;
@@ -137,31 +139,40 @@ export default {
   border-bottom-right-radius: 24px;
   gap: 36px;
 }
-manage-subscription-img.-box {
+
+.manage-subscription-img-box {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 160px;
-  height: 160px;
+  width: 240px;
+  height: 240px;
   background: #f8f8f8;
   border-radius: 18px;
-  margin-right: 32px;
   box-sizing: border-box;
 }
+
 .manage-subscription-img {
-  width: 160px;
-  height: 160px;
+  width: 240px;
+  height: 240px;
   padding: 8px;
 }
 
-.manage-subscription-msg {
-  font-size: 1.2rem;
-  color: #222;
-  margin-bottom: 0;
-  margin-top: 0;
-  text-align: left;
-  font-weight: 500;
+.manage-subscription-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
 }
+
+.manage-subscription-msg {
+  font-size: 1.5rem;
+  color: #222;
+  margin: 0;
+  font-weight: 500;
+  text-align: center;
+}
+
 .manage-subscription-btn {
   margin-top: 8px;
   min-width: 180px;
@@ -171,41 +182,38 @@ manage-subscription-img.-box {
   border-radius: 22px;
 }
 
-/* Responsive styles to match base pages */
+/* Tablet styles */
 @media (max-width: 1400px) {
-  .manage-subscription-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .manage-subscription-card {
-    border-radius: 14px;
+    border-radius: 18px;
     max-width: 100%;
-  }
-  .manage-subscription-img-box {
-    width: 180px;
-    height: 180px;
-    margin-right: 16px;
-    border-radius: 10px;
-  }
-  .manage-subscription-img {
-    width: 140px;
-    height: 140px;
-    padding: 8px;
   }
 
-  .manage-subscription-img {
-    width: 60px;
-    height: 60px;
-    padding: 4px;
+  .manage-subscription-header {
+    padding: 8px 8px 0 8px;
+    border-top-left-radius: 18px;
+    border-top-right-radius: 18px;
   }
+
+  .manage-subscription-container {
+    padding: 0 8px 24px 8px;
+    border-bottom-left-radius: 18px;
+    border-bottom-right-radius: 18px;
+    gap: 24px;
+  }
+
+  .manage-subscription-img-box {
+    border-radius: 10px;
+  }
+
   .manage-subscription-content {
-    min-width: 120px;
-    max-width: 320px;
-    gap: 10px;
+    gap: 12px;
   }
+
   .manage-subscription-msg {
-    font-size: 1rem;
+    font-size: 1.5rem;
   }
+
   .manage-subscription-btn {
     min-width: 120px;
     font-size: 1rem;
@@ -213,141 +221,70 @@ manage-subscription-img.-box {
     border-radius: 16px;
   }
 }
+
+/* Mobile landscape */
 @media (max-width: 900px) {
-  .manage-subscription-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .manage-subscription-card {
     border-radius: 10px;
   }
+
+  .manage-subscription-container {
+    gap: 20px;
+  }
+
   .manage-subscription-img-box {
-    width: 120px;
-    height: 120px;
-    margin: 0 0 12px 0;
     border-radius: 8px;
   }
-  .manage-subscription-img {
-    width: 90px;
-    height: 90px;
-    padding: 4px;
+
+  .manage-subscription-content {
+    gap: 10px;
+  }
+
+  .manage-subscription-msg {
+    font-size: 1.2rem;
+  }
+
+  .manage-subscription-btn {
+    min-width: 100px;
+    font-size: 0.9rem;
+    padding: 7px 14px;
+    border-radius: 14px;
   }
 }
-.manage-subscription-content {
-  min-width: 80px;
-  max-width: 100vw;
-  gap: 6px;
-  align-items: center;
-  text-align: center;
-}
-.manage-subscription-msg {
-  font-size: 0.95rem;
-  text-align: center;
-}
-.manage-subscription-btn {
-  min-width: 80px;
-  font-size: 0.95rem;
-  padding: 7px 12px;
-  border-radius: 12px;
-}
 
+/* Mobile portrait */
 @media (max-width: 600px) {
   .manage-subscription-container {
-    min-height: 80px;
-    padding: 0 2vw 8px 2vw;
-    gap: 6px;
+    min-height: 240px;
+    padding: 0 2vw 16px 2vw;
+    gap: 16px;
   }
-  .manage-subscription-content {
-    min-width: 40px;
-    max-width: 100vw;
-    gap: 4px;
-    align-items: center;
-    text-align: center;
-  }
-  .manage-subscription-msg {
-    font-size: 0.85rem;
-    margin-bottom: 4px;
-  }
-  .manage-subscription-btn {
-    min-width: 60px;
-    font-size: 0.85rem;
-    padding: 5px 8px;
-    border-radius: 8px;
-  }
-}
 
-/* Responsive styles to match base pages */
-@media (max-width: 1400px) {
-  .manage-subscription-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
-  .manage-subscription-card {
-    border-radius: 18px;
-    max-width: 100%;
-  }
-  .manage-subscription-header {
-    padding: 8px 8px 0 8px;
-    border-top-left-radius: 18px;
-    border-top-right-radius: 18px;
-  }
-  .manage-subscription-container {
-    padding: 0 8px 24px 8px;
-    border-bottom-left-radius: 18px;
-    border-bottom-right-radius: 18px;
-  }
-  .manage-subscription-img {
-    width: 120px;
-    max-width: 40vw;
-    margin: 16px auto 12px auto;
-    padding: 8px;
-  }
-  .manage-subscription-msg {
-    font-size: 15px;
-    margin-bottom: 14px;
-  }
-}
-@media (max-width: 900px) {
-  .manage-subscription-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .manage-subscription-img-box {
-    width: 70px;
-    height: 70px;
-    margin: 0 0 8px 0;
+    width: 160px;
+    height: 160px;
     border-radius: 6px;
   }
+
   .manage-subscription-img {
-    width: 50px;
-    height: 50px;
-    padding: 2px;
+    width: 160px;
+    height: 160px;
+    padding: 4px;
   }
-  .manage-subscription-img {
-    width: 90px;
-    max-width: 30vw;
-    margin: 10px auto 10px auto;
-    padding: 6px;
+
+  .manage-subscription-content {
+    gap: 8px;
   }
+
   .manage-subscription-msg {
-    font-size: 13px;
-    margin-bottom: 10px;
+    font-size: 1rem;
   }
-}
-@media (max-width: 600px) {
-  .manage-subscription-container {
-    padding: 0 2vw 8px 2vw;
-    min-height: 80px;
-  }
-  .manage-subscription-img {
-    width: 50px;
-    max-width: 20vw;
-    margin: 6px auto 6px auto;
-    padding: 2px;
-  }
-  .manage-subscription-msg {
-    font-size: 11px;
-    margin-bottom: 6px;
+
+  .manage-subscription-btn {
+    min-width: 80px;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 12px;
   }
 }
 </style>

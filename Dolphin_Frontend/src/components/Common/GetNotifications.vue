@@ -595,9 +595,9 @@ export default {
 /* --- Layout and spacing to match Leads/OrganizationTable --- */
 .notifications-table-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -610,10 +610,10 @@ export default {
   border: 1px solid #ebebeb;
   box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.04);
   overflow: visible;
-  margin: 0 auto;
+
   box-sizing: border-box;
   min-width: 0;
-  max-width: 1400px;
+
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -781,14 +781,6 @@ export default {
 
 /* Responsive styles to match base pages */
 @media (max-width: 1400px) {
-  .notifications-table-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
-  .notifications-table-card {
-    border-radius: 14px;
-    max-width: 100%;
-  }
   .notifications-controls {
     padding: 8px 8px 0 8px;
     border-top-left-radius: 14px;
@@ -801,13 +793,6 @@ export default {
   }
 }
 @media (max-width: 900px) {
-  .notifications-table-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
-  .notifications-table-card {
-    border-radius: 10px;
-  }
   .notifications-controls {
     padding: 8px 4px 0 4px;
     border-top-left-radius: 10px;

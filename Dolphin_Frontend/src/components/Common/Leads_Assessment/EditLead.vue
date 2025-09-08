@@ -523,19 +523,11 @@ export default {
 
         this.errorMessage = message || 'Failed to update lead.';
         this.errors = errors || {};
-
-        if (errors && typeof errors === 'object') {
-          const allMessages = Object.values(errors)
-            .flat()
-            .map(String)
-            .join(' ');
-          if (allMessages) this.errorMessage += ' ' + allMessages;
-        }
       } else {
         this.errorMessage = 'An unexpected error occurred.';
       }
 
-      this.showToast('warn', 'Fill the required fields', this.errorMessage);
+      this.showToast('error', 'Validation Error', this.errorMessage);
     },
 
     showToast(severity, summary, detail, life = 5000) {
@@ -548,9 +540,9 @@ export default {
 <style scoped>
 .lead-capture-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -561,7 +553,7 @@ export default {
 
 .lead-capture-card {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -596,10 +588,6 @@ export default {
 
 /* Responsive styles to match other pages */
 @media (max-width: 1400px) {
-  .lead-capture-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .lead-capture-card {
     max-width: 100%;
     border-radius: 14px;
@@ -608,10 +596,6 @@ export default {
 }
 
 @media (max-width: 900px) {
-  .lead-capture-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .lead-capture-card {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;

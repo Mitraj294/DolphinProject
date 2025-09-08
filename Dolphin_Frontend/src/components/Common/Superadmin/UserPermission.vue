@@ -609,7 +609,7 @@ export default {
   align-items: center;
   justify-content: center;
   width: 32px;
-  height: 32px;
+  height: 30px;
   padding: 0;
   margin: 0;
   background: #fff;
@@ -637,7 +637,7 @@ export default {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 0 12px;
-  height: 32px;
+  height: 30px;
   font-size: 14px;
   color: #222;
   cursor: pointer;
@@ -661,22 +661,8 @@ export default {
   display: inline-block;
   vertical-align: middle;
 }
-.page {
-  padding: 0 32px 32px 32px;
-  display: flex;
-  background-color: #fff;
-  justify-content: center;
-  box-sizing: border-box;
-}
-@media (max-width: 1400px) {
-  .page {
-    padding: 16px;
-  }
-}
+
 @media (max-width: 900px) {
-  .page {
-    padding: 4px;
-  }
   .actions-scroll {
     max-width: 260px;
 

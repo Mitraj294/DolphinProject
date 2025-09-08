@@ -1,146 +1,150 @@
 <template>
   <MainLayout>
-    <div class="lead-detail-outer">
-      <div class="lead-detail-main-card">
-        <div class="lead-detail-main-card-header">
-          <button
-            class="btn btn-primary"
-            @click="goToEditLead"
-          >
-            Edit Details
-          </button>
-        </div>
-        <div class="lead-detail-main-cols">
-          <div
-            class="lead-detail-main-cols-group lead-detail-main-cols-group--row"
-          >
-            <div class="lead-detail-col lead-detail-col-left">
-              <h3 class="lead-detail-section-title">Lead Detail</h3>
-              <div class="lead-detail-list-card lead-detail-list-card--box">
-                <div class="lead-detail-list-row">
-                  <span>Main Contact</span><b>{{ leadData.contact }}</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Admin Email</span><b>{{ leadData.email }}</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Admin Phone</span><b>{{ leadData.phone }}</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Sales Person</span><b></b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Source</span><b>{{ leadData.source }}</b>
-                </div>
-                <div class="lead-detail-list-row">
-                  <span>Status</span><b>{{ leadData.status }}</b>
+    <div class="page">
+      <div class="lead-detail-outer">
+        <div class="lead-detail-main-card">
+          <div class="lead-detail-main-card-header">
+            <button
+              class="btn btn-primary"
+              @click="goToEditLead"
+            >
+              Edit Details
+            </button>
+          </div>
+          <div class="lead-detail-main-cols">
+            <div
+              class="lead-detail-main-cols-group lead-detail-main-cols-group--row"
+            >
+              <div class="lead-detail-col lead-detail-col-left">
+                <h3 class="lead-detail-section-title">Lead Detail</h3>
+                <div class="lead-detail-list-card lead-detail-list-card--box">
+                  <div class="lead-detail-list-row">
+                    <span>Main Contact</span><b>{{ leadData.contact }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Admin Email</span><b>{{ leadData.email }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Admin Phone</span><b>{{ leadData.phone }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Sales Person</span><b></b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Source</span><b>{{ leadData.source }}</b>
+                  </div>
+                  <div class="lead-detail-list-row">
+                    <span>Status</span><b>{{ leadData.status }}</b>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div class="lead-detail-col lead-detail-col-right">
-              <h3 class="lead-detail-section-title">Organization Detail</h3>
-              <div class="lead-detail-list-card lead-detail-list-card--box">
-                <template v-if="organizationChecked && isOrganizationCreated">
-                  <div class="lead-detail-list-row">
-                    <span>Organization Name</span
-                    ><b>{{
-                      orgData.name || orgData.org_name || leadData.organization
-                    }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Organization Size</span>
-                    <b>{{
-                      orgData.size || orgData.org_size || leadData.size
-                    }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Contract Start</span>
-                    <b>{{
-                      formatContractDate(
-                        orgData?.contract_start ||
-                          orgData?.contract_start_date ||
-                          leadData.contract_start
-                      ) || 'N/A'
-                    }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Contract End</span>
-                    <b>{{
-                      formatContractDate(
-                        orgData?.contract_end ||
-                          orgData?.contract_end_date ||
-                          leadData.contract_end
-                      ) || 'N/A'
-                    }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Address</span>
-                    <b>
-                      <template
-                        v-if="
-                          (orgData &&
+              <div class="lead-detail-col lead-detail-col-right">
+                <h3 class="lead-detail-section-title">Organization Detail</h3>
+                <div class="lead-detail-list-card lead-detail-list-card--box">
+                  <template v-if="organizationChecked && isOrganizationCreated">
+                    <div class="lead-detail-list-row">
+                      <span>Organization Name</span
+                      ><b>{{
+                        orgData.name ||
+                        orgData.org_name ||
+                        leadData.organization
+                      }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Organization Size</span>
+                      <b>{{
+                        orgData.size || orgData.org_size || leadData.size
+                      }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Contract Start</span>
+                      <b>{{
+                        formatContractDate(
+                          orgData?.contract_start ||
+                            orgData?.contract_start_date ||
+                            leadData.contract_start
+                        ) || 'N/A'
+                      }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Contract End</span>
+                      <b>{{
+                        formatContractDate(
+                          orgData?.contract_end ||
+                            orgData?.contract_end_date ||
+                            leadData.contract_end
+                        ) || 'N/A'
+                      }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Address</span>
+                      <b>
+                        <template
+                          v-if="
+                            (orgData &&
+                              (orgData.address ||
+                                orgData.city ||
+                                orgData.state ||
+                                orgData.zip ||
+                                orgData.country)) ||
+                            addressDisplay.length
+                          "
+                        >
+                          {{
+                            orgData &&
                             (orgData.address ||
                               orgData.city ||
                               orgData.state ||
                               orgData.zip ||
-                              orgData.country)) ||
-                          addressDisplay.length
-                        "
-                      >
-                        {{
-                          orgData &&
-                          (orgData.address ||
-                            orgData.city ||
-                            orgData.state ||
-                            orgData.zip ||
-                            orgData.country)
-                            ? [
-                                orgData.address,
-                                orgData.city,
-                                orgData.state,
-                                orgData.zip,
-                                orgData.country,
-                              ]
-                                .filter(Boolean)
-                                .join(', ')
-                            : addressDisplay.join(', ')
-                        }}
-                      </template>
-                      <template v-else>N/A</template>
-                    </b>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="lead-detail-list-row">
-                    <span>Organization Name</span
-                    ><b>{{ leadData.organization }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Organization Size</span>
-                    <b>{{ leadData.size }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Contract Start</span
-                    ><b>{{
-                      formatContractDate(leadData.contract_start) || 'N/A'
-                    }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Contract End</span
-                    ><b>{{
-                      formatContractDate(leadData.contract_end) || 'N/A'
-                    }}</b>
-                  </div>
-                  <div class="lead-detail-list-row">
-                    <span>Address</span>
-                    <b>
-                      <template v-if="addressDisplay.length">
-                        {{ addressDisplay.join(', ') }}
-                      </template>
-                      <template v-else>N/A</template>
-                    </b>
-                  </div>
-                </template>
+                              orgData.country)
+                              ? [
+                                  orgData.address,
+                                  orgData.city,
+                                  orgData.state,
+                                  orgData.zip,
+                                  orgData.country,
+                                ]
+                                  .filter(Boolean)
+                                  .join(', ')
+                              : addressDisplay.join(', ')
+                          }}
+                        </template>
+                        <template v-else>N/A</template>
+                      </b>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="lead-detail-list-row">
+                      <span>Organization Name</span
+                      ><b>{{ leadData.organization }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Organization Size</span>
+                      <b>{{ leadData.size }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Contract Start</span
+                      ><b>{{
+                        formatContractDate(leadData.contract_start) || 'N/A'
+                      }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Contract End</span
+                      ><b>{{
+                        formatContractDate(leadData.contract_end) || 'N/A'
+                      }}</b>
+                    </div>
+                    <div class="lead-detail-list-row">
+                      <span>Address</span>
+                      <b>
+                        <template v-if="addressDisplay.length">
+                          {{ addressDisplay.join(', ') }}
+                        </template>
+                        <template v-else>N/A</template>
+                      </b>
+                    </div>
+                  </template>
+                </div>
               </div>
             </div>
           </div>
@@ -516,9 +520,9 @@ export default {
 <style scoped>
 .lead-detail-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -529,7 +533,7 @@ export default {
 
 .lead-detail-main-card {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -651,10 +655,6 @@ export default {
 }
 
 @media (max-width: 1400px) {
-  .lead-detail-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .lead-detail-main-card {
     max-width: 100%;
     border-radius: 14px;
@@ -686,10 +686,6 @@ export default {
 }
 
 @media (max-width: 900px) {
-  .lead-detail-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .lead-detail-main-card {
     padding: 8px 2vw 8px 2vw;
     border-radius: 10px;

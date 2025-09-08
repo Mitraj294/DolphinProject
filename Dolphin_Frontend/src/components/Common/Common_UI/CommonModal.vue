@@ -2,6 +2,7 @@
   <div
     class="common-modal-overlay"
     v-if="visible"
+    @click.self="onOverlayClick"
   >
     <div
       class="common-modal-card"
@@ -32,10 +33,45 @@ export default {
   name: 'CommonModal',
   props: {
     visible: { type: Boolean, default: false },
+    // allow closing when clicking backdrop (overlay)
+    closeOnBackdrop: { type: Boolean, default: true },
+    // allow closing via Escape key when modal is visible
+    closeOnEsc: { type: Boolean, default: true },
     // allow callers to customize modal sizing/padding via props
-    modalMinWidth: { type: [String, Number], default: undefined },
-    modalMaxWidth: { type: [String, Number], default: undefined },
-    modalPadding: { type: String, default: undefined },
+    modalMinWidth: { type: [String, Number], default: null },
+    modalMaxWidth: { type: [String, Number], default: null },
+    modalPadding: { type: String, default: null },
+  },
+  watch: {
+    visible(val) {
+      if (val) this.attachKeyListener();
+      else this.detachKeyListener();
+    },
+  },
+  beforeUnmount() {
+    this.detachKeyListener();
+  },
+  methods: {
+    onOverlayClick() {
+      if (this.closeOnBackdrop) this.$emit('close');
+    },
+    handleKeydown(e) {
+      if (!this.visible) return;
+      if (!this.closeOnEsc) return;
+      if (e.key === 'Escape' || e.key === 'Esc') {
+        this.$emit('close');
+      }
+    },
+    attachKeyListener() {
+      if (typeof window !== 'undefined' && this.closeOnEsc) {
+        window.addEventListener('keydown', this.handleKeydown);
+      }
+    },
+    detachKeyListener() {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('keydown', this.handleKeydown);
+      }
+    },
   },
   computed: {
     computedModalStyle() {

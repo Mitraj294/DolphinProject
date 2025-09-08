@@ -1,13 +1,21 @@
 <template>
-  <CommonModal
-    :visible="visible"
-    @close="$emit('close')"
-    modalMaxWidth="700px"
+  <div
+    v-if="visible"
+    class="modal-overlay"
+    @click.self="$emit('close')"
   >
-
-<div class="modal-card">
-        <div class="modal-title2">Group Details</div>
-        <div class="modal-desc">Details for the selected group.</div>
+    <div
+      class="modal-card"
+      style="max-width: 900px; width: 90%"
+    >
+      <button
+        class="modal-close-btn"
+        @click="$emit('close')"
+      >
+        &times;
+      </button>
+      <div class="modal-title">Group Details</div>
+      <div class="modal-desc">Details for the selected group.</div>
 
  
 
@@ -56,7 +64,12 @@
           v-else
           class="detail-row"
         >
-          <div class="detail-table">
+          <div class="detail-table"
+          style="
+            width: 100% !important;
+            max-width: 800px !important;
+            margin: 0 !important;
+          ">
             <div class="recipient-table-wrap">
               <table class="recipient-table compact">
                 <thead>
@@ -117,18 +130,17 @@
         </div>
       </div>
     </div>
-</div>
-  </CommonModal>
+  </div>
+  </div>
 </template>
 
 <script>
-import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import axios from 'axios';
 import storage from '@/services/storage';
 
 export default {
   name: 'GroupDetails',
-  components: { CommonModal },
+  components: {},
   props: {
     visible: { type: Boolean, required: true },
     groupId: { type: [Number, String], required: false, default: null },
@@ -185,6 +197,7 @@ export default {
               })
             : [];
       } catch (e) {
+        console.error('Error fetching group details:', e);
         this.group = null;
         this.members = [];
       }
@@ -218,6 +231,7 @@ export default {
         if (hours === 0) hours = 12;
         return `${day} ${month},${year} ${hours}:${minutes} ${ampm}`;
       } catch (e) {
+        console.warn('Error formatting date:', e);
         return dt;
       }
     },
@@ -226,122 +240,8 @@ export default {
 </script>
 
 <style scoped>
-.common-modal-title {
-  font-size: 26px;
-  font-weight: 600;
-  margin-bottom: 32px;
-  color: #222;
-  text-align: left;
-}
-.group-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-  gap: 18px;
-}
-.group-info .group-label {
-  font-size: 13px;
-  color: #666;
-}
-.group-info .group-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: #0b5fa5;
-}
-.group-meta {
-  display: flex;
-  gap: 18px;
-  align-items: center;
-}
-.meta-item .meta-label {
-  font-size: 12px;
-  color: #888;
-}
-.meta-item .meta-value {
-  font-size: 16px;
-  font-weight: 600;
-}
-.group-section {
-  margin-top: 18px;
-}
-.section-title {
-  font-size: 16px;
-  margin-bottom: 8px;
-  color: #222;
-}
-.details-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.details-table th,
-.details-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  text-align: left;
-}
-.details-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 8px;
-}
-.details-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: #f9f9f9;
-  padding: 8px 12px;
-  border-radius: 8px;
-}
-.details-row .k {
-  width: 120px;
-  color: #666;
-}
-.details-row .v {
-  color: #222;
-  font-weight: 500;
-}
-.no-data {
-  padding: 12px;
-  background: #ffffff;
-  border-radius: 8px;
-  color: #666;
-}
+@import '@/assets/modelcssnotificationandassesment.css';
+@import '@/assets/global.css';
+@import '@/assets/table.css';
 
-/* Recipient table compact style (used across admin cards) */
-.recipient-table-wrap {
-  overflow: auto;
-}
-.recipient-table.compact {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.recipient-table.compact th,
-.recipient-table.compact td {
-  padding: 10px 12px;
-  border-bottom: 1px solid #f0f0f0;
-  text-align: left;
-}
-.recipient-table.compact thead {
-  background: transparent;
-}
-.recipient-table.compact thead tr {
-  border-bottom: 1px solid #e9eef3;
-}
-.recipient-table.compact thead th {
-  background: transparent;
-  color: #222;
-  font-weight: 600;
-  padding: 12px 14px;
-  text-align: left;
-  vertical-align: middle;
-}
-.group-cell {
-  vertical-align: top;
-  font-weight: 600;
-  color: #0b5fa5;
-  background: #fbfdff;
-}
 </style>

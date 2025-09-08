@@ -385,9 +385,9 @@ export default {
 /* --- Base layout and card structure (matches Leads/OrganizationTable/Notifications) --- */
 .user-assessment-outer {
   width: 100%;
-  max-width: 1400px;
+
   min-width: 0;
-  margin: 64px auto 64px auto;
+
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -403,7 +403,7 @@ export default {
   margin: 0 auto;
   box-sizing: border-box;
   min-width: 0;
-  max-width: 1400px;
+
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -452,55 +452,6 @@ export default {
 .user-assessment-word-cell {
   display: flex;
   align-items: center;
-}
-
-.user-assessment-checkbox-label {
-  display: flex;
-  align-items: center;
-  background: #f8f9fb;
-  border-radius: 10px;
-  padding: 12px 18px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #222;
-  cursor: pointer;
-  border: 2px solid #f8f9fb;
-  transition: border 0.18s, background 0.18s;
-  width: 100%;
-  user-select: none;
-}
-.user-assessment-checkbox-label.checked {
-  background: #e6f0fa;
-  border: 2px solid #0074c2;
-}
-.user-assessment-checkbox-label input[type='checkbox'] {
-  display: none;
-}
-.user-assessment-checkbox-custom {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  border: 2px solid #bbb;
-  background: #fff;
-  margin-right: 12px;
-  display: inline-block;
-  position: relative;
-}
-.user-assessment-checkbox-label.checked .user-assessment-checkbox-custom {
-  border: 2px solid #0074c2;
-  background: #0074c2;
-}
-.user-assessment-checkbox-label.checked .user-assessment-checkbox-custom:after {
-  content: '';
-  display: block;
-  position: absolute;
-  left: 5px;
-  top: 2px;
-  width: 6px;
-  height: 9px;
-  border: solid #fff;
-  border-width: 0 3px 3px 0;
-  transform: rotate(45deg);
 }
 
 .user-assessment-footer {
@@ -598,10 +549,6 @@ export default {
 
 /* --- Responsive styles to match base pages --- */
 @media (max-width: 1400px) {
-  .user-assessment-outer {
-    margin: 12px;
-    max-width: 100%;
-  }
   .user-assessment-card {
     border-radius: 14px;
     max-width: 100%;
@@ -629,10 +576,6 @@ export default {
   }
 }
 @media (max-width: 900px) {
-  .user-assessment-outer {
-    margin: 4px;
-    max-width: 100%;
-  }
   .user-assessment-card {
     border-radius: 10px;
   }
