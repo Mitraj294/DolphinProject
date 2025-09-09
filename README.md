@@ -32,10 +32,7 @@ sdolphin632@gmail.com
 git add .
 git commit -m "daily update"
 git push
-
-
-//////////////
-
+////////////////////////////////////////////////////////////
 ./start-dev.sh
 ngrok http 8000
  mysql -u  dolphin123 -p
@@ -43,6 +40,10 @@ SELECT * FROM `oauth_access_tokens`
  cd Dolphin_Backend
  php artisan queue:work
  php artisan schedule:work
+
+
+//////////////
+
 
 
 
