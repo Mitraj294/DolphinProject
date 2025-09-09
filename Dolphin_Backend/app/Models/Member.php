@@ -62,7 +62,7 @@ class Member extends Model
                 $p = $p['id'] ?? $p['name'] ?? ($p[0] ?? null);
             }
 
-            if ($p === null || $p === '') continue;
+            if ($p === null || $p === '')  continue;
 
             // if the value is numeric, treat as id
             if (is_numeric($p)) {

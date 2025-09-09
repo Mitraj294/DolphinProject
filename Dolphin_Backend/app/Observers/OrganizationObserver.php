@@ -12,7 +12,10 @@ class OrganizationObserver
     {
         try {
             // find latest subscription for the owner user_id
-            if (empty($organization->user_id)) return;
+            if (empty($organization->user_id)) {
+                return;
+            }
+            $latest = null;
             $latest = Subscription::where('user_id', $organization->user_id)
                 ->orderBy('subscription_start', 'desc')
                 ->first();
@@ -32,7 +35,11 @@ class OrganizationObserver
                 }
             }
         } catch (Exception $e) {
-            // ignore
+            \Log::error('Error applying latest subscription to organization', [
+                'organization_id' => $organization->id,
+                'user_id' => $organization->user_id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

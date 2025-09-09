@@ -269,6 +269,7 @@ export default {
           );
           this.countryName = res.data?.name || '';
         } catch (e) {
+          console.error('Error fetching country name:', e);
           this.countryName = '';
         }
       } else {
@@ -281,6 +282,7 @@ export default {
           );
           this.stateName = res.data?.name || '';
         } catch (e) {
+          console.error('Error fetching state name:', e);
           this.stateName = '';
         }
       } else {
@@ -293,6 +295,7 @@ export default {
           );
           this.cityName = res.data?.name || '';
         } catch (e) {
+          console.error('Error fetching city name:', e);
           this.cityName = '';
         }
       } else {
@@ -344,6 +347,7 @@ export default {
             );
             this.orgUser = userRes.data || null;
           } catch (e) {
+            console.error('Error fetching organization user:', e);
             this.orgUser = null;
           }
           try {
@@ -353,11 +357,12 @@ export default {
             );
             this.orgUserDetails = detailsRes.data || null;
           } catch (e) {
+            console.error('Error fetching organization user details:', e);
             this.orgUserDetails = null;
           }
         }
       } catch (e) {
-        // organization not found or request failed
+        console.error('Error fetching organization:', e);
         this.orgData = null;
         this.isOrganizationCreated = false;
       } finally {
@@ -429,12 +434,17 @@ export default {
               this.$router.replace({ name: 'LeadDetail', params: { id } });
             }
           } catch (e) {
-            // ignore routing replace errors
+            console.warn('Failed to replace route', e);
           }
           return;
         }
       } catch (e) {
-        // fallback to query params
+        console.error('Error fetching lead details', e);
+        // fallback to query params if fetch failed
+        this.localLead = { ...this.lead };
+        await this.lookupLocationNames();
+        await this.fetchOrganizationIfExists();
+        return;
       }
     }
     // fallback to query params if no id or fetch failed

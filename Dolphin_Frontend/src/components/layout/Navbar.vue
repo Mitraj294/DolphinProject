@@ -57,7 +57,6 @@
         class="navbar-profile-btn"
         ref="dropdownWrapper"
         @click="toggleDropdown"
-        tabindex="0"
         @keydown.enter="toggleDropdown"
       >
         <span class="navbar-avatar">{{ displayName.charAt(0) }}</span>
@@ -371,14 +370,18 @@ export default {
           else if (Array.isArray(res.data.unread))
             unread = res.data.unread.length;
           else if (Array.isArray(res.data.notifications)) {
-            // some endpoints return notifications array
             unread = res.data.notifications.filter((n) => !n.read_at).length;
+          } else {
+            console.warn(
+              'Unexpected response format for unread notifications',
+              res.data
+            );
           }
         }
         this.notificationCount = unread;
         storage.set('notificationCount', String(unread));
       } catch (e) {
-        // ignore errors silently; keep existing badge
+        console.warn('Failed to fetch initial unread count', e);
       }
     },
 
@@ -418,7 +421,7 @@ export default {
           }
         }
       } catch (e) {
-        // silent; leave base title
+        console.warn(`Failed to fetch lead name for id=${leadId}`, e);
       } finally {
         if (this.isNavbarAlive) {
           delete this.leadNameFetching[leadId];
@@ -501,7 +504,7 @@ export default {
           }
         }
       } catch (e) {
-        // ignore
+        console.warn(`Failed to fetch organization name for id=${orgId}`, e);
       } finally {
         if (this.isNavbarAlive) {
           delete this.orgNameFetching[orgId];
@@ -648,7 +651,7 @@ export default {
         this.fetchUnreadCount();
       }
     } catch (e) {
-      // ignore
+      console.warn('Failed to fetch initial unread count', e);
     }
     // bind handlers so `this` is preserved when invoked by window events
     this._boundFetchUnread = this.fetchUnreadCount.bind(this);
@@ -660,7 +663,9 @@ export default {
       this.updateNotificationCount();
       try {
         this.fetchUnreadCount();
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Failed to fetch unread count after auth update', e);
+      }
       this.$forceUpdate && this.$forceUpdate();
     }, 500);
     // refresh when other components dispatch a notification update (mark read actions)
@@ -693,7 +698,9 @@ export default {
         if (assessmentId && this.isNavbarAlive)
           this.fetchAssessmentName(assessmentId);
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Navbar: failed to fetch assessment name on mount', e);
+    }
 
     // Watch route changes to trigger fetches for AssessmentSummary pages
     this.$watch(
@@ -706,7 +713,12 @@ export default {
               this.$route.params.assessmentId || this.$route.params.id;
             if (aid && this.isNavbarAlive) this.fetchAssessmentName(aid);
           }
-        } catch (e) {}
+        } catch (e) {
+          console.warn(
+            'Navbar: failed to fetch assessment name on route change',
+            e
+          );
+        }
       }
     );
   },

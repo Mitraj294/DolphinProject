@@ -258,7 +258,7 @@ class AuthController extends Controller
 
         // Validate top-level user.email if provided
         $validator = Validator::make($payload, [
-            // ignore soft-deleted users when checking uniqueness
+            // soft-deleted users will not be considered when checking uniqueness
             'user.email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id . ',id,deleted_at,NULL',
             'user_details.first_name' => 'sometimes|nullable|string|max:255',
             'user_details.last_name' => 'sometimes|nullable|string|max:255',

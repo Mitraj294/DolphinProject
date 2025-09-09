@@ -171,10 +171,9 @@
               >
                 <thead>
                   <tr>
-                    <th style="width: 20%">Group</th>
+                    <th style="width: 30%">Group</th>
                     <th style="width: 30%">Name</th>
-                    <th style="width: 30%">Email</th>
-                    <th style="width: 20%">Role</th>
+                    <th style="width: 40%">Email</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -193,7 +192,7 @@
                       >
                         {{ g.name || 'Ungrouped' }}
                       </td>
-                      <td>
+                      <td style="padding: 0px 8px !important">
                         {{
                           e.member_id && memberDetailMap[e.member_id]
                             ? memberDetailMap[e.member_id].name
@@ -205,13 +204,6 @@
                           e.member_id && memberDetailMap[e.member_id]
                             ? memberDetailMap[e.member_id].email
                             : e.recipient_email || e.email || e.to || ''
-                        }}
-                      </td>
-                      <td>
-                        {{
-                          e.member_id && memberDetailMap[e.member_id]
-                            ? memberDetailMap[e.member_id].role || 'Member'
-                            : ''
                         }}
                       </td>
                     </tr>
@@ -256,10 +248,10 @@ export default {
         let name = first;
         if (last) name = name ? `${name} ${last}` : last;
         if (!name) name = m.email || `Member ${m.id}`;
+
         map[m.id] = {
           name,
           email: m.email || '',
-          role: (m.member_role || m.role || '').toString().trim() || '',
         };
       });
       return map;
@@ -323,7 +315,7 @@ export default {
                 if (Array.isArray(parsed))
                   parsed.forEach((x) => egids.add(Number(x)));
               } catch {
-                // ignore parse errors for malformed group_ids
+                console.warn('Failed to parse email group_ids field');
               }
             }
             if (egids.has(Number(gid))) items.push(e);

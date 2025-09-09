@@ -98,16 +98,22 @@ export default {
               node.props &&
               node.props.value !== undefined
           )
-          .map((node) => ({
-            value: node.props.value,
-            text:
-              typeof node.children === 'string'
-                ? node.children
-                : Array.isArray(node.children)
-                ? node.children.join('')
-                : '',
-          }));
-      }
+          .map((node) => {
+            let childText = '';
+            if (typeof node.children === 'string') {
+              childText = node.children;
+            } else if (Array.isArray(node.children)) {
+              childText = node.children.join('');
+            } else {
+              console.warn('Unsupported slot child type in FormDropdown');
+            }
+            return {
+              value: node.props.value,
+              text: childText,
+            };
+          });
+      } else;
+
       if (!this.search) return opts;
       return opts.filter((opt) =>
         (opt.text || '').toLowerCase().includes(this.search.toLowerCase())
@@ -242,7 +248,7 @@ export default {
   box-shadow: 0 2px 12px rgba(33, 150, 243, 0.08);
   border: 1px solid #eee;
   z-index: 10;
-  max-height: 220px;
+  max-height: 240px;
   overflow-y: auto;
   padding: 8px 0 8px 0;
   box-sizing: border-box;

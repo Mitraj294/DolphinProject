@@ -40,21 +40,27 @@ return new class extends Migration
                     $table->dropForeign(['country_id']);
                 }
             } catch (\Exception $e) {
-                // ignore
+               \Log::error('Error dropping foreign key on organizations(country_id)', [
+                   'error' => $e->getMessage()
+               ]);
             }
             try {
                 if (Schema::hasColumn('organizations', 'state_id')) {
                     $table->dropForeign(['state_id']);
                 }
             } catch (\Exception $e) {
-                // ignore
+               \Log::error('Error dropping foreign key on organizations(state_id)', [
+                   'error' => $e->getMessage()
+               ]);
             }
             try {
                 if (Schema::hasColumn('organizations', 'city_id')) {
                     $table->dropForeign(['city_id']);
                 }
             } catch (\Exception $e) {
-                // ignore
+               \Log::error('Error dropping foreign key on organizations(city_id)', [
+                   'error' => $e->getMessage()
+               ]);
             }
             if (Schema::hasColumn('organizations', 'country_id')) {
                 $table->dropColumn(['country_id']);

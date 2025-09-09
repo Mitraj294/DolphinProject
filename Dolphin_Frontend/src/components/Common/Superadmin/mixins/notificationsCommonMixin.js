@@ -107,6 +107,7 @@ export default {
           }
         }
       } catch (e) {
+        console.warn('Date parse error:', e);
         d = new Date(dateStr);
       }
       if (!d || isNaN(d.getTime())) return dateStr || '';

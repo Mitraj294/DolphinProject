@@ -1,21 +1,10 @@
 <template>
-  <!-- Render a colgroup so callers can declare per-column widths when building the columns array.
-       Usage example (in parent): { label: 'Email', key: 'email', width: '220px' } or width: 220
-       If width is not provided, column size will be determined by content (table-layout: auto).
-  -->
   <colgroup>
     <col
       v-for="(col, idx) in columns"
       :key="'col-' + (col.key || idx)"
-      :class="col.width ? 'col-fixed' : ''"
-      :style="
-        col.width
-          ? {
-              width:
-                typeof col.width === 'number' ? col.width + 'px' : col.width,
-            }
-          : null
-      "
+      :class="col.width || col.minWidth"
+      :style="getColumnStyle(col)"
     />
   </colgroup>
   <thead>
@@ -26,10 +15,13 @@
         :class="[
           idx === 0 ? 'rounded-th-left' : '',
           idx === columns.length - 1 ? 'rounded-th-right' : '',
-          col.width ? 'col-fixed' : '',
+          col.width || col.minWidth,
+          col.class || '',
         ]"
+        :style="getColumnStyle(col)"
         :role="col.sortable ? 'button' : null"
         :tabindex="col.sortable ? 0 : null"
+        scope="col"
         @click="col.sortable === true ? $emit('sort', col.key) : null"
         @keyup.enter="col.sortable === true ? $emit('sort', col.key) : null"
       >
@@ -65,15 +57,50 @@ export default {
       type: Array,
       required: true,
     },
-    // Optional: which column is currently sorted (key)
+
     activeSortKey: {
       type: String,
       default: null,
     },
-    // Optional: current sort direction
+
     sortAsc: {
       type: Boolean,
       default: true,
+    },
+  },
+  methods: {
+    getColumnStyle(col) {
+      let style = {};
+
+      // Handle explicit width property
+      if (col.width) {
+        style.width =
+          typeof col.width === 'number' ? col.width + 'px' : col.width;
+      }
+
+      // Handle minWidth property
+      if (col.minWidth) {
+        style.minWidth =
+          typeof col.minWidth === 'number' ? col.minWidth + 'px' : col.minWidth;
+      }
+
+      // Handle style property (CSS string)
+      if (col.style) {
+        // Parse CSS string and add to style object
+        const cssRules = col.style.split(';').filter((rule) => rule.trim());
+        cssRules.forEach((rule) => {
+          const [property, value] = rule.split(':').map((s) => s.trim());
+          if (property && value) {
+            // Convert kebab-case to camelCase for Vue style binding
+            const camelProperty = property.replace(/-([a-z])/g, (g) =>
+              g[1].toUpperCase()
+            );
+            style[camelProperty] = value;
+          }
+        });
+      }
+
+      return Object.keys(style).length > 0 ? style : null;
     },
   },
 };
@@ -111,22 +138,5 @@ export default {
 
 .rounded-th-left {
   padding-left: 20px !important;
-}
-
-@media (max-width: 1400px) {
-  .rounded-th-left {
-    padding-left: 20px !important;
-  }
-}
-@media (max-width: 900px) {
-  .rounded-th-left {
-    border-top-left-radius: 10px;
-    border-bottom-left-radius: 10px;
-    padding-left: 20px !important;
-  }
-  .rounded-th-right {
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
-  }
 }
 </style>

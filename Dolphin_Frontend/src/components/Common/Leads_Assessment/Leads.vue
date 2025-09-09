@@ -22,19 +22,55 @@
               <table class="table">
                 <TableHeader
                   :columns="[
-                    { label: 'Contact', key: 'contact', sortable: true },
-                    { label: 'Email', key: 'email' },
-                    { label: 'Phone Number', key: 'phone' },
+                    {
+                      label: 'Contact',
+                      key: 'contact',
+                      sortable: true,
+                      width: '170px',
+                    },
+                    { label: 'Email', key: 'email', width: '250px' },
+                    {
+                      label: 'Phone Number',
+                      key: 'phone',
+                      width: '150px',
+                      position: 'relative',
+                    },
                     {
                       label: 'Organization',
                       key: 'organization',
                       sortable: true,
+                      width: '150px',
+                      position: 'relative',
                     },
-                    { label: 'Size', key: 'size', sortable: true },
-                    { label: 'Source', key: 'source' },
-                    { label: 'Status', key: 'status', sortable: true },
-                    { label: 'Notes', key: 'notes' },
-                    { label: '', key: 'actions' },
+                    {
+                      label: 'Size',
+                      key: 'size',
+                      sortable: true,
+                      width: '220px',
+                      class: 'text-center',
+                      position: 'relative',
+                    },
+                    { label: 'Source', key: 'source', width: '140px' },
+                    {
+                      label: 'Status',
+                      key: 'status',
+                      sortable: true,
+                      width: '150px',
+                      position: 'relative',
+                    },
+                    {
+                      label: 'Notes',
+                      key: 'notes',
+                      width: '150px',
+                      position: 'relative',
+                    },
+                    {
+                      label: '',
+                      key: 'actions',
+                      width: '75px',
+                      class: 'text-center',
+                      position: 'initial',
+                    },
                   ]"
                   @sort="sortBy"
                 />
@@ -160,7 +196,7 @@
             ></textarea>
             <div class="notes-modal-actions">
               <button
-                class="btn btn-secondary"
+                class="org-edit-cancel"
                 @click="notesModalMode === 'add' ? submitNotes() : saveNotes()"
               >
                 {{ notesModalMode === 'add' ? 'Submit' : 'Update' }}

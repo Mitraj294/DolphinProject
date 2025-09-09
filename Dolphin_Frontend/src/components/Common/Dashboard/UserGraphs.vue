@@ -50,6 +50,7 @@ import {
   Legend,
 } from 'chart.js';
 import { ref } from 'vue';
+
 import Dropdown from '@/components/Common/Common_UI/Dropdown.vue';
 
 Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
@@ -213,9 +214,9 @@ const adjustedSelf = ref('Adjusted Self 1');
 .dropdown-radio {
   position: relative;
   display: inline-block;
-  min-width: 140px;
+
   font-size: 15px;
-  width: auto !important; /* override previous 100% */
+  width: auto !important;
   min-width: 0 !important;
   max-width: 100% !important;
 }

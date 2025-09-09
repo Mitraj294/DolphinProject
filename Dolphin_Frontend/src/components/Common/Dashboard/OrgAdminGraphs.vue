@@ -51,7 +51,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
-import { ref, h, computed } from 'vue';
+import { ref } from 'vue';
 import Dropdown from '@/components/Common/Common_UI/Dropdown.vue';
 
 Chart.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);

@@ -49,7 +49,9 @@ return new class extends Migration
                 try {
                     $table->date('last_contacted')->nullable()->change();
                 } catch (\Exception $e) {
-                    // ignore
+                    \Log::error('Error changing last_contacted to date', [
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
         });

@@ -45,75 +45,177 @@
     <div
       v-if="showAddMemberModal"
       class="modal-overlay"
+      @click.self="showAddMemberModal = false"
     >
-      <div class="modal-card">
+      <div
+        class="modal-card"
+        style="max-width: 900px"
+      >
         <button
-          class="modal-close"
+          class="modal-close-btn"
           @click="showAddMemberModal = false"
         >
           &times;
         </button>
-        <h2 class="modal-title">Add New Member</h2>
+        <div class="modal-title">Add New Member</div>
+        <div
+          class="modal-desc"
+          style="font-size: 1.2rem !important; margin-bottom: 32px !important"
+        >
+          Add a new member to your organization.
+        </div>
         <form
           class="modal-form"
           @submit.prevent="saveMember"
         >
-          <FormRow>
-            <FormInput
-              v-model="newMember.firstName"
-              placeholder="First Name"
-              icon="fas fa-user"
-              required
-            />
-            <FormInput
-              v-model="newMember.lastName"
-              placeholder="Last Name"
-              icon="fas fa-user"
-              required
-            />
+          <FormRow
+            class="modal-form-row"
+            style="
+              margin-bottom: 0 !important;
+              display: flex;
+              gap: 18px;
+              align-items: flex-start;
+              flex-direction: row;
+            "
+          >
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >First Name</FormLabel
+              >
+              <FormInput
+                v-model="newMember.firstName"
+                icon="fas fa-user"
+                type="text"
+                placeholder="Enter first name"
+                required
+              />
+            </div>
+
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >Last Name</FormLabel
+              >
+              <FormInput
+                v-model="newMember.lastName"
+                icon="fas fa-user"
+                type="text"
+                placeholder="Enter last name"
+                required
+              />
+            </div>
           </FormRow>
-          <FormRow>
-            <FormInput
-              v-model="newMember.email"
-              placeholder="Email"
-              icon="fas fa-envelope"
-              type="email"
-              required
-            />
-            <FormInput
-              v-model="newMember.phone"
-              placeholder="Phone Number"
-              icon="fas fa-phone"
-              required
-            />
+          <FormRow
+            class="modal-form-row"
+            style="
+              margin-bottom: 0 !important;
+              display: flex;
+              gap: 18px;
+              align-items: flex-start;
+              flex-direction: row;
+            "
+          >
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >Email</FormLabel
+              >
+              <FormInput
+                v-model="newMember.email"
+                icon="fas fa-envelope"
+                type="email"
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >Phone</FormLabel
+              >
+              <FormInput
+                v-model="newMember.phone"
+                icon="fas fa-phone"
+                type="text"
+                placeholder="Enter phone number"
+                required
+              />
+            </div>
           </FormRow>
-          <FormRow>
-            <MultiSelectDropdown
-              :options="roles"
-              :selectedItems="
-                Array.isArray(newMember.roles) ? newMember.roles : []
-              "
-              @update:selectedItems="newMember.roles = $event"
-              placeholder="Role"
-              icon="fas fa-user-tag"
-              :enableSelectAll="true"
-            />
-            <MultiSelectDropdown
-              :options="groups"
-              :selectedItems="
-                Array.isArray(newMember.groups) ? newMember.groups : []
-              "
-              @update:selectedItems="newMember.groups = $event"
-              placeholder="Groups associated with"
-              :enableSelectAll="true"
-            />
+          <FormRow
+            class="modal-form-row"
+            style="
+              margin-bottom: 0 !important;
+              display: flex;
+              gap: 18px;
+              align-items: flex-start;
+              flex-direction: row;
+            "
+          >
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >Role</FormLabel
+              >
+              <MultiSelectDropdown
+                :options="roles"
+                :selectedItems="
+                  Array.isArray(newMember.roles) ? newMember.roles : []
+                "
+                @update:selectedItems="newMember.roles = $event"
+                placeholder="Select role"
+                :enableSelectAll="true"
+              />
+            </div>
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >Groups</FormLabel
+              >
+              <MultiSelectDropdown
+                :options="groups"
+                :selectedItems="
+                  Array.isArray(newMember.groups) ? newMember.groups : []
+                "
+                @update:selectedItems="newMember.groups = $event"
+                placeholder="Select groups"
+                :enableSelectAll="true"
+              />
+            </div>
           </FormRow>
           <div class="modal-form-actions">
             <button
               type="submit"
-              class="modal-save-btn"
+              class="btn btn-primary"
             >
-              Save Member
+              <i class="fas fa-save"></i>
+              Save
+            </button>
+            <button
+              type="button"
+              class="org-edit-cancel"
+              @click="showAddMemberModal = false"
+            >
+              Cancel
             </button>
           </div>
         </form>
@@ -123,43 +225,89 @@
     <div
       v-if="showAddGroupModal"
       class="modal-overlay"
+      @click.self="showAddGroupModal = false"
     >
-      <div class="modal-card">
+      <div
+        class="modal-card"
+        style="max-width: 900px"
+      >
         <button
-          class="modal-close"
+          class="modal-close-btn"
           @click="showAddGroupModal = false"
         >
           &times;
         </button>
-        <h2 class="modal-title">Add New Group</h2>
+        <div class="modal-title">Add New Group</div>
+        <div
+          class="modal-desc"
+          style="font-size: 1.2rem !important ; margin-bottom: 32px !important"
+        >
+          Create a new group for your organization.
+        </div>
         <form
           class="modal-form"
           @submit.prevent="saveGroup"
         >
-          <FormRow>
-            <FormInput
-              icon="fas fa-users"
-              v-model="newGroup.name"
-              placeholder=" Group Name"
-              required
-            />
-            <MultiSelectDropdown
-              :options="availableMembers"
-              :selectedItems="
-                Array.isArray(newGroup.members) ? newGroup.members : []
-              "
-              @update:selectedItems="newGroup.members = $event"
-              placeholder="Members"
-              icon="fas fa-user"
-              :enableSelectAll="true"
-            />
+          <FormRow
+            class="modal-form-row"
+            style="
+              margin-bottom: 0 !important;
+              display: flex;
+              gap: 18px;
+              align-items: flex-start;
+              flex-direction: row;
+            "
+          >
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >Group Name</FormLabel
+              >
+              <FormInput
+                v-model="newGroup.name"
+                icon="fas fa-users"
+                type="text"
+                placeholder="Enter group name"
+                required
+              />
+            </div>
+
+            <div
+              class="modal-form-row-div"
+              style="flex: 1; min-width: 0"
+            >
+              <FormLabel
+                style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+                >Members</FormLabel
+              >
+              <MultiSelectDropdown
+                :options="availableMembers"
+                :selectedItems="
+                  Array.isArray(newGroup.members) ? newGroup.members : []
+                "
+                @update:selectedItems="newGroup.members = $event"
+                placeholder="Select members"
+                :enableSelectAll="true"
+              />
+            </div>
           </FormRow>
           <div class="modal-form-actions">
             <button
               type="submit"
-              class="modal-save-btn"
+              class="btn btn-primary"
             >
-              Save Group
+              <i class="fas fa-save"></i>
+              Save
+            </button>
+            <button
+              type="button"
+              class="org-edit-cancel"
+              @click="showAddGroupModal = false"
+            >
+              Cancel
             </button>
           </div>
         </form>
@@ -170,6 +318,7 @@
 
 <script>
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
+import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import MultiSelectDropdown from '@/components/Common/Common_UI/Form/MultiSelectDropdown.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import axios from 'axios';
@@ -180,6 +329,7 @@ export default {
   name: 'OrgActionButtons',
   components: {
     FormInput,
+    FormLabel,
     MultiSelectDropdown,
     FormRow,
     Toast,
@@ -226,6 +376,7 @@ export default {
         });
         this.groups = Array.isArray(res.data) ? res.data : [];
       } catch (e) {
+        console.error('Failed to fetch groups:', e);
         this.groups = [];
       }
       this.showAddMemberModal = true;
@@ -316,6 +467,8 @@ export default {
           typeof e.response.data === 'string'
         ) {
           msg = e.response.data;
+        } else {
+          console.error(e);
         }
         this.toast.add({
           severity: 'error',
@@ -370,6 +523,8 @@ export default {
           typeof e.response.data === 'string'
         ) {
           msg = e.response.data;
+        } else {
+          console.error('Failed to add group:', e);
         }
         this.toast.add({
           severity: 'error',
@@ -387,6 +542,55 @@ export default {
 </script>
 
 <style scoped>
+@import '@/assets/modelcssnotificationandassesment.css';
+
+/* Modal form customization */
+.modal-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 600px) {
+  .modal-form-row {
+    flex-direction: column !important;
+    gap: 12px;
+  }
+  .modal-form-row-div {
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 0;
+  }
+}
+
+.modal-form .form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+/* Ensure form components work well in modal */
+.modal-form .form-box {
+  position: relative;
+}
+
+.modal-form .form-input.with-icon {
+  padding-left: 40px;
+}
+
+.modal-form .form-input-icon {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.modal-form .form-dropdown-chevron {
+  color: var(--muted);
+}
+
 .my-org-action-buttons {
   display: flex;
   gap: 12px;
@@ -395,7 +599,7 @@ export default {
 }
 
 /* Small screens: column */
-@media (max-width: 650px) {
+@media (max-width: 600px) {
   .my-org-action-buttons {
     display: flex;
     flex-direction: column;
@@ -418,7 +622,7 @@ export default {
   margin-right: 0;
   margin-top: 0;
   box-shadow: none;
-  border: none;
+
   cursor: pointer;
   transition: background 0.2s, color 0.2s;
   white-space: nowrap;
@@ -447,5 +651,45 @@ export default {
 .my-org-action-buttons .my-org-secondary:nth-child(2):hover {
   background: #005fa3 !important;
   color: #fff !important;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 8px;
+  border: none;
+  padding: 10px 24px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-primary {
+  background: #0074c2;
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: #005fa3;
+}
+
+.org-edit-cancel {
+  background: #f0f0f0;
+  color: #222;
+  border: none;
+  padding: 10px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.org-edit-cancel:hover {
+  background: #e0e0e0;
+}
+
+.form-box {
+  padding: 0 !important;
 }
 </style>

@@ -18,7 +18,9 @@ return new class extends Migration
                 $table->dropUnique('users_email_unique');
             });
         } catch (\Exception $e) {
-            // ignore
+         \Log::error('Error dropping unique index on users(email)', [
+             'error' => $e->getMessage()
+         ]);
         }
 
         // Add composite unique index on (email, deleted_at)
@@ -27,7 +29,9 @@ return new class extends Migration
                 $table->unique(['email', 'deleted_at'], 'users_email_deleted_at_unique');
             });
         } catch (\Exception $e) {
-            // ignore
+          \Log::error('Error adding composite unique index on users(email, deleted_at)', [
+              'error' => $e->getMessage()
+          ]);
         }
     }
 
@@ -42,6 +46,9 @@ return new class extends Migration
                 $table->dropUnique('users_email_deleted_at_unique');
             });
         } catch (\Exception $e) {
+            \Log::error('Error dropping unique index on users(email, deleted_at)', [
+                'error' => $e->getMessage()
+            ]);
         }
 
         try {
@@ -49,6 +56,9 @@ return new class extends Migration
                 $table->unique('email', 'users_email_unique');
             });
         } catch (\Exception $e) {
+            \Log::error('Error adding unique index on users(email)', [
+                'error' => $e->getMessage()
+            ]);
         }
     }
 };

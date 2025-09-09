@@ -146,7 +146,10 @@ class AssessmentController extends Controller
                         $orgId = $org->id;
                     }
                 } catch (\Exception $e) {
-                    // ignore lookup errors
+                    \Log::error('Error resolving organization for user', [
+                        'user_id' => $request->user()->id,
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
         }

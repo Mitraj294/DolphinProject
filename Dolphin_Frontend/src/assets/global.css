@@ -19,18 +19,34 @@
 }
 
 .btn-view {
-    background: #fff;
-    color: #0074c2;
-    border: 1.5px solid #0074c2;
+
+
     font-weight: 500;
+
+    background: #F6F6F6;
+    border: 1px solid #DCDCDC;
+    border-radius: 23.7px;
+    height: 30px;
+    padding: 5px 14px;
+    font-size: 13px;
+    color: #222;
+    cursor: pointer;
+    transition: border 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 1px 4px 0 rgba(33, 150, 243, 0.04);
 }
+
 
 .btn-view:hover {
     background: #ffffff;
 
     border-color: #82817f;
-}
 
+
+
+}
 
 .btn-add {
     background: #fff;
@@ -119,26 +135,7 @@
     background: #005fa3;
 }
 
-/* View Detail Button (Reusable) */
-.btn-view {
-    background: #F6F6F6;
-    border: 1px solid #DCDCDC;
-    border-radius: 23.7px;
-    height: 30px;
-    padding: 5px 14px;
-    font-size: 13px;
-    color: #222;
-    cursor: pointer;
-    transition: border 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    box-shadow: 0 1px 4px 0 rgba(33, 150, 243, 0.04);
-}
 
-.btn-view:hover {
-    border-color: #bcbcbc;
-}
 
 .btn-view-icon {
     width: 15px;
@@ -170,11 +167,24 @@
     border-radius: 8px;
     font-size: 1rem;
     cursor: pointer;
-}
-
-.cancel-btn {
     background: #f5f5f5;
     color: #222;
+}
+
+.org-edit-cancel {
+    background: #f5f5f5;
+    color: #888;
+    border: none;
+    border-radius: 24px;
+    padding: 10px 32px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.org-edit-cancel:hover {
+    background: #e0e0e0;
 }
 
 /* Sidebar styles */

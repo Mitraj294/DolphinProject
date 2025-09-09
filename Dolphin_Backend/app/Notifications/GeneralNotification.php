@@ -109,7 +109,7 @@ class GeneralNotification extends Notification implements ShouldQueue
                     $displayName = implode(', ', array_values($route));
                 }
             } catch (\Exception $e) {
-                // ignore
+                \Log::warning('[Notification] Failed to read AnonymousNotifiable mail route', ['error' => $e->getMessage()]);
             }
         }
 

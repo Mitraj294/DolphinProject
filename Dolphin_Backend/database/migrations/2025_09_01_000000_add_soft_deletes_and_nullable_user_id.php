@@ -36,8 +36,9 @@ class AddSoftDeletesAndNullableUserId extends Migration
                         try {
                             $tableBlueprint->unsignedBigInteger('user_id')->nullable()->change();
                         } catch (\Exception $e) {
-                            // some DB drivers don't support change() without the doctrine/dbal package;
-                            // ignore if change fails — user will need to run adjust manually.
+                           \Log::error('Error making user_id nullable', [
+                               'error' => $e->getMessage()
+                           ]);
                         }
                     }
                 });
@@ -72,7 +73,11 @@ class AddSoftDeletesAndNullableUserId extends Migration
                         try {
                             $tableBlueprint->unsignedBigInteger('user_id')->nullable(false)->change();
                         } catch (\Exception $e) {
-                            // ignore
+                            \Log::error('Error reverting user_id to non-nullable', [
+                                'error' => $e->getMessage()
+                            ]);
+                            // some DB drivers don't support change() without the doctrine/dbal package;
+                            
                         }
                     }
                 });

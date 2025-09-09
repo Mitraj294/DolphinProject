@@ -22,10 +22,10 @@
             <table class="table">
               <TableHeader
                 :columns="[
-                  { label: 'Name', key: 'name' },
-                  { label: 'Email', key: 'email' },
-                  { label: 'Roles', key: 'role' },
-                  { label: 'Actions', key: 'actions' },
+                  { label: 'Name', key: 'name', minWidth: '180px' },
+                  { label: 'Email', key: 'email', minWidth: '260px' },
+                  { label: 'Roles', key: 'role', minWidth: '180px' },
+                  { label: 'Actions', key: 'actions', minWidth: '260px' },
                 ]"
                 @sort="sortBy"
               />
@@ -47,7 +47,7 @@
                   <td>
                     {{ formatRoleLabel(user.role) }}
                   </td>
-                  <td class="actions actions-scroll">
+                  <td>
                     <div class="actions-row">
                       <button
                         class="icon-btn"
@@ -114,67 +114,105 @@
     </div>
   </MainLayout>
   <!-- Edit User Modal -->
-  <CommonModal
-    :visible="showEditModal"
-    @close="showEditModal = false"
-    @submit="saveEditUser"
+  <div
+    v-if="showEditModal"
+    class="modal-overlay"
+    @click.self="showEditModal = false"
   >
     <div
-      class="profile-modal-header"
-      style="text-align: left"
+      class="modal-card"
+      style="max-width: 550px"
     >
-      <h1>Edit User</h1>
-    </div>
-    <FormRow>
-      <FormLabel>First Name</FormLabel>
-      <FormInput
-        v-model="editUser.first_name"
-        type="text"
-        required
-      />
-    </FormRow>
-    <FormRow>
-      <FormLabel>Last Name</FormLabel>
-      <FormInput
-        v-model="editUser.last_name"
-        type="text"
-        required
-      />
-    </FormRow>
-    <FormRow>
-      <FormLabel>Email</FormLabel>
-      <FormInput
-        v-model="editUser.email"
-        type="email"
-        required
-      />
-    </FormRow>
-    <FormRow>
-      <FormLabel>Role</FormLabel>
-      <FormDropdown
-        v-model="editUser.role"
-        :options="roleOptions"
-        placeholder="Select role"
-        :padding-left="16"
-      />
-    </FormRow>
-
-    <template #actions>
       <button
-        type="submit"
-        class="btn btn-primary"
+        class="modal-close-btn"
+        @click="showEditModal = false"
       >
-        <i class="fas fa-save"></i> Save
+        &times;
       </button>
-    </template>
-  </CommonModal>
+      <div class="modal-title">Edit User</div>
+      <div
+        class="modal-desc"
+        style="font-size: 1.5rem !important"
+      >
+        Update user information.
+      </div>
+      <form
+        class="modal-form"
+        @submit.prevent="saveEditUser"
+      >
+        <FormRow style="margin-bottom: 0 !important">
+          <FormLabel style="font-size: 1rem !important; margin: 0 !important"
+            >First Name</FormLabel
+          >
+          <FormInput
+            v-model="editUser.first_name"
+            icon="fas fa-user"
+            type="text"
+            placeholder="Enter first name"
+            required
+          />
+        </FormRow>
+        <FormRow style="margin-bottom: 0 !important">
+          <FormLabel style="font-size: 1rem !important; margin: 0 !important"
+            >Last Name</FormLabel
+          >
+          <FormInput
+            v-model="editUser.last_name"
+            icon="fas fa-user"
+            type="text"
+            placeholder="Enter last name"
+            required
+          />
+        </FormRow>
+        <FormRow style="margin-bottom: 0 !important">
+          <FormLabel style="font-size: 1rem !important; margin: 0 !important"
+            >Email</FormLabel
+          >
+          <FormInput
+            v-model="editUser.email"
+            icon="fas fa-envelope"
+            type="email"
+            placeholder="Enter email address"
+            required
+          />
+        </FormRow>
+        <FormRow style="margin-bottom: 0 !important">
+          <FormLabel style="font-size: 1rem !important; margin: 0 !important"
+            >Role</FormLabel
+          >
+          <FormDropdown
+            v-model="editUser.role"
+            icon="fas fa-user-tag"
+            :options="roleOptions"
+            placeholder="Select role"
+          />
+        </FormRow>
+        <div class="modal-form-actions">
+          <button
+            type="submit"
+            class="btn btn-primary"
+            :disabled="isSaving"
+          >
+            <i class="fas fa-save"></i>
+            {{ isSaving ? ' Saving...' : ' Save' }}
+          </button>
+          <button
+            type="button"
+            class="org-edit-cancel"
+            @click="showEditModal = false"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 </template>
 
 <script>
 import MainLayout from '../../layout/MainLayout.vue';
 import Pagination from '../../layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
-import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
@@ -190,7 +228,6 @@ export default {
     MainLayout,
     Pagination,
     TableHeader,
-    CommonModal,
     FormRow,
     FormLabel,
     FormInput,
@@ -354,7 +391,7 @@ export default {
             try {
               window.dispatchEvent(new Event('auth-updated'));
             } catch (e) {
-              // ignore
+              console.error('Error dispatching auth-updated event', e);
             }
             // Reload to apply new context
             this.$router.go(0);
@@ -593,11 +630,43 @@ export default {
 </script>
 
 <style scoped>
-.actions-scroll {
-  max-width: 260px;
+@import '@/assets/modelcssnotificationandassesment.css';
 
-  overflow-x: auto;
+/* Modal form customization for user edit */
+.modal-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 18px;
 }
+
+.modal-form .form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+/* Ensure form components work well in modal */
+.modal-form .form-box {
+  position: relative;
+}
+
+.modal-form .form-input.with-icon {
+  padding-left: 40px;
+}
+
+.modal-form .form-input-icon {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.modal-form .form-dropdown-chevron {
+  color: var(--muted);
+}
+
 .actions-row {
   display: flex;
   flex-direction: row;
@@ -662,31 +731,7 @@ export default {
   vertical-align: middle;
 }
 
-@media (max-width: 900px) {
-  .actions-scroll {
-    max-width: 260px;
-
-    overflow-x: auto;
-  }
-}
-/* Custom: Increase label width and font size in edit profile modal only */
-.common-modal-card .form-row {
-  display: grid !important;
-  grid-template-columns: 120px 1fr !important;
-  align-items: center;
-  gap: 18px;
-  width: 100%;
-  margin-bottom: 18px;
-}
-.common-modal-card .form-label {
-  width: 120px !important;
-  min-width: 120px !important;
-  max-width: 180px;
-  text-align: left;
-  white-space: normal;
-  margin-bottom: 0 !important;
-  font-size: 1.08rem !important;
-  font-weight: 500 !important;
-  color: #1a1a1a !important;
+.form-box {
+  padding: 0 !important;
 }
 </style>

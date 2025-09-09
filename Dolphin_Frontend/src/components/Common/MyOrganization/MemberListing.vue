@@ -101,164 +101,210 @@
           />
         </template>
         <template v-else>
-          <div class="profile-card member-profile-card">
-            <div class="profile-header">
-              <div class="profile-title">
-                <i class="fas fa-user-circle profile-avatar"></i>
-                <span>Member</span>
-              </div>
-              <div>
-                <button
-                  class="btn btn-primary"
-                  @click="openEditModal"
-                >
-                  <i class="fas fa-pen-to-square"></i>
-                  Edit
-                </button>
-              </div>
-            </div>
-            <div class="profile-info-table">
-              <div class="profile-info-row">
-                <div class="profile-label">Name</div>
-                <div class="profile-value">
-                  {{ selectedMemberEdit.first_name }}
-                  {{ selectedMemberEdit.last_name }}
+          <div class="profile-outer">
+            <div class="profile-card">
+              <div class="member-profile-card">
+                <div class="profile-header">
+                  <div class="profile-title">
+                    <i class="fas fa-user-circle profile-avatar"></i>
+                    <span>Member</span>
+                  </div>
+                  <div>
+                    <button
+                      class="btn btn-primary"
+                      @click="openEditModal"
+                    >
+                      <i class="fas fa-pen-to-square"></i>
+                      Edit
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div class="profile-info-row">
-                <div class="profile-label">Email</div>
-                <div class="profile-value">
-                  {{ selectedMemberEdit.email }}
+                <div class="profile-info-table">
+                  <div class="profile-info-row">
+                    <div class="profile-label">Name</div>
+                    <div class="profile-value">
+                      {{ selectedMemberEdit.first_name }}
+                      {{ selectedMemberEdit.last_name }}
+                    </div>
+                  </div>
+                  <div class="profile-info-row">
+                    <div class="profile-label">Email</div>
+                    <div class="profile-value">
+                      {{ selectedMemberEdit.email }}
+                    </div>
+                  </div>
+                  <div class="profile-info-row">
+                    <div class="profile-label">Role</div>
+                    <div class="profile-value">
+                      <span
+                        v-if="
+                          Array.isArray(selectedMemberEdit.memberRoles) &&
+                          selectedMemberEdit.memberRoles.length
+                        "
+                      >
+                        {{
+                          selectedMemberEdit.memberRoles
+                            .map((r) => r.name || r)
+                            .join(', ')
+                        }}
+                      </span>
+                      <span
+                        v-else-if="
+                          Array.isArray(selectedMemberEdit.member_role_ids) &&
+                          selectedMemberEdit.member_role_ids.length
+                        "
+                      >
+                        {{
+                          selectedMemberEdit.member_role_ids
+                            .map((r) => (r && (r.name || r)) || r)
+                            .join(', ')
+                        }}
+                      </span>
+                      <span v-else>
+                        {{ selectedMemberEdit.member_role || '' }}
+                      </span>
+                    </div>
+                  </div>
+                  <div class="profile-info-row">
+                    <div class="profile-label">Phone</div>
+                    <div class="profile-value">
+                      {{ selectedMemberEdit.phone }}
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="profile-info-row">
-                <div class="profile-label">Role</div>
-                <div class="profile-value">
-                  <span
-                    v-if="
-                      Array.isArray(selectedMemberEdit.memberRoles) &&
-                      selectedMemberEdit.memberRoles.length
-                    "
+                <div class="profile-actions">
+                  <button
+                    class="btn btn-danger"
+                    @click="deleteMember(selectedMemberEdit)"
                   >
-                    {{
-                      selectedMemberEdit.memberRoles
-                        .map((r) => r.name || r)
-                        .join(', ')
-                    }}
-                  </span>
-                  <span
-                    v-else-if="
-                      Array.isArray(selectedMemberEdit.member_role_ids) &&
-                      selectedMemberEdit.member_role_ids.length
-                    "
+                    <i class="fas fa-trash"></i>
+                    Delete Member
+                  </button>
+                  <button
+                    class="org-edit-cancel"
+                    @click="closeMemberModal"
+                    style="margin-left: 12px"
                   >
-                    {{
-                      selectedMemberEdit.member_role_ids
-                        .map((r) => (r && (r.name || r)) || r)
-                        .join(', ')
-                    }}
-                  </span>
-                  <span v-else>
-                    {{ selectedMemberEdit.member_role || '' }}
-                  </span>
+                    Cancel
+                  </button>
                 </div>
               </div>
-              <div class="profile-info-row">
-                <div class="profile-label">Phone</div>
-                <div class="profile-value">
-                  {{ selectedMemberEdit.phone }}
-                </div>
-              </div>
-            </div>
-            <div class="profile-actions">
-              <button
-                class="btn btn-danger"
-                @click="deleteMember(selectedMemberEdit)"
-              >
-                <i class="fas fa-trash"></i>
-                Delete Member
-              </button>
-              <button
-                class="btn btn-secondary"
-                @click="closeMemberModal"
-                style="margin-left: 12px"
-              >
-                Cancel
-              </button>
             </div>
           </div>
-
-          <!-- Edit Modal (Common UI) -->
-          <CommonModal
-            :visible="showEditModal"
-            @close="closeEditModal"
-            @submit="onEditSave"
+          <!-- Edit Profile Modal -->
+          <div
+            v-if="showEditModal"
+            class="modal-overlay"
+            @click.self="showEditModal = false"
           >
-            <template #title>Edit Profile</template>
-            <FormRow>
-              <FormLabel>First Name</FormLabel>
-              <FormInput
-                v-model="editMember.first_name"
-                type="text"
-                required
-                placeholder="First Name"
-              />
-              <FormLabel>Last Name</FormLabel>
-              <FormInput
-                v-model="editMember.last_name"
-                type="text"
-                required
-                placeholder="Last Name"
-              />
-            </FormRow>
-            <FormRow>
-              <FormLabel>Email</FormLabel>
-              <FormInput
-                v-model="editMember.email"
-                type="email"
-                required
-                placeholder=""
-              />
-            </FormRow>
-            <FormRow>
-              <FormLabel>Phone</FormLabel>
-              <FormInput
-                v-model="editMember.phone"
-                type="text"
-                placeholder=""
-              />
-            </FormRow>
-            <FormRow>
-              <FormLabel>Role</FormLabel>
-              <MultiSelectDropdown
-                :options="rolesForSelect"
-                :selectedItems="
-                  Array.isArray(editMember.member_role_ids)
-                    ? editMember.member_role_ids
-                    : []
-                "
-                @update:selectedItems="onEditRolesUpdate"
-                placeholder="Select role"
-                :enableSelectAll="true"
-              />
-            </FormRow>
-            <template #actions>
+            <div
+              class="modal-card"
+              style="max-width: 550px"
+            >
               <button
-                type="submit"
-                class="btn btn-primary"
+                class="modal-close-btn"
+                @click="showEditModal = false"
               >
-                <i class="fas fa-save"></i> Save
+                &times;
               </button>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                @click="closeEditModal"
-                style="margin-left: 12px"
+              <div class="modal-title">Edit Member Profile</div>
+              <div
+                class="modal-desc"
+                style="font-size: 1.5rem !important"
               >
-                Cancel
-              </button>
-            </template>
-          </CommonModal>
+                Update member information.
+              </div>
+              <form
+                class="modal-form"
+                @submit.prevent="onEditSave"
+              >
+                <FormRow style="margin-bottom: 0 !important">
+                  <FormLabel
+                    style="font-size: 1rem !important; margin: 0 !important"
+                    >First Name</FormLabel
+                  >
+                  <FormInput
+                    v-model="editMember.first_name"
+                    icon="fas fa-user"
+                    type="text"
+                    placeholder="Enter first name"
+                    required
+                  />
+                </FormRow>
+                <FormRow style="margin-bottom: 0 !important">
+                  <FormLabel
+                    style="font-size: 1rem !important; margin: 0 !important"
+                    >Last Name</FormLabel
+                  >
+                  <FormInput
+                    v-model="editMember.last_name"
+                    icon="fas fa-user"
+                    type="text"
+                    placeholder="Enter last name"
+                    required
+                  />
+                </FormRow>
+                <FormRow style="margin-bottom: 0 !important">
+                  <FormLabel
+                    style="font-size: 1rem !important; margin: 0 !important"
+                    >Email</FormLabel
+                  >
+                  <FormInput
+                    v-model="editMember.email"
+                    icon="fas fa-envelope"
+                    type="email"
+                    placeholder="Enter email address"
+                    required
+                  />
+                </FormRow>
+                <FormRow style="margin-bottom: 0 !important">
+                  <FormLabel
+                    style="font-size: 1rem !important; margin: 0 !important"
+                    >Phone</FormLabel
+                  >
+                  <FormInput
+                    v-model="editMember.phone"
+                    icon="fas fa-phone"
+                    type="text"
+                    placeholder="Enter phone number"
+                  />
+                </FormRow>
+                <FormRow style="margin-bottom: 0 !important">
+                  <FormLabel
+                    style="font-size: 1rem !important; margin: 0 !important"
+                    >Role</FormLabel
+                  >
+                  <MultiSelectDropdown
+                    :options="rolesForSelect"
+                    :selectedItems="
+                      Array.isArray(editMember.member_role_ids)
+                        ? editMember.member_role_ids
+                        : []
+                    "
+                    @update:selectedItems="onEditRolesUpdate"
+                    placeholder="Select role"
+                    :enableSelectAll="true"
+                  />
+                </FormRow>
+                <div class="modal-form-actions">
+                  <button
+                    type="submit"
+                    class="btn btn-primary"
+                  >
+                    <i class="fas fa-save"></i>
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    class="org-edit-cancel"
+                    @click="showEditModal = false"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </template>
       </div>
     </div>
@@ -271,7 +317,6 @@ import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import axios from 'axios';
 import storage from '@/services/storage';
-import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
@@ -285,7 +330,6 @@ export default {
     MainLayout,
     Pagination,
     TableHeader,
-    CommonModal,
     FormRow,
     FormLabel,
     FormInput,
@@ -389,11 +433,7 @@ export default {
       }
       // normalize ids to objects {id,name} when possible
       m.member_role_ids = m.member_role_ids.map((r) =>
-        typeof r === 'object'
-          ? r
-          : this.rolesForSelectMap[r]
-          ? this.rolesForSelectMap[r]
-          : { id: r, name: String(r) }
+        typeof r === 'object' ? r : this.getRoleForSelect(r)
       );
 
       // ensure memberRoles exists (objects)
@@ -402,11 +442,7 @@ export default {
       } else {
         // normalize memberRoles items
         m.memberRoles = m.memberRoles.map((r) =>
-          typeof r === 'object'
-            ? r
-            : this.rolesForSelectMap[r]
-            ? this.rolesForSelectMap[r]
-            : { id: r, name: String(r) }
+          typeof r === 'object' ? r : this.getRoleForSelect(r)
         );
       }
 
@@ -422,7 +458,7 @@ export default {
       this.selectedMemberEdit.member_role_ids = member.member_role_ids || [];
       this.selectedMemberEdit.memberRoles = member.memberRoles || [];
       // ensure phone is present (backend now returns it)
-      this.selectedMemberEdit.phone = member.phone || member.phone || '';
+      this.selectedMemberEdit.phone = member.phone || '';
       this.showMemberModal = true;
     },
     async openEditModal() {
@@ -452,22 +488,16 @@ export default {
         this.selectedMemberEdit = { ...normalized };
         const ids = normalized.member_role_ids || [];
         this.editMember = { ...normalized };
-        this.editMember.member_role_ids = ids.map((r) =>
-          typeof r === 'object'
-            ? r
-            : this.rolesForSelectMap[r]
-            ? this.rolesForSelectMap[r]
-            : { id: r, name: String(r) }
+        this.editMember.member_role_ids = ids.map((roleId) =>
+          this.getRoleForSelect(roleId)
         );
         this.showEditModal = true;
       } catch (e) {
-        // fallback: use already-loaded selectedMemberEdit
+        console.error('Failed to fetch member for edit', e);
         this.editMember = { ...this.selectedMemberEdit };
         const ids = this.selectedMemberEdit.member_role_ids || [];
-        this.editMember.member_role_ids = ids.map((id) =>
-          this.rolesForSelectMap[id]
-            ? this.rolesForSelectMap[id]
-            : { id, name: String(id) }
+        this.editMember.member_role_ids = ids.map((roleId) =>
+          this.getRoleForSelect(roleId)
         );
         this.showEditModal = true;
       }
@@ -513,12 +543,11 @@ export default {
             ? listRes.data.map((m) => this.normalizeMember(m))
             : [];
         } catch (listErr) {
-          // If refreshing the list fails, still try to use PUT response if it
-          // contains an object, otherwise fall back to the local editMember.
+          console.error('Failed to refresh members list', listErr);
           if (putRes && putRes.data && putRes.data.id) {
             const pm = this.normalizeMember(putRes.data);
-            const idx = this.members.findIndex((m) => m.id === pm.id);
-            if (idx !== -1) this.members.splice(idx, 1, pm);
+            const memberIdx = this.members.findIndex((m) => m.id === pm.id);
+            if (memberIdx !== -1) this.members.splice(memberIdx, 1, pm);
             else this.members.push(pm);
           }
         }
@@ -536,9 +565,7 @@ export default {
           payload.member_role.length
         ) {
           updatedMember.member_role_ids = payload.member_role.map((rid) =>
-            this.rolesForSelectMap[rid]
-              ? this.rolesForSelectMap[rid]
-              : { id: rid, name: String(rid) }
+            this.getRoleForSelect(rid)
           );
           updatedMember.memberRoles = updatedMember.member_role_ids.slice();
           updatedMember.member_role =
@@ -552,12 +579,7 @@ export default {
         // normalize returned shape: ensure member_role_ids is array of objects when possible
         if (Array.isArray(updatedMember.member_role_ids)) {
           updatedMember.member_role_ids = updatedMember.member_role_ids.map(
-            (r) =>
-              typeof r === 'object'
-                ? r
-                : this.rolesForSelectMap[r]
-                ? this.rolesForSelectMap[r]
-                : { id: r, name: String(r) }
+            (r) => (typeof r === 'object' ? r : this.getRoleForSelect(r))
           );
         } else {
           updatedMember.member_role_ids = [];
@@ -591,18 +613,14 @@ export default {
         // ensure editMember.member_role_ids is objects for Multiselect
         if (Array.isArray(this.editMember.member_role_ids)) {
           this.editMember.member_role_ids = this.editMember.member_role_ids.map(
-            (r) =>
-              typeof r === 'object'
-                ? r
-                : this.rolesForSelectMap[r]
-                ? this.rolesForSelectMap[r]
-                : { id: r, name: String(r) }
+            (r) => (typeof r === 'object' ? r : this.getRoleForSelect(r))
           );
         }
 
         this.onSearch();
         this.showEditModal = false;
       } catch (e) {
+        console.error('Failed to update member', e);
         if (this && this.$toast && typeof this.$toast.add === 'function') {
           this.$toast.add({
             severity: 'error',
@@ -625,6 +643,13 @@ export default {
       ];
       this.rolesForSelectMap = {};
       this.rolesForSelect.forEach((r) => (this.rolesForSelectMap[r.id] = r));
+    },
+
+    // Helper method to get role object from role ID
+    getRoleForSelect(roleId) {
+      return (
+        this.rolesForSelectMap[roleId] || { id: roleId, name: String(roleId) }
+      );
     },
 
     onEditRolesUpdate(selected) {
@@ -660,6 +685,7 @@ export default {
             this.onSearch();
             this.showMemberModal = false;
           } catch (e) {
+            console.error('Failed to delete member', e);
             if (this && this.$toast && typeof this.$toast.add === 'function') {
               this.$toast.add({
                 severity: 'error',
@@ -724,6 +750,7 @@ export default {
       // prepare role lookup map
       this.prepareRolesMap();
     } catch (e) {
+      console.error('Failed to fetch members', e);
       this.members = [];
       this.filteredMembers = [];
     }
@@ -753,7 +780,7 @@ export default {
             this.showMemberModal = true;
           }
         } catch (e) {
-          // ignore
+          console.error('Failed to fetch member from query id', e);
         }
       }
     }
@@ -763,6 +790,49 @@ export default {
 
 <style>
 @import '@/assets/global.css';
+@import '@/assets/modelcssnotificationandassesment.css';
+
+/* Modal form customization for member edit */
+.modal-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px !important;
+}
+
+.modal-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.modal-form .form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+/* Ensure form components work well in modal */
+.modal-form .form-box {
+  position: relative;
+}
+
+.modal-form .form-input.with-icon {
+  padding-left: 40px;
+}
+
+.modal-form .form-input-icon {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.modal-form .form-dropdown-chevron {
+  color: var(--muted);
+}
 .org-search {
   width: 260px;
   padding: 8px 24px 8px 32px;
@@ -891,24 +961,28 @@ export default {
   background: #e0e0e0;
 }
 
-/* Custom: Increase label width and font size in edit profile modal only */
-.common-modal-card .form-row {
-  display: grid !important;
-  grid-template-columns: 120px 1fr !important;
-  align-items: center;
-  gap: 18px;
+.profile-outer {
   width: 100%;
-  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-sizing: border-box;
+  gap: 40px;
 }
-.common-modal-card .form-label {
-  width: 120px !important;
-  min-width: 120px !important;
-  max-width: 180px;
-  text-align: left;
-  white-space: normal;
-  margin-bottom: 0 !important;
-  font-size: 1.08rem !important;
-  font-weight: 500 !important;
-  color: #1a1a1a !important;
+
+.profile-card {
+  width: 100%;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #ebebeb;
+  box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.06);
+  padding: 0 0 24px 0;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.form-box {
+  padding: 0 !important;
 }
 </style>

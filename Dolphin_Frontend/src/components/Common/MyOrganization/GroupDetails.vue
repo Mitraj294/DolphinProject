@@ -74,10 +74,10 @@
               <table class="recipient-table compact">
                 <thead>
                   <tr>
-                    <th style="width: 30%">Name</th>
-                    <th style="width: 30%">Email</th>
-                    <th style="width: 20%">Role</th>
-                    <th style="width: 20%">Actions</th>
+                    <th style="width: 120px">Name</th>
+                    <th style="width: 120px">Email</th>
+                    <th style="width: 90px">Role</th>
+                    <th style="width: 90px">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -101,7 +101,7 @@
                       {{
                         Array.isArray(m.memberRoles) && m.memberRoles.length
                           ? m.memberRoles.map((r) => r.name || r).join(', ')
-                          : m.member_role || 'Member'
+                          : m.member_role || ''
                       }}
                     </td>
                     <td>

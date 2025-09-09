@@ -46,6 +46,7 @@
           style="flex-direction: column; align-items: stretch; gap: 10px"
         >
           <label
+            for="questions"
             style="
               font-weight: 600;
               margin-bottom: 16px;
@@ -108,7 +109,7 @@
           </button>
           <button
             type="button"
-            class="btn btn-secondary"
+            class="org-edit-cancel"
             @click="$emit('close')"
             style="margin-left: 12px"
           >
@@ -186,10 +187,13 @@ export default {
           this.$emit('close');
         }
       } catch (e) {
+        console.error('Error creating assessment', e);
         this.$emit('error', {
           type: 'error',
           title: 'Error',
-          message: 'Failed to create assessment.',
+          message:
+            (e.response && e.response.data && e.response.data.message) ||
+            'Failed to create assessment. Please try again.',
         });
       } finally {
         this.isSubmitting = false;

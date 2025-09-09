@@ -23,13 +23,13 @@
           <div class="notifications-tabs">
             <button
               :class="['notifications-tab-btn', { active: tab === 'unread' }]"
-              @click="tab = 'unread'"
+              @click="switchTab('unread')"
             >
               Unread
             </button>
             <button
               :class="['notifications-tab-btn', { active: tab === 'all' }]"
-              @click="tab = 'all'"
+              @click="switchTab('all')"
             >
               All
             </button>
@@ -60,8 +60,8 @@
         </div>
         <div class="notifications-list">
           <div
-            v-for="(item, idx) in paginatedNotifications"
-            :key="idx"
+            v-for="(item, id) in paginatedNotifications"
+            :key="id"
             class="notification-item"
           >
             <div
@@ -71,6 +71,7 @@
               <img
                 src="@/assets/images/Logo.svg"
                 class="notification-icon"
+                alt="Company logo"
               />
             </div>
             <div class="notification-body">
@@ -87,7 +88,7 @@
               <button
                 v-if="tab === 'unread' && !item.read_at"
                 class="mark-all"
-                @click="markAsRead(idx)"
+                @click="markAsRead(id)"
                 style="
                   margin-top: 10px;
                   background: #fff;
@@ -193,6 +194,14 @@ export default {
     },
   },
   methods: {
+    async switchTab(newTab) {
+      // Only fetch if switching to a different tab
+      if (this.tab !== newTab) {
+        this.tab = newTab;
+        this.page = 1; // Reset to first page when switching tabs
+        await this.fetchNotifications();
+      }
+    },
     async fetchNotifications() {
       try {
         let endpoint =
@@ -209,17 +218,15 @@ export default {
         const config = token
           ? { headers: { Authorization: `Bearer ${token}` } }
           : {};
-        // If asking for "all" notifications, call the superadmin endpoint
-        // only when the current role is superadmin. Otherwise use the
-        // authenticated user's notifications endpoint to avoid 403.
+
         if (this.tab === 'all') {
           const role = authMiddleware.getRole();
           if (role === 'superadmin') {
-            const storedUserId =
+            const storedUserIdParam =
               storage.get('userId') ||
               storage.get('user_id') ||
               storage.get('userId');
-            const uid = storedUserId ? parseInt(storedUserId, 10) : 0;
+            const uid = storedUserIdParam ? parseInt(storedUserIdParam, 10) : 0;
             if (uid) {
               endpoint = `/api/notifications?notifiable_type=${encodeURIComponent(
                 'App\\Models\\User'
@@ -236,7 +243,6 @@ export default {
         try {
           response = await axios.get(endpoint, config);
         } catch (err) {
-          // If server returns 403 for /api/notifications try the user-specific endpoint
           if (
             err.response &&
             err.response.status === 403 &&
@@ -245,7 +251,7 @@ export default {
             try {
               response = await axios.get('/api/notifications/user', config);
             } catch (err2) {
-              throw err2;
+              console.error('Error fetching user notifications:', err2);
             }
           } else {
             throw err;
@@ -261,6 +267,11 @@ export default {
           notificationsArr = response.data.notifications;
         } else if (response.data && Array.isArray(response.data.unread)) {
           notificationsArr = response.data.unread;
+        } else {
+          console.warn(
+            'Unexpected notifications response format:',
+            response.data
+          );
         }
         // only show notifications related to the logged-in user
         const storedUserId =
@@ -293,7 +304,7 @@ export default {
               )
                 return true;
             } catch (e) {
-              // ignore parse errors
+              console.error('Error parsing notification data:', e);
             }
           }
           return false;
@@ -308,7 +319,7 @@ export default {
             try {
               d = JSON.parse(d);
             } catch (e) {
-              // leave as string
+              console.error('Error parsing notification data:', e);
             }
           }
 
@@ -316,7 +327,7 @@ export default {
           const pickString = (obj, keys) => {
             if (!obj) return '';
             for (const k of keys) {
-              if (Object.prototype.hasOwnProperty.call(obj, k)) {
+              if (Object.hasOwn(obj, k)) {
                 const v = obj[k];
                 if (typeof v === 'string' && v.trim()) return v.trim();
                 if (typeof v === 'number') return String(v);
@@ -434,7 +445,7 @@ export default {
         try {
           this.updateNotificationCount();
         } catch (e) {
-          // ignore
+          console.error('Error updating notification count:', e);
         }
         // Broadcast events for in-window and cross-tab listeners
         window.dispatchEvent(new Event('notification-updated'));
@@ -448,8 +459,8 @@ export default {
           });
       }
     },
-    async markAsRead(idx) {
-      const notif = this.paginatedNotifications[idx];
+    async markAsRead(id) {
+      const notif = this.paginatedNotifications.find((n) => n.id === id);
       let token = storage.get('authToken');
       if (token && typeof token === 'object' && token.token) {
         token = token.token;
@@ -467,7 +478,9 @@ export default {
           // Ensure badge updates immediately: update internal count and notify navbar
           try {
             this.updateNotificationCount();
-          } catch (e) {}
+          } catch (e) {
+            console.error('Error updating notification count:', e);
+          }
           window.dispatchEvent(new Event('notification-updated'));
           window.dispatchEvent(new Event('storage'));
         } catch (error) {
@@ -505,24 +518,6 @@ export default {
       // Broadcast a domain event for in-window subscribers (Navbar)
       window.dispatchEvent(new Event('notification-updated'));
     },
-    // ...existing code...
-    formatDate(dateStr) {
-      // Format MySQL datetime to 'MMM DD, YYYY at hh:mm A'
-      const d = new Date(dateStr);
-      if (isNaN(d)) return dateStr;
-      const options = {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      };
-      return d
-        .toLocaleString('en-US', options)
-        .replace(',', '')
-        .replace(/(\d{2}:\d{2}) (AM|PM)/, 'at $1 $2');
-    },
     markAllRead() {
       this.readNotifications = [
         ...this.readNotifications,
@@ -530,31 +525,6 @@ export default {
       ];
       this.notifications = [];
       this.updateNotificationCount();
-    },
-    prevPage() {
-      if (this.page > 1) this.page--;
-    },
-    nextPage() {
-      if (this.page < this.totalPages) this.page++;
-    },
-    goToPage(n) {
-      if (n >= 1 && n <= this.totalPages) this.page = n;
-    },
-    selectPageSize(size) {
-      this.pageSize = size;
-      this.page = 1;
-      this.showPageDropdown = false;
-    },
-    togglePageDropdown() {
-      this.showPageDropdown = !this.showPageDropdown;
-    },
-    updateNotificationCount() {
-      storage.set('notificationCount', this.notifications.length);
-      // Let other tabs/components know the count changed.
-      window.dispatchEvent(new Event('storage'));
-      // Also emit a domain-level event so listeners that rely on it
-      // (Navbar.fetchUnreadCount) can react immediately.
-      window.dispatchEvent(new Event('notification-updated'));
     },
   },
   watch: {
@@ -582,11 +552,6 @@ export default {
       this.fetchNotifications();
       storage.remove('showDashboardWelcome');
     }
-  },
-  watch: {
-    tab() {
-      this.fetchNotifications();
-    },
   },
 };
 </script>
@@ -637,7 +602,7 @@ export default {
   align-items: center;
   background: #f6f6f6;
   border-radius: 32px;
-  padding: 0 0 0 18px;
+  padding: 0 18px;
   height: 36px;
   min-width: 140px;
 }

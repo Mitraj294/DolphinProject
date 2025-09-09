@@ -82,33 +82,83 @@
       class="modal-form"
       @submit.prevent="emitSchedule"
     >
-      <div class="modal-form-row">
-        <FormDateTime
-          :date="date"
-          :time="time"
-          @update:date="date = $event"
-          @update:time="time = $event"
-        />
-      </div>
-      <div class="modal-form-row">
-        <MultiSelectDropdown
-          :options="groups"
-          :selectedItems="selectedGroups"
-          @update:selectedItems="selectedGroups = $event"
-          placeholder="Groups"
-          icon="fas fa-users"
-          :enableSelectAll="true"
-        />
-        <MultiSelectDropdown
-          :options="members"
-          :selectedItems="internalSelectedMembers"
-          @update:selectedItems="internalSelectedMembers = $event"
-          placeholder="Members"
-          icon="fas fa-user"
-          :inputValue="internalSelectedMembers.map((m) => m.name).join(', ')"
-          :enableSelectAll="true"
-        />
-      </div>
+      <FormRow
+        class="modal-form-row"
+        style="
+          margin-bottom: 0 !important;
+          display: flex;
+          gap: 18px;
+          align-items: flex-start;
+          flex-direction: row;
+        "
+        ><div
+          class="modal-form-row-div"
+          style="flex: 1; min-width: 0"
+        >
+          <FormLabel style="font-size: 1rem !important; margin: 0 !important"
+            >Date & Time</FormLabel
+          >
+          <FormDateTime
+            :date="date"
+            :time="time"
+            @update:date="date = $event"
+            @update:time="time = $event"
+          />
+        </div>
+      </FormRow>
+
+      <FormRow
+        class="modal-form-row"
+        style="
+          margin-bottom: 0 !important;
+          display: flex;
+          gap: 18px;
+          align-items: flex-start;
+          flex-direction: row;
+        "
+        ><div
+          class="modal-form-row-div"
+          style="flex: 1; min-width: 0"
+        >
+          <FormLabel style="font-size: 1rem !important; margin: 0 !important"
+            >Select Groups</FormLabel
+          >
+          <MultiSelectDropdown
+            :options="groups"
+            :selectedItems="selectedGroups"
+            @update:selectedItems="selectedGroups = $event"
+            placeholder="Groups"
+            icon="fas fa-users"
+            :enableSelectAll="true"
+          /></div
+      ></FormRow>
+      <FormRow
+        class="modal-form-row"
+        style="
+          margin-bottom: 0 !important;
+          display: flex;
+          gap: 18px;
+          align-items: flex-start;
+          flex-direction: row;
+        "
+        ><div
+          class="modal-form-row-div"
+          style="flex: 1; min-width: 0"
+        >
+          <FormLabel style="font-size: 1rem !important; margin: 0 !important"
+            >Select Members</FormLabel
+          >
+          <MultiSelectDropdown
+            :options="members"
+            :selectedItems="internalSelectedMembers"
+            @update:selectedItems="internalSelectedMembers = $event"
+            placeholder="Members"
+            icon="fas fa-user"
+            :inputValue="internalSelectedMembers.map((m) => m.name).join(', ')"
+            :enableSelectAll="true"
+          /></div
+      ></FormRow>
+
       <div
         class="modal-form-actions"
         v-if="!scheduledStatus"
@@ -126,10 +176,20 @@
 
 <script>
 import FormDateTime from '../Common_UI/Form/FormDateTime.vue';
+import FormRow from '../Common_UI/Form/FormRow.vue';
+import FormLabel from '../Common_UI/Form/FormLabel.vue';
+import FormInput from '../Common_UI/Form/FormInput.vue';
 import MultiSelectDropdown from '../Common_UI/Form/MultiSelectDropdown.vue';
+
 export default {
   name: 'ScheduleAssessmentModal',
-  components: { FormDateTime, MultiSelectDropdown },
+  components: {
+    FormDateTime,
+    MultiSelectDropdown,
+    FormRow,
+    FormLabel,
+    FormInput,
+  },
   props: {
     selectedMembers: {
       type: Array,
@@ -432,3 +492,16 @@ export default {
   },
 };
 </script>
+<style>
+@media (max-width: 600px) {
+  .modal-form-row {
+    flex-direction: column !important;
+    gap: 12px;
+  }
+  .modal-form-row-div {
+    flex: 1 !important;
+    width: 100% !important;
+    min-width: 0;
+  }
+}
+</style>

@@ -35,7 +35,7 @@ const storage = {
     // Detect CryptoJS AES output (it commonly starts with 'U2FsdGVk') and only
     // attempt decryption when appropriate. Otherwise try to parse plain JSON
     // or return the raw string.
-    const looksEncrypted = typeof raw === 'string' && raw.indexOf('U2FsdGVk') === 0;
+    const looksEncrypted = typeof raw === 'string' && raw.startsWith('U2FsdGVk');
 
     if (looksEncrypted) {
       try {
@@ -46,8 +46,7 @@ const storage = {
         }
         return null; // Decryption may result in an empty string, which is not valid JSON.
       } catch (e) {
-        // Decryption/parsing failed - return the raw stored value so caller can
-        // decide how to handle it.
+        console.warn(`Decryption or JSON parse failed for key "${key}". Returning raw value.`, e);
         return raw;
       }
     }
@@ -56,6 +55,7 @@ const storage = {
     try {
       return JSON.parse(raw);
     } catch (e) {
+      console.warn(`JSON parse failed for key "${key}". Returning raw value.`, e);
       return raw;
     }
   },
@@ -81,7 +81,7 @@ const storage = {
     try {
       this.clear();
     } catch (e) {
-      // ignore
+      console.error('Error clearing storage on logout:', e);
     }
     this._notifyLogoutListeners();
   },
@@ -115,7 +115,7 @@ window.addEventListener('storage', (e) => {
     try {
       storage.clear();
     } catch (err) {
-      // ignore
+     console.error('Error clearing storage on logout broadcast:', err);
     }
     storage._notifyLogoutListeners();
   }

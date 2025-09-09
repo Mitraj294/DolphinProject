@@ -222,30 +222,21 @@ export default {
           document.body.classList.add('toast-above-modal');
         }
       } catch (e) {
-        // ignore in non-DOM environments
+        console.warn('Failed to set toast-above-modal class', e);
       }
 
       if (toast && typeof toast.add === 'function') {
         toast.add({ severity, summary, detail, life });
+      } else if (this && this.$toast && typeof this.$toast.add === 'function') {
+        this.$toast.add({ severity, summary, detail, life });
+      } else if (
+        typeof window !== 'undefined' &&
+        window.$toast &&
+        typeof window.$toast.add === 'function'
+      ) {
+        window.$toast.add({ severity, summary, detail, life });
       } else {
-        if (this && this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({ severity, summary, detail, life });
-        } else if (
-          typeof window !== 'undefined' &&
-          window.$toast &&
-          typeof window.$toast.add === 'function'
-        ) {
-          window.$toast.add({ severity, summary, detail, life });
-        } else {
-          // fallback to console if no toast instance is available
-          console[
-            severity === 'error'
-              ? 'error'
-              : severity === 'warn'
-              ? 'warn'
-              : 'log'
-          ](`${summary}: ${detail}`);
-        }
+        console[severity === 'warn' ? 'warn' : 'log'](`${summary}: ${detail}`);
       }
 
       if (highZ && typeof window !== 'undefined') {
@@ -255,7 +246,7 @@ export default {
           try {
             document.body.classList.remove('toast-above-modal');
           } catch (e) {
-            /* ignore */
+            console.warn('Failed to remove toast-above-modal class', e);
           }
         }, life + 300);
       }
@@ -366,9 +357,10 @@ export default {
         const min = String(dt.getMinutes()).padStart(2, '0');
         const ampm = hr >= 12 ? 'PM' : 'AM';
         hr = hr % 12;
-        hr = hr ? hr : 12;
+        hr = hr || 12;
         return `${dayNum} ${mon},${yr} ${hr}:${min} ${ampm}`;
       } catch (e) {
+        console.error('Failed to format date/time', e);
         return dateStr + (timeStr ? ' ' + timeStr : '');
       }
     },
@@ -398,6 +390,7 @@ export default {
         }
         return s;
       } catch (err) {
+        console.error('Failed to format sendAt', err);
         return sendAt;
       }
     },
@@ -430,7 +423,10 @@ export default {
           this.showScheduleModal = true;
           return;
         } else {
-          // Defensive: treat as scheduled if response is malformed
+          console.warn(
+            'Unexpected schedule status from backend, defaulting to details view:',
+            res.data
+          );
           this.openScheduleDetails(item);
           return;
         }
@@ -574,6 +570,8 @@ export default {
               group_id = member.group_id;
             } else if (Array.isArray(groupIds) && groupIds.length === 1) {
               group_id = groupIds[0];
+            } else {
+              console.warn('No group_id found for member', member);
             }
             await axios.post(
               (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
@@ -600,6 +598,7 @@ export default {
           life: 3500,
         });
       } catch (e) {
+        console.error('Failed to schedule assessment or emails', e);
         this.toast.add({
           severity: 'error',
           summary: 'Error',
@@ -629,6 +628,10 @@ export default {
         params.organization_id = orgId;
       } else if (userId) {
         params.user_id = userId;
+      } else {
+        console.warn(
+          '[OrganizationAdminAssessmentsCard] No orgId or userId found in storage'
+        );
       }
 
       // Base API URL
@@ -669,27 +672,26 @@ export default {
         this.assessments = [];
       }
 
-      // Fetch assessment schedules and map them into the assessments so
-      // the template can show "Details" when a schedule exists for a row.
       try {
-        // The bulk GET /api/assessment-schedules endpoint is not available (405 Method Not Allowed).
-        // Instead, we will fetch the schedule status for each assessment individually
-        // for the currently visible page to avoid making too many requests on load.
         const pageItems = this.paginatedAssessments || [];
         const scheduleChecks = pageItems.map(async (assessment) => {
           try {
-            const res = await axios.get(base + '/api/scheduled-email/show', {
+            const sres = await axios.get(base + '/api/scheduled-email/show', {
               params: { assessment_id: assessment.id },
               headers: { Authorization: `Bearer ${authToken}` },
             });
             if (
-              res.data &&
-              (res.data.scheduled === true || res.data.scheduled === 1)
+              sres.data &&
+              (sres.data.scheduled === true || sres.data.scheduled === 1)
             ) {
-              return { ...assessment, schedule: res.data };
+              return { ...assessment, schedule: sres.data };
             }
             return { ...assessment, schedule: null };
           } catch (e) {
+            console.warn(
+              `[OrganizationAdminAssessmentsCard] Failed to fetch schedule for assessment ${assessment.id}`,
+              e && e.message
+            );
             return { ...assessment, schedule: null };
           }
         });
@@ -747,6 +749,10 @@ export default {
         this.allMembers = [];
       }
     } catch (e) {
+      console.error(
+        '[OrganizationAdminAssessmentsCard] Failed to fetch assessments or questions',
+        e && e.message
+      );
       this.assessments = [];
       this.questions = [];
     } finally {

@@ -21,6 +21,9 @@
                 <template v-else-if="isSubscribed">
                   You are subscribed to a plan.
                 </template>
+                <template v-else-if="isExpired">
+                  Your subscription has expired.pl
+                </template>
                 <template v-else>
                   You have not selected any plans yet.
                 </template>
@@ -54,6 +57,7 @@ export default {
   data() {
     return {
       isSubscribed: false,
+      isExpired: false,
       loading: true,
     };
   },

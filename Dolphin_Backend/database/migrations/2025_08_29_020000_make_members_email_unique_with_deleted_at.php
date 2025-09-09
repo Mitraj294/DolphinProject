@@ -56,7 +56,9 @@ return new class extends Migration
                 $table->dropUnique('members_email_deleted_at_unique');
             });
         } catch (\Exception $e) {
-            // ignore if index doesn't exist
+         \Log::error('Error dropping unique index on members(email, deleted_at)', [
+             'error' => $e->getMessage()
+         ]);
         }
 
         try {
@@ -64,7 +66,9 @@ return new class extends Migration
                 $table->unique('email', 'members_email_unique');
             });
         } catch (\Exception $e) {
-            // ignore if cannot create
+            \Log::error('Error adding unique index on members(email)', [
+                'error' => $e->getMessage()
+            ]);
         }
     }
 };

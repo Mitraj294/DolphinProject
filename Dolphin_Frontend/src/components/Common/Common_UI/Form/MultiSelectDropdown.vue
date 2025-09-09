@@ -32,18 +32,18 @@
         }}</span>
       </template>
     </div>
-    <span
+    <Button
       class="form-dropdown-chevron"
       @click.stop="toggleDropdown"
-      role="button"
-      tabindex="0"
       @keydown.enter.prevent="toggleDropdown"
+      @keydown.space.prevent="toggleDropdown"
+      type="button"
     >
       <i
         class="fas fa-chevron-down"
         aria-hidden="true"
       ></i>
-    </span>
+    </Button>
     <teleport to="body">
       <div
         v-if="showDropdown"
@@ -89,6 +89,8 @@
 </template>
 
 <script>
+import Button from 'primevue/button';
+
 export default {
   name: 'MultiSelectDropdown',
   props: {
@@ -145,7 +147,7 @@ export default {
             2
           );
         } catch (e) {
-          // Fallback to building a short key:value string
+          console.error('Error stringifying object', e);
           try {
             if (obj && typeof obj === 'object') {
               const parts = Object.keys(obj)
@@ -154,7 +156,7 @@ export default {
               return parts.join(' ');
             }
           } catch (e2) {
-            // ignore
+            console.error('Error in fallback stringify', e2);
           }
           return String(obj);
         }
@@ -189,7 +191,7 @@ export default {
           // object selected: try common label keys and nested shapes
           if (typeof s === 'object') {
             for (const key of commonLabelKeys) {
-              if (s && Object.prototype.hasOwnProperty.call(s, key)) {
+              if (s && Object.hasOwn(s, key)) {
                 const v = s[key];
                 if (typeof v === 'string' && v.trim()) return v.trim();
                 if (typeof v === 'number') return String(v);
@@ -243,10 +245,10 @@ export default {
               );
               if (strVal) return strVal.trim();
             } catch (e) {
-              // ignore
+              console.error('Error extracting string from object', e);
             }
 
-            // Fallback to safe stringify
+            // Fallback to safe stringification
             return safeStringify(s);
           }
           return String(s);
@@ -491,6 +493,7 @@ export default {
   cursor: pointer;
   height: 100%;
   background: none;
+  border: none;
   padding: 0;
 }
 .modal-icon {
@@ -514,7 +517,7 @@ export default {
   box-shadow: 0 2px 12px rgba(33, 150, 243, 0.08);
   border: 1px solid #eee;
   z-index: 10;
-  max-height: 220px;
+  max-height: 240px;
   overflow-y: auto;
   padding: 8px 0 8px 0;
   box-sizing: border-box;

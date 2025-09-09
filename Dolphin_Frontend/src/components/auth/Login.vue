@@ -178,8 +178,10 @@ export default {
             storage.remove('authToken');
           }
         })
-        .catch(() => {
-          // ignore failures here; user stays on login
+        .catch((e) => {
+          console.error('Error fetching current user:', e);
+          // token invalid — remove it so user can login normally
+          storage.remove('authToken');
         });
     }
   },

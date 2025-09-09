@@ -80,72 +80,125 @@
           </div>
         </div>
         <!-- Edit Profile Modal -->
-        <CommonModal
-          :visible="showEditModal"
-          @close="showEditModal = false"
-          @submit="updateProfile"
-          modal-padding="38px"
+        <div
+          v-if="showEditModal"
+          class="modal-overlay"
+          @click.self="showEditModal = false"
         >
-          <div class="profile-modal-header">
-            <h1>Edit Profile</h1>
-          </div>
-          <FormRow>
-            <FormLabel>First Name</FormLabel>
-            <FormInput
-              v-model="editForm.first_name"
-              type="text"
-              required
-            />
-          </FormRow>
-          <FormRow>
-            <FormLabel>Last Name</FormLabel>
-            <FormInput
-              v-model="editForm.last_name"
-              type="text"
-              required
-            />
-          </FormRow>
-          <FormRow>
-            <FormLabel>Email</FormLabel>
-            <FormInput
-              v-model="editForm.email"
-              type="email"
-              required
-            />
-          </FormRow>
-          <FormRow>
-            <FormLabel>Phone</FormLabel>
-            <FormInput
-              v-model="editForm.phone"
-              type="text"
-            />
-          </FormRow>
-          <FormRow>
-            <FormLabel>Country</FormLabel>
-            <FormDropdown
-              v-model="editForm.country"
-              :options="countries"
-              placeholder="Select country"
-              :padding-left="16"
-            />
-          </FormRow>
-          <template #actions>
-            <button
-              type="submit"
-              class="btn btn-primary"
-              :disabled="isUpdatingProfile"
-            >
-              <i class="fas fa-save"></i>
-              {{ isUpdatingProfile ? ' Saving...' : ' Save' }}
-            </button>
-          </template>
           <div
-            v-if="editMessage"
-            class="profile-message"
+            class="modal-card"
+            style="max-width: 550px"
           >
-            {{ editMessage }}
+            <button
+              class="modal-close-btn"
+              @click="showEditModal = false"
+            >
+              &times;
+            </button>
+            <div class="modal-title">Edit Profile</div>
+            <div
+              class="modal-desc"
+              style="font-size: 1.5rem !important"
+            >
+              Update your profile information.
+            </div>
+            <form
+              class="modal-form"
+              @submit.prevent="updateProfile"
+            >
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >First Name</FormLabel
+                >
+                <FormInput
+                  v-model="editForm.first_name"
+                  icon="fas fa-user"
+                  type="text"
+                  placeholder="Enter first name"
+                  required
+                />
+              </FormRow>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Last Name</FormLabel
+                >
+                <FormInput
+                  id="edit-last-name"
+                  v-model="editForm.last_name"
+                  icon="fas fa-user"
+                  type="text"
+                  placeholder="Enter last name"
+                  required
+                />
+              </FormRow>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Email</FormLabel
+                >
+                <FormInput
+                  id="edit-email"
+                  v-model="editForm.email"
+                  icon="fas fa-envelope"
+                  type="email"
+                  placeholder="Enter email address"
+                  required
+                />
+              </FormRow>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Phone</FormLabel
+                >
+                <FormInput
+                  id="edit-phone"
+                  v-model="editForm.phone"
+                  icon="fas fa-phone"
+                  type="text"
+                  placeholder="Enter phone number"
+                />
+              </FormRow>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Country</FormLabel
+                >
+                <FormDropdown
+                  id="edit-country"
+                  v-model="editForm.country"
+                  icon="fas fa-globe"
+                  :options="countries"
+                  placeholder="Select country"
+                />
+              </FormRow>
+              <div class="modal-form-actions">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  :disabled="isUpdatingProfile"
+                >
+                  <i class="fas fa-save"></i>
+                  {{ isUpdatingProfile ? ' Saving...' : ' Save' }}
+                </button>
+                <button
+                  type="button"
+                  class="org-edit-cancel"
+                  @click="showEditModal = false"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div
+                v-if="editMessage"
+                class="profile-message"
+              >
+                {{ editMessage }}
+              </div>
+            </form>
           </div>
-        </CommonModal>
+        </div>
         <div class="profile-card">
           <div class="profile-section-title">Change Password</div>
           <form
@@ -162,10 +215,15 @@
               tabindex="-1"
             />
             <div class="profile-form-row">
-              <label class="profile-form-label">Current Password*</label>
+              <label
+                for="current-password"
+                class="profile-form-label"
+                >Current Password*</label
+              >
               <div class="profile-input-wrapper">
                 <input
-                  :type="showCurrentPassword ? 'text' : 'password'"
+                  id="current-password"
+                  :type="CurrentPassword ? 'text' : 'password'"
                   v-model="currentPassword"
                   required
                   placeholder="Enter current password"
@@ -184,14 +242,18 @@
               </div>
             </div>
             <div class="profile-form-row">
-              <label class="profile-form-label">New Password*</label>
+              <label
+                for="new-password"
+                class="profile-form-label"
+                >New Password*</label
+              >
               <div class="profile-input-wrapper">
                 <input
+                  id="new-password"
                   :type="showNewPassword ? 'text' : 'password'"
                   v-model="newPassword"
                   required
                   placeholder="Enter new password"
-                  autocomplete="new-password"
                 />
                 <span
                   class="profile-eye-icon"
@@ -204,14 +266,18 @@
               </div>
             </div>
             <div class="profile-form-row">
-              <label class="profile-form-label">Confirm New Password*</label>
+              <label
+                for="confirm-password"
+                class="profile-form-label"
+                >Confirm New Password*</label
+              >
               <div class="profile-input-wrapper">
                 <input
+                  id="confirm-password"
                   :type="showConfirmPassword ? 'text' : 'password'"
                   v-model="confirmPassword"
                   required
                   placeholder="Confirm new password"
-                  autocomplete="new-password"
                 />
                 <span
                   class="profile-eye-icon"
@@ -225,6 +291,7 @@
                 </span>
               </div>
             </div>
+
             <div class="profile-save-btn-row">
               <button
                 type="submit"
@@ -254,7 +321,6 @@ import Toast from 'primevue/toast';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
-import CommonModal from '@/components/Common/Common_UI/CommonModal.vue';
 import FormRow from '@/components/Common/Common_UI/Form/FormRow.vue';
 import FormLabel from '@/components/Common/Common_UI/Form/FormLabel.vue';
 import FormInput from '@/components/Common/Common_UI/Form/FormInput.vue';
@@ -268,7 +334,6 @@ export default {
     MainLayout,
     ConfirmDialog,
     Toast,
-    CommonModal,
     FormRow,
     FormLabel,
     FormInput,
@@ -332,7 +397,7 @@ export default {
             return parsed.name || parsed.text || '';
           }
         } catch (e) {
-          // not JSON
+          console.warn('Failed to parse country JSON', e);
         }
       }
       // lookup in countries list by id or string value
@@ -439,11 +504,12 @@ export default {
             this.user.email ||
             '',
           roles: data.roles || (data.user && data.user.roles) || [],
-          userDetails: Object.assign({}, detailsPayload || {}, {
+          userDetails: {
+            ...(detailsPayload || {}),
             email: (data.user && data.user.email) || data.email || '',
             phone: detailsPayload.phone || '',
             country: detailsPayload.country || data.country || '',
-          }),
+          },
         };
         this.profileError = '';
       } catch (error) {
@@ -517,7 +583,7 @@ export default {
         this.newPassword = '';
         this.confirmPassword = '';
       } catch (error) {
-        let msg = 'Failed to change password.';
+        let msg;
         if (
           error.response &&
           error.response.data &&
@@ -526,6 +592,8 @@ export default {
           msg = error.response.data.error;
         } else if (error.response && error.response.data) {
           msg = Object.values(error.response.data).join(' ');
+        } else {
+          msg = error.message || String(error);
         }
 
         this.toast.add({
@@ -556,7 +624,7 @@ export default {
         try {
           await this.fetchCountries();
         } catch (e) {
-          // fetchCountries handles errors internally; ignore here
+          console.error('Failed to fetch countries', e);
         }
       }
 
@@ -596,159 +664,208 @@ export default {
     async updateProfile() {
       this.editMessage = '';
       if (this.isUpdatingProfile) return;
+
       this.isUpdatingProfile = true;
+
       try {
-        // Use the same token key for all requests
-        const token = storage.get('authToken');
-        if (!token) {
-          this.editMessage = 'Not authenticated.';
-          this.toast.add({
-            severity: 'error',
-            summary: 'Auth Error',
-            detail: 'Not authenticated.',
-            life: 3000,
-          });
-          return;
-        }
-        // ensure country is a primitive (id or code) before sending
-        let countryToSend = this.editForm.country;
-        if (countryToSend && typeof countryToSend === 'object') {
-          countryToSend =
-            countryToSend.value ||
-            countryToSend.id ||
-            countryToSend.code ||
-            countryToSend.name ||
-            '';
-        }
-        // backend expects a string for country field; send id as string
-        if (countryToSend !== undefined && countryToSend !== null) {
-          countryToSend = String(countryToSend);
-        } else {
-          countryToSend = '';
-        }
+        const token = this._validateAuth();
+        if (!token) return;
 
-        // send structured payload so backend can update `users` and `user_details` tables and organizations.admin_email
-        const payload = {
-          user: {
-            email: this.editForm.email,
-          },
-          user_details: {
-            first_name: this.editForm.first_name,
-            last_name: this.editForm.last_name,
-            phone: this.editForm.phone,
-            country: countryToSend,
-          },
-          // also update admin_email in organizations table (backend should handle this field)
-          admin_email: this.editForm.email,
-        };
-
-        // helpful debug output when validation fails
+        const payload = this._buildUpdatePayload();
         console.log('Updating profile with payload:', payload);
 
-        const response = await axios.patch(
-          `${
-            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
-          }/api/profile`,
-          payload,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        );
-        // Update local user data and encrypted storage from response (handle multiple shapes)
-        const res = response.data || {};
-        // response may contain { user, user_details } or merged user object
-        const resUser = res.user || res;
-        const resDetails =
-          res.user_details ||
-          res.userDetails ||
-          res.user_details ||
-          res.user_details ||
-          (res.user && res.user.user_details) ||
-          {};
-
-        // Update top-level name fields when backend returns them, otherwise
-        // fall back to the editForm values (backend should update users table)
-        this.user.email =
-          resUser.email || this.editForm.email || this.user.email;
-        this.user.first_name =
-          resUser.first_name ||
-          (resDetails && resDetails.first_name) ||
-          this.editForm.first_name ||
-          this.user.first_name;
-        this.user.last_name =
-          resUser.last_name ||
-          (resDetails && resDetails.last_name) ||
-          this.editForm.last_name ||
-          this.user.last_name;
-        this.user.userDetails = Object.assign(
-          {},
-          this.user.userDetails || {},
-          resDetails || {},
-          {
-            phone: (resDetails && resDetails.phone) || this.editForm.phone,
-            country: (resDetails && resDetails.country) || countryToSend,
-          }
-        );
-        // Persist top-level names to storage for Navbar and other components
-        storage.set('first_name', this.user.first_name);
-        storage.set('last_name', this.user.last_name);
-        storage.set('email', this.user.email);
-        storage.set('phone', this.user.userDetails.phone);
-        storage.set('country', this.user.userDetails.country);
-        // Also update the full user object for Navbar
-        storage.set('user', {
-          first_name: this.user.first_name,
-          last_name: this.user.last_name,
-          email: this.user.email,
-          role: this.user.role,
-          country: this.user.userDetails.country,
-          phone: this.user.userDetails.phone,
-        });
-        this.showEditModal = false;
-        // Only show toast after modal is closed, do not set editMessage
-        setTimeout(() => {
-          this.toast.add({
-            severity: 'success',
-            summary: 'Profile Updated',
-            detail: 'Profile updated successfully!',
-            life: 3000,
-          });
-        }, 350);
-        this.isUpdatingProfile = false;
+        const response = await this._sendUpdateRequest(payload, token);
+        this._handleUpdateSuccess(response);
       } catch (error) {
-        let msg = 'Failed to update profile.';
-        if (error.response && error.response.data) {
-          const data = error.response.data;
-          // Laravel validation errors are under data.errors
-          if (data.errors && typeof data.errors === 'object') {
-            const msgs = [];
-            Object.values(data.errors).forEach((v) => {
-              if (Array.isArray(v)) msgs.push(...v);
-              else msgs.push(String(v));
-            });
-            msg = msgs.join(' ');
-          } else if (data.message) {
-            msg = data.message;
-          } else {
-            try {
-              msg = JSON.stringify(data);
-            } catch (e) {
-              msg = String(data);
-            }
-          }
-          console.error('Profile update error response:', data);
-        }
-        this.editMessage = msg;
+        this._handleUpdateError(error);
+      }
+    },
+
+    _validateAuth() {
+      const token = storage.get('authToken');
+      if (!token) {
+        this.editMessage = 'Not authenticated.';
         this.toast.add({
           severity: 'error',
-          summary: 'Profile Error',
-          detail: msg,
-          life: 3500,
+          summary: 'Auth Error',
+          detail: 'Not authenticated.',
+          life: 3000,
         });
         this.isUpdatingProfile = false;
+        return null;
+      }
+      return token;
+    },
+
+    _buildUpdatePayload() {
+      const countryToSend = this._normalizeCountry(this.editForm.country);
+
+      return {
+        user: {
+          email: this.editForm.email,
+        },
+        user_details: {
+          first_name: this.editForm.first_name,
+          last_name: this.editForm.last_name,
+          phone: this.editForm.phone,
+          country: countryToSend,
+        },
+        admin_email: this.editForm.email,
+      };
+    },
+
+    _normalizeCountry(country) {
+      let countryToSend = country;
+
+      if (countryToSend && typeof countryToSend === 'object') {
+        countryToSend =
+          countryToSend.value ||
+          countryToSend.id ||
+          countryToSend.code ||
+          countryToSend.name ||
+          '';
+      }
+
+      return countryToSend !== undefined && countryToSend !== null
+        ? String(countryToSend)
+        : '';
+    },
+
+    async _sendUpdateRequest(payload, token) {
+      const baseUrl =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+
+      return axios.patch(`${baseUrl}/api/profile`, payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+    },
+
+    _handleUpdateSuccess(response) {
+      const { resUser, resDetails } = this._parseResponse(response);
+      this._updateLocalUserData(resUser, resDetails);
+      this._persistToStorage();
+      this._showSuccessMessage();
+      this.isUpdatingProfile = false;
+    },
+
+    _parseResponse(response) {
+      const res = response.data || {};
+      const resUser = res.user || res;
+      const resDetails =
+        res.user_details ||
+        res.userDetails ||
+        (res.user && res.user.user_details) ||
+        {};
+
+      return { resUser, resDetails };
+    },
+
+    _updateLocalUserData(resUser, resDetails) {
+      this.user.email = resUser.email || this.editForm.email || this.user.email;
+      this.user.first_name =
+        resUser.first_name ||
+        resDetails.first_name ||
+        this.editForm.first_name ||
+        this.user.first_name;
+      this.user.last_name =
+        resUser.last_name ||
+        resDetails.last_name ||
+        this.editForm.last_name ||
+        this.user.last_name;
+
+      this.user.userDetails = {
+        ...(this.user.userDetails || {}),
+        ...(resDetails || {}),
+        phone: resDetails.phone || this.editForm.phone,
+        country:
+          resDetails.country || this._normalizeCountry(this.editForm.country),
+      };
+    },
+
+    _persistToStorage() {
+      const userData = {
+        first_name: this.user.first_name,
+        last_name: this.user.last_name,
+        email: this.user.email,
+        role: this.user.role,
+        country: this.user.userDetails.country,
+        phone: this.user.userDetails.phone,
+      };
+
+      // Store individual fields
+      Object.entries(userData).forEach(([key, value]) => {
+        storage.set(key, value);
+      });
+
+      // Store complete user object
+      storage.set('user', userData);
+    },
+
+    _showSuccessMessage() {
+      this.showEditModal = false;
+      setTimeout(() => {
+        this.toast.add({
+          severity: 'success',
+          summary: 'Profile Updated',
+          detail: 'Profile updated successfully!',
+          life: 3000,
+        });
+      }, 350);
+    },
+
+    _handleUpdateError(error) {
+      const msg = this._extractErrorMessage(error);
+
+      this.editMessage = msg;
+      this.toast.add({
+        severity: 'error',
+        summary: 'Profile Error',
+        detail: msg,
+        life: 3500,
+      });
+      this.isUpdatingProfile = false;
+    },
+
+    _extractErrorMessage(error) {
+      if (!error.response?.data) {
+        return 'Failed to update profile.';
+      }
+
+      const data = error.response.data;
+      console.error('Profile update error response:', data);
+
+      if (data.errors && typeof data.errors === 'object') {
+        return this._formatValidationErrors(data.errors);
+      }
+
+      if (data.message) {
+        return data.message;
+      }
+
+      return this._stringifyErrorData(data);
+    },
+
+    _formatValidationErrors(errors) {
+      const msgs = [];
+      Object.values(errors).forEach((v) => {
+        if (Array.isArray(v)) {
+          msgs.push(...v);
+        } else {
+          msgs.push(String(v));
+        }
+      });
+      return msgs.join(' ');
+    },
+
+    _stringifyErrorData(data) {
+      try {
+        return JSON.stringify(data);
+      } catch (e) {
+        console.log('Failed to stringify error response:', e);
+        return String(data);
       }
     },
     async deleteAccount() {
@@ -820,60 +937,72 @@ export default {
 </script>
 
 <style scoped>
-/* Modal styles for edit profile */
-.profile-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.18);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
+@import '@/assets/modelcssnotificationandassesment.css';
+
+/* Additional btn-primary and btn-secondary styles */
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
 }
-.profile-modal {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.12);
-  padding: 32px 32px 24px 32px;
-  min-width: 320px;
-  max-width: 400px;
-  width: 100%;
-  position: relative;
+
+.btn-primary:hover {
+  background: var(--primary-strong);
 }
-.profile-modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 18px;
+
+.btn-secondary {
+  background: var(--bg-muted);
+  color: var(--text);
 }
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 1.6rem;
-  color: #888;
-  cursor: pointer;
-  margin-left: 12px;
+
+.btn-secondary:hover {
+  background: var(--border-soft);
 }
-.profile-edit-form {
+
+/* Modal form customization for profile */
+.modal-form .form-row {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 18px;
 }
+
+.modal-form .form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  margin-bottom: 6px;
+}
+
+/* Ensure form components work well in modal */
+.modal-form .form-box {
+  position: relative;
+}
+
+.modal-form .form-input.with-icon {
+  padding-left: 40px;
+}
+
+.modal-form .form-input-icon {
+  color: var(--muted);
+  font-size: 16px;
+}
+
+.modal-form .form-dropdown-chevron {
+  color: var(--muted);
+}
+
+/* Profile-specific styles */
 .profile-outer {
   width: 100%;
-
   display: flex;
   flex-direction: column;
   align-items: center;
   box-sizing: border-box;
-
   gap: 40px;
 }
+
 .profile-card {
   width: 100%;
   background: #fff;
@@ -886,12 +1015,14 @@ export default {
   flex-direction: column;
   gap: 0;
 }
+
 .profile-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 28px 32px 0 32px;
 }
+
 .profile-title {
   display: flex;
   align-items: center;
@@ -900,22 +1031,26 @@ export default {
   font-weight: 600;
   color: #0074c2;
 }
+
 .profile-avatar {
   font-size: 2.2rem;
   color: #0074c2;
 }
+
 .profile-info-table {
   padding: 18px 32px 0 32px;
   display: flex;
   flex-direction: column;
   gap: 0;
 }
+
 .profile-info-row {
   display: flex;
   border-bottom: 1px solid #f0f0f0;
   padding: 14px 0;
   align-items: center;
 }
+
 .profile-label {
   width: 160px;
   color: #888;
@@ -923,35 +1058,41 @@ export default {
   font-size: 1rem;
   text-align: left;
 }
+
 .profile-value {
   color: #222;
   font-weight: 500;
   font-size: 1rem;
   word-break: break-word;
 }
+
 .profile-actions {
   display: flex;
   justify-content: flex-end;
   padding: 18px 32px 0 32px;
 }
+
 .profile-section-title {
   font-size: 1.15rem;
   font-weight: 600;
   color: #222;
   margin: 28px 0 18px 32px;
 }
+
 .profile-password-form {
   display: flex;
   flex-direction: column;
   gap: 14px;
   padding: 0 32px;
 }
+
 .profile-form-row {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 8px;
 }
+
 .profile-form-label {
   text-align: left;
   width: 170px;
@@ -960,12 +1101,14 @@ export default {
   font-weight: 400;
   margin-bottom: 0;
 }
+
 .profile-input-wrapper {
   position: relative;
   flex: 1;
   display: flex;
   align-items: center;
 }
+
 .profile-input-wrapper input {
   width: 100%;
   background: #fff;
@@ -977,6 +1120,7 @@ export default {
   outline: none;
   transition: border 0.2s;
 }
+
 .profile-eye-icon {
   position: absolute;
   right: 12px;
@@ -985,11 +1129,13 @@ export default {
   font-size: 1.1rem;
   z-index: 2;
 }
+
 .profile-save-btn-row {
   display: flex;
   justify-content: flex-end;
   margin-top: 4px;
 }
+
 .profile-message {
   margin-top: 12px;
   color: #2e7d32;
@@ -1004,7 +1150,7 @@ export default {
   width: 1px;
   overflow: hidden;
   clip: rect(1px, 1px, 1px, 1px);
-  white-space: nowrap; /* added line */
+  white-space: nowrap;
   border: 0;
   padding: 0;
   margin: -1px;
@@ -1025,27 +1171,13 @@ export default {
     padding-left: 12px;
     padding-right: 12px;
   }
+
   .profile-section-title {
     margin-left: 12px;
   }
 }
-.common-modal-card .form-row {
-  display: grid !important;
-  grid-template-columns: 120px 1fr !important;
-  align-items: center;
-  gap: 18px;
-  width: 100%;
-  margin-bottom: 18px;
-}
-.common-modal-card .form-label {
-  width: 120px !important;
-  min-width: 120px !important;
-  max-width: 180px;
-  text-align: left;
-  white-space: normal;
-  margin-bottom: 0 !important;
-  font-size: 1.08rem !important;
-  font-weight: 500 !important;
-  color: #1a1a1a !important;
+
+.form-box {
+  padding: 0 !important;
 }
 </style>
