@@ -629,8 +629,8 @@ export default {
       } else if (userId) {
         params.user_id = userId;
       } else {
-        console.warn(
-          '[OrganizationAdminAssessmentsCard] No orgId or userId found in storage'
+        console.log(
+          '[OrganizationAdminAssessmentsCard] No organization_id or user_id found in storage'
         );
       }
 

@@ -10,7 +10,7 @@
     <div class="navbar-actions">
       <!-- Show bell only if not superadmin -->
       <router-link
-        v-if="!['superadmin', 'dolphinadmin', 'salesperson'].includes(roleName)"
+        v-if="!['superadmin', 'salesperson'].includes(roleName)"
         to="/get-notification"
         style="display: flex; align-items: center; position: relative"
       >
@@ -592,7 +592,8 @@ export default {
           this.handleLogoutYes();
         },
         reject: () => {
-          // no-op
+          // No action needed on cancel
+          this.dropdownOpen = false;
         },
       });
     },

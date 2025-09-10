@@ -59,6 +59,56 @@
             Questions
           </label>
           <div
+            style="
+              flex-direction: row-reverse;
+              align-items: center;
+              display: flex;
+              width: 100%;
+              margin-bottom: 8px;
+              border: white;
+              background: white;
+            "
+          >
+            <label
+              :class="[
+                'user-assessment-checkbox-label',
+                { checked: allSelected },
+              ]"
+              style="
+                display: flex;
+                align-items: center;
+
+                justify-content: flex-end !important;
+                font-size: 12px !important;
+                padding: 18px 24px;
+                background: white;
+                border-radius: 12px;
+                margin-bottom: 0;
+                text-align: left;
+                max-width: 200px !important;
+                border: white;
+              "
+            >
+              <span class="user-assessment-checkbox-custom"></span>
+              <input
+                type="checkbox"
+                :checked="allSelected"
+                @change="toggleSelectAll($event.target.checked)"
+              />
+              <span
+                style="
+                  flex: 1;
+                  text-align: right;
+                  font-size: 18px;
+                  font-weight: 500;
+                  color: #222;
+                "
+                >Select All</span
+              >
+            </label>
+          </div>
+
+          <div
             v-for="q in questions"
             :key="q.id"
             style="width: 100%; margin-bottom: 8px"
@@ -152,6 +202,15 @@ export default {
       };
       this.isSubmitting = false;
     },
+    toggleSelectAll(checked) {
+      if (checked) {
+        // select all question ids
+        this.assessment.selectedQuestionIds = this.questions.map((q) => q.id);
+      } else {
+        // clear selection
+        this.assessment.selectedQuestionIds = [];
+      }
+    },
     async handleSubmit() {
       // Validate input
       const selectedQuestions = this.questions.filter((q) =>
@@ -198,6 +257,16 @@ export default {
       } finally {
         this.isSubmitting = false;
       }
+    },
+  },
+  computed: {
+    allSelected() {
+      if (!Array.isArray(this.questions) || this.questions.length === 0)
+        return false;
+      // every question id must be present in selectedQuestionIds
+      return this.questions.every((q) =>
+        this.assessment.selectedQuestionIds.includes(q.id)
+      );
     },
   },
   mounted() {

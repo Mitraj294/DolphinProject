@@ -22,13 +22,19 @@
           </div>
           <div class="notifications-tabs">
             <button
-              :class="['notifications-tab-btn', { active: tab === 'unread' }]"
+              :class="[
+                'notifications-tab-btn-left',
+                { active: tab === 'unread' },
+              ]"
               @click="switchTab('unread')"
             >
               Unread
             </button>
             <button
-              :class="['notifications-tab-btn', { active: tab === 'all' }]"
+              :class="[
+                'notifications-tab-btn-right',
+                { active: tab === 'all' },
+              ]"
               @click="switchTab('all')"
             >
               All
@@ -627,7 +633,7 @@ export default {
   min-width: 240px;
   height: 36px;
 }
-.notifications-tab-btn {
+.notifications-tab-btn-left {
   border: none;
   border-radius: 32px;
   outline: none;
@@ -649,14 +655,45 @@ export default {
   cursor: pointer;
   box-sizing: border-box;
 }
-.notifications-tab-btn.active {
+.notifications-tab-btn-right {
+  border: none;
+  border-radius: 32px;
+  outline: none;
+  background: #f8f8f8;
+  color: #0f0f0f;
+  font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
+  font-size: 20px;
+  font-weight: 400;
+  line-height: 26px;
+  letter-spacing: 0.02em;
+  padding: 0 50px;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s, color 0.18s, border 0.18s, font-weight 0.18s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.notifications-tab-btn-left.active {
   background: #f6f6f6;
   border: 1px solid #dcdcdc;
-  border-radius: 32px;
+  border-radius: 32px 0 0 32px;
   color: #0f0f0f;
   font-weight: 500;
   z-index: 1;
 }
+.notifications-tab-btn-right.active {
+  background: #f6f6f6;
+  border: 1px solid #dcdcdc;
+  border-radius: 0 32px 32px 0;
+  color: #0f0f0f;
+  font-weight: 500;
+  z-index: 1;
+}
+
 .notifications-tab-btn:not(.active) {
   background: #f8f8f8;
   border: none;

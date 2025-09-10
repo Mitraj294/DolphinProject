@@ -311,6 +311,7 @@ textarea {
 .status,
 .recipient-badge {
     display: inline-block;
+
     padding: 6px 14px;
     border-radius: 20px;
     font-weight: 700;
@@ -357,6 +358,9 @@ textarea {
     padding: 4px 16px;
     border-radius: 20px;
     display: inline-block;
+    min-width: 150px;
+    text-align: center;
+
 }
 
 .status-yellow {
@@ -367,6 +371,8 @@ textarea {
     padding: 4px 16px;
     border-radius: 20px;
     display: inline-block;
+    min-width: 150px;
+    text-align: center;
 }
 
 .status-red {
@@ -377,6 +383,9 @@ textarea {
     padding: 4px 16px;
     border-radius: 20px;
     display: inline-block;
+    min-width: 150px;
+
+    text-align: center;
 }
 
 /* 
@@ -457,8 +466,7 @@ textarea {
     align-items: center;
     width: 100%;
     gap: 20px;
-    padding-left: 8px;
-    padding-right: 28px;
+
     box-sizing: border-box;
 }
 

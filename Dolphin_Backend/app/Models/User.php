@@ -60,4 +60,12 @@ class User extends Authenticatable
     {
         return $this->hasRole('superadmin');
     }
+
+        public function users()
+    {
+        return $this->belongsToMany(User::class, 'user_role');
+    }
+
+
+    
 }

@@ -15,76 +15,141 @@
         &times;
       </button>
       <div class="modal-title">Scheduled Assessment Details</div>
+
       <div class="modal-desc">
         Details for the selected scheduled assessment.
       </div>
-      <br />
-      <div
-        class="modal-title schedule-header"
-        style="font-size: 20px; font-weight: 450"
-      >
-        <div class="schedule-header-left">
-          <div>
-            <div
-              class="schedule-assessment-name"
-              style="
-                display: inline-block;
-                vertical-align: middle;
-                max-width: 520px;
-                margin-right: 12px;
-              "
-            >
-              {{ scheduleDetails.assessment.name }}
-            </div>
-            -
-            <div
-              class="schedule-assessment-name"
-              style="
-                display: inline-block;
-                vertical-align: middle;
-                margin-left: 12px;
-              "
-            >
-              {{
-                formatLocalDateTime(
-                  scheduleDetails.schedule.date,
-                  scheduleDetails.schedule.time
-                )
-              }}
+      <div class="notifications-controls">
+        <div class="notifications-tabs">
+          <button
+            :class="[
+              'notifications-tab-btn-left',
+              { active: tab === 'Group Wise' },
+            ]"
+            @click="tab = 'Group Wise'"
+          >
+            Group Wise
+          </button>
+          <button
+            :class="[
+              'notifications-tab-btn-right',
+              { active: tab === 'Member Wise' },
+            ]"
+            @click="tab = 'Member Wise'"
+            min-width="320px"
+          >
+            Member Wise
+          </button>
+        </div>
+      </div>
+      <div v-if="tab === 'Group Wise'">
+        <br />
+        <div
+          class="modal-title schedule-header"
+          style="font-size: 20px; font-weight: 450"
+        >
+          <div class="schedule-header-left">
+            <div>
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  max-width: 520px;
+                  margin-right: 12px;
+                "
+              >
+                {{ scheduleDetails.assessment.name }}
+              </div>
+              -
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  margin-left: 12px;
+                "
+              >
+                {{
+                  formatLocalDateTime(
+                    scheduleDetails.schedule.date,
+                    scheduleDetails.schedule.time
+                  )
+                }}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="schedule-header-right">
-          <span v-if="scheduleDetails.emails && scheduleDetails.emails.length">
+          <div class="schedule-header-right">
             <span
-              v-if="
-                filteredEmails.length && filteredEmails.every((e) => e.sent)
-              "
-              class="status-green"
-              >Sent</span
-            >
-            <span
-              v-else-if="
-                filteredEmails.length &&
-                filteredEmails.some((e) => !e.sent) &&
-                filteredEmails.some((e) => e.sent)
-              "
-              class="status-yellow"
-              >Scheduled</span
-            >
-            <span
-              v-else-if="
-                filteredEmails.length && filteredEmails.every((e) => !e.sent)
-              "
+              v-if="scheduleDetails.emails && scheduleDetails.emails.length"
             >
               <span
                 v-if="
-                  filteredEmails.some((e) => {
-                    const [date, time] = (e.send_at || '').split(' ');
-                    const [year, month, day] = date ? date.split('-') : [];
-                    const [hour, min, sec] = time ? time.split(':') : [];
-                    const sendAtUtc = Date.UTC(
+                  filteredEmails.length && filteredEmails.every((e) => e.sent)
+                "
+                class="status-green"
+                >Sent</span
+              >
+              <span
+                v-else-if="
+                  filteredEmails.length &&
+                  filteredEmails.some((e) => !e.sent) &&
+                  filteredEmails.some((e) => e.sent)
+                "
+                class="status-yellow"
+                >Scheduled</span
+              >
+              <span
+                v-else-if="
+                  filteredEmails.length && filteredEmails.every((e) => !e.sent)
+                "
+              >
+                <span
+                  v-if="
+                    filteredEmails.some((e) => {
+                      const [date, time] = (e.send_at || '').split(' ');
+                      const [year, month, day] = date ? date.split('-') : [];
+                      const [hour, min, sec] = time ? time.split(':') : [];
+                      const sendAtUtc = Date.UTC(
+                        Number(year),
+                        Number(month) - 1,
+                        Number(day),
+                        Number(hour),
+                        Number(min),
+                        Number(sec)
+                      );
+                      const nowUtc = Date.now();
+                      return sendAtUtc >= nowUtc;
+                    })
+                  "
+                  class="status-yellow"
+                  >Scheduled</span
+                >
+                <span
+                  v-else
+                  class="status-red"
+                  >Failed</span
+                >
+              </span>
+              <span
+                v-else
+                class="status-yellow"
+                >Scheduled</span
+              >
+            </span>
+
+            <span v-else>
+              <span
+                v-if="
+                  (() => {
+                    const [year, month, day] = (
+                      scheduleDetails.schedule.date || ''
+                    ).split('-');
+                    const [hour, min, sec] = (
+                      scheduleDetails.schedule.time || ''
+                    ).split(':');
+                    const schedAtUtc = Date.UTC(
                       Number(year),
                       Number(month) - 1,
                       Number(day),
@@ -93,8 +158,8 @@
                       Number(sec)
                     );
                     const nowUtc = Date.now();
-                    return sendAtUtc >= nowUtc;
-                  })
+                    return schedAtUtc >= nowUtc;
+                  })()
                 "
                 class="status-yellow"
                 >Scheduled</span
@@ -105,48 +170,233 @@
                 >Failed</span
               >
             </span>
-            <span
-              v-else
-              class="status-yellow"
-              >Scheduled</span
-            >
-          </span>
+          </div>
+        </div>
 
-          <span v-else>
-            <span
-              v-if="
-                (() => {
-                  const [year, month, day] = (
-                    scheduleDetails.schedule.date || ''
-                  ).split('-');
-                  const [hour, min, sec] = (
-                    scheduleDetails.schedule.time || ''
-                  ).split(':');
-                  const schedAtUtc = Date.UTC(
-                    Number(year),
-                    Number(month) - 1,
-                    Number(day),
-                    Number(hour),
-                    Number(min),
-                    Number(sec)
-                  );
-                  const nowUtc = Date.now();
-                  return schedAtUtc >= nowUtc;
-                })()
+        <div v-if="scheduleDetails && scheduleDetails.schedule">
+          <div class="detail-row">
+            <div
+              class="detail-table"
+              style="
+                width: 100% !important;
+                max-width: 800px !important;
+                margin: 0 !important;
               "
-              class="status-yellow"
-              >Scheduled</span
             >
-            <span
-              v-else
-              class="status-red"
-              >Failed</span
-            >
-          </span>
+              <div
+                class="recipient-table-wrap"
+                style="
+                  overflow-x: auto;
+                  -webkit-overflow-scrolling: touch;
+                  width: 100%;
+                "
+              >
+                <table
+                  v-if="filteredEmails && filteredEmails.length"
+                  class="recipient-table compact"
+                  style="width: 100%; min-width: 500px"
+                >
+                  <thead>
+                    <tr>
+                      <th style="width: 20%">Group</th>
+                      <th style="width: 25%">Members</th>
+                      <th style="width: 30%">Email</th>
+                      <th style="width: 25%">Member Roles</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template
+                      v-for="(g, gi) in groupedEmails"
+                      :key="'group-' + gi"
+                    >
+                      <tr
+                        v-for="(e, ei) in g.items"
+                        :key="'email-' + gi + '-' + ei"
+                      >
+                        <td
+                          v-if="ei === 0"
+                          :rowspan="g.items.length"
+                          class="group-cell"
+                        >
+                          {{ g.name || 'Ungrouped' }}
+                        </td>
+                        <td style="padding: 0px 8px !important">
+                          {{
+                            e.member_id && memberDetailMap[e.member_id]
+                              ? memberDetailMap[e.member_id].name
+                              : e.recipient_email ||
+                                e.email ||
+                                e.to ||
+                                'Unknown'
+                          }}
+                        </td>
+                        <td>
+                          {{
+                            e.member_id && memberDetailMap[e.member_id]
+                              ? memberDetailMap[e.member_id].email
+                              : e.recipient_email || e.email || e.to || ''
+                          }}
+                        </td>
+                        <td>
+                          {{
+                            e.member_id && memberDetailMap[e.member_id]
+                              ? memberDetailMap[e.member_id].rolesDisplay
+                              : Array.isArray(e.memberRoles) &&
+                                e.memberRoles.length
+                              ? e.memberRoles
+                                  .map((r) => (r && (r.name || r)) || r)
+                                  .join(', ')
+                              : Array.isArray(e.member_role_ids) &&
+                                e.member_role_ids.length
+                              ? e.member_role_ids
+                                  .map((r) => (r && (r.name || r)) || r)
+                                  .join(', ')
+                              : e.member_role || ''
+                          }}
+                        </td>
+                      </tr>
+                    </template>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else>
+          <em>No schedule details found.</em>
         </div>
       </div>
 
-      <div v-if="scheduleDetails && scheduleDetails.schedule">
+      <div v-else-if="tab === 'Member Wise'">
+        <br />
+        <div
+          class="modal-title schedule-header"
+          style="font-size: 20px; font-weight: 450"
+        >
+          <div class="schedule-header-left">
+            <div>
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  max-width: 520px;
+                  margin-right: 12px;
+                "
+              >
+                {{ scheduleDetails.assessment.name }}
+              </div>
+              -
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  margin-left: 12px;
+                "
+              >
+                {{
+                  formatLocalDateTime(
+                    scheduleDetails.schedule.date,
+                    scheduleDetails.schedule.time
+                  )
+                }}
+              </div>
+            </div>
+          </div>
+
+          <div class="schedule-header-right">
+            <span
+              v-if="scheduleDetails.emails && scheduleDetails.emails.length"
+            >
+              <span
+                v-if="
+                  filteredEmails.length && filteredEmails.every((e) => e.sent)
+                "
+                class="status-green"
+                >Sent</span
+              >
+              <span
+                v-else-if="
+                  filteredEmails.length &&
+                  filteredEmails.some((e) => !e.sent) &&
+                  filteredEmails.some((e) => e.sent)
+                "
+                class="status-yellow"
+                >Scheduled</span
+              >
+              <span
+                v-else-if="
+                  filteredEmails.length && filteredEmails.every((e) => !e.sent)
+                "
+              >
+                <span
+                  v-if="
+                    filteredEmails.some((e) => {
+                      const [date, time] = (e.send_at || '').split(' ');
+                      const [year, month, day] = date ? date.split('-') : [];
+                      const [hour, min, sec] = time ? time.split(':') : [];
+                      const sendAtUtc = Date.UTC(
+                        Number(year),
+                        Number(month) - 1,
+                        Number(day),
+                        Number(hour),
+                        Number(min),
+                        Number(sec)
+                      );
+                      const nowUtc = Date.now();
+                      return sendAtUtc >= nowUtc;
+                    })
+                  "
+                  class="status-yellow"
+                  >Scheduled</span
+                >
+                <span
+                  v-else
+                  class="status-red"
+                  >Failed</span
+                >
+              </span>
+              <span
+                v-else
+                class="status-yellow"
+                >Scheduled</span
+              >
+            </span>
+
+            <span v-else>
+              <span
+                v-if="
+                  (() => {
+                    const [year, month, day] = (
+                      scheduleDetails.schedule.date || ''
+                    ).split('-');
+                    const [hour, min, sec] = (
+                      scheduleDetails.schedule.time || ''
+                    ).split(':');
+                    const schedAtUtc = Date.UTC(
+                      Number(year),
+                      Number(month) - 1,
+                      Number(day),
+                      Number(hour),
+                      Number(min),
+                      Number(sec)
+                    );
+                    const nowUtc = Date.now();
+                    return schedAtUtc >= nowUtc;
+                  })()
+                "
+                class="status-yellow"
+                >Scheduled</span
+              >
+              <span
+                v-else
+                class="status-red"
+                >Failed</span
+              >
+            </span>
+          </div>
+        </div>
         <div class="detail-row">
           <div
             class="detail-table"
@@ -165,57 +415,43 @@
               "
             >
               <table
-                v-if="filteredEmails && filteredEmails.length"
+                v-if="memberWiseRows && memberWiseRows.length"
                 class="recipient-table compact"
                 style="width: 100%; min-width: 500px"
               >
                 <thead>
                   <tr>
-                    <th style="width: 30%">Group</th>
-                    <th style="width: 30%">Name</th>
-                    <th style="width: 40%">Email</th>
+                    <th style="width: 25%">Member</th>
+                    <th style="width: 25%">Email</th>
+                    <th style="width: 25%">Groups</th>
+                    <th style="width: 25%">Member Roles</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <template
-                    v-for="(g, gi) in groupedEmails"
-                    :key="'group-' + gi"
+                  <tr
+                    v-for="m in memberWiseRows"
+                    :key="'memberwise-' + m.id"
                   >
-                    <tr
-                      v-for="(e, ei) in g.items"
-                      :key="'email-' + gi + '-' + ei"
-                    >
-                      <td
-                        v-if="ei === 0"
-                        :rowspan="g.items.length"
-                        class="group-cell"
-                      >
-                        {{ g.name || 'Ungrouped' }}
-                      </td>
-                      <td style="padding: 0px 8px !important">
-                        {{
-                          e.member_id && memberDetailMap[e.member_id]
-                            ? memberDetailMap[e.member_id].name
-                            : e.recipient_email || e.email || e.to || 'Unknown'
-                        }}
-                      </td>
-                      <td>
-                        {{
-                          e.member_id && memberDetailMap[e.member_id]
-                            ? memberDetailMap[e.member_id].email
-                            : e.recipient_email || e.email || e.to || ''
-                        }}
-                      </td>
-                    </tr>
-                  </template>
+                    <td>{{ m.name }}</td>
+                    <td>{{ m.email }}</td>
+                    <td>
+                      {{
+                        m.groups && m.groups.length ? m.groups.join(', ') : ''
+                      }}
+                    </td>
+                    <td>{{ m.rolesDisplay || '' }}</td>
+                  </tr>
                 </tbody>
               </table>
+              <div
+                v-else
+                class="no-data"
+              >
+                <em>No members found for Member Wise view.</em>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-      <div v-else>
-        <em>No schedule details found.</em>
       </div>
     </div>
   </div>
@@ -224,6 +460,7 @@
 <script>
 export default {
   name: 'ScheduleDetailsModal',
+
   props: {
     scheduleDetails: {
       type: Object,
@@ -239,6 +476,11 @@ export default {
     },
   },
   emits: ['close'],
+  data() {
+    return {
+      tab: 'Group Wise',
+    };
+  },
   computed: {
     memberDetailMap() {
       const map = {};
@@ -249,9 +491,35 @@ export default {
         if (last) name = name ? `${name} ${last}` : last;
         if (!name) name = m.email || `Member ${m.id}`;
 
+        // Normalize member roles into a consistent memberRoles array and
+        // provide a ready-to-render rolesDisplay string (matches other components)
+        let memberRoles = [];
+        if (Array.isArray(m.memberRoles) && m.memberRoles.length) {
+          memberRoles = m.memberRoles.map((r) =>
+            typeof r === 'object' ? r : { id: r, name: String(r) }
+          );
+        } else if (
+          Array.isArray(m.member_role_ids) &&
+          m.member_role_ids.length
+        ) {
+          memberRoles = m.member_role_ids.map((id) => ({
+            id,
+            name: String(id),
+          }));
+        } else {
+          memberRoles = [];
+        }
+
+        const rolesDisplay =
+          Array.isArray(memberRoles) && memberRoles.length
+            ? memberRoles.map((r) => r.name || r).join(', ')
+            : m.member_role || '';
+
         map[m.id] = {
           name,
           email: m.email || '',
+          memberRoles,
+          rolesDisplay,
         };
       });
       return map;
@@ -353,6 +621,10 @@ export default {
 
           map.set(gid, { id: gid, name: gname, items });
         });
+        // remove any falsy entries from group items
+        Array.from(map.values()).forEach((v) => {
+          v.items = (v.items || []).filter(Boolean);
+        });
         return Array.from(map.values());
       }
 
@@ -365,7 +637,90 @@ export default {
           map.set(gid, { id: gid, name: gname || 'Group', items: [] });
         map.get(gid).items.push(e);
       });
+      // remove any falsy entries from group items
+      Array.from(map.values()).forEach((v) => {
+        v.items = (v.items || []).filter(Boolean);
+      });
       return Array.from(map.values());
+    },
+    memberWiseRows() {
+      const rows = [];
+      const schedule =
+        (this.scheduleDetails && this.scheduleDetails.schedule) || null;
+      // If schedule provides member_ids, prefer that (stringified array or array)
+      const parseArrayField = (v) => {
+        if (!v) return [];
+        if (Array.isArray(v)) return v.map((x) => Number(x));
+        try {
+          const p = JSON.parse(v);
+          if (Array.isArray(p)) return p.map((x) => Number(x));
+        } catch {}
+        return v
+          .toString()
+          .replace(/\[|\]|\s+/g, '')
+          .split(',')
+          .filter(Boolean)
+          .map((x) => Number(x));
+      };
+
+      const memberIds = schedule ? parseArrayField(schedule.member_ids) : [];
+
+      // If no explicit member_ids, fall back to members referenced in emails
+      const emailMemberIds = (this.filteredEmails || [])
+        .filter(Boolean)
+        .map((e) => Number(e.member_id))
+        .filter(Boolean);
+
+      const uniqueIds = new Set(memberIds.length ? memberIds : emailMemberIds);
+
+      Array.from(uniqueIds).forEach((mid) => {
+        const detail = this.memberDetailMap[mid] || {
+          name: `Member ${mid}`,
+          email: '',
+        };
+
+        // find groups from group pivot: prefer inspecting allGroups.members pivot
+        let groups = [];
+        const fromAllGroups = (this.allGroups || [])
+          .filter(
+            (g) =>
+              Array.isArray(g.members) &&
+              g.members.some(
+                (m) => Number(m.id || m.member_id || m) === Number(mid)
+              )
+          )
+          .map((g) => Number(g.id));
+        if (fromAllGroups && fromAllGroups.length) {
+          groups = fromAllGroups;
+        } else {
+          // fallback: infer from email rows
+          groups = (this.filteredEmails || [])
+            .filter(Boolean)
+            .filter(
+              (e) =>
+                Number(e.member_id) === Number(mid) && (e.group_id || e.group)
+            )
+            .map((e) => Number(e.group_id || e.group));
+        }
+
+        const uniqueGroups = Array.from(new Set(groups));
+        const groupNames = (uniqueGroups || []).map((gid) => {
+          const gobj = (this.allGroups || []).find(
+            (gg) => Number(gg.id) === Number(gid)
+          );
+          return (gobj && (gobj.name || gobj.group)) || `Group ${gid}`;
+        });
+
+        rows.push({
+          id: mid,
+          name: detail.name,
+          email: detail.email,
+          groups: groupNames,
+          rolesDisplay: detail.rolesDisplay || '',
+        });
+      });
+
+      return rows;
     },
   },
   methods: {
@@ -454,3 +809,90 @@ export default {
   },
 };
 </script>
+<style scoped>
+.notifications-controls {
+  display: flex;
+  flex-direction: row-reverse;
+  margin-bottom: 24px;
+
+  background: #fff;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+
+  box-sizing: border-box;
+}
+.notifications-tabs {
+  display: flex;
+
+  border-radius: 32px;
+  background: #f8f8f8;
+  overflow: hidden;
+  min-width: 240px;
+  height: 36px;
+}
+.notifications-tab-btn-left {
+  border: none;
+  min-width: 150px;
+  border-radius: 32px;
+  outline: none;
+  background: #f8f8f8;
+  color: #0f0f0f;
+  font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 26px;
+  letter-spacing: 0.02em;
+  flex: 1;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s, color 0.18s, border 0.18s, font-weight 0.18s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.notifications-tab-btn-right {
+  border: none;
+  min-width: 150px;
+  border-radius: 32px;
+  outline: none;
+  background: #f8f8f8;
+  color: #0f0f0f;
+  font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 26px;
+  letter-spacing: 0.02em;
+  flex: 1;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.18s, color 0.18s, border 0.18s, font-weight 0.18s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.notifications-tab-btn-left.active {
+  background: #f6f6f6;
+  border: 1.5px solid #dcdcdc;
+  border-radius: 32px 0 0 32px;
+  color: #0f0f0f;
+  font-weight: 500;
+  z-index: 1;
+}
+.notifications-tab-btn-right.active {
+  background: #f6f6f6;
+  border: 1.5px solid #dcdcdc;
+  border-radius: 0 32px 32px 0;
+  color: #0f0f0f;
+  font-weight: 500;
+  z-index: 1;
+}
+.notifications-tab-btn:not(.active) {
+  background: #f8f8f8;
+  border: none;
+  border-radius: 32px;
+  color: #0f0f0f;
+  font-weight: 400;
+}
+</style>

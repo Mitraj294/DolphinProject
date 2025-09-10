@@ -1,133 +1,192 @@
 <template>
-  <!-- Notification Detail Modal -->
   <div
-    v-if="visible && selectedNotification"
+    v-if="visible"
     class="modal-overlay"
     @click.self="$emit('close')"
   >
-    <div class="modal-card">
+    <div
+      class="modal-card"
+      style="max-width: 900px; width: 90%"
+    >
       <button
         class="modal-close-btn"
         @click="$emit('close')"
       >
         &times;
       </button>
-      <div class="modal-title2">Notification Detail</div>
-      <div class="modal-desc">Details for the selected notification.</div>
-      <div
-        class="modal-title2 schedule-header"
-        style="font-size: 20px; font-weight: 450"
-      >
-        <div class="schedule-header-left">
-          <div>
-            <div
-              class="schedule-assessment-name"
-              style="
-                display: inline-block;
-                vertical-align: middle;
-                max-width: 200px;
-                transition: max-width 0.18s ease, white-space 0.18s ease;
-                overflow: hidden;
-                white-space: nowrap;
-                text-overflow: ellipsis;
-              "
-            >
-              {{ selectedNotification.body }}
-            </div>
-            -
-            <div
-              class="schedule-assessment-name"
-              style="display: inline-block; vertical-align: middle"
-            >
-              {{
-                formatLocalDateTime(
-                  selectedNotification.sent_at ||
-                    selectedNotification.created_at
-                )
-              }}
+      <div class="modal-title">Notification Detail</div>
+
+      <div class="modal-desc">
+        Details for the selected notification / announcement.
+      </div>
+
+      <div>
+        <br />
+        <div
+          class="modal-title schedule-header"
+          style="font-size: 20px; font-weight: 450"
+        >
+          <div class="schedule-header-left">
+            <div>
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  max-width: 520px;
+                  margin-right: 12px;
+                "
+              >
+                {{ announcementBodyShort }}
+              </div>
+              -
+              <div
+                class="schedule-assessment-name"
+                style="
+                  display: inline-block;
+                  vertical-align: middle;
+                  margin-left: 12px;
+                "
+              >
+                {{ formatDateTime(announcementScheduledAt) }}
+              </div>
             </div>
           </div>
+          <div class="schedule-header-right">
+            <span
+              v-if="announcementStatus === 'sent'"
+              :class="[
+                'status-green',
+                { active: announcementStatus === 'sent' },
+              ]"
+              >Sent</span
+            >
+            <span
+              v-if="announcementStatus === 'scheduled'"
+              :class="[
+                'status-yellow',
+                { active: announcementStatus === 'scheduled' },
+              ]"
+              >Scheduled</span
+            >
+            <span
+              v-if="announcementStatus === 'failed'"
+              :class="[
+                'status-red',
+                { active: announcementStatus === 'failed' },
+              ]"
+              >Failed</span
+            >
+          </div>
         </div>
-      </div>
-      <div class="detail-row">
-        <div class="detail-table">
-          <div class="detail-value">
-            <!-- Render recipients as a compact table grouped by group -->
-            <div class="recipient-table-wrap">
+        <div class="modal-titleTABLE">Organization Notification Details</div>
+        <div class="detail-row">
+          <div
+            class="detail-table"
+            style="
+              width: 100% !important;
+              max-width: 800px !important;
+              margin: 0 !important;
+            "
+          >
+            <div
+              class="recipient-table-wrap"
+              style="
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                width: 100%;
+              "
+            >
               <table
                 class="recipient-table compact"
-                v-if="recipientTableRows.length"
+                style="width: 100%; min-width: 500px"
               >
                 <thead>
                   <tr>
-                    <th style="width: 20%">Category</th>
-                    <th style="width: 30%">Name</th>
-                    <th style="width: 30%">Email</th>
-                    <th style="width: 20%">Status</th>
+                    <th style="width: 20%">Organization Name</th>
+                    <th style="width: 25%">User Name</th>
+
+                    <th style="width: 30%">Emails</th>
+
+                    <th style="width: 25%">Read At</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr
-                    v-for="(row, idx) in recipientTableRows"
-                    :key="idx"
-                  >
+                  <tr v-if="!allRecipients.length">
                     <td
-                      class="group-cell"
-                      v-if="row.showGroup"
-                      :rowspan="row.rowspan"
+                      colspan="4"
+                      style="text-align: center; padding: 20px"
                     >
-                      {{ row.category || '' }}
+                      No recipients found.
                     </td>
-                    <td>{{ row.name || '' }}</td>
-                    <td>{{ row.email || '' }}</td>
-                    <td>{{ row.status || '' }}</td>
+                  </tr>
+                  <tr
+                    v-for="r in allRecipients"
+                    :key="r.id"
+                  >
+                    <td>{{ r.organization_name }}</td>
+                    <td>{{ r.name }}</td>
+                    <td>{{ r.email }}</td>
+
+                    <td>
+                      <span>{{
+                        r.read_at ? formatDateTime(r.read_at) : ' - '
+                      }}</span>
+                    </td>
                   </tr>
                 </tbody>
               </table>
-
-              <!-- Fallback: use simple recipient list if no structured rows available -->
-              <div
-                v-else
-                class="recipient-list"
+            </div>
+          </div>
+        </div>
+        <div class="modal-titleTABLE">Group Notification Details</div>
+        <div class="detail-row">
+          <div
+            class="detail-table"
+            style="
+              width: 100% !important;
+              max-width: 800px !important;
+              margin: 0 !important;
+            "
+          >
+            <div
+              class="recipient-table-wrap"
+              style="
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                width: 100%;
+              "
+            >
+              <table
+                class="recipient-table compact"
+                style="width: 100%; min-width: 500px"
               >
-                <div
-                  v-for="(r, ri) in detailRecipients"
-                  :key="ri"
-                  class="recipient-row"
-                >
-                  <div class="recipient-info">
-                    <div class="recipient-name">{{ r.name }}</div>
-                    <div
-                      class="recipient-email"
-                      v-if="r.email"
+                <thead>
+                  <tr>
+                    <th style="width: 35%">Group</th>
+                    <th style="width: 35%">Organization</th>
+                    <th style="width: 30%">Org Contact Email</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="!groupRows.length">
+                    <td
+                      colspan="3"
+                      style="text-align: center; padding: 20px"
                     >
-                      {{ r.email }}
-                    </div>
-                  </div>
-                  <div class="recipient-status">
-                    <span
-                      class="recipient-badge"
-                      :class="{
-                        read: r.status === 'delivered' || r.status === 'read',
-                        unread: !(
-                          r.status === 'delivered' || r.status === 'read'
-                        ),
-                      }"
-                      >{{
-                        r.status === 'delivered' || r.status === 'read'
-                          ? 'Read'
-                          : 'Yet to read'
-                      }}</span
-                    >
-                  </div>
-                </div>
-                <div
-                  v-if="detailRecipients.length === 0"
-                  class="all-recipients"
-                >
-                  All
-                </div>
-              </div>
+                      No groups targeted.
+                    </td>
+                  </tr>
+                  <tr
+                    v-for="g in groupRows"
+                    :key="g.id"
+                  >
+                    <td>{{ g.name }}</td>
+                    <td>{{ g.organization_name }}</td>
+                    <td>{{ g.org_contact_email }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -139,32 +198,154 @@
 <script>
 export default {
   name: 'NotificationDetail',
-  emits: ['close'],
   props: {
-    visible: {
-      type: Boolean,
-      default: false,
+    visible: { type: Boolean, default: false },
+    announcement: { type: Object, default: null },
+    selectedNotification: { type: Object, default: null },
+    groups: { type: Array, default: () => [] },
+    organizations: { type: Array, default: () => [] },
+    notifications: { type: Array, default: () => [] },
+  },
+  emits: ['close'],
+  data() {
+    return {};
+  },
+  computed: {
+    announcementEffective() {
+      return this.announcement || this.selectedNotification || null;
     },
-    selectedNotification: {
-      type: Object,
-      default: null,
+    announcementBodyShort() {
+      const raw =
+        this.announcementEffective && (this.announcementEffective.body || '');
+      return String(raw || '').slice(0, 120);
     },
-    recipientTableRows: {
-      type: Array,
-      default: () => [],
+    announcementScheduledAt() {
+      return (
+        (this.announcementEffective &&
+          (this.announcementEffective.scheduled_at ||
+            this.announcementEffective.sent_at)) ||
+        ''
+      );
     },
-    detailRecipients: {
-      type: Array,
-      default: () => [],
+    announcementStatus() {
+      // priority: sent > scheduled > failed
+      const a = this.announcementEffective || {};
+      const hasSent = !!(a.sent_at || a.sent_at === 0);
+      const hasScheduled = !!(a.scheduled_at || a.scheduled_at === 0);
+      if (hasSent) return 'sent';
+      if (hasScheduled) return 'scheduled';
+      return 'failed';
+    },
+    notificationsMap() {
+      const map = new Map();
+      if (!this.notifications) return map;
+      this.notifications.forEach((n) => {
+        // notifiable_id is user id
+        if (n.notifiable_id) {
+          map.set(Number(n.notifiable_id), n);
+        }
+      });
+      return map;
+    },
+    allRecipients() {
+      const recipients = new Map();
+      const announcement = this.announcementEffective;
+      if (!announcement) return [];
+
+      // from organizations targeted
+      (announcement.organizations || []).forEach((org) => {
+        const user = org.user;
+        // derive organization display name: prefer org.name, then user_details.org_name
+        const orgName =
+          (org &&
+            (org.name ||
+              (org.user &&
+                org.user.user_details &&
+                org.user.user_details.org_name))) ||
+          '';
+        if (user && user.id && !recipients.has(user.id)) {
+          recipients.set(user.id, {
+            id: user.id,
+            organization_name: orgName,
+            name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
+            email: user.email,
+          });
+        }
+      });
+
+      // from admins targeted
+      (announcement.admins || []).forEach((admin) => {
+        if (admin && admin.id && !recipients.has(admin.id)) {
+          recipients.set(admin.id, {
+            id: admin.id,
+            name:
+              admin.name ||
+              `${admin.first_name || ''} ${admin.last_name || ''}`.trim(),
+            email: admin.email,
+          });
+        }
+      });
+
+      const recipientList = Array.from(recipients.values());
+
+      recipientList.forEach((r) => {
+        const notification = this.notificationsMap.get(r.id);
+        r.read_at = notification ? notification.read_at : null;
+      });
+
+      return recipientList;
+    },
+    groupRows() {
+      // Prefer a flattened `groups` prop from the API if provided. That
+      // payload already contains `organization_name` and `org_contact_email`.
+      if (Array.isArray(this.groups) && this.groups.length) {
+        return this.groups.map((g) => ({
+          id: g.id,
+          name: g.name || `Group ${g.id}`,
+          organization_id: g.organization_id || null,
+          organization_name: g.organization_name || g.org_name || '',
+          org_contact_email:
+            g.org_contact_email || g.org_contact || g.org_email || null,
+        }));
+      }
+
+      // Fallback: derive from announcement payload and local organizations
+      const announcement = this.announcementEffective || {};
+      const ag = announcement.groups || [];
+      const orgs = announcement.organizations || this.organizations || [];
+      const orgMap = new Map();
+      orgs.forEach((o) => orgMap.set(Number(o.id), o));
+
+      return ag.map((g) => {
+        const orgId = Number(g.organization_id || g.org_id || 0);
+        const org = orgMap.get(orgId) || null;
+        const orgName = org
+          ? org.name ||
+            (org.user &&
+              org.user.user_details &&
+              org.user.user_details.org_name) ||
+            ''
+          : this.organizations.find((x) => x.id === orgId)?.name || '';
+        const orgEmail = org
+          ? (org.user && org.user.email) || org.email || null
+          : null;
+        return {
+          id: g.id,
+          name: g.name || `Group ${g.id}`,
+          organization_id: orgId,
+          organization_name: orgName,
+          org_contact_email: orgEmail,
+        };
+      });
     },
   },
   methods: {
-    formatLocalDateTime(dt) {
+    formatDateTime(dt) {
       if (!dt) return '—';
       try {
         const d = new Date(dt);
         if (isNaN(d.getTime())) return dt;
-        const day = d.getDate();
+        const day = String(d.getDate()).padStart(2, '0');
         const months = [
           'Jan',
           'Feb',
@@ -179,16 +360,15 @@ export default {
           'Nov',
           'Dec',
         ];
-        const month = months[d.getMonth()];
-        const year = d.getFullYear();
-        let hours = d.getHours();
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
-        if (hours === 0) hours = 12;
-        return `${day} ${month},${year} ${hours}:${minutes} ${ampm}`;
-      } catch (e) {
-        console.warn('Error formatting date:', e);
+        const mon = months[d.getMonth()];
+        const yr = d.getFullYear();
+        let hr = d.getHours();
+        const min = String(d.getMinutes()).padStart(2, '0');
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        hr = hr % 12;
+        hr = hr || 12;
+        return `${day} ${mon},${yr} ${hr}:${min} ${ampm}`;
+      } catch {
         return dt;
       }
     },
@@ -199,192 +379,60 @@ export default {
 <style scoped>
 @import '@/assets/modelcssnotificationandassesment.css';
 
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.13);
+/* status badges */
+.schedule-header-right {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.modal-card {
-  background: #fff;
-  border-radius: 22px;
-  box-shadow: 0 4px 32px rgba(33, 150, 243, 0.08);
-  padding: 36px 44px;
-  max-width: 720px;
-  width: 100%;
-  box-sizing: border-box;
-  position: relative;
-}
-
-.modal-close-btn {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: #888;
-  cursor: pointer;
-  z-index: 10;
-}
-
-.modal-title2 {
-  font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: #222;
-}
-
-.modal-desc {
-  margin-bottom: 12px;
-  color: #000000;
-}
-
-.schedule-header {
-  margin-bottom: 20px;
-}
-
-.schedule-header-left {
-  display: flex;
+  gap: 10px;
   align-items: center;
 }
 
-.schedule-assessment-name {
-  color: #222;
-}
-
-.detail-row {
-  display: flex;
-  flex-direction: column;
-}
-
-.detail-table {
-  display: block;
-  width: 100%;
-  margin: 14px auto 0 auto;
-}
-
-.detail-value {
-  color: #222;
-}
-
-.recipient-table-wrap {
-  width: 100%;
-  overflow: auto;
-}
-
-.recipient-table.compact {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-.recipient-table.compact th,
-.recipient-table.compact td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #eee;
-  text-align: left;
-}
-
-.recipient-table.compact .group-cell {
-  font-weight: 600;
-  vertical-align: top;
-}
-
-.recipient-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  max-height: 340px;
-  overflow: auto;
-}
-
-.recipient-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: transparent;
-  border: none;
-}
-
-.recipient-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.recipient-name {
-  font-weight: 500;
-  color: #222;
-}
-
-.recipient-email {
-  font-size: 13px;
-  color: #666;
-}
-
-.recipient-status {
-  padding: 4px 8px;
-  margin-right: 40px;
-}
-
-.recipient-badge {
-  font-size: 14px;
-  padding: 4px 8px;
-  border-radius: 12px;
+.status-green {
   color: #fff;
-}
-
-.recipient-badge.read {
-  background: #16a34a; /* green */
-}
-
-.recipient-badge.unread {
-  background: #dc2626; /* red */
-}
-
-.all-recipients {
-  color: #222;
+  background: #28a745;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  display: inline-block;
+  min-width: 150px;
   text-align: center;
-  padding: 20px;
-  font-style: italic;
 }
 
-@media (max-width: 700px) {
-  .modal-card {
-    min-width: 0;
-    max-width: calc(100vw - 32px);
-    width: calc(98vw - 32px);
-    padding: 20px 16px 20px 16px;
-    border-radius: 14px;
-    margin: 16px;
-  }
+.status-yellow {
+  color: #fff;
+  background: #f7c948;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  display: inline-block;
+  min-width: 150px;
+  text-align: center;
 }
 
-@media (max-width: 500px) {
-  .modal-card {
-    min-width: 0;
-    max-width: calc(100vw - 24px);
-    width: calc(98vw - 24px);
-    padding: 18px 12px 18px 12px;
-    border-radius: 12px;
-    margin: 12px;
-  }
+.status-red {
+  color: #fff;
+  background: #e74c3c;
+  font-weight: 600;
+  font-size: 18px;
+  padding: 4px 16px;
+  border-radius: 20px;
+  display: inline-block;
+  min-width: 150px;
 
-  .modal-title2 {
-    font-size: 20px;
-    margin-bottom: 18px;
-  }
-
-  .modal-close-btn {
-    top: 10px;
-    right: 12px;
-    font-size: 26px;
-  }
+  text-align: center;
+}
+.status-green.active,
+.status-yellow.active,
+.status-red.active {
+  opacity: 1;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+}
+.modal-titleTABLE {
+  font-size: 16px;
+  font-weight: 400;
+  margin: 8px 0;
+  color: var(--text);
+  text-align: center;
 }
 </style>

@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use App\Models\Announcement;
 use App\Models\User;
 use App\Models\Group;
+use App\Models\Organization;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
 use App\Notifications\GeneralNotification;
 use Carbon\Carbon;
@@ -100,28 +101,14 @@ class NotificationController extends Controller {
     }
 
     // Return a single announcement with related pivot data (organizations, groups, admins, members)
+    
     public function showAnnouncement($id)
     {
         try {
-            $announcement = Announcement::with(['organizations', 'groups', 'admins'])->findOrFail($id);
+            $announcement = Announcement::with(['organizations', 'groups', 'admins'])->select()->findOrFail($id);
 
-            // For each attached group, attempt to load members (names and emails)
-            $groupDetails = [];
-            foreach ($announcement->groups as $g) {
-                $members = [];
-                if (method_exists($g, 'members')) {
-                    try {
-                        $members = $g->members()->get(['id', 'name', 'email'])->toArray();
-                    } catch (\Exception $e) {
-                        \Log::warning('[showAnnouncement] failed to load group members', ['group_id' => $g->id, 'error' => $e->getMessage()]);
-                    }
-                }
-                $groupDetails[] = [
-                    'id' => $g->id,
-                    'name' => $g->name ?? null,
-                    'members' => $members,
-                ];
-            }
+           
+      
 
             // Precompute notifications for this announcement to determine per-user read state
             $notifRows = \DB::table('notifications')
@@ -129,37 +116,36 @@ class NotificationController extends Controller {
                 ->whereRaw("JSON_EXTRACT(data, '$.announcement_id') = ?", [$announcement->id])
                 ->get();
 
-            $readUserIds = [];
+            $readUserMap = [];
             foreach ($notifRows as $nr) {
                 if (!empty($nr->read_at)) {
-                    $readUserIds[] = $nr->notifiable_id;
+                    $readUserMap[$nr->notifiable_id] = true;
                 }
             }
-            $readUserIds = array_unique($readUserIds);
 
-            $orgDetails = [];
+            // Build a lookup of organizations referenced by the announcement
+            $orgMap = [];
             foreach ($announcement->organizations as $o) {
-                // Determine if any user in this organization has read the announcement
-                $orgUserIds = [];
-                if (method_exists($o, 'users')) {
-                    try {
-                        $orgUserIds = $o->users()->pluck('users.id')->toArray();
-                    } catch (\Exception $e) {
-                        \Log::warning('[showAnnouncement] failed to pluck org users', ['org_id' => $o->id, 'error' => $e->getMessage()]);
-                    }
-                }
-                $isRead = false;
-                if (!empty($orgUserIds) && !empty($readUserIds)) {
-                    if (count(array_intersect($orgUserIds, $readUserIds)) > 0) {
-                        $isRead = true;
-                    }
-                }
-                $orgDetails[] = [
-                    'id' => $o->id,
-                    'name' => $o->org_name ?? $o->name ?? null,
-                    'read' => $isRead,
-                ];
+                $orgMap[$o->id] = $o;
             }
+
+            // If the announcement has no explicit organizations attached but groups reference org ids,
+            // fetch those organizations so we can provide organization name and contact email.
+            if (empty($orgMap)) {
+                try {
+                    $orgIds = $announcement->groups->pluck('organization_id')->filter()->unique()->values()->toArray();
+                    if (!empty($orgIds)) {
+                        $fetchedOrgs = Organization::whereIn('id', $orgIds)->get();
+                        foreach ($fetchedOrgs as $fo) {
+                            $orgMap[$fo->id] = $fo;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('[showAnnouncement] failed to fetch referenced organizations', ['announcement_id' => $announcement->id, 'error' => $e->getMessage()]);
+                }
+            }
+
+        
 
             $adminDetails = [];
             foreach ($announcement->admins as $a) {
@@ -170,11 +156,52 @@ class NotificationController extends Controller {
                 ];
             }
 
+            
+
+            // Enrich groups with organization name and org contact email when possible
+            $enrichedGroups = [];
+            foreach ($announcement->groups as $g) {
+                $org = isset($orgMap[$g->organization_id]) ? $orgMap[$g->organization_id] : null;
+                $orgName = $org ? ($org->org_name ?? $org->name ?? null) : null;
+                $orgContact = null;
+                if ($org) {
+                    try {
+                        $orgContact = $org->admin_email ?? ($org->user->email ?? null);
+                    } catch (\Exception $e) {
+                        $orgContact = $org->admin_email ?? null;
+                    }
+                }
+                $enrichedGroups[] = [
+                    'id' => $g->id,
+                    'name' => $g->name ?? null,
+                    'organization_id' => $g->organization_id ?? null,
+                    'organization_name' => $orgName,
+                    'org_contact_email' => $orgContact,
+                ];
+            }
+                // Now build organization details output including a contact email (prefer admin_email then related user email)
+            $orgDetails = [];
+            foreach ($orgMap as $org) {
+                $contactEmail = null;
+                try {
+                    $contactEmail = $org->admin_email ?? ($org->user->email ?? null);
+                } catch (\Exception $e) {
+                    // defensive: if relation missing, leave contactEmail null
+                    $contactEmail = $org->admin_email ?? null;
+                }
+                $orgDetails[] = [
+                    'id' => $org->id,
+                    'name' => $org->org_name ?? $org->name ?? null,
+                    'contact_email' => $contactEmail,
+                ];
+            }
+
             return response()->json([
                 'announcement' => $announcement,
-                'groups' => $groupDetails,
+                'groups' => $enrichedGroups,
                 'organizations' => $orgDetails,
                 'admins' => $adminDetails,
+                'notifications' => $notifRows,
             ]);
         } catch (\Exception $e) {
             \Log::error('[showAnnouncement] error', ['id' => $id, 'error' => $e->getMessage()]);
@@ -299,7 +326,7 @@ class NotificationController extends Controller {
     }
 
     // Mark all notifications as read for the authenticated user
-   public function markAllAsRead(Request $request)
+    public function markAllAsRead(Request $request)
 {
     $user = $request->user();
 
@@ -308,7 +335,8 @@ class NotificationController extends Controller {
 
     return response()->json([
         'message' => 'All notifications marked as read',
-        'notifications' => $user->notifications // send back updated list
+        // send back updated list
+        'notifications' => $user->notifications
     ]);
 }
 

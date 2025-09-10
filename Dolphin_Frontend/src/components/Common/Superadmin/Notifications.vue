@@ -146,6 +146,21 @@
           </div>
         </div>
         <div class="modal-row">
+          <div class="modal-field">
+            <FormLabel>Select Admin</FormLabel>
+            <MultiSelectDropdown
+              :options="admins || []"
+              :selectedItems="selectedAdmins"
+              @update:selectedItems="selectedAdmins = $event"
+              option-label="name"
+              option-value="id"
+              placeholder="Select admins"
+              :enableSelectAll="true"
+            />
+          </div>
+          <div class="modal-field"></div>
+        </div>
+        <div class="modal-row">
           <div class="schedule-demo-field schedule-demo-schedule-field">
             <FormLabel>Schedule</FormLabel>
             <div class="modal-row">
@@ -183,9 +198,10 @@
     <!-- Notification Detail Modal -->
     <NotificationDetail
       :visible="showDetailModal"
-      :selectedNotification="selectedNotification"
-      :recipientTableRows="recipientTableRows"
-      :detailRecipients="detailRecipients"
+      :announcement="detailData && detailData.announcement"
+      :groups="detailData && detailData.groups"
+      :organizations="detailData && detailData.organizations"
+      :notifications="detailData && detailData.notifications"
       @close="closeDetail"
     />
   </MainLayout>
@@ -193,6 +209,8 @@
 
 <script>
 import MainLayout from '../../layout/MainLayout.vue';
+import axios from 'axios';
+import storage from '@/services/storage';
 import Pagination from '../../layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import NotificationDetail from './NotificationDetail.vue';
@@ -229,8 +247,56 @@ export default {
   mixins: [
     notificationsCommonMixin,
     notificationsSendMixin,
-    notificationsDetailMixin,
+    // notificationsDetailMixin, // Re-implementing detail logic here
   ],
+  data() {
+    return {
+      showDetailModal: false,
+      selectedNotification: null, // Kept for compatibility if needed elsewhere
+      detailData: null,
+    };
+  },
+  methods: {
+    async openDetail(item) {
+      if (!item || !item.id) {
+        console.error('Invalid item for detail view:', item);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Cannot load details for invalid item.',
+          life: 3000,
+        });
+        return;
+      }
+      try {
+        const authToken = storage.get('authToken');
+        const res = await axios.get(
+          `${
+            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
+          }/api/announcements/${item.id}`,
+          { headers: { Authorization: `Bearer ${authToken}` } }
+        );
+        if (res.data) {
+          this.detailData = res.data;
+          this.selectedNotification = res.data.announcement;
+          this.showDetailModal = true;
+        }
+      } catch (error) {
+        console.error('Failed to fetch notification details', error);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to fetch notification details. Please try again.',
+          life: 3000,
+        });
+      }
+    },
+    closeDetail() {
+      this.showDetailModal = false;
+      this.selectedNotification = null;
+      this.detailData = null;
+    },
+  },
 };
 </script>
 
