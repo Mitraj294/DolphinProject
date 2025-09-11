@@ -234,11 +234,6 @@ import FormInput from '../Common_UI/Form/FormInput.vue';
 import MultiSelectDropdown from '../Common_UI/Form/MultiSelectDropdown.vue';
 import Toast from 'primevue/toast';
 
-// mixins
-import notificationsCommonMixin from './mixins/notificationsCommonMixin';
-import notificationsSendMixin from './mixins/notificationsSendMixin';
-import notificationsDetailMixin from './mixins/notificationsDetailMixin';
-
 export default {
   name: 'Notifications',
   components: {
@@ -254,11 +249,7 @@ export default {
     MultiSelectDropdown,
     Toast,
   },
-  mixins: [
-    notificationsCommonMixin,
-    notificationsSendMixin,
-    // notificationsDetailMixin, // Re-implementing detail logic here
-  ],
+
   data() {
     return {
       showDetailModal: false,

@@ -196,7 +196,7 @@ class NotificationController extends Controller {
             // Try to parse with Carbon::parse, fallback to strict format if needed
             try {
                 // Remove trailing Z or timezone if present
-                $scheduledAtRaw = preg_replace('/[TZ]|(\+\d{2}:\d{2})$/', '', $scheduledAtRaw);
+                $scheduledAtRaw = preg_replace('/([TZ]|)(\+\d{2}:\d{2})$/', '', $scheduledAtRaw);
                 $scheduledAtUtc = Carbon::parse(trim($scheduledAtRaw))->setTimezone('UTC');
             } catch (\Exception $e) {
                 \Log::error('Failed to parse scheduled_at', ['input' => $scheduledAtRaw, 'error' => $e->getMessage()]);
@@ -389,7 +389,7 @@ class NotificationController extends Controller {
                     LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
                 }
             }
-            return;
+        
         }
     }
 }
