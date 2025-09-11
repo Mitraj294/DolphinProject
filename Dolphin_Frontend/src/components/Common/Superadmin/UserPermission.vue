@@ -1,6 +1,5 @@
 <template>
   <Toast />
-  <ConfirmDialog />
   <MainLayout>
     <div class="page">
       <div class="table-outer">

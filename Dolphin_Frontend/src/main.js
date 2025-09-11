@@ -40,6 +40,8 @@ app.component('ConfirmDialog', ConfirmDialog);
 // in this PrimeVue version, so import the Calendar component instead and register it globally.
 import Calendar from 'primevue/calendar';
 app.component('Calendar', Calendar); // Register Calendar globally
+import Button from 'primevue/button';
+app.component('Button', Button); // Register PrimeVue Button globally
 
 
 // Sync encrypted storage role with backend user role on app start

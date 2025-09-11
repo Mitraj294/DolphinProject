@@ -473,6 +473,7 @@ class AuthController extends Controller
                 'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
                 'userDetails' => $details,
         'organization_id' => $org ? $org->id : null,
+        'organization_name' => $org ? $org->organization_name : null,
         ]);
     }
 

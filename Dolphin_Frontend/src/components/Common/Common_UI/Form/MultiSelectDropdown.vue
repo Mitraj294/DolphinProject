@@ -89,8 +89,13 @@
 </template>
 
 <script>
+import Button from 'primevue/button';
+
 export default {
   name: 'MultiSelectDropdown',
+  components: {
+    Button,
+  },
   props: {
     options: { type: Array, required: true },
     selectedItems: { type: Array, required: true },

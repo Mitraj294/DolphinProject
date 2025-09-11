@@ -36,30 +36,8 @@
                     <td>{{ member.phone }}</td>
                     <td>
                       <!-- show all related roles: prefer member.memberRoles (objects) then member.member_role_ids (ids or objects) -->
-                      <span
-                        v-if="
-                          Array.isArray(member.memberRoles) &&
-                          member.memberRoles.length
-                        "
-                      >
-                        {{
-                          member.memberRoles.map((r) => r.name || r).join(', ')
-                        }}
-                      </span>
-                      <span
-                        v-else-if="
-                          Array.isArray(member.member_role_ids) &&
-                          member.member_role_ids.length
-                        "
-                      >
-                        {{
-                          member.member_role_ids
-                            .map((r) => (r && (r.name || r)) || r)
-                            .join(', ')
-                        }}
-                      </span>
-                      <span v-else>
-                        {{ member.member_role || '' }}
+                      <span>
+                        {{ formatMemberRoles(member) }}
                       </span>
                     </td>
                     <td>
@@ -372,13 +350,8 @@ export default {
         member_role_ids: [],
         country: '',
       },
-      // available roles for selection (fallback static list)
-      rolesForSelect: [
-        { id: 1, name: 'Manager' },
-        { id: 2, name: 'CEO' },
-        { id: 3, name: 'Owner' },
-        { id: 4, name: 'Support' },
-      ],
+
+      rolesForSelect: [],
       rolesForSelectMap: {},
     };
   },
@@ -454,12 +427,49 @@ export default {
       return m;
     },
     openMemberModal(member) {
-      this.selectedMemberEdit = { ...member };
-      this.selectedMemberEdit.member_role_ids = member.member_role_ids || [];
-      this.selectedMemberEdit.memberRoles = member.memberRoles || [];
+      // make sure we use normalized member objects so roles have {id,name}
+      const normalized = this.normalizeMember(member);
+      this.selectedMemberEdit = { ...normalized };
+      this.selectedMemberEdit.member_role_ids = Array.isArray(
+        normalized.member_role_ids
+      )
+        ? normalized.member_role_ids.map((r) =>
+            typeof r === 'object' ? r : this.getRoleForSelect(r)
+          )
+        : [];
+      this.selectedMemberEdit.memberRoles = Array.isArray(
+        normalized.memberRoles
+      )
+        ? normalized.memberRoles.map((r) =>
+            typeof r === 'object' ? r : this.getRoleForSelect(r)
+          )
+        : [];
       // ensure phone is present (backend now returns it)
       this.selectedMemberEdit.phone = member.phone || '';
       this.showMemberModal = true;
+    },
+
+    // return a comma-separated list of role names for a member
+    formatMemberRoles(member) {
+      try {
+        if (Array.isArray(member.memberRoles) && member.memberRoles.length) {
+          return member.memberRoles
+            .map((r) => (r && (r.name || r)) || r)
+            .join(', ');
+        }
+        if (
+          Array.isArray(member.member_role_ids) &&
+          member.member_role_ids.length
+        ) {
+          return member.member_role_ids
+            .map((r) => (r && (r.name || r)) || r)
+            .join(', ');
+        }
+        return member.member_role || '';
+      } catch (e) {
+        console.warn('formatMemberRoles failed', e);
+        return '';
+      }
     },
     async openEditModal() {
       // Try to fetch the latest member details from API each time Edit is clicked
@@ -488,17 +498,13 @@ export default {
         this.selectedMemberEdit = { ...normalized };
         const ids = normalized.member_role_ids || [];
         this.editMember = { ...normalized };
-        this.editMember.member_role_ids = ids.map((roleId) =>
-          this.getRoleForSelect(roleId)
-        );
+        this.editMember.member_role_ids = ids;
         this.showEditModal = true;
       } catch (e) {
         console.error('Failed to fetch member for edit', e);
         this.editMember = { ...this.selectedMemberEdit };
         const ids = this.selectedMemberEdit.member_role_ids || [];
-        this.editMember.member_role_ids = ids.map((roleId) =>
-          this.getRoleForSelect(roleId)
-        );
+        this.editMember.member_role_ids = ids;
         this.showEditModal = true;
       }
     },
@@ -634,15 +640,82 @@ export default {
 
     // helpers for role select
     prepareRolesMap() {
-      // build a lookup of roles used by the app (could be fetched; for now infer from current members or default list)
-      this.rolesForSelect = [
-        { id: 1, name: 'Manager' },
-        { id: 2, name: 'CEO' },
-        { id: 3, name: 'Owner' },
-        { id: 4, name: 'Support' },
-      ];
+      // Build a lookup of roles used by the app from members fetched from the backend.
+      // Prefer explicit memberRoles/member_role_names when available. If none found,
+      // fallback to a small static list so UI remains usable.
+      const rolesById = {};
+      const rolesByName = {};
+
+      // collect roles from this.members
+      if (Array.isArray(this.members) && this.members.length) {
+        this.members.forEach((m) => {
+          // memberRoles array of objects {id,name}
+          if (Array.isArray(m.memberRoles)) {
+            m.memberRoles.forEach((r) => {
+              if (r && (r.id || r.name)) {
+                const id = r.id || String(r.name).toLowerCase();
+                const name = r.name || String(r);
+                rolesById[id] = { id: r.id || id, name };
+                rolesByName[String(name).toLowerCase()] = {
+                  id: r.id || id,
+                  name,
+                };
+              }
+            });
+          }
+
+          // member_role_names is sometimes provided as array of strings
+          if (Array.isArray(m.member_role_names)) {
+            m.member_role_names.forEach((name, idx) => {
+              if (name) {
+                const key = String(name).toLowerCase();
+                if (!rolesByName[key]) {
+                  const syntheticId = Object.keys(rolesById).length + 1 + idx;
+                  rolesByName[key] = { id: syntheticId, name };
+                }
+              }
+            });
+          }
+
+          // single string fallback on member_role
+          if (m.member_role && !Array.isArray(m.member_role)) {
+            const key = String(m.member_role).toLowerCase();
+            if (!rolesByName[key]) {
+              const syntheticId = Object.keys(rolesById).length + 1;
+              rolesByName[key] = { id: syntheticId, name: m.member_role };
+            }
+          }
+        });
+      }
+
+      // Combine collected roles into rolesForSelect
+      const combined = [];
+      Object.keys(rolesById).forEach((k) => combined.push(rolesById[k]));
+      Object.keys(rolesByName).forEach((k) => {
+        const r = rolesByName[k];
+        if (
+          !combined.find(
+            (c) => String(c.name).toLowerCase() === String(r.name).toLowerCase()
+          )
+        ) {
+          combined.push(r);
+        }
+      });
+
+      // If no roles found from members, fallback to a conservative static list
+      if (!combined.length) {
+        combined.push({ id: 1, name: 'Owner' });
+        combined.push({ id: 2, name: 'CEO' });
+        combined.push({ id: 3, name: 'Manager' });
+        combined.push({ id: 4, name: 'Support' });
+      }
+
+      // ensure rolesForSelect remains an array
+      this.rolesForSelect = combined;
       this.rolesForSelectMap = {};
-      this.rolesForSelect.forEach((r) => (this.rolesForSelectMap[r.id] = r));
+      if (Array.isArray(this.rolesForSelect)) {
+        this.rolesForSelect.forEach((r) => (this.rolesForSelectMap[r.id] = r));
+      }
     },
 
     // Helper method to get role object from role ID
@@ -745,10 +818,36 @@ export default {
       const res = await axios.get(`${API_BASE_URL}/api/members`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
-      this.members = Array.isArray(res.data) ? res.data : [];
+      this.members = Array.isArray(res.data)
+        ? res.data.map((m) => this.normalizeMember(m))
+        : [];
       this.filteredMembers = this.members;
-      // prepare role lookup map
-      this.prepareRolesMap();
+
+      // Try to fetch canonical member roles from the API. If that fails, derive from members.
+      try {
+        const rolesRes = await axios.get(`${API_BASE_URL}/api/member-roles`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        if (Array.isArray(rolesRes.data) && rolesRes.data.length) {
+          this.rolesForSelect = rolesRes.data.map((r) => ({
+            id: r.id,
+            name: r.name,
+          }));
+          this.rolesForSelectMap = {};
+          this.rolesForSelect.forEach(
+            (r) => (this.rolesForSelectMap[r.id] = r)
+          );
+        } else {
+          this.prepareRolesMap();
+        }
+      } catch (roleErr) {
+        console.warn(
+          'Failed to fetch member roles, falling back to deriving from members',
+          roleErr
+        );
+        // fallback: derive roles from members
+        this.prepareRolesMap();
+      }
     } catch (e) {
       console.error('Failed to fetch members', e);
       this.members = [];

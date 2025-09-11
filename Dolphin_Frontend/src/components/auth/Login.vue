@@ -199,11 +199,20 @@ export default {
 
         const token = response.data.access_token; // access token
         const refreshToken = response.data.refresh_token; // NEW: refresh token
-        const role = response.data.user.role;
-        const name = response.data.user.name;
-        const firstName = response.data.user.first_name || '';
-        const lastName = response.data.user.last_name || '';
+        // normalize user payload (login responses may return slightly different shapes)
+        const userObj = response.data.user || {};
+        const role = userObj.role;
+        const name = userObj.name;
+        const firstName = userObj.first_name || '';
+        const lastName = userObj.last_name || '';
         const expiresAt = response.data.expires_at;
+        // Try several places where organization_name might be present
+        const organization_name =
+          (response.data.organizations &&
+            response.data.organizations.organization_name) ||
+          userObj.organization_name ||
+          response.data.organization_name ||
+          '';
 
         // Save tokens in storage
         storage.set('authToken', token);
@@ -218,6 +227,13 @@ export default {
           'userName',
           firstName || lastName ? `${firstName} ${lastName}`.trim() : name
         );
+        // store the full user object so other components can access organization_name, organization_id, etc.
+        try {
+          storage.set('user', userObj);
+        } catch (e) {
+          // ignore storage failures
+        }
+        storage.set('organization_name', organization_name);
 
         // Welcome toast
         storage.set('showDashboardWelcome', '1');

@@ -113,7 +113,6 @@
         </transition>
       </div>
     </div>
-    <!-- PrimeVue ConfirmDialog is used for logout confirmation -->
   </nav>
 </template>
 
@@ -286,7 +285,8 @@ export default {
         return 'Training & Resources';
       }
       if (routeName === 'MyOrganization') {
-        return 'My Organization';
+        const orgName = storage.get('organization_name');
+        return `My Organization${orgName ? ': ' + orgName : ''}`;
       }
       if (routeName === 'Notifications' || routeName === 'GetNotification') {
         return 'Notification';
@@ -513,6 +513,7 @@ export default {
       }
       return null;
     },
+
     async fetchAssessmentName(assessmentId) {
       if (!assessmentId) return null;
       if (this.assessmentNameFetching[assessmentId]) return;
@@ -636,7 +637,7 @@ export default {
       this.$router.push({ name: 'Profile' });
     },
   },
-  // no watchers needed for logout confirmation (PrimeVue confirm service used)
+
   mounted() {
     // mark alive so async fetches can safely write to state
     this.isNavbarAlive = true;

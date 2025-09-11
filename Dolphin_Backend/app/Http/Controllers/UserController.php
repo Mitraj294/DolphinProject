@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\UserRole;
@@ -143,7 +144,11 @@ class UserController extends Controller
             if ($details) {
                 $detailsUpdates = [];
                 if ($request->has('organization_name')) {
-                    $detailsUpdates['organization_name'] = $request->input('organization_name');
+                    if (Schema::hasColumn('user_details', 'organization_name')) {
+                        $detailsUpdates['organization_name'] = $request->input('organization_name');
+                    } else {
+                        \Log::warning('[UserController@updateRole] skipping write to user_details.organization_name because column missing', ['user_id' => $user->id]);
+                    }
                 }
                 if (!empty($detailsUpdates)) {
                     $details->update($detailsUpdates);
@@ -231,7 +236,8 @@ class UserController extends Controller
             $tokenResult = $user->createToken('ImpersonationToken', ['impersonate']);
             $accessToken = $tokenResult->accessToken;
             $tokenModel = $tokenResult->token;
-            $tokenModel->expires_at = now()->addHours(3); // short-lived impersonation
+            // short-lived impersonation
+            $tokenModel->expires_at = now()->addHours(3);
             $tokenModel->save();
 
             // Get the role of the impersonated user (first role or 'user')

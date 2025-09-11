@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class OrganizationController extends Controller
 {
@@ -35,11 +36,12 @@ class OrganizationController extends Controller
             $subscription = $org->user && $org->user->subscriptions ? $org->user->subscriptions->first() : null;
             $user = $org->user;
             $details = $user && $user->userDetails ? $user->userDetails : null;
-            $mainContact = $org->main_contact ?? null;
+        // prefer organization-level main_contact, then org name, then user/user_details
+        $mainContact = $org->main_contact ?? $org->organization_name ?? null;
             if (!$mainContact && $user) {
                 $mainContact = trim((($user->first_name ?? '') . ' ' . ($user->last_name ?? '')));
                 if (trim($mainContact) === '') {
-                    $mainContact = $details->organization_name ?? $user->email ?? '';
+            $mainContact = $org->organization_name ?? ($details->organization_name ?? $user->email ?? '');
                 }
             }
             // derive location names from ids when available so frontend can display them
@@ -66,14 +68,15 @@ class OrganizationController extends Controller
 
             return [
                 'id' => $org->id,
-                'organization_name' => $org->organization_name,
-                'organization_size' => $details->organization_size ?? $org->organization_size ?? null,
-                'find_us' => $details->find_us ?? $org->find_us ?? null,
+                // prefer the explicit organizations table values; fall back to user_details
+                'organization_name' => $org->organization_name ?? ($details->organization_name ?? null),
+                'organization_size' => $org->organization_size ?? ($details->organization_size ?? null),
+                'find_us' => $org->find_us ?? ($details->find_us ?? null),
                 'main_contact' => $mainContact,
                 'contract_start' => $subscription ? $subscription->subscription_start : $org->contract_start,
                 'contract_end' => $subscription ? $subscription->subscription_end : $org->contract_end,
                 'last_contacted' => $org->last_contacted,
-                'address' => $org->address1 ?? $details->address ?? null,
+                'address' => $org->address1 ?? ($details->address ?? null),
                 // string fields (legacy) - may be null if IDs are used
                 'city' => $org->city ?? $details->city ?? null,
                 'state' => $org->state ?? $details->state ?? null,
@@ -101,11 +104,11 @@ class OrganizationController extends Controller
         $subscription = $org->user && $org->user->subscriptions ? $org->user->subscriptions->first() : null;
         $user = $org->user;
         $details = $user && $user->userDetails ? $user->userDetails : null;
-        $mainContact = $org->main_contact ?? null;
+        $mainContact = $org->main_contact ?? $org->organization_name ?? null;
         if (!$mainContact && $user) {
             $mainContact = trim((($user->first_name ?? '') . ' ' . ($user->last_name ?? '')));
             if (trim($mainContact) === '') {
-                $mainContact = $details->organization_name ?? $user->email ?? '';
+                $mainContact = $org->organization_name ?? ($details->organization_name ?? $user->email ?? '');
             }
         }
 
@@ -132,14 +135,14 @@ class OrganizationController extends Controller
 
         return response()->json([
             'id' => $org->id,
-            'organization_name' => $org->organization_name,
-            'organization_size' => $details->organization_size ?? $org->organization_size ?? null,
-            'find_us' => $details->find_us ?? $org->find_us ?? null,
+            'organization_name' => $org->organization_name ?? ($details->organization_name ?? null),
+            'organization_size' => $org->organization_size ?? ($details->organization_size ?? null),
+            'find_us' => $org->find_us ?? ($details->find_us ?? null),
             'main_contact' => $mainContact,
             'contract_start' => $subscription ? $subscription->subscription_start : $org->contract_start,
             'contract_end' => $subscription ? $subscription->subscription_end : $org->contract_end,
             'last_contacted' => $org->last_contacted,
-            'address' => $org->address1 ?? $details->address ?? null,
+            'address' => $org->address1 ?? ($details->address ?? null),
             'city' => $org->city ?? $details->city ?? null,
             'state' => $org->state ?? $details->state ?? null,
             'zip' => $org->zip ?? $details->zip ?? null,
@@ -182,15 +185,20 @@ class OrganizationController extends Controller
             try {
                 $user = User::find($org->user_id);
                 if ($user) {
-                    $details = $user->userDetails ?: new \App\Models\UserDetail();
-                    $details->user_id = $user->id;
-                    if (!empty($orgFields['organization_name'])) {
-                        $details->organization_name = $orgFields['organization_name'];
-                    }
-                    if (!empty($orgFields['organization_size'])) {
-                        $details->organization_size = $orgFields['organization_size'];
-                    }
-                    $details->save();
+                        $details = $user->userDetails ?: new \App\Models\UserDetail();
+                        $details->user_id = $user->id;
+                        // Only set columns if the user_details table still contains them.
+                        if (Schema::hasColumn('user_details', 'organization_name') && !empty($orgFields['organization_name'])) {
+                            $details->organization_name = $orgFields['organization_name'];
+                        } elseif (!Schema::hasColumn('user_details', 'organization_name') && !empty($orgFields['organization_name'])) {
+                            \Log::warning('[Organization@store] user_details.organization_name column missing; skipping backfill', ['org_id' => $org->id]);
+                        }
+                        if (Schema::hasColumn('user_details', 'organization_size') && !empty($orgFields['organization_size'])) {
+                            $details->organization_size = $orgFields['organization_size'];
+                        } elseif (!Schema::hasColumn('user_details', 'organization_size') && !empty($orgFields['organization_size'])) {
+                            \Log::warning('[Organization@store] user_details.organization_size column missing; skipping backfill', ['org_id' => $org->id]);
+                        }
+                        $details->save();
                 }
             } catch (\Exception $e) {
                 \Log::warning('[Organization@store] failed to backfill user_details organization_name', ['org_id' => $org->id, 'error' => $e->getMessage()]);
@@ -205,6 +213,7 @@ class OrganizationController extends Controller
 
     $validated = $request->validate([
             // organization table fields
+           
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
             'sales_person' => 'nullable|string',
@@ -214,7 +223,7 @@ class OrganizationController extends Controller
             'first_name' => 'sometimes|nullable|string|max:255',
             'last_name' => 'sometimes|nullable|string|max:255',
             'admin_email' => 'sometimes|nullable|email|max:255',
-            'admin_phone' =>  'sometimes|regex:/^[6-9]\d{9}$/',
+            'admin_phone' =>  'sometimes|nullable|string|regex:/^[6-9]\d{9}$/',
             'organization_name' => 'sometimes|nullable|string|max:255',
             'organization_size' => 'sometimes|nullable|string|max:255',
             'source' => 'sometimes|nullable|string|max:255',
@@ -267,8 +276,20 @@ class OrganizationController extends Controller
                 }
                 $detailUpdated = false;
                 if (array_key_exists('admin_phone', $validated)) { $details->phone = $validated['admin_phone']; $detailUpdated = true; }
-                if (array_key_exists('organization_name', $validated)) { $details->organization_name = $validated['organization_name']; $detailUpdated = true; }
-                if (array_key_exists('organization_size', $validated)) { $details->organization_size = $validated['organization_size']; $detailUpdated = true; }
+                if (array_key_exists('organization_name', $validated)) {
+                    if (Schema::hasColumn('user_details', 'organization_name')) {
+                        $details->organization_name = $validated['organization_name']; $detailUpdated = true;
+                    } else {
+                        \Log::warning('[Organization@update] skipping write to user_details.organization_name because column missing', ['org_id' => $org->id]);
+                    }
+                }
+                if (array_key_exists('organization_size', $validated)) {
+                    if (Schema::hasColumn('user_details', 'organization_size')) {
+                        $details->organization_size = $validated['organization_size']; $detailUpdated = true;
+                    } else {
+                        \Log::warning('[Organization@update] skipping write to user_details.organization_size because column missing', ['org_id' => $org->id]);
+                    }
+                }
                 if (array_key_exists('source', $validated)) { $details->find_us = $validated['source']; $detailUpdated = true; }
                 if (array_key_exists('address', $validated)) { $details->address = $validated['address']; $detailUpdated = true; }
                 if (array_key_exists('country_id', $validated)) { $details->country_id = $validated['country_id']; $detailUpdated = true; }

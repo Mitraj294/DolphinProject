@@ -144,6 +144,8 @@ Route::prefix('profile')->group(function () {
         Route::get('/groups', [GroupController::class, 'index']);
         Route::get('/groups/{id}', [GroupController::class, 'show']);
         Route::post('/groups', [GroupController::class, 'store']);
+    // Member roles listing (used by frontend selects)
+    Route::get('/member-roles', [\App\Http\Controllers\MemberRoleController::class, 'index']);
         Route::get('/members', [MemberController::class, 'index']);
         Route::post('/members', [MemberController::class, 'store']);
         Route::prefix('members/{id}')->group(function(){

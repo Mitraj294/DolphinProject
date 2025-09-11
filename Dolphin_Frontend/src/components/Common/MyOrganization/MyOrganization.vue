@@ -97,6 +97,7 @@ export default {
         );
         this.groups = response.data;
       } catch (e) {
+        console.error(e);
         this.groups = [];
       }
     },
@@ -112,6 +113,7 @@ export default {
         );
         this.members = response.data;
       } catch (e) {
+        console.error('Failed to load members:', e);
         this.members = [];
       }
     },

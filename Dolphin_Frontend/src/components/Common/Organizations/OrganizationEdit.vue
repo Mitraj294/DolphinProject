@@ -12,7 +12,7 @@
               <div>
                 <FormLabel>Organization Name</FormLabel>
                 <FormInput
-                  v-model="form.orgName"
+                  v-model="form.organization_name"
                   icon="fas fa-cog"
                   placeholder="Flexi-Finders"
                 />
@@ -20,7 +20,7 @@
               <div>
                 <FormLabel>Organization Size</FormLabel>
                 <FormDropdown
-                  v-model="form.orgSize"
+                  v-model="form.organization_size"
                   icon="fas fa-users"
                   :options="[
                     {
@@ -223,7 +223,7 @@
               <button
                 type="button"
                 class="org-edit-cancel"
-                @click="cancelEdit"
+                @click="$router.back()"
               >
                 Cancel
               </button>
@@ -258,8 +258,8 @@ export default {
   data() {
     return {
       form: {
-        orgName: '',
-        orgSize: '',
+        organization_name: '',
+        organization_size: '',
         source: '',
         address: '',
         zip: '',
@@ -289,7 +289,10 @@ export default {
     this.fetchOrganization();
     // inform navbar of page title when loaded
     this.$nextTick(() => {
-      const name = this.form.orgName || this.$route.params.orgName || '';
+      const name =
+        this.form.organization_name ||
+        this.$route.params.organization_name ||
+        '';
       if (this.$root && this.$root.$emit) {
         this.$root.$emit(
           'page-title-override',
@@ -348,8 +351,9 @@ export default {
 
           this.orgId = found.id; // Save org id for update
           this.form = {
-            orgName: found.organization_name || '',
-            orgSize: normalizedOrgSize || '',
+            organization_name: found.organization_name || '',
+            organization_size:
+              found.organization_size || normalizedOrgSize || '',
             source: sourceVal || '',
             address: found.address || userDetails.address || '',
             zip: found.zip || userDetails.zip || '',
@@ -533,12 +537,14 @@ export default {
           return;
         }
         // Normalize organization_size back to the display string the backend expects
-        let orgSizePayload = this.form.orgSize;
-        if (this.form.orgSize === '1-99 Employees (Small)') {
+        let orgSizePayload = this.form.organization_size;
+        if (this.form.organization_size === '1-99 Employees (Small)') {
           orgSizePayload = '1-99 Employees (Small)';
-        } else if (this.form.orgSize === '100-249 Employees (Medium)') {
+        } else if (
+          this.form.organization_size === '100-249 Employees (Medium)'
+        ) {
           orgSizePayload = '100-249 Employees (Medium)';
-        } else if (this.form.orgSize === '250+ Employees (Large)') {
+        } else if (this.form.organization_size === '250+ Employees (Large)') {
           orgSizePayload = '250+ Employees (Large)';
         } else {
           orgSizePayload = '';
@@ -554,7 +560,7 @@ export default {
 
         // Prepare payload (convert camelCase to snake_case for backend)
         const payload = {
-          organization_name: this.form.orgName,
+          organization_name: this.form.organization_name,
           // send backend-friendly organization_size display string
           organization_size: orgSizePayload,
           source: this.form.source || null,

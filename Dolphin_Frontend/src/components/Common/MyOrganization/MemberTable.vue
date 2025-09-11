@@ -4,10 +4,6 @@
       <div class="table-header-bar"></div>
       <div class="table-container">
         <table class="table">
-          <colgroup>
-            <col style="width: 25%" />
-            <col style="width: 75%" />
-          </colgroup>
           <TableHeader
             :columns="[
               { label: 'Group Name', key: 'name' },
