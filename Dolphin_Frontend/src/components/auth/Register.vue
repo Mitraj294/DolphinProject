@@ -168,10 +168,10 @@
                 ]"
               /><div>
               <FormLabel
-                v-if="errors.org_size"
+                v-if="errors.organization_size"
                 class="error-message1
                 "
-                >{{ errors.org_size[0] }}</FormLabel
+                >{{ errors.organization_size[0] }}</FormLabel
               >  </div>
             </div>
           </div>
@@ -545,8 +545,8 @@ export default {
       if (!errs || typeof errs !== 'object') return {};
       const out = { ...errs };
       // Map backend keys to UI field keys
-      if (errs.org_name) out.organization_name = errs.org_name;
-      if (errs.org_size) out.org_size = errs.org_size;
+      if (errs.organization_name) out.organization_name = errs.organization_name;
+      if (errs.organization_size) out.organization_size = errs.organization_size;
       if (errs.address) out.organization_address = errs.address;
       if (errs.zip) out.organization_zip = errs.zip;
       if (errs.state && !out.organization_state)
@@ -559,7 +559,7 @@ export default {
       const step1 = ['first_name', 'last_name', 'email', 'phone'];
       const step2 = [
         'organization_name',
-        'org_size',
+        'organization_size',
         'find_us',
         'country',
         'state',
@@ -588,7 +588,7 @@ export default {
         targetStep = 2;
         const map = {
           organization_name: 'orgNameInput',
-          org_size: 'orgSizeSelect',
+          organization_size: 'orgSizeSelect',
           find_us: 'findUsSelect',
           country: 'countrySelect',
           state: 'stateSelect',
@@ -645,8 +645,8 @@ export default {
         phone: this.phone,
         password: this.password,
         confirm_password: this.confirm_password,
-        org_name: this.organization_name,
-        org_size: this.organization_size,
+        organization_name: this.organization_name,
+        organization_size: this.organization_size,
         address: this.organization_address,
         city: this.organization_city,
         state: this.organization_state,
@@ -757,17 +757,28 @@ export default {
         this.organization_size = this.normalizeOrgSize(this.organization_size);
     },
     normalizeOrgSize(pref) {
+ 
       if (!pref && pref !== 0) return '';
       const v = String(pref).toLowerCase();
-      // common mappings
-      if (v.includes('250') || v.includes('large')) return 'Large';
-      if (v.includes('100') || v.includes('medium') || v.includes('100-249'))
-        return 'Medium';
-      if (v.includes('1') || v.includes('small') || v.includes('1-99'))
-        return 'Small';
-      // if it already matches one of the exact values, return as-is
-      if (['250+', '100-249', '1-99'].includes(pref)) return pref;
-      return pref;
+      if (v.includes('250') || v.includes('large') || /250\+/.test(v))
+        return '250+ Employees (Large)';
+      if (
+        v.includes('100') ||
+        v.includes('medium') ||
+        /100-249/.test(v) ||
+        /100\s*-\s*249/.test(v)
+      )
+        return '100-249 Employees (Medium)';
+      if (
+        v.includes('1') ||
+        v.includes('small') ||
+        /1-99/.test(v) ||
+        /1\s*-\s*99/.test(v)
+      )
+        return '1-99 Employees (Small)';
+      // If the incoming value already looks like one of the expected display
+      // strings, return it unchanged.
+      return String(pref);
     },
     normalizeFindUs(pref) {
       if (!pref && pref !== 0) return '';

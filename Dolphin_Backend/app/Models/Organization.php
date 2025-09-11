@@ -18,7 +18,7 @@ class Organization extends Model
     'last_contacted',
         'certified_staff',
         'user_id',
-        'org_name',
+        'organization_name',
     ];
 
     public function user()
@@ -62,7 +62,7 @@ class Organization extends Model
             return $value;
         }
         if ($this->user && $this->user->userDetails) {
-            return $this->user->userDetails->org_name ?? ($this->user->email ?? null);
+            return $this->user->userDetails->organization_name ?? ($this->user->email ?? null);
         }
         return null;
     }

@@ -498,7 +498,8 @@ export default {
         const orgObj =
           payload && payload.organization ? payload.organization : payload;
         if (orgObj) {
-          const name = orgObj.org_name || orgObj.name || orgObj.title || '';
+          const name =
+            orgObj.organization_name || orgObj.name || orgObj.title || '';
           if (name && this.isNavbarAlive) {
             this.orgNameCache[orgId] = name;
           }

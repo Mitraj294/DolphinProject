@@ -174,8 +174,8 @@ export default {
           headers,
         });
         this.organizations = res.data.map((org) => ({
-          name: org.org_name,
-          size: org.org_size || '',
+          name: org.organization_name,
+          size: org.organization_size || '',
           main_contact: org.main_contact || '',
           contractStart: org.contract_start || '',
           contractEnd: org.contract_end || '',

@@ -19,6 +19,18 @@ import GetNotifications from '@/components/Common/GetNotifications.vue'
 import UserPermission from '@/components/Common/Superadmin/UserPermission.vue'
 import ForgotPassword from '@/components/auth/ForgotPassword.vue'
 import Profile from '@/components/Common/Profile.vue'
+import AssessmentAnswerPage from '@/components/Common/AssessmentAnswerPage.vue'
+import ResetPassword from '@/components/auth/ResetPassword.vue' 
+import AddUser from '@/components/Common/Superadmin/AddUser.vue'  
+import SubscriptionPlans from '@/components/Common/SubscriptionPlans.vue'
+import LeadDetail from '@/components/Common/Leads_Assessment/LeadDetail.vue'
+import EditLead from '@/components/Common/Leads_Assessment/EditLead.vue'
+import OrganizationDetail from '@/components/Common/Organizations/OrganizationDetail.vue'
+import OrganizationEdit from '@/components/Common/Organizations/OrganizationEdit.vue'
+import ScheduleClassTraining from '@/components/Common/Leads_Assessment/ScheduleClassTraining.vue'
+import BillingDetails from '@/components/Common/BillingDetails.vue'
+import MemberListing from '@/components/Common/MyOrganization/MemberListing.vue'  
+import AssessmentSummary from '@/components/Common/Leads_Assessment/AssessmentSummary.vue'
 import { ROLES, PERMISSIONS, canAccess } from '@/permissions.js'
 import storage from '../services/storage';
 
@@ -39,19 +51,20 @@ const routes = [
   {
     path: '/assessment/answer/:token',
     name: 'AssessmentAnswerPage',
-    component: () => import('@/components/Common/AssessmentAnswerPage.vue'),
+    component: AssessmentAnswerPage,
     meta: { public: true }
   },
   {
     path: '/reset-password',
     name: 'ResetPassword',
-    component: () => import('@/components/auth/ResetPassword.vue'),
+    component: ResetPassword,
     meta: { public: true }
   },
   {
-    path: '/user-permission/add',
+    path: '/user-permission/add', 
     name: 'AddUser',
-    component: () => import('@/components/Common/Superadmin/AddUser.vue'),
+    component:   AddUser,
+  
   },
   {
     path: '/',
@@ -129,12 +142,12 @@ const routes = [
     path: '/forgot-password',
     name: 'ForgotPassword',
     component: ForgotPassword,
-    meta: { public: true } // Mark as public if you use route guards
+    meta: { public: true }
   },
   {
     path: '/subscriptions/plans',
     name: 'SubscriptionPlans',
-    component: () => import('@/components/Common/SubscriptionPlans.vue'),
+    component: SubscriptionPlans,
     meta: {
       requiresAuth: true,
     }
@@ -149,50 +162,51 @@ const routes = [
   {
     path: '/leads/:id',
     name: 'LeadDetail',
-    component: () => import('@/components/Common/Leads_Assessment/LeadDetail.vue'),
+    component: LeadDetail,
     props: true
   },
   {
     path: '/leads/:id/edit',
     name: 'EditLead',
-    component: () => import('@/components/Common/Leads_Assessment/EditLead.vue'),
+    component: EditLead,
     props: true
   },
   {
     path: '/organizations/:id',
     name: 'OrganizationDetail',
-    component: () => import('@/components/Common/Organizations/OrganizationDetail.vue'),
+    component: OrganizationDetail,
     props: true
   },
   // Legacy route kept for compatibility (orgName)
   {
     path: '/organizations/:orgName',
     name: 'OrganizationDetailByName',
-    component: () => import('@/components/Common/Organizations/OrganizationDetail.vue'),
+    component: OrganizationDetail,  
     props: true
   },
   {
     path: '/organizations/billing-details',
     name: 'BillingDetails',
-    component: () => import('@/components/Common/BillingDetails.vue')
+    component: BillingDetails,
+    props: true
   },
   {
     path: '/organizations/:id/edit',
     name: 'OrganizationEdit',
-    component: () => import('@/components/Common/Organizations/OrganizationEdit.vue'),
+    component: OrganizationEdit,
     props: true
   },
   // Legacy edit route by name
   {
     path: '/organizations/:orgName/edit',
     name: 'OrganizationEditByName',
-    component: () => import('@/components/Common/Organizations/OrganizationEdit.vue'),
+    component: OrganizationEdit,
     props: true
   },
   {
     path: '/leads/lead-capture',
     name: 'LeadCapture',
-    component: () => import('@/components/Common/Leads_Assessment/LeadCapture.vue'),
+    component: LeadCapture
   },
   {
     path: '/leads/send-assessment/:id?',
@@ -208,17 +222,18 @@ const routes = [
   {
     path: '/leads/schedule-class-training',
     name: 'ScheduleClassTraining',
-    component: () => import('@/components/Common/Leads_Assessment/ScheduleClassTraining.vue')
+    component: ScheduleClassTraining,
   },
   {
     path: '/my-organization/members',
     name: 'MemberListing',
-    component: () => import('@/components/Common/MyOrganization/MemberListing.vue')
+    component: MemberListing,
+    props: true
   },
   {
     path: '/assessments/:assessmentId/summary',
     name: 'AssessmentSummary',
-    component: () => import('@/components/Common/Leads_Assessment/AssessmentSummary.vue'),
+    component: AssessmentSummary,
     props: true
   }
 ]

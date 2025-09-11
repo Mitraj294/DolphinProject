@@ -213,7 +213,7 @@ class StripeSubscriptionController extends Controller
                     $org = \App\Models\Organization::create($orgData);
                     \Log::info('Organization created', [
                         'organization_id' => $org->id,
-                        'org_name' => $org->org_name,
+                        'organization_name' => $org->organization_name,
                         'user_id' => $org->user_id
                     ]);
                 }

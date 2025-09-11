@@ -92,20 +92,20 @@
               <div>
                 <FormLabel>Organization Name</FormLabel>
                 <FormInput
-                  v-model="form.org_name"
+                  v-model="form.organization_name"
                   icon="fas fa-cog"
                   placeholder="Flexi-Finders"
                   required
                 /><FormLabel
-                  v-if="errors.org_name"
+                  v-if="errors.organization_name"
                   class="error-message"
-                  >{{ errors.org_name[0] }}</FormLabel
+                  >{{ errors.organization_name[0] }}</FormLabel
                 >
               </div>
               <div>
                 <FormLabel>Organization Size</FormLabel>
                 <FormDropdown
-                  v-model="form.org_size"
+                  v-model="form.organization_size"
                   icon="fas fa-users"
                   :options="[
                     { value: null, text: 'Select', disabled: true },
@@ -125,9 +125,9 @@
                   required
                 />
                 <FormLabel
-                  v-if="errors.org_size"
+                  v-if="errors.organization_size"
                   class="error-message"
-                  >{{ errors.org_size[0] }}</FormLabel
+                  >{{ errors.organization_size[0] }}</FormLabel
                 >
               </div>
               <div></div>
@@ -268,8 +268,8 @@ export default {
         email: '',
         phone: '',
         find_us: '',
-        org_name: '',
-        org_size: '',
+        organization_name: '',
+        organization_size: '',
         address: '',
         country_id: null,
         state_id: null,
@@ -351,8 +351,8 @@ export default {
         email: q.email,
         phone: q.phone,
         find_us: q.source || q.find_us,
-        org_name: q.organization || q.org_name,
-        org_size: q.size || q.org_size,
+        organization_name: q.organization || q.organization_name,
+        organization_size: q.size || q.organization_size,
         address: q.address || q.address_line,
         country_id: q.country_id,
         state_id: q.state_id,
@@ -372,8 +372,8 @@ export default {
         email: leadObj.email || '',
         phone: leadObj.phone || '',
         find_us: leadObj.find_us || '',
-        org_name: leadObj.org_name || '',
-        org_size: leadObj.org_size || '',
+        organization_name: leadObj.organization_name || '',
+        organization_size: leadObj.organization_size || '',
         address: leadObj.address || leadObj.address_line || '',
         country_id: leadObj.country_id || null,
         state_id: leadObj.state_id || null,

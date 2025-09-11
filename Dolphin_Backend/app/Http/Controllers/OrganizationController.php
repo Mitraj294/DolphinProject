@@ -39,7 +39,7 @@ class OrganizationController extends Controller
             if (!$mainContact && $user) {
                 $mainContact = trim((($user->first_name ?? '') . ' ' . ($user->last_name ?? '')));
                 if (trim($mainContact) === '') {
-                    $mainContact = $details->org_name ?? $user->email ?? '';
+                    $mainContact = $details->organization_name ?? $user->email ?? '';
                 }
             }
             // derive location names from ids when available so frontend can display them
@@ -66,8 +66,8 @@ class OrganizationController extends Controller
 
             return [
                 'id' => $org->id,
-                'org_name' => $org->org_name,
-                'org_size' => $details->org_size ?? $org->org_size ?? null,
+                'organization_name' => $org->organization_name,
+                'organization_size' => $details->organization_size ?? $org->organization_size ?? null,
                 'find_us' => $details->find_us ?? $org->find_us ?? null,
                 'main_contact' => $mainContact,
                 'contract_start' => $subscription ? $subscription->subscription_start : $org->contract_start,
@@ -105,7 +105,7 @@ class OrganizationController extends Controller
         if (!$mainContact && $user) {
             $mainContact = trim((($user->first_name ?? '') . ' ' . ($user->last_name ?? '')));
             if (trim($mainContact) === '') {
-                $mainContact = $details->org_name ?? $user->email ?? '';
+                $mainContact = $details->organization_name ?? $user->email ?? '';
             }
         }
 
@@ -132,8 +132,8 @@ class OrganizationController extends Controller
 
         return response()->json([
             'id' => $org->id,
-            'org_name' => $org->org_name,
-            'org_size' => $details->org_size ?? $org->org_size ?? null,
+            'organization_name' => $org->organization_name,
+            'organization_size' => $details->organization_size ?? $org->organization_size ?? null,
             'find_us' => $details->find_us ?? $org->find_us ?? null,
             'main_contact' => $mainContact,
             'contract_start' => $subscription ? $subscription->subscription_start : $org->contract_start,
@@ -168,26 +168,26 @@ class OrganizationController extends Controller
             'last_contacted' => 'nullable|date',
             'certified_staff' => 'nullable|integer',
             'user_id' => 'nullable|integer|exists:users,id',
-            'org_name' => 'sometimes|nullable|string|max:255',
+            'organization_name' => 'sometimes|nullable|string|max:255',
         ]);
         // Create organization record
         $orgFields = array_filter($validated, function ($k) {
-            return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'user_id', 'org_name']);
+            return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'user_id', 'organization_name']);
         }, ARRAY_FILTER_USE_KEY);
         $org = Organization::create($orgFields);
 
-        // If org_name was provided and a user is attached, also populate user_details.org_name
-        if (!empty($org->user_id) && !empty($orgFields['org_name'])) {
+        // If organization_name was provided and a user is attached, also populate user_details.organization_name
+        if (!empty($org->user_id) && !empty($orgFields['organization_name'])) {
             try {
                 $user = User::find($org->user_id);
                 if ($user) {
                     $details = $user->userDetails ?: new \App\Models\UserDetail();
                     $details->user_id = $user->id;
-                    $details->org_name = $orgFields['org_name'];
+                    $details->organization_name = $orgFields['organization_name'];
                     $details->save();
                 }
             } catch (\Exception $e) {
-                \Log::warning('[Organization@store] failed to backfill user_details org_name', ['org_id' => $org->id, 'error' => $e->getMessage()]);
+                \Log::warning('[Organization@store] failed to backfill user_details organization_name', ['org_id' => $org->id, 'error' => $e->getMessage()]);
             }
         }
         return response()->json($org, 201);
@@ -209,8 +209,8 @@ class OrganizationController extends Controller
             'last_name' => 'sometimes|nullable|string|max:255',
             'admin_email' => 'sometimes|nullable|email|max:255',
             'admin_phone' =>  'sometimes|regex:/^[6-9]\d{9}$/',
-            'org_name' => 'sometimes|nullable|string|max:255',
-            'org_size' => 'sometimes|nullable|string|max:255',
+            'organization_name' => 'sometimes|nullable|string|max:255',
+            'organization_size' => 'sometimes|nullable|string|max:255',
             'source' => 'sometimes|nullable|string|max:255',
             'address' => 'sometimes|nullable|string|max:1024',
             'city_id' => 'sometimes|nullable|integer|exists:cities,id',
@@ -221,9 +221,9 @@ class OrganizationController extends Controller
 
         DB::beginTransaction();
         try {
-            // Update allowed organization columns (include org_name)
+            // Update allowed organization columns (include organization_name)
             $orgFields = array_filter($validated, function ($k) {
-                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'org_name']);
+                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'organization_name']);
             }, ARRAY_FILTER_USE_KEY);
             if (!empty($orgFields)) {
                 $org->update($orgFields);
@@ -261,8 +261,8 @@ class OrganizationController extends Controller
                 }
                 $detailUpdated = false;
                 if (array_key_exists('admin_phone', $validated)) { $details->phone = $validated['admin_phone']; $detailUpdated = true; }
-                if (array_key_exists('org_name', $validated)) { $details->org_name = $validated['org_name']; $detailUpdated = true; }
-                if (array_key_exists('org_size', $validated)) { $details->org_size = $validated['org_size']; $detailUpdated = true; }
+                if (array_key_exists('organization_name', $validated)) { $details->organization_name = $validated['organization_name']; $detailUpdated = true; }
+                if (array_key_exists('organization_size', $validated)) { $details->organization_size = $validated['organization_size']; $detailUpdated = true; }
                 if (array_key_exists('source', $validated)) { $details->find_us = $validated['source']; $detailUpdated = true; }
                 if (array_key_exists('address', $validated)) { $details->address = $validated['address']; $detailUpdated = true; }
                 if (array_key_exists('country_id', $validated)) { $details->country_id = $validated['country_id']; $detailUpdated = true; }
@@ -270,15 +270,15 @@ class OrganizationController extends Controller
                 if (array_key_exists('city_id', $validated)) { $details->city_id = $validated['city_id']; $detailUpdated = true; }
                 if (array_key_exists('zip', $validated)) { $details->zip = $validated['zip']; $detailUpdated = true; }
                 if ($detailUpdated) { $details->save(); }
-                // Keep organizations.org_name and user_details.org_name in sync
+                // Keep organizations.organization_name and user_details.organization_name in sync
                 try {
-                    if (array_key_exists('org_name', $validated) && isset($validated['org_name'])) {
-                        // ensure organization record mirrors the supplied org_name
-                        $org->org_name = $validated['org_name'];
+                    if (array_key_exists('organization_name', $validated) && isset($validated['organization_name'])) {
+                        // ensure organization record mirrors the supplied organization_name
+                        $org->organization_name = $validated['organization_name'];
                         $org->save();
                     }
                 } catch (\Exception $e) {
-                    \Log::warning('[Organization@update] failed to sync org_name to organization', ['org_id' => $org->id, 'error' => $e->getMessage()]);
+                    \Log::warning('[Organization@update] failed to sync organization_name to organization', ['org_id' => $org->id, 'error' => $e->getMessage()]);
                 }
             }
 

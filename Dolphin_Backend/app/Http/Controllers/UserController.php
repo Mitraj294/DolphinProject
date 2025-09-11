@@ -138,20 +138,20 @@ class UserController extends Controller
             if (!empty($userUpdates)) {
                 $user->update($userUpdates);
             }
-            // Keep org_name in user_details and organizations as before
+            // Keep organization_name in user_details and organizations as before
             $details = $user->userDetails;
             if ($details) {
                 $detailsUpdates = [];
-                if ($request->has('org_name')) {
-                    $detailsUpdates['org_name'] = $request->input('org_name');
+                if ($request->has('organization_name')) {
+                    $detailsUpdates['organization_name'] = $request->input('organization_name');
                 }
                 if (!empty($detailsUpdates)) {
                     $details->update($detailsUpdates);
                 }
-                if (isset($detailsUpdates['org_name'])) {
+                if (isset($detailsUpdates['organization_name'])) {
                     \App\Models\Organization::updateOrCreate(
                         ['user_id' => $user->id],
-                        ['org_name' => $detailsUpdates['org_name']]
+                        ['organization_name' => $detailsUpdates['organization_name']]
                     );
                 }
             }

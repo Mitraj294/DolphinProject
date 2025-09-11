@@ -309,7 +309,7 @@ export default {
 
       (announcement.organizations || []).forEach((org) => {
         const userId = org.user_id ?? org.user?.id ?? null;
-        const orgName = org.name ?? org.org_name ?? '';
+        const orgName = org.name ?? org.organization_name ?? '';
         const email = org.contact_email ?? org.admin_email ?? null;
         const first = org.user_first_name ?? org.user?.first_name ?? '';
         const last = org.user_last_name ?? org.user?.last_name ?? '';

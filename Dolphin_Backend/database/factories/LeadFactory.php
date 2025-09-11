@@ -31,8 +31,8 @@ class LeadFactory extends Factory
             'phone' => fake()->phoneNumber(),
             'password' => Hash::make('password'), // You can use a default password or generate a random one
             'find_us' => fake()->word(),
-            'org_name' => fake()->company(),
-            'org_size' => fake()->randomElement(['1-50 Employees (Small)', '51-200 Employees (Medium)', '201-500 Employees (Large)', '500+ Employees (Enterprise)']),
+            'organization_name' => fake()->company(),
+            'organization_size' => fake()->randomElement(['1-50 Employees (Small)', '51-200 Employees (Medium)', '201-500 Employees (Large)', '500+ Employees (Enterprise)']),
             'address' => fake()->address(),
             'country' => fake()->country(),
             'state' => fake()->state(),

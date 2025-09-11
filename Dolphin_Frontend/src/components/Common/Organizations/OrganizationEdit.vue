@@ -323,7 +323,8 @@ export default {
           const lName = user.last_name || found.last_name || '';
 
           // Normalize org size to dropdown values ('Large','Medium','Small')
-          const rawOrgSize = found.org_size || userDetails.org_size || '';
+          const rawOrgSize =
+            found.organization_size || userDetails.organization_size || '';
           let normalizedOrgSize = '';
           if (/large/i.test(rawOrgSize)) {
             normalizedOrgSize = 'Large';
@@ -347,7 +348,7 @@ export default {
 
           this.orgId = found.id; // Save org id for update
           this.form = {
-            orgName: found.org_name || '',
+            orgName: found.organization_name || '',
             orgSize: normalizedOrgSize || '',
             source: sourceVal || '',
             address: found.address || userDetails.address || '',
@@ -531,7 +532,7 @@ export default {
           }
           return;
         }
-        // Normalize org_size back to the display string the backend expects
+        // Normalize organization_size back to the display string the backend expects
         let orgSizePayload = this.form.orgSize;
         if (this.form.orgSize === '1-99 Employees (Small)') {
           orgSizePayload = '1-99 Employees (Small)';
@@ -553,9 +554,9 @@ export default {
 
         // Prepare payload (convert camelCase to snake_case for backend)
         const payload = {
-          org_name: this.form.orgName,
-          // send backend-friendly org_size display string
-          org_size: orgSizePayload,
+          organization_name: this.form.orgName,
+          // send backend-friendly organization_size display string
+          organization_size: orgSizePayload,
           source: this.form.source || null,
           address: this.form.address || null,
           city_id: this.form.city_id || null,

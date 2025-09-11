@@ -117,7 +117,7 @@ class NotificationController extends Controller {
                 'updated_at' => $announcement->updated_at,
                 'organizations' => $announcement->organizations->map(fn($org) => [
                     'id' => $org->id,
-                    'name' => $org->org_name,
+                    'name' => $org->organization_name,
                     'contact_email' => $org->admin_email,
                     'user_id' => $org->user_id,
                     'user_first_name' => $org->user->first_name ?? null,
@@ -128,7 +128,7 @@ class NotificationController extends Controller {
                     'id' => $g->id,
                     'name' => $g->name,
                     'organization_id' => $g->organization_id,
-                    'organization_name' => $g->organization->org_name ?? null,
+                    'organization_name' => $g->organization->organization_name ?? null,
                     'org_contact_email' => $g->organization->admin_email ?? null,
                 ]),
                 'admins' => $announcement->admins->map(fn($a) => [

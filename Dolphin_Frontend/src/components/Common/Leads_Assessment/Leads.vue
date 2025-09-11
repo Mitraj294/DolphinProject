@@ -316,8 +316,8 @@ export default {
           contact: `${lead.first_name} ${lead.last_name}`,
           email: lead.email,
           phone: lead.phone,
-          organization: lead.org_name,
-          size: lead.org_size,
+          organization: lead.organization_name,
+          size: lead.organization_size,
           source: lead.find_us,
           status: lead.status || 'Lead Stage',
           // If backend provides notes field, show "View" else "Add"

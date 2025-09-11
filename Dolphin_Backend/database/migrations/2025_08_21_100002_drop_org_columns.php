@@ -19,8 +19,8 @@ return new class extends Migration
     public function up()
     {
         Schema::table('organizations', function (Blueprint $table) {
-            if (Schema::hasColumn('organizations', 'org_name')) {
-                $table->dropColumn(['org_name']);
+            if (Schema::hasColumn('organizations', 'organization_name')) {
+                $table->dropColumn(['organization_name']);
             }
             if (Schema::hasColumn('organizations', 'size')) {
                 $table->dropColumn(['size']);
@@ -94,8 +94,8 @@ return new class extends Migration
     public function down()
     {
         Schema::table('organizations', function (Blueprint $table) {
-            if (!Schema::hasColumn('organizations', 'org_name')) {
-                $table->string('org_name')->nullable();
+            if (!Schema::hasColumn('organizations', 'organization_name')) {
+                $table->string('organization_name')->nullable();
             }
             if (!Schema::hasColumn('organizations', 'size')) {
                 $table->string('size')->nullable();

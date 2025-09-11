@@ -14,26 +14,26 @@ return new class extends Migration
     public function up()
     {
         Schema::table('organizations', function (Blueprint $table) {
-            if (!Schema::hasColumn('organizations', 'org_name')) {
-                $table->string('org_name')->nullable()->after('user_id');
+            if (!Schema::hasColumn('organizations', 'organization_name')) {
+                $table->string('organization_name')->nullable()->after('user_id');
             }
         });
 
-        // Backfill org_name from related user.user_details if available
+        // Backfill organization_name from related user.user_details if available
         try {
             $rows = \DB::table('organizations')
                 ->leftJoin('users', 'users.id', '=', 'organizations.user_id')
                 ->leftJoin('user_details', 'user_details.user_id', '=', 'users.id')
-                ->select('organizations.id as org_id', 'user_details.org_name')
-                ->whereNotNull('user_details.org_name')
+                ->select('organizations.id as org_id', 'user_details.organization_name')
+                ->whereNotNull('user_details.organization_name')
                 ->get();
 
             foreach ($rows as $r) {
-                \DB::table('organizations')->where('id', $r->org_id)->update(['org_name' => $r->org_name]);
+                \DB::table('organizations')->where('id', $r->org_id)->update(['organization_name' => $r->organization_name]);
             }
         } catch (\Exception $e) {
             // don't fail migration for backfill issues; log and continue
-            \Log::warning('[migration] backfill org_name failed', ['error' => $e->getMessage()]);
+            \Log::warning('[migration] backfill organization_name failed', ['error' => $e->getMessage()]);
         }
     }
 
@@ -45,8 +45,8 @@ return new class extends Migration
     public function down()
     {
         Schema::table('organizations', function (Blueprint $table) {
-            if (Schema::hasColumn('organizations', 'org_name')) {
-                $table->dropColumn('org_name');
+            if (Schema::hasColumn('organizations', 'organization_name')) {
+                $table->dropColumn('organization_name');
             }
         });
     }

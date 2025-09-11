@@ -17,8 +17,8 @@ return new class extends Migration {
             $table->string('email');
             $table->string('phone')->nullable();
             $table->string('find_us')->nullable();
-            $table->string('org_name')->nullable();
-            $table->string('org_size')->nullable();
+            $table->string('organization_name')->nullable();
+            $table->string('organization_size')->nullable();
             $table->string('address')->nullable();
             $table->string('country')->nullable();
             $table->string('state')->nullable();

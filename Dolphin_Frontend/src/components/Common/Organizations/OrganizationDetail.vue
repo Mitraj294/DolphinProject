@@ -1,6 +1,6 @@
 <template>
   <MainLayout
-    :navbarTitle="orgDetail.org_name || 'Organization Details'"
+    :navbarTitle="orgDetail.organization_name || 'Organization Details'"
     sidebarActive="organization"
   >
     <div class="page">
@@ -29,11 +29,11 @@
                 <div class="org-detail-list-card org-detail-list-card--box">
                   <div class="org-detail-list-row">
                     <span>Organization Name</span
-                    ><b>{{ orgDetail.org_name }}</b>
+                    ><b>{{ orgDetail.organization_name }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Organization Size</span>
-                    <b>{{ orgDetail.org_size }}</b>
+                    <b>{{ orgDetail.organization_size }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Contract Start</span
@@ -273,7 +273,7 @@ export default {
           }
         }
 
-        // Fallback: if no id param, or show returned nothing, try index and match by org_name param
+        // Fallback: if no id param, or show returned nothing, try index and match by organization_name param
         const orgName = this.$route.params.orgName;
         let res = null;
         try {
@@ -282,7 +282,7 @@ export default {
           });
           if (res.data && Array.isArray(res.data)) {
             const found = orgName
-              ? res.data.find((o) => o.org_name === orgName)
+              ? res.data.find((o) => o.organization_name === orgName)
               : res.data[0];
             if (found) {
               this.orgDetail = found;

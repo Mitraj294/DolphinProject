@@ -127,9 +127,9 @@
                   required
                 />
                 <FormLabel
-                  v-if="errors.org_size"
+                  v-if="errors.organization_size"
                   class="error-message"
-                  >{{ errors.org_size[0] }}</FormLabel
+                  >{{ errors.organization_size[0] }}</FormLabel
                 >
               </div>
               <div></div>
@@ -447,8 +447,8 @@ export default {
             phone: this.form.phone,
             password: this.form.password,
             find_us: this.form.findUs,
-            org_name: this.form.orgName,
-            org_size: this.form.orgSize,
+            organization_name: this.form.orgName,
+            organization_size: this.form.orgSize,
             address: this.form.address,
             country_id: this.form.country_id,
             state_id: this.form.state_id,

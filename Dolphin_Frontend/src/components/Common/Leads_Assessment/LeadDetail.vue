@@ -46,14 +46,16 @@
                       <span>Organization Name</span
                       ><b>{{
                         orgData.name ||
-                        orgData.org_name ||
+                        orgData.organization_name ||
                         leadData.organization
                       }}</b>
                     </div>
                     <div class="lead-detail-list-row">
                       <span>Organization Size</span>
                       <b>{{
-                        orgData.size || orgData.org_size || leadData.size
+                        orgData.size ||
+                        orgData.organization_size ||
+                        leadData.size
                       }}</b>
                     </div>
                     <div class="lead-detail-list-row">
@@ -394,8 +396,8 @@ export default {
             phone: leadObj.phone || '',
             source: leadObj.find_us || '',
             status: leadObj.status || '',
-            organization: leadObj.org_name || '',
-            size: leadObj.org_size || '',
+            organization: leadObj.organization_name || '',
+            size: leadObj.organization_size || '',
             address: leadObj.address !== undefined ? leadObj.address : '',
             city: leadObj.city !== undefined ? leadObj.city : '',
             state: leadObj.state !== undefined ? leadObj.state : '',
