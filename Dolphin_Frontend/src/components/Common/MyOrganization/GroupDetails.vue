@@ -72,14 +72,27 @@
           ">
             <div class="recipient-table-wrap">
               <table class="recipient-table compact">
-                <thead>
-                  <tr>
-                    <th style="width: 120px">Name</th>
-                    <th style="width: 120px">Email</th>
-                    <th style="width: 90px">Role</th>
-                    <th style="width: 90px">Actions</th>
-                  </tr>
-                </thead>
+           
+                 <TableHeader
+                      :columns="[
+                        {
+                          label: 'Name',
+                          key: 'name',
+                        },
+                        {
+                          label: 'Email',
+                          key: 'email',
+                        },
+                        {
+                          label: 'Role',
+                          key: 'role',
+                        },
+                        {
+                          label: 'Actions',
+                          key: 'actions',
+                        },
+                      ]"
+                    />
                 <tbody>
                   <tr
                     v-for="(m, idx) in members"
@@ -137,10 +150,10 @@
 <script>
 import axios from 'axios';
 import storage from '@/services/storage';
-
+import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 export default {
   name: 'GroupDetails',
-  components: {},
+  components: { TableHeader },
   props: {
     visible: { type: Boolean, required: true },
     groupId: { type: [Number, String], required: false, default: null },

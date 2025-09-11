@@ -28,7 +28,14 @@
                     sortable: true,
                   },
                   {
-                    label: 'Date & Time',
+                    label: 'Scheduled Date & Time',
+                    key: 'scheduled_at',
+                    width: '225px',
+                    sortable: true,
+                  },
+
+                  {
+                    label: 'Sent Date & Time',
                     key: 'sent_at',
                     width: '225px',
                     sortable: true,
@@ -60,7 +67,10 @@
                       {{ item.body }}
                     </span>
                   </td>
-                  <td>{{ formatLocalDateTime(item.sent_at) }}</td>
+                  <td>{{ formatLocalDateTime(item.scheduled_at) }}</td>
+                  <td>
+                    {{ item.sent_at ? formatLocalDateTime(item.sent_at) : '-' }}
+                  </td>
                   <td>
                     <button
                       class="btn-view"

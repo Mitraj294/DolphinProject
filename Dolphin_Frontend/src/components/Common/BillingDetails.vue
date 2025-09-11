@@ -77,19 +77,11 @@
           <div class="billing-title">Billing History</div>
           <div class="table-container">
             <table class="table">
-              <TableHeader
-                :columns="[
-                  {
-                    label: 'Payment Method',
-                    key: 'paymentMethodType , paymentMethod',
-                  },
-                  { label: 'Payment Date', key: 'paymentDate' },
-                  { label: 'Subscription End', key: 'subscriptionEnd' },
-                  { label: 'Amount', key: 'amount' },
-                  { label: 'Download', key: 'invoice' },
-                  { label: 'Description', key: 'description' },
-                ]"
-              />
+              :columns="[ { label: 'Payment Method', key: 'paymentMethodType ,
+              paymentMethod', }, { label: 'Payment Date', key: 'paymentDate' },
+              { label: 'Subscription End', key: 'subscriptionEnd' }, { label:
+              'Amount', key: 'amount' }, { label: 'Download', key: 'invoice' },
+              { label: 'Description', key: 'description' }, ]" />
               <tbody>
                 <tr
                   v-for="(item, idx) in billingHistory"

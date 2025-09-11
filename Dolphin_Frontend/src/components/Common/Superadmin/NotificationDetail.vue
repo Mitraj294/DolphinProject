@@ -79,114 +79,147 @@
             >
           </div>
         </div>
-        <div class="modal-titleTABLE">Organization Notification Details</div>
-        <div class="detail-row">
+        <div class="NotificationDetailBodyForOrganizations">
           <div
-            class="detail-table"
-            style="
-              width: 100% !important;
-              max-width: 800px !important;
-              margin: 0 !important;
-            "
+            v-if="allRecipients.length"
+            class="NotificationDetailBodyForOrganizations"
           >
-            <div
-              class="recipient-table-wrap"
-              style="
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                width: 100%;
-              "
-            >
-              <table
-                class="recipient-table compact"
-                style="width: 100%; min-width: 500px"
+            <div class="modal-titleTABLE">
+              Organization Notification Details
+            </div>
+            <div class="detail-row">
+              <div
+                class="detail-table"
+                style="
+                  width: 100% !important;
+                  max-width: 800px !important;
+                  margin: 0 !important;
+                "
               >
-                <thead>
-                  <tr>
-                    <th style="width: 20%">Organization Name</th>
-                    <th style="width: 25%">User Name</th>
-
-                    <th style="width: 30%">Emails</th>
-
-                    <th style="width: 25%">Read At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!allRecipients.length">
-                    <td
-                      colspan="4"
-                      style="text-align: center; padding: 20px"
-                    >
-                      No recipients found.
-                    </td>
-                  </tr>
-                  <tr
-                    v-for="r in allRecipients"
-                    :key="r.id"
+                <div
+                  class="recipient-table-wrap"
+                  style="
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    width: 100%;
+                  "
+                >
+                  <table
+                    class="recipient-table compact"
+                    style="width: 100%; min-width: 500px"
                   >
-                    <td>{{ r.organization_name }}</td>
-                    <td>{{ r.name }}</td>
-                    <td>{{ r.email }}</td>
+                    <TableHeader
+                      :columns="[
+                        {
+                          label: 'Organization Name',
+                          key: 'organization_name',
+                        },
+                        {
+                          label: 'User Name',
+                          key: 'name',
+                        },
 
-                    <td>
-                      <span>{{
-                        r.read_at ? formatDateTime(r.read_at) : ' - '
-                      }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                        {
+                          label: 'Emails',
+                          key: 'email',
+                        },
+                        { label: 'Read At', key: 'read_at' },
+                      ]"
+                    />
+                    <tbody>
+                      <tr v-if="!allRecipients.length">
+                        <td
+                          colspan="4"
+                          style="text-align: center; padding: 20px"
+                        >
+                          No recipients found.
+                        </td>
+                      </tr>
+                      <tr
+                        v-for="r in allRecipients"
+                        :key="r.id"
+                      >
+                        <td>{{ r.organization_name }}</td>
+                        <td>{{ r.name }}</td>
+                        <td>{{ r.email }}</td>
+
+                        <td>
+                          <span>{{
+                            r.read_at ? formatDateTime(r.read_at) : ' - '
+                          }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="modal-titleTABLE">Group Notification Details</div>
-        <div class="detail-row">
+        <div class="NotificationDetailBodyForGroups">
           <div
-            class="detail-table"
-            style="
-              width: 100% !important;
-              max-width: 800px !important;
-              margin: 0 !important;
-            "
+            v-if="groupRows.length"
+            class="NotificationDetailBodyForGroups"
           >
-            <div
-              class="recipient-table-wrap"
-              style="
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                width: 100%;
-              "
-            >
-              <table
-                class="recipient-table compact"
-                style="width: 100%; min-width: 500px"
+            <div class="modal-titleTABLE">Group Notification Details</div>
+            <div class="detail-row">
+              <div
+                class="detail-table"
+                style="
+                  width: 100% !important;
+                  max-width: 800px !important;
+                  margin: 0 !important;
+                "
               >
-                <thead>
-                  <tr>
-                    <th style="width: 35%">Group</th>
-                    <th style="width: 35%">Organization</th>
-                    <th style="width: 30%">Org Contact Email</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-if="!groupRows.length">
-                    <td
-                      colspan="3"
-                      style="text-align: center; padding: 20px"
-                    >
-                      No groups targeted.
-                    </td>
-                  </tr>
-                  <tr
-                    v-for="g in groupRows"
-                    :key="g.id"
+                <div
+                  class="recipient-table-wrap"
+                  style="
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    width: 100%;
+                  "
+                >
+                  <table
+                    class="recipient-table compact"
+                    style="width: 100%; min-width: 500px"
                   >
-                    <td>{{ g.name }}</td>
-                    <td>{{ g.organization_name }}</td>
-                    <td>{{ g.org_contact_email }}</td>
-                  </tr>
-                </tbody>
-              </table>
+                    <TableHeader
+                      :columns="[
+                        {
+                          label: 'Group Name',
+                          key: 'name',
+                        },
+                        {
+                          label: 'Organization Name',
+                          key: 'organization_name',
+                        },
+                        {
+                          label: 'Org Contact Email',
+                          key: 'org_contact_email',
+                        },
+                      ]"
+                    />
+                    <tbody>
+                      <tr v-if="!groupRows.length">
+                        <td
+                          colspan="3"
+                          style="text-align: center; padding: 20px"
+                        >
+                          No groups targeted.
+                        </td>
+                      </tr>
+                      <tr
+                        v-for="g in groupRows"
+                        :key="g.id"
+                      >
+                        <td>{{ g.name }}</td>
+                        <td>{{ g.organization_name }}</td>
+                        <td>{{ g.org_contact_email }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -196,8 +229,11 @@
 </template>
 
 <script>
+import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
+
 export default {
   name: 'NotificationDetail',
+  components: { TableHeader },
   props: {
     visible: { type: Boolean, default: false },
     announcement: { type: Object, default: null },
@@ -248,32 +284,53 @@ export default {
       return map;
     },
     allRecipients() {
+      const orgs = this.organizationRecipients || [];
+      const admins = this.adminRecipients || [];
+
+      const combined = [...orgs];
+      const ids = new Set(orgs.map((o) => Number(o.id)));
+      admins.forEach((a) => {
+        const aid = Number(a.id);
+        if (!ids.has(aid)) combined.push(a);
+      });
+
+      combined.forEach((r) => {
+        const rid = Number(r.id);
+        const notification = this.notificationsMap.get(rid);
+        r.read_at = notification ? notification.read_at : null;
+      });
+
+      return combined;
+    },
+    organizationRecipients() {
       const recipients = new Map();
       const announcement = this.announcementEffective;
       if (!announcement) return [];
 
-      // from organizations targeted
       (announcement.organizations || []).forEach((org) => {
-        const user = org.user;
-        // derive organization display name: prefer org.name, then user_details.org_name
-        const orgName =
-          (org &&
-            (org.name ||
-              (org.user &&
-                org.user.user_details &&
-                org.user.user_details.org_name))) ||
-          '';
-        if (user && user.id && !recipients.has(user.id)) {
-          recipients.set(user.id, {
-            id: user.id,
+        const userId = org.user_id ?? org.user?.id ?? null;
+        const orgName = org.name ?? org.org_name ?? '';
+        const email = org.contact_email ?? org.admin_email ?? null;
+        const first = org.user_first_name ?? org.user?.first_name ?? '';
+        const last = org.user_last_name ?? org.user?.last_name ?? '';
+
+        if (userId && !recipients.has(Number(userId))) {
+          recipients.set(Number(userId), {
+            id: Number(userId),
             organization_name: orgName,
-            name: `${user.first_name || ''} ${user.last_name || ''}`.trim(),
-            email: user.email,
+            name: `${first || ''} ${last || ''}`.trim(),
+            email: email,
           });
         }
       });
 
-      // from admins targeted
+      return Array.from(recipients.values());
+    },
+    adminRecipients() {
+      const recipients = new Map();
+      const announcement = this.announcementEffective;
+      if (!announcement) return [];
+
       (announcement.admins || []).forEach((admin) => {
         if (admin && admin.id && !recipients.has(admin.id)) {
           recipients.set(admin.id, {
@@ -286,30 +343,19 @@ export default {
         }
       });
 
-      const recipientList = Array.from(recipients.values());
-
-      recipientList.forEach((r) => {
-        const notification = this.notificationsMap.get(r.id);
-        r.read_at = notification ? notification.read_at : null;
-      });
-
-      return recipientList;
+      return Array.from(recipients.values());
     },
     groupRows() {
-      // Prefer a flattened `groups` prop from the API if provided. That
-      // payload already contains `organization_name` and `org_contact_email`.
       if (Array.isArray(this.groups) && this.groups.length) {
         return this.groups.map((g) => ({
           id: g.id,
           name: g.name || `Group ${g.id}`,
           organization_id: g.organization_id || null,
-          organization_name: g.organization_name || g.org_name || '',
-          org_contact_email:
-            g.org_contact_email || g.org_contact || g.org_email || null,
+          organization_name: g.organization_name || '',
+          org_contact_email: g.org_contact_email || null,
         }));
       }
 
-      // Fallback: derive from announcement payload and local organizations
       const announcement = this.announcementEffective || {};
       const ag = announcement.groups || [];
       const orgs = announcement.organizations || this.organizations || [];
@@ -317,24 +363,12 @@ export default {
       orgs.forEach((o) => orgMap.set(Number(o.id), o));
 
       return ag.map((g) => {
-        const orgId = Number(g.organization_id || g.org_id || 0);
-        const org = orgMap.get(orgId) || null;
-        const orgName = org
-          ? org.name ||
-            (org.user &&
-              org.user.user_details &&
-              org.user.user_details.org_name) ||
-            ''
-          : this.organizations.find((x) => x.id === orgId)?.name || '';
-        const orgEmail = org
-          ? (org.user && org.user.email) || org.email || null
-          : null;
         return {
           id: g.id,
           name: g.name || `Group ${g.id}`,
-          organization_id: orgId,
-          organization_name: orgName,
-          org_contact_email: orgEmail,
+          organization_id: g.organization_id,
+          organization_name: g.organization_name,
+          org_contact_email: g.org_contact_email,
         };
       });
     },

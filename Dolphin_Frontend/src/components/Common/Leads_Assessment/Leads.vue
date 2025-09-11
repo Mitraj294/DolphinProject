@@ -50,7 +50,7 @@
                       class: 'text-center',
                       position: 'relative',
                     },
-                    { label: 'Source', key: 'source', width: '140px' },
+                    { label: 'Source', key: 'source', width: '90px' },
                     {
                       label: 'Status',
                       key: 'status',

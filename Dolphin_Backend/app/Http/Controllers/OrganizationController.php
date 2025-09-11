@@ -168,8 +168,28 @@ class OrganizationController extends Controller
             'last_contacted' => 'nullable|date',
             'certified_staff' => 'nullable|integer',
             'user_id' => 'nullable|integer|exists:users,id',
+            'org_name' => 'sometimes|nullable|string|max:255',
         ]);
-        $org = Organization::create($validated);
+        // Create organization record
+        $orgFields = array_filter($validated, function ($k) {
+            return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'user_id', 'org_name']);
+        }, ARRAY_FILTER_USE_KEY);
+        $org = Organization::create($orgFields);
+
+        // If org_name was provided and a user is attached, also populate user_details.org_name
+        if (!empty($org->user_id) && !empty($orgFields['org_name'])) {
+            try {
+                $user = User::find($org->user_id);
+                if ($user) {
+                    $details = $user->userDetails ?: new \App\Models\UserDetail();
+                    $details->user_id = $user->id;
+                    $details->org_name = $orgFields['org_name'];
+                    $details->save();
+                }
+            } catch (\Exception $e) {
+                \Log::warning('[Organization@store] failed to backfill user_details org_name', ['org_id' => $org->id, 'error' => $e->getMessage()]);
+            }
+        }
         return response()->json($org, 201);
     }
 
@@ -177,7 +197,7 @@ class OrganizationController extends Controller
     {
         $org = Organization::with(['user', 'user.userDetails'])->findOrFail($id);
 
-        $validated = $request->validate([
+    $validated = $request->validate([
             // organization table fields
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
@@ -201,10 +221,10 @@ class OrganizationController extends Controller
 
         DB::beginTransaction();
         try {
-            // Update allowed organization columns
-            $orgFields = array_filter($validated, function ($v, $k) {
-                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff']);
-            }, ARRAY_FILTER_USE_BOTH);
+            // Update allowed organization columns (include org_name)
+            $orgFields = array_filter($validated, function ($k) {
+                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'org_name']);
+            }, ARRAY_FILTER_USE_KEY);
             if (!empty($orgFields)) {
                 $org->update($orgFields);
             }
@@ -232,7 +252,7 @@ class OrganizationController extends Controller
                     $user->last_name = $validated['last_name'];
                     $userUpdated = true;
                 }
-                if ($userUpdated) $user->save();
+                if ($userUpdated) { $user->save(); }
 
                 $details = $user->userDetails;
                 if (!$details) {
@@ -249,7 +269,17 @@ class OrganizationController extends Controller
                 if (array_key_exists('state_id', $validated)) { $details->state_id = $validated['state_id']; $detailUpdated = true; }
                 if (array_key_exists('city_id', $validated)) { $details->city_id = $validated['city_id']; $detailUpdated = true; }
                 if (array_key_exists('zip', $validated)) { $details->zip = $validated['zip']; $detailUpdated = true; }
-                if ($detailUpdated) $details->save();
+                if ($detailUpdated) { $details->save(); }
+                // Keep organizations.org_name and user_details.org_name in sync
+                try {
+                    if (array_key_exists('org_name', $validated) && isset($validated['org_name'])) {
+                        // ensure organization record mirrors the supplied org_name
+                        $org->org_name = $validated['org_name'];
+                        $org->save();
+                    }
+                } catch (\Exception $e) {
+                    \Log::warning('[Organization@update] failed to sync org_name to organization', ['org_id' => $org->id, 'error' => $e->getMessage()]);
+                }
             }
 
             DB::commit();

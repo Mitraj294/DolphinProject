@@ -18,6 +18,7 @@ class Organization extends Model
     'last_contacted',
         'certified_staff',
         'user_id',
+        'org_name',
     ];
 
     public function user()
@@ -68,13 +69,17 @@ class Organization extends Model
 
     public function getAddress1Attribute($value)
     {
-        if (!empty($value)) return $value;
+    if (!empty($value)) {
+            return $value;
+        }
         return $this->user->userDetails->address ?? null;
     }
 
     public function getZipAttribute($value)
     {
-        if (!empty($value)) return $value;
+        if (!empty($value)) {
+            return $value;
+        }
         return $this->user->userDetails->zip ?? null;
     }
 }

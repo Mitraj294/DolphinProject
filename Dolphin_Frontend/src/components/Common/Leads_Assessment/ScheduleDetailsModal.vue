@@ -196,14 +196,26 @@
                   class="recipient-table compact"
                   style="width: 100%; min-width: 500px"
                 >
-                  <thead>
-                    <tr>
-                      <th style="width: 20%">Group</th>
-                      <th style="width: 25%">Members</th>
-                      <th style="width: 30%">Email</th>
-                      <th style="width: 25%">Member Roles</th>
-                    </tr>
-                  </thead>
+                  <TableHeader
+                    :columns="[
+                      {
+                        label: 'Group',
+                        key: 'group',
+                      },
+                      {
+                        label: 'Members',
+                        key: 'members',
+                      },
+                      {
+                        label: 'Email',
+                        key: 'email',
+                      },
+                      {
+                        label: 'Member Roles',
+                        key: 'member_roles',
+                      },
+                    ]"
+                  />
                   <tbody>
                     <template
                       v-for="(g, gi) in groupedEmails"
@@ -419,14 +431,26 @@
                 class="recipient-table compact"
                 style="width: 100%; min-width: 500px"
               >
-                <thead>
-                  <tr>
-                    <th style="width: 25%">Member</th>
-                    <th style="width: 25%">Email</th>
-                    <th style="width: 25%">Groups</th>
-                    <th style="width: 25%">Member Roles</th>
-                  </tr>
-                </thead>
+                <TableHeader
+                  :columns="[
+                    {
+                      label: 'Member Name',
+                      key: 'name',
+                    },
+                    {
+                      label: 'Email',
+                      key: 'email',
+                    },
+                    {
+                      label: 'Groups',
+                      key: 'groups',
+                    },
+                    {
+                      label: 'Member Roles',
+                      key: 'rolesDisplay',
+                    },
+                  ]"
+                />
                 <tbody>
                   <tr
                     v-for="m in memberWiseRows"
@@ -458,8 +482,10 @@
 </template>
 
 <script>
+import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 export default {
   name: 'ScheduleDetailsModal',
+  components: { TableHeader },
 
   props: {
     scheduleDetails: {

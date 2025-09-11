@@ -107,10 +107,37 @@ class NotificationController extends Controller {
         try {
             $announcement = Announcement::with(['organizations', 'groups', 'admins'])->select()->findOrFail($id);
 
-           
-      
+            $data = [
+                'id' => $announcement->id,
+                'body' => $announcement->body,
+                'sender_id' => $announcement->sender_id,
+                'scheduled_at' => $announcement->scheduled_at,
+                'sent_at' => $announcement->sent_at,
+                'created_at' => $announcement->created_at,
+                'updated_at' => $announcement->updated_at,
+                'organizations' => $announcement->organizations->map(fn($org) => [
+                    'id' => $org->id,
+                    'name' => $org->org_name,
+                    'contact_email' => $org->admin_email,
+                    'user_id' => $org->user_id,
+                    'user_first_name' => $org->user->first_name ?? null,
+                    'user_last_name' => $org->user->last_name ?? null,
+                    
+                ]),
+                'groups' => $announcement->groups->map(fn($g) => [
+                    'id' => $g->id,
+                    'name' => $g->name,
+                    'organization_id' => $g->organization_id,
+                    'organization_name' => $g->organization->org_name ?? null,
+                    'org_contact_email' => $g->organization->admin_email ?? null,
+                ]),
+                'admins' => $announcement->admins->map(fn($a) => [
+                    'id' => $a->id,
+                    'name' => $a->first_name.' '.$a->last_name,
+                    'email' => $a->email,
+                ]),
+            ];
 
-            // Precompute notifications for this announcement to determine per-user read state
             $notifRows = \DB::table('notifications')
                 ->where('notifiable_type', 'App\\Models\\User')
                 ->whereRaw("JSON_EXTRACT(data, '$.announcement_id') = ?", [$announcement->id])
@@ -123,14 +150,12 @@ class NotificationController extends Controller {
                 }
             }
 
-            // Build a lookup of organizations referenced by the announcement
             $orgMap = [];
             foreach ($announcement->organizations as $o) {
                 $orgMap[$o->id] = $o;
             }
 
-            // If the announcement has no explicit organizations attached but groups reference org ids,
-            // fetch those organizations so we can provide organization name and contact email.
+
             if (empty($orgMap)) {
                 try {
                     $orgIds = $announcement->groups->pluck('organization_id')->filter()->unique()->values()->toArray();
@@ -145,62 +170,8 @@ class NotificationController extends Controller {
                 }
             }
 
-        
-
-            $adminDetails = [];
-            foreach ($announcement->admins as $a) {
-                $adminDetails[] = [
-                    'id' => $a->id,
-                    'name' => $a->name ?? $a->full_name ?? null,
-                    'email' => $a->email ?? null,
-                ];
-            }
-
-            
-
-            // Enrich groups with organization name and org contact email when possible
-            $enrichedGroups = [];
-            foreach ($announcement->groups as $g) {
-                $org = isset($orgMap[$g->organization_id]) ? $orgMap[$g->organization_id] : null;
-                $orgName = $org ? ($org->org_name ?? $org->name ?? null) : null;
-                $orgContact = null;
-                if ($org) {
-                    try {
-                        $orgContact = $org->admin_email ?? ($org->user->email ?? null);
-                    } catch (\Exception $e) {
-                        $orgContact = $org->admin_email ?? null;
-                    }
-                }
-                $enrichedGroups[] = [
-                    'id' => $g->id,
-                    'name' => $g->name ?? null,
-                    'organization_id' => $g->organization_id ?? null,
-                    'organization_name' => $orgName,
-                    'org_contact_email' => $orgContact,
-                ];
-            }
-                // Now build organization details output including a contact email (prefer admin_email then related user email)
-            $orgDetails = [];
-            foreach ($orgMap as $org) {
-                $contactEmail = null;
-                try {
-                    $contactEmail = $org->admin_email ?? ($org->user->email ?? null);
-                } catch (\Exception $e) {
-                    // defensive: if relation missing, leave contactEmail null
-                    $contactEmail = $org->admin_email ?? null;
-                }
-                $orgDetails[] = [
-                    'id' => $org->id,
-                    'name' => $org->org_name ?? $org->name ?? null,
-                    'contact_email' => $contactEmail,
-                ];
-            }
-
             return response()->json([
-                'announcement' => $announcement,
-                'groups' => $enrichedGroups,
-                'organizations' => $orgDetails,
-                'admins' => $adminDetails,
+                'announcement' => $data,
                 'notifications' => $notifRows,
             ]);
         } catch (\Exception $e) {
@@ -271,23 +242,7 @@ class NotificationController extends Controller {
         if (isset($data['scheduled_at'])) {
             // You can dispatch a job to send later
         } else {
-            // Dispatch the normal announcement flow (org notifications + admin mails)
-            // if organizations were provided.
-            if ($hasOrgs) {
-                $this->dispatchAnnouncement($announcement);
-            }
-
-            // Send mail-only to group members if any remain after deduplication
-            if (!empty($groupMemberEmails)) {
-                foreach ($groupMemberEmails as $email) {
-                    $email = trim((string)$email);
-                    if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                        LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
-                    } else {
-                        \Log::warning('[Send] Skipping invalid group member email post-dispatch', ['announcement_id' => $announcement->id, 'email' => $email]);
-                    }
-                }
-            }
+            $this->dispatchAnnouncement($announcement);
         }
         return response()->json(['success' => true, 'announcement' => $announcement]);
     }
