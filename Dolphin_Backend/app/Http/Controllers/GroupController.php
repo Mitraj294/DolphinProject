@@ -90,7 +90,7 @@ class GroupController extends Controller
             $orgId = $user->organization_id;
             if (!$orgId) {
                 $org = \App\Models\Organization::where('user_id', $user->id)->first();
-                if ($org) $orgId = $org->id;
+                if ($org){ $orgId = $org->id;}
             }
             if (!$orgId) {
                 return response()->json(['error' => 'Organization not found for user.'], 400);

@@ -231,7 +231,7 @@ export default {
         try {
           storage.set('user', userObj);
         } catch (e) {
-          // ignore storage failures
+          console.error('Error storing user object:', e);
         }
         storage.set('organization_name', organization_name);
 

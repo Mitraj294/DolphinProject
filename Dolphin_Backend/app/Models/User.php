@@ -5,7 +5,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Laravel\Passport\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Notifications\Notifiable;
-use App\Models\Traits\HasRoles; 
+use App\Models\Traits\HasRoles;
 class User extends Authenticatable
 {
 

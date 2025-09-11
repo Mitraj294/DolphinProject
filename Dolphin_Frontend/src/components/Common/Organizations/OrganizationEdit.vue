@@ -325,21 +325,6 @@ export default {
           const fName = user.first_name || found.first_name || '';
           const lName = user.last_name || found.last_name || '';
 
-          // Normalize org size to dropdown values ('Large','Medium','Small')
-          const rawOrgSize =
-            found.organization_size || userDetails.organization_size || '';
-          let normalizedOrgSize = '';
-          if (/large/i.test(rawOrgSize)) {
-            normalizedOrgSize = 'Large';
-          } else if (/medium/i.test(rawOrgSize)) {
-            normalizedOrgSize = 'Medium';
-          } else if (
-            /small/i.test(rawOrgSize) ||
-            /1-99|250\+/.test(rawOrgSize)
-          ) {
-            normalizedOrgSize = 'Small';
-          }
-
           // Prefer explicit source field, fallback to find_us on org or user_details
           const sourceVal =
             found.source || found.find_us || userDetails.find_us || '';
@@ -352,8 +337,7 @@ export default {
           this.orgId = found.id; // Save org id for update
           this.form = {
             organization_name: found.organization_name || '',
-            organization_size:
-              found.organization_size || normalizedOrgSize || '',
+            organization_size: found.organization_size || '',
             source: sourceVal || '',
             address: found.address || userDetails.address || '',
             zip: found.zip || userDetails.zip || '',
@@ -414,6 +398,7 @@ export default {
         const year = d.getFullYear();
         return `${day} ${monthShort},${year}`;
       } catch (e) {
+        console.error('Error formatting contract date:', e);
         return input;
       }
     },
@@ -444,9 +429,10 @@ export default {
         const minutes = String(d.getMinutes()).padStart(2, '0');
         const ampm = hours >= 12 ? 'PM' : 'AM';
         hours = hours % 12;
-        hours = hours ? hours : 12; // 0 -> 12
+
         return `${day} ${monthShort},${year} ${hours}:${minutes} ${ampm}`;
       } catch (e) {
+        console.error('Error formatting last contacted date:', e);
         return input;
       }
     },
@@ -474,6 +460,7 @@ export default {
         const s = String(d.getUTCSeconds()).padStart(2, '0');
         return `${Y}-${M}-${D} ${h}:${m}:${s}`;
       } catch (e) {
+        console.error('Error parsing contract date:', e);
         return null;
       }
     },
@@ -492,6 +479,7 @@ export default {
         const s2 = String(d.getUTCSeconds()).padStart(2, '0');
         return `${Y}-${M}-${D} ${h}:${m}:${s2}`;
       } catch (e) {
+        console.error('Error parsing last contacted date:', e);
         return null;
       }
     },
@@ -504,17 +492,15 @@ export default {
           detail: msg,
           life: 3000,
         });
+      } else if (this.$root && typeof this.$root.$emit === 'function') {
+        this.$root.$emit('show-toast', {
+          severity: 'info',
+          summary: 'Not editable',
+          detail: msg,
+          life: 3000,
+        });
       } else {
-        if (this.$root && typeof this.$root.$emit === 'function') {
-          this.$root.$emit('show-toast', {
-            severity: 'info',
-            summary: 'Not editable',
-            detail: msg,
-            life: 3000,
-          });
-        } else {
-          console.info(msg);
-        }
+        console.info(msg);
       }
     },
     async updateDetails() {
@@ -536,19 +522,7 @@ export default {
           }
           return;
         }
-        // Normalize organization_size back to the display string the backend expects
-        let orgSizePayload = this.form.organization_size;
-        if (this.form.organization_size === '1-99 Employees (Small)') {
-          orgSizePayload = '1-99 Employees (Small)';
-        } else if (
-          this.form.organization_size === '100-249 Employees (Medium)'
-        ) {
-          orgSizePayload = '100-249 Employees (Medium)';
-        } else if (this.form.organization_size === '250+ Employees (Large)') {
-          orgSizePayload = '250+ Employees (Large)';
-        } else {
-          orgSizePayload = '';
-        }
+
         // Convert user-facing formatted dates back to ISO timestamp strings where possible
         const contractStartISO = this.parseContractInput(
           this.form.contractStart
@@ -562,7 +536,7 @@ export default {
         const payload = {
           organization_name: this.form.organization_name,
           // send backend-friendly organization_size display string
-          organization_size: orgSizePayload,
+          organization_size: this.form.organization_size || null,
           source: this.form.source || null,
           address: this.form.address || null,
           city_id: this.form.city_id || null,

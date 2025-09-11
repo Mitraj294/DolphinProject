@@ -688,30 +688,6 @@ export default {
         });
       }
 
-      // Combine collected roles into rolesForSelect
-      const combined = [];
-      Object.keys(rolesById).forEach((k) => combined.push(rolesById[k]));
-      Object.keys(rolesByName).forEach((k) => {
-        const r = rolesByName[k];
-        if (
-          !combined.find(
-            (c) => String(c.name).toLowerCase() === String(r.name).toLowerCase()
-          )
-        ) {
-          combined.push(r);
-        }
-      });
-
-      // If no roles found from members, fallback to a conservative static list
-      if (!combined.length) {
-        combined.push({ id: 1, name: 'Owner' });
-        combined.push({ id: 2, name: 'CEO' });
-        combined.push({ id: 3, name: 'Manager' });
-        combined.push({ id: 4, name: 'Support' });
-      }
-
-      // ensure rolesForSelect remains an array
-      this.rolesForSelect = combined;
       this.rolesForSelectMap = {};
       if (Array.isArray(this.rolesForSelect)) {
         this.rolesForSelect.forEach((r) => (this.rolesForSelectMap[r.id] = r));
