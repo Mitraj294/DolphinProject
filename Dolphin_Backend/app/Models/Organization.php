@@ -12,13 +12,15 @@ class Organization extends Model
     // Keep only fields that should remain on organizations table. Other contact/profile
     // information will be sourced from the owning user / user_details tables.
     protected $fillable = [
+         'organization_name',
+    'organization_size',
         'contract_start',
         'contract_end',
         'sales_person',
     'last_contacted',
         'certified_staff',
         'user_id',
-        'organization_name',
+   
     ];
 
     public function user()
@@ -64,6 +66,27 @@ class Organization extends Model
         if ($this->user && $this->user->userDetails) {
             return $this->user->userDetails->organization_name ?? ($this->user->email ?? null);
         }
+        return null;
+    }
+
+    public function getOrganizationSizeAttribute($value)
+    {
+        if (!empty($value)) {
+            return $value;
+        }
+
+        if ($this->user && $this->user->userDetails) {
+            $ud = $this->user->userDetails->organization_size ?? null;
+            if (!empty($ud)) {
+                return $ud;
+            }
+        }
+
+        // legacy column 'size' support
+        if (!empty($this->size)) {
+            return $this->size;
+        }
+
         return null;
     }
 

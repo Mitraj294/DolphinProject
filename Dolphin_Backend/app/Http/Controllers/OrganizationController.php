@@ -169,21 +169,27 @@ class OrganizationController extends Controller
             'certified_staff' => 'nullable|integer',
             'user_id' => 'nullable|integer|exists:users,id',
             'organization_name' => 'sometimes|nullable|string|max:255',
+            'organization_size' => 'sometimes|nullable|string|max:255',
         ]);
         // Create organization record
         $orgFields = array_filter($validated, function ($k) {
-            return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'user_id', 'organization_name']);
+            return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'user_id', 'organization_name', 'organization_size']);
         }, ARRAY_FILTER_USE_KEY);
         $org = Organization::create($orgFields);
 
         // If organization_name was provided and a user is attached, also populate user_details.organization_name
-        if (!empty($org->user_id) && !empty($orgFields['organization_name'])) {
+    if (!empty($org->user_id) && (!empty($orgFields['organization_name']) || !empty($orgFields['organization_size']))) {
             try {
                 $user = User::find($org->user_id);
                 if ($user) {
                     $details = $user->userDetails ?: new \App\Models\UserDetail();
                     $details->user_id = $user->id;
-                    $details->organization_name = $orgFields['organization_name'];
+                    if (!empty($orgFields['organization_name'])) {
+                        $details->organization_name = $orgFields['organization_name'];
+                    }
+                    if (!empty($orgFields['organization_size'])) {
+                        $details->organization_size = $orgFields['organization_size'];
+                    }
                     $details->save();
                 }
             } catch (\Exception $e) {
@@ -223,7 +229,7 @@ class OrganizationController extends Controller
         try {
             // Update allowed organization columns (include organization_name)
             $orgFields = array_filter($validated, function ($k) {
-                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'organization_name']);
+                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'organization_name', 'organization_size']);
             }, ARRAY_FILTER_USE_KEY);
             if (!empty($orgFields)) {
                 $org->update($orgFields);
@@ -275,6 +281,11 @@ class OrganizationController extends Controller
                     if (array_key_exists('organization_name', $validated) && isset($validated['organization_name'])) {
                         // ensure organization record mirrors the supplied organization_name
                         $org->organization_name = $validated['organization_name'];
+                        $org->save();
+                    }
+                    if (array_key_exists('organization_size', $validated) && isset($validated['organization_size'])) {
+                        // ensure organization record mirrors the supplied organization_size
+                        $org->organization_size = $validated['organization_size'];
                         $org->save();
                     }
                 } catch (\Exception $e) {

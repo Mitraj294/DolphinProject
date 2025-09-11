@@ -22,8 +22,8 @@ return new class extends Migration
             if (Schema::hasColumn('organizations', 'organization_name')) {
                 $table->dropColumn(['organization_name']);
             }
-            if (Schema::hasColumn('organizations', 'size')) {
-                $table->dropColumn(['size']);
+            if (Schema::hasColumn('organizations', 'organization_size')) {
+                $table->dropColumn(['organization_size']);
             }
             if (Schema::hasColumn('organizations', 'source')) {
                 $table->dropColumn(['source']);
@@ -97,8 +97,8 @@ return new class extends Migration
             if (!Schema::hasColumn('organizations', 'organization_name')) {
                 $table->string('organization_name')->nullable();
             }
-            if (!Schema::hasColumn('organizations', 'size')) {
-                $table->string('size')->nullable();
+            if (!Schema::hasColumn('organizations', 'organization_size')) {
+                $table->string('organization_size')->nullable();
             }
             if (!Schema::hasColumn('organizations', 'source')) {
                 $table->string('source')->nullable();

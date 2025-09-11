@@ -77,11 +77,16 @@
           <div class="billing-title">Billing History</div>
           <div class="table-container">
             <table class="table">
-              :columns="[ { label: 'Payment Method', key: 'paymentMethodType ,
-              paymentMethod', }, { label: 'Payment Date', key: 'paymentDate' },
-              { label: 'Subscription End', key: 'subscriptionEnd' }, { label:
-              'Amount', key: 'amount' }, { label: 'Download', key: 'invoice' },
-              { label: 'Description', key: 'description' }, ]" />
+              <TableHeader
+                :columns="[
+                  { label: 'Payment Method', key: 'paymentMethodType' },
+                  { label: 'Payment Date', key: 'paymentDate' },
+                  { label: 'Subscription End', key: 'subscriptionEnd' },
+                  { label: 'Amount', key: 'amount' },
+                  { label: 'Download', key: 'invoice' },
+                  { label: 'Description', key: 'description' },
+                ]"
+              />
               <tbody>
                 <tr
                   v-for="(item, idx) in billingHistory"
@@ -196,6 +201,7 @@ export default {
           ? historyRes.data
           : [];
       } catch (e) {
+        console.error('Error fetching billing details:', e);
         this.currentPlan = null;
         this.billingHistory = [];
       }

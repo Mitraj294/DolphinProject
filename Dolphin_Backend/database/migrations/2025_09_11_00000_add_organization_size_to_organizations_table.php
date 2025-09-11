@@ -13,16 +13,36 @@ return new class extends Migration
      */
     public function up()
     {
+        // Ensure organization_name exists and is positioned immediately after `id` (so the columns will be: id, organization_name, organization_size, contract_start...)
         Schema::table('organizations', function (Blueprint $table) {
             if (!Schema::hasColumn('organizations', 'organization_name')) {
-                $table->string('organization_name')->nullable()->after('user_id');
+                // create column; place after id when possible
+                $table->string('organization_name')->nullable()->after('id');
+            } else {
+                // attempt to move the column position on MySQL
+                if (Schema::getConnection()->getDriverName() === 'mysql') {
+                    try {
+                        DB::statement('ALTER TABLE `organizations` MODIFY COLUMN `organization_name` VARCHAR(255) NULL AFTER `id`');
+                    } catch (\Exception $e) {
+                        // best-effort, don't fail migration on position change
+                        \Log::warning('[migration] could not reposition organization_name', ['error' => $e->getMessage()]);
+                    }
+                }
             }
         });
 
+        // Add organization_size and place it after organization_name
         Schema::table('organizations', function (Blueprint $table) {
             if (!Schema::hasColumn('organizations', 'organization_size')) {
-                // place organization_size immediately after organization_name per requested order
                 $table->string('organization_size')->nullable()->after('organization_name');
+            } else {
+                if (Schema::getConnection()->getDriverName() === 'mysql') {
+                    try {
+                        DB::statement('ALTER TABLE `organizations` MODIFY COLUMN `organization_size` VARCHAR(255) NULL AFTER `organization_name`');
+                    } catch (\Exception $e) {
+                        \Log::warning('[migration] could not reposition organization_size', ['error' => $e->getMessage()]);
+                    }
+                }
             }
         });
 
@@ -62,6 +82,9 @@ return new class extends Migration
         Schema::table('organizations', function (Blueprint $table) {
             if (Schema::hasColumn('organizations', 'organization_name')) {
                 $table->dropColumn('organization_name');
+            }
+            if (Schema::hasColumn('organizations', 'organization_size')) {
+                $table->dropColumn('organization_size');
             }
         });
     }

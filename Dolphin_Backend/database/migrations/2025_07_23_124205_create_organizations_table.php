@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('organizations', function (Blueprint $table) {
             $table->id();
             $table->string('organization_name');
-            $table->string('size')->nullable();
+            // prefer explicit organization_size column naming for consistency with user_details
+            $table->string('organization_size')->nullable();
             $table->string('source')->nullable();
             $table->string('address1')->nullable();
             $table->string('address2')->nullable();

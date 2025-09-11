@@ -75,13 +75,18 @@ class AuthController extends Controller
             'email' => $request->email,
             'phone' => $request->phone,
             'find_us' => $request->find_us,
-            'organization_name' => $request->organization_name,
-            'organization_size' => $request->organization_size,
+           
             'address' => $request->address,
             'country_id' => $request->country ?: null,
             'state_id' => $request->state ?: null,
             'city_id' => $request->city ?: null,
             'zip' => $request->zip,
+        ]);
+
+        \App\Models\Organization::create([
+            'user_id' => $user->id,
+            'organization_name' => $request->organization_name,
+            'organization_size' => $request->organization_size,
         ]);
 
         // Assign default role in user_roles table
