@@ -94,6 +94,57 @@
               </div>
               <div></div>
             </FormRow>
+            <div v-if="form.role === 'organizationadmin'">
+              <FormRow>
+                <div>
+                  <FormLabel>Organization Name</FormLabel>
+                  <FormInput
+                    v-model="form.organization_name"
+                    icon="fas fa-cog"
+                    placeholder="Flexi-Finders"
+                  />
+                  <FormLabel
+                    v-if="errors.organization_name"
+                    class="error-message"
+                  >
+                    {{ errors.organization_name[0] }}
+                  </FormLabel>
+                </div>
+                <div>
+                  <FormLabel>Organization Size</FormLabel>
+                  <FormDropdown
+                    v-model="form.organization_size"
+                    icon="fas fa-users"
+                    :options="[
+                      {
+                        value: '',
+                        text: 'Select ',
+                        disabled: true,
+                      },
+                      {
+                        value: '250+ Employees (Large)',
+                        text: '250+ Employees (Large)',
+                      },
+                      {
+                        value: '100-249 Employees (Medium)',
+                        text: '100-249 Employees (Medium)',
+                      },
+                      {
+                        value: '1-99 Employees (Small)',
+                        text: '1-99 Employees (Small)',
+                      },
+                    ]"
+                  />
+                  <FormLabel
+                    v-if="errors.organization_size"
+                    class="error-message"
+                  >
+                    {{ errors.organization_size[0] }}
+                  </FormLabel>
+                </div>
+                <div></div>
+              </FormRow>
+            </div>
 
             <div class="lead-capture-actions">
               <button

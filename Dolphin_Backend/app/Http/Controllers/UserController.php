@@ -7,6 +7,9 @@ use App\Models\User;
 use App\Models\Role;
 use App\Models\UserRole;
 use App\Models\UserDetail;
+use App\Models\Organization;
+
+
 
 
 class UserController extends Controller

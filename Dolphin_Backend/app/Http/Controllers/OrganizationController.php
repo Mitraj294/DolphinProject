@@ -11,6 +11,17 @@ use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+class ValidationRules
+{
+    public const REQUIRED_INTEGER = 'required|integer';
+    public const REQUIRED_STRING = 'required|string';
+    public const REQUIRED_EMAIL = 'required|email';
+    public const OPTIONAL_INTEGER = 'nullable|integer';
+    public const REQUIRED_BOOLEAN = 'required|boolean';
+    public const REQUIRED_DATE = 'required|date';
+    public const NULLABLE_STRING = 'nullable|string|max:255';
+
+}
 
 class OrganizationController extends Controller
 {
@@ -45,9 +56,9 @@ class OrganizationController extends Controller
                 }
             }
             // derive location names from ids when available so frontend can display them
-            $countryId = $org->country_id ?? $details->country_id ?? null;
-            $stateId = $org->state_id ?? $details->state_id ?? null;
-            $cityId = $org->city_id ?? $details->city_id ?? null;
+            $countryId = $org->country ?? $details->country ?? null;
+            $stateId = $org->state ?? $details->state ?? null;
+            $cityId = $org->city ?? $details->city ?? null;
 
             $countryName = null;
             $stateName = null;
@@ -95,7 +106,7 @@ class OrganizationController extends Controller
                 'city' => $org->city ?? $details->city ?? null,
                 'state' => $org->state ?? $details->state ?? null,
                 'zip' => $org->zip ?? $details->zip ?? null,
-                'country_id' => $org->country_id ?? $details->country_id ?? null,
+                'country' => $org->country ?? $details->country ?? null,
                 // explicit lookup names from location tables (if available)
                 'country' => $countryName ?? ($org->country ?? $details->country ?? null),
                 'state_name' => $stateName ?? ($org->state ?? $details->state ?? null),
@@ -154,9 +165,9 @@ class OrganizationController extends Controller
             }
         }
 
-        $countryId = $org->country_id ?? $details->country_id ?? null;
-        $stateId = $org->state_id ?? $details->state_id ?? null;
-        $cityId = $org->city_id ?? $details->city_id ?? null;
+        $countryId = $org->country ?? $details->country ?? null;
+        $stateId = $org->state ?? $details->state ?? null;
+        $cityId = $org->city ?? $details->city ?? null;
 
         $countryName = null;
         $stateName = null;
@@ -188,7 +199,7 @@ class OrganizationController extends Controller
             'city' => $org->city ?? $details->city ?? null,
             'state' => $org->state ?? $details->state ?? null,
             'zip' => $org->zip ?? $details->zip ?? null,
-            'country_id' => $org->country_id ?? $details->country_id ?? null,
+            'country' => $org->country ?? $details->country ?? null,
             'country' => $countryName ?? ($org->country ?? $details->country ?? null),
             'state_name' => $stateName ?? ($org->state ?? $details->state ?? null),
             'city_name' => $cityName ?? ($org->city ?? $details->city ?? null),
@@ -241,13 +252,13 @@ class OrganizationController extends Controller
         $validated = $request->validate([
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
-            
-            'sales_person_id' => 'nullable|integer|exists:users,id',
-            'last_contacted' => 'nullable|date',
-            'certified_staff' => 'nullable|integer',
-            'user_id' => 'nullable|integer|exists:users,id',
-            'organization_name' => 'sometimes|nullable|string|max:255',
-            'organization_size' => 'sometimes|nullable|string|max:255',
+
+            'sales_person_id' => ValidationRules::REQUIRED_INTEGER . '|exists:users,id',
+            'last_contacted' => ValidationRules::OPTIONAL_DATE,
+            'certified_staff' => ValidationRules::REQUIRED_INTEGER,
+            'user_id' => ValidationRules::OPTIONAL_INTEGER . '|exists:users,id',
+            'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
+            'organization_size' => ValidationRules::REQUIRED_STRING,
         ]);
         // Create organization record
             $orgFields = array_filter($validated, function ($k) {
@@ -291,23 +302,21 @@ class OrganizationController extends Controller
            
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
-           
-            'sales_person_id' => 'nullable|integer|exists:users,id',
-            'last_contacted' => 'nullable|date',
-            'certified_staff' => 'nullable|integer',
-            // user / user_details fields (frontend sends these)
-            'first_name' => 'sometimes|nullable|string|max:255',
-            'last_name' => 'sometimes|nullable|string|max:255',
-            'admin_email' => 'sometimes|nullable|email|max:255',
-            'admin_phone' =>  'sometimes|nullable|string|regex:/^[6-9]\d{9}$/',
-            'organization_name' => 'sometimes|nullable|string|max:255',
-            'organization_size' => 'sometimes|nullable|string|max:255',
-            'source' => 'sometimes|nullable|string|max:255',
-            'address' => 'sometimes|nullable|string|max:1024',
-            'city_id' => 'sometimes|nullable|integer|exists:cities,id',
-            'state_id' => 'sometimes|nullable|integer|exists:states,id',
-            'country_id' => 'sometimes|nullable|integer|exists:countries,id',
-            'zip' => 'sometimes|nullable|string|min:6|max:6',
+             'sales_person_id' => ValidationRules::REQUIRED_INTEGER . '|exists:users,id',
+            'last_contacted' => ValidationRules::OPTIONAL_DATE,
+            'certified_staff' => ValidationRules::REQUIRED_INTEGER,
+            'first_name' => ValidationRules::REQUIRED_STRING,
+            'last_name' => ValidationRules::REQUIRED_STRING,
+            'admin_email' => ValidationRules::REQUIRED_EMAIL,
+            'admin_phone' =>  ValidationRules::REQUIRED_STRING . '|regex:/^[6-9]\d{9}$/',
+               'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
+            'organization_size' => ValidationRules::REQUIRED_STRING,
+            'source' => ValidationRules::REQUIRED_STRING,
+               'address' => ValidationRules::REQUIRED_STRING.'|min:10|max:500',
+            'country' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
+            'state' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
+            'city' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
+          'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
         ]);
 
         DB::beginTransaction();
@@ -368,9 +377,9 @@ class OrganizationController extends Controller
                 }
                 if (array_key_exists('source', $validated)) { $details->find_us = $validated['source']; $detailUpdated = true; }
                 if (array_key_exists('address', $validated)) { $details->address = $validated['address']; $detailUpdated = true; }
-                if (array_key_exists('country_id', $validated)) { $details->country_id = $validated['country_id']; $detailUpdated = true; }
-                if (array_key_exists('state_id', $validated)) { $details->state_id = $validated['state_id']; $detailUpdated = true; }
-                if (array_key_exists('city_id', $validated)) { $details->city_id = $validated['city_id']; $detailUpdated = true; }
+                if (array_key_exists('country', $validated)) { $details->country = $validated['country']; $detailUpdated = true; }
+                if (array_key_exists('state', $validated)) { $details->state = $validated['state']; $detailUpdated = true; }
+                if (array_key_exists('city', $validated)) { $details->city = $validated['city']; $detailUpdated = true; }
                 if (array_key_exists('zip', $validated)) { $details->zip = $validated['zip']; $detailUpdated = true; }
                 if ($detailUpdated) { $details->save(); }
                 // Keep organizations.organization_name and user_details.organization_name in sync

@@ -98,10 +98,13 @@ class Organization extends Model
 
     public function getAddress1Attribute($value)
     {
-    if (!empty($value)) {
+        if (!empty($value)) {
             return $value;
         }
-        return $this->user->userDetails->address ?? null;
+        if ($this->user && $this->user->userDetails) {
+            return $this->user->userDetails->address ?? null;
+        }
+        return null;
     }
 
     public function getZipAttribute($value)
@@ -109,6 +112,9 @@ class Organization extends Model
         if (!empty($value)) {
             return $value;
         }
-        return $this->user->userDetails->zip ?? null;
+        if ($this->user && $this->user->userDetails) {
+            return $this->user->userDetails->zip ?? null;
+        }
+        return null;
     }
 }

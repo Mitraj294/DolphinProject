@@ -306,7 +306,7 @@
               </div>
               <div>
                 <FormLabel>Certified Staff</FormLabel>
-                <!-- Display-only: show number returned from API, not editable -->
+
                 <FormInput
                   :value="form.certifiedStaff"
                   icon="fas fa-users"
