@@ -15,18 +15,30 @@
             </div>
             <div class="manage-subscription-content">
               <div class="manage-subscription-msg">
-                <template v-if="loading">
-                  Loading subscription status...
-                </template>
-                <template v-else-if="isSubscribed">
+                <div v-if="loading">Loading subscription status...</div>
+                <div
+                  v-else-if="isSubscribed"
+                  class="manage-subscription-msg green"
+                >
                   You are subscribed to a plan.
-                </template>
-                <template v-else-if="isExpired">
-                  Your subscription has expired.pl
-                </template>
-                <template v-else>
+                </div>
+
+                <div
+                  v-else-if="isExpired"
+                  class="manage-subscription-msg red"
+                >
+                  Your Plan is expired, please renew your plan.
+                </div>
+                <div
+                  v-else
+                  style="
+                    color: #222 !important;
+                    font-weight: 600 !important;
+                    font-size: 1.2rem !important;
+                  "
+                >
                   You have not selected any plans yet.
-                </template>
+                </div>
               </div>
               <button
                 class="btn btn-primary manage-subscription-btn"
@@ -65,6 +77,21 @@ export default {
     try {
       const status = await fetchSubscriptionStatus();
       this.isSubscribed = status && status.status === 'active';
+      // Prefer explicit flag from API if provided
+      if (status && typeof status.is_expired !== 'undefined') {
+        this.isExpired = !!status.is_expired;
+      } else if (status && status.subscription_end) {
+        // Fallback: compare subscription_end to now
+        try {
+          const end = new Date(status.subscription_end);
+          this.isExpired = end < new Date();
+        } catch (e) {
+          console.error('Error parsing subscription_end:', e);
+          this.isExpired = false;
+        }
+      } else {
+        this.isExpired = false;
+      }
     } catch (e) {
       console.error(e);
       this.isSubscribed = false;
@@ -176,6 +203,12 @@ export default {
   font-weight: 500;
   text-align: center;
 }
+.manage-subscription-msg.green {
+  color: green !important;
+}
+.manage-subscription-msg.red {
+  color: red !important;
+}
 
 .manage-subscription-btn {
   margin-top: 8px;
@@ -214,10 +247,6 @@ export default {
     gap: 12px;
   }
 
-  .manage-subscription-msg {
-    font-size: 1.5rem;
-  }
-
   .manage-subscription-btn {
     min-width: 120px;
     font-size: 1rem;
@@ -242,10 +271,6 @@ export default {
 
   .manage-subscription-content {
     gap: 10px;
-  }
-
-  .manage-subscription-msg {
-    font-size: 1.2rem;
   }
 
   .manage-subscription-btn {
@@ -278,10 +303,6 @@ export default {
 
   .manage-subscription-content {
     gap: 8px;
-  }
-
-  .manage-subscription-msg {
-    font-size: 1rem;
   }
 
   .manage-subscription-btn {

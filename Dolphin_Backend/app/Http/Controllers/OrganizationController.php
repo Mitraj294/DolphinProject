@@ -20,6 +20,7 @@ class ValidationRules
     public const REQUIRED_BOOLEAN = 'required|boolean';
     public const REQUIRED_DATE = 'required|date';
     public const NULLABLE_STRING = 'nullable|string|max:255';
+    public const NULLABLE_DATE = 'nullable|date';
 
 }
 
@@ -55,10 +56,11 @@ class OrganizationController extends Controller
             $mainContact = $org->organization_name ?? ($details->organization_name ?? $user->email ?? '');
                 }
             }
-            // derive location names from ids when available so frontend can display them
-            $countryId = $org->country ?? $details->country ?? null;
-            $stateId = $org->state ?? $details->state ?? null;
-            $cityId = $org->city ?? $details->city ?? null;
+ 
+
+            $countryId = $org->country_id ?? $details->country_id ?? null;
+            $stateId = $org->state_id ?? $details->state_id ?? null;
+            $cityId = $org->city_id ?? $details->city_id ?? null;
 
             $countryName = null;
             $stateName = null;
@@ -66,14 +68,26 @@ class OrganizationController extends Controller
 
             if ($countryId) {
                 $c = Country::find($countryId);
+                // If find() returns a collection, get the first item
+                if ($c instanceof \Illuminate\Database\Eloquent\Collection) {
+                    $c = $c->first();
+                }
                 $countryName = $c ? $c->name : null;
             }
             if ($stateId) {
                 $s = State::find($stateId);
+                // If find() returns a collection, get the first item
+                if ($s instanceof \Illuminate\Database\Eloquent\Collection) {
+                    $s = $s->first();
+                }
                 $stateName = $s ? $s->name : null;
             }
             if ($cityId) {
                 $ci = City::find($cityId);
+                // If find() returns a collection, get the first item
+                if ($ci instanceof \Illuminate\Database\Eloquent\Collection) {
+                    $ci = $ci->first();
+                }
                 $cityName = $ci ? $ci->name : null;
             }
 
@@ -102,9 +116,7 @@ class OrganizationController extends Controller
                 'contract_end' => $subscription ? $subscription->subscription_end : $org->contract_end,
                 'last_contacted' => $org->last_contacted,
                 'address' => $org->address1 ?? ($details->address ?? null),
-                // string fields (legacy) - may be null if IDs are used
-                'city' => $org->city ?? $details->city ?? null,
-                'state' => $org->state ?? $details->state ?? null,
+            
                 'zip' => $org->zip ?? $details->zip ?? null,
                 'country' => $org->country ?? $details->country ?? null,
                 // explicit lookup names from location tables (if available)
@@ -165,24 +177,37 @@ class OrganizationController extends Controller
             }
         }
 
-        $countryId = $org->country ?? $details->country ?? null;
-        $stateId = $org->state ?? $details->state ?? null;
-        $cityId = $org->city ?? $details->city ?? null;
+        $countryId = $org->country_id ?? $details->country_id ?? null;
+        $stateId = $org->state_id ?? $details->state_id ?? null;
+        $cityId = $org->city_id ?? $details->city_id ?? null;
 
         $countryName = null;
         $stateName = null;
         $cityName = null;
 
+
         if ($countryId) {
             $c = Country::find($countryId);
+            // If find() returns a collection, get the first item
+            if ($c instanceof \Illuminate\Database\Eloquent\Collection) {
+                $c = $c->first();
+            }
             $countryName = $c ? $c->name : null;
         }
         if ($stateId) {
             $s = State::find($stateId);
+            // If find() returns a collection, get the first item
+            if ($s instanceof \Illuminate\Database\Eloquent\Collection) {
+                $s = $s->first();
+            }
             $stateName = $s ? $s->name : null;
         }
         if ($cityId) {
             $ci = City::find($cityId);
+            // If find() returns a collection, get the first item
+            if ($ci instanceof \Illuminate\Database\Eloquent\Collection) {
+                $ci = $ci->first();
+            }
             $cityName = $ci ? $ci->name : null;
         }
 
@@ -196,8 +221,7 @@ class OrganizationController extends Controller
             'contract_end' => $subscription ? $subscription->subscription_end : $org->contract_end,
             'last_contacted' => $org->last_contacted,
             'address' => $org->address1 ?? ($details->address ?? null),
-            'city' => $org->city ?? $details->city ?? null,
-            'state' => $org->state ?? $details->state ?? null,
+          
             'zip' => $org->zip ?? $details->zip ?? null,
             'country' => $org->country ?? $details->country ?? null,
             'country' => $countryName ?? ($org->country ?? $details->country ?? null),
@@ -254,10 +278,10 @@ class OrganizationController extends Controller
             'contract_end' => 'nullable|date',
 
             'sales_person_id' => ValidationRules::REQUIRED_INTEGER . '|exists:users,id',
-            'last_contacted' => ValidationRules::OPTIONAL_DATE,
+            'last_contacted' => ValidationRules::NULLABLE_DATE,
             'certified_staff' => ValidationRules::REQUIRED_INTEGER,
             'user_id' => ValidationRules::OPTIONAL_INTEGER . '|exists:users,id',
-            'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
+            'organization_name' => ValidationRules::REQUIRED_STRING,
             'organization_size' => ValidationRules::REQUIRED_STRING,
         ]);
         // Create organization record
@@ -302,21 +326,21 @@ class OrganizationController extends Controller
            
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
-             'sales_person_id' => ValidationRules::REQUIRED_INTEGER . '|exists:users,id',
-            'last_contacted' => ValidationRules::OPTIONAL_DATE,
+            'sales_person_id' => ValidationRules::REQUIRED_INTEGER . '|exists:users,id',
+            'last_contacted' => ValidationRules::NULLABLE_DATE,
             'certified_staff' => ValidationRules::REQUIRED_INTEGER,
             'first_name' => ValidationRules::REQUIRED_STRING,
             'last_name' => ValidationRules::REQUIRED_STRING,
             'admin_email' => ValidationRules::REQUIRED_EMAIL,
             'admin_phone' =>  ValidationRules::REQUIRED_STRING . '|regex:/^[6-9]\d{9}$/',
-               'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
+            'organization_name' => ValidationRules::REQUIRED_STRING,
             'organization_size' => ValidationRules::REQUIRED_STRING,
             'source' => ValidationRules::REQUIRED_STRING,
-               'address' => ValidationRules::REQUIRED_STRING.'|min:10|max:500',
-            'country' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
-            'state' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
-            'city' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
-          'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
+            'address' => ValidationRules::REQUIRED_STRING,
+            'country_id' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
+            'state_id' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
+            'city_id' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
+            'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
         ]);
 
         DB::beginTransaction();
@@ -377,9 +401,9 @@ class OrganizationController extends Controller
                 }
                 if (array_key_exists('source', $validated)) { $details->find_us = $validated['source']; $detailUpdated = true; }
                 if (array_key_exists('address', $validated)) { $details->address = $validated['address']; $detailUpdated = true; }
-                if (array_key_exists('country', $validated)) { $details->country = $validated['country']; $detailUpdated = true; }
-                if (array_key_exists('state', $validated)) { $details->state = $validated['state']; $detailUpdated = true; }
-                if (array_key_exists('city', $validated)) { $details->city = $validated['city']; $detailUpdated = true; }
+                if (array_key_exists('country_id', $validated)) { $details->country_id = $validated['country_id']; $detailUpdated = true; }
+                if (array_key_exists('state_id', $validated)) { $details->state_id = $validated['state_id']; $detailUpdated = true; }
+                if (array_key_exists('city_id', $validated)) { $details->city_id = $validated['city_id']; $detailUpdated = true; }
                 if (array_key_exists('zip', $validated)) { $details->zip = $validated['zip']; $detailUpdated = true; }
                 if ($detailUpdated) { $details->save(); }
                 // Keep organizations.organization_name and user_details.organization_name in sync
@@ -420,3 +444,4 @@ class OrganizationController extends Controller
     return response()->json(['message' => 'Organization soft deleted']);
     }
 }
+

@@ -38,9 +38,9 @@
               <td>{{ org.name }}</td>
               <td>{{ org.size }}</td>
               <td>{{ org.main_contact }}</td>
-              <td>{{ formatDate(org.contractStart) }}</td>
-              <td>{{ formatDate(org.contractEnd) }}</td>
-              <td>{{ formatDateTime(org.last_contacted) }}</td>
+              <td>{{ formatDate(org.contractStart) || '-' }}</td>
+              <td>{{ formatDate(org.contractEnd) || '-' }}</td>
+              <td>{{ formatDateTime(org.last_contacted) || '-' }}</td>
 
               <td>
                 <button

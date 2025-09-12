@@ -25,7 +25,7 @@
                 <FormInput
                   v-model="form.organization_name"
                   icon="fas fa-cog"
-                  placeholder="Flexi-Finders"
+                  placeholder="Organization Name"
                 />
                 <FormLabel
                   v-if="errors.organization_name"
@@ -471,13 +471,10 @@ function mapOrganizationToForm(found) {
     lastContacted: found.last_contacted
       ? formatLastContacted(found.last_contacted)
       : '',
-    certifiedStaff: found.certified_staff || userDetails.certified_staff || '',
+    certifiedStaff: found.certified_staff || userDetails.certified_staff || '0',
   };
 }
 
-/**
- *  Utility: Mapping Form → Payload for Update
- */
 function mapFormToPayload(form) {
   return {
     organization_name: form.organization_name,

@@ -142,6 +142,8 @@ export default {
       errorMessage: '',
       errors: {},
       error: '',
+      role: '',
+      status: '',
     };
   },
   mounted() {
@@ -216,6 +218,10 @@ export default {
 
         // Save tokens in storage
         storage.set('authToken', token);
+        // set axios header immediately so subsequent calls are authenticated
+        if (token) {
+          axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        }
         storage.set('refreshToken', refreshToken); // NEW: store refresh token
         if (expiresAt) {
           storage.set('tokenExpiry', expiresAt);
@@ -244,7 +250,31 @@ export default {
           life: 3000,
         });
 
-        this.$router.push('/dashboard');
+        let redirectTo = '/dashboard';
+        try {
+          const orgId = userObj.organization_id || userObj.org_id || null;
+          const subStatus = await this.checkSubscriptionStatus(orgId);
+          if (subStatus) {
+            storage.set(
+              'subscription_is_expired',
+              subStatus.is_expired ? '1' : '0'
+            );
+
+            if (subStatus.is_expired) {
+              this.toast.add({
+                severity: 'error',
+                summary: 'Subscription Expired',
+                detail: 'Please renew your subscription.',
+                life: 6000,
+              });
+              redirectTo = '/manage-subscription';
+            }
+          }
+        } catch (e) {
+          console.error('Failed to fetch subscription status on login:', e);
+        }
+
+        this.$router.push(redirectTo);
       } catch (error) {
         console.error('Login failed:', error);
         let errorMessage = 'Login failed. Please check your credentials.';
@@ -263,6 +293,7 @@ export default {
         });
       }
     },
+
     async refreshAccessToken() {
       try {
         const refreshToken = storage.get('refreshToken');
@@ -298,6 +329,20 @@ export default {
         storage.clear();
         this.$router.push('/login');
 
+        return null;
+      }
+    },
+    async checkSubscriptionStatus(orgId = null) {
+      try {
+        const url = orgId
+          ? `${API_BASE_URL}/api/subscription/status?org_id=${encodeURIComponent(
+              orgId
+            )}`
+          : `${API_BASE_URL}/api/subscription/status`;
+        const response = await axios.get(url);
+        return response.data;
+      } catch (error) {
+        console.error('Error checking subscription status:', error);
         return null;
       }
     },

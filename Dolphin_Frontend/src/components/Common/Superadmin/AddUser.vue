@@ -101,11 +101,12 @@
                   <FormInput
                     v-model="form.organization_name"
                     icon="fas fa-cog"
-                    placeholder="Flexi-Finders"
+                    placeholder="Organization Name"
+                    required
                   />
                   <FormLabel
                     v-if="errors.organization_name"
-                    class="error-message"
+                    class="error-message1"
                   >
                     {{ errors.organization_name[0] }}
                   </FormLabel>
@@ -137,7 +138,7 @@
                   />
                   <FormLabel
                     v-if="errors.organization_size"
-                    class="error-message"
+                    class="error-message1"
                   >
                     {{ errors.organization_size[0] }}
                   </FormLabel>
@@ -206,6 +207,8 @@ export default {
         email: '',
         phone: '',
         role: null,
+        organization_name: '',
+        organization_size: '',
       },
       roleOptions: [
         { value: 'organizationadmin', text: 'Organization Admin' },
@@ -238,6 +241,9 @@ export default {
           email: this.form.email,
           phone: this.form.phone,
           role: this.form.role,
+          // send organization fields (backend uses required_if for validation)
+          organization_name: this.form.organization_name,
+          organization_size: this.form.organization_size,
         };
 
         const response = await axios.post(
@@ -266,6 +272,8 @@ export default {
           email: '',
           phone: '',
           role: null,
+          organization_name: '',
+          organization_size: '',
         };
 
         // Navigate back to user list

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Subscription;
+use App\Models\Organization;
+use App\Models\User;
 
 class SubscriptionController extends Controller
 
@@ -190,11 +192,44 @@ class SubscriptionController extends Controller
     public function subscriptionStatus(Request $request)
     {
         $user = $request->user();
-        $subscription = $user->subscriptions()->where('status', 'active')->orderByDesc('created_at')->first();
+        // If org_id provided and caller is superadmin or organizationadmin, resolve the organization's owner
+        $orgId = $request->query('org_id') ?: $request->input('org_id');
+        if ($orgId && $user && ($user->hasRole('superadmin') || $user->hasRole('organizationadmin'))) {
+            $org = Organization::find($orgId);
+            if ($org && $org->user_id) {
+                $user = User::find($org->user_id) ?: $user;
+            }
+        }
+
+        $subscription = $user ? $user->subscriptions()->where('status', 'active')->orderByDesc('subscription_end')->first() : null;
+        $subscriptionEnd = null;
+        $isExpired = false;
+        if ($subscription && $subscription->subscription_end) {
+            $subscriptionEnd = $subscription->subscription_end->toDateTimeString();
+        }
+        if ($subscriptionEnd) {
+            try {
+                $end = \Carbon\Carbon::parse($subscriptionEnd);
+                $isExpired = $end->isPast();
+            } catch (\Exception $e) {
+                // If parsing fails, default to not expired
+                $isExpired = false;
+            }
+        }
+
+        // Determine returned status: if DB says active but end date is past, report expired
+        $returnedStatus = $subscription ? $subscription->status : 'none';
+        if ($returnedStatus === 'active' && $isExpired) {
+            $returnedStatus = 'expired';
+        }
+
         return response()->json([
-            'status' => $subscription ? $subscription->status : 'none',
+            'status' => $returnedStatus,
             'plan_amount' => $subscription ? $subscription->amount : null,
             'subscription_id' => $subscription ? $subscription->id : null,
+            'subscription_end' => $subscriptionEnd,
+            'is_expired' => $isExpired,
+            'raw_status' => $subscription ? $subscription->status : null,
         ]);
     }
 }

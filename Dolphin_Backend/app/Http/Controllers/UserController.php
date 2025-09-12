@@ -68,6 +68,9 @@ class UserController extends Controller
                 'last_name' => 'required|string|max:255',
                 'phone' => 'required|regex:/^[6-9]\d{9}$/',
                 'role' => 'required|string|in:user,organizationadmin,dolphinadmin,superadmin,salesperson',
+
+                'organization_name' => 'nullable|string|max:255|required_if:role,organizationadmin',
+                'organization_size' => 'nullable|string|max:255|required_if:role,organizationadmin',
             ]);
 
             // Generate a random password and hash it
@@ -81,11 +84,41 @@ class UserController extends Controller
                 'password' => $hashedPassword,
             ]);
 
-            // Create user details if phone is provided
-            if (!empty($validatedData['phone'])) {
-                $user->userDetails()->create([
-                    'phone' => $validatedData['phone'],
+            // Only create an Organization when the new user is an organization admin
+            if (isset($validatedData['role']) && $validatedData['role'] === 'organizationadmin') {
+                Organization::create([
+                    'organization_name' => $validatedData['organization_name'] ?? null,
+                    'organization_size' => $validatedData['organization_size'] ?? null,
+                    'user_id' => $user->id,
                 ]);
+            }
+
+            // Prepare userDetails payload (phone + optional org fields if the columns exist)
+            $detailsData = [];
+            if (!empty($validatedData['phone'])) {
+                $detailsData['phone'] = $validatedData['phone'];
+            }
+            if (isset($validatedData['role']) && $validatedData['role'] === 'organizationadmin') {
+                if (Schema::hasColumn('user_details', 'organization_name') && isset($validatedData['organization_name'])) {
+                    $detailsData['organization_name'] = $validatedData['organization_name'];
+                } else {
+                    // Column may have been removed in some deployments; log for visibility
+                    if (isset($validatedData['organization_name'])) {
+                        \Log::warning('[UserController@store] skipping write to user_details.organization_name because column missing', ['user_id' => $user->id]);
+                    }
+                }
+                if (Schema::hasColumn('user_details', 'organization_size') && isset($validatedData['organization_size'])) {
+                    $detailsData['organization_size'] = $validatedData['organization_size'];
+                } else {
+                    if (isset($validatedData['organization_size'])) {
+                        \Log::warning('[UserController@store] skipping write to user_details.organization_size because column missing', ['user_id' => $user->id]);
+                    }
+                }
+            }
+
+            // Create user details if we have any data to persist
+            if (!empty($detailsData)) {
+                $user->userDetails()->create($detailsData);
             }
 
             // Assign role - check if role exists, create if it doesn't
@@ -110,9 +143,11 @@ class UserController extends Controller
                 'request_data' => $request->all()
             ]);
             
+            // Return validation errors and echo payload to help debug frontend binding issues
             return response()->json([
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
+                'payload_received' => $request->all(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([

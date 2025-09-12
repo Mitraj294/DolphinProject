@@ -96,7 +96,7 @@
                 <FormInput
                   v-model="form.organization_name"
                   icon="fas fa-cog"
-                  placeholder="Flexi-Finders"
+                  placeholder="Organization Name"
                   required
                 />
                 <FormLabel
