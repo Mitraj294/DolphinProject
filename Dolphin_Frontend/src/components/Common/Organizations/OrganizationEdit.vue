@@ -306,11 +306,12 @@
               </div>
               <div>
                 <FormLabel>Certified Staff</FormLabel>
+                <!-- Display-only: show number returned from API, not editable -->
                 <FormInput
-                  v-model="form.certifiedStaff"
+                  :value="form.certifiedStaff"
                   icon="fas fa-users"
                   type="number"
-                  placeholder="Enter number of certified staff"
+                  disabled
                 />
                 <FormLabel
                   v-if="errors.certified_staff"
