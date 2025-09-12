@@ -66,6 +66,20 @@ class OrganizationController extends Controller
                 $cityName = $ci ? $ci->name : null;
             }
 
+            // resolve salesperson display name if available
+            $salesPersonUser = null;
+            if (!empty($org->sales_person_id)) {
+                $salesPersonUser = User::find($org->sales_person_id);
+            }
+
+            $salesPersonDisplay = null;
+            if ($salesPersonUser) {
+                $salesPersonDisplay = trim((($salesPersonUser->first_name ?? '') . ' ' . ($salesPersonUser->last_name ?? '')));
+                if ($salesPersonDisplay === '') {
+                    $salesPersonDisplay = $salesPersonUser->email ?? null;
+                }
+            }
+
             return [
                 'id' => $org->id,
                 // prefer the explicit organizations table values; fall back to user_details
@@ -88,8 +102,36 @@ class OrganizationController extends Controller
                 'city_name' => $cityName ?? ($org->city ?? $details->city ?? null),
                 'admin_email' => $org->admin_email ?? ($user->email ?? null),
                 'admin_phone' => $org->admin_phone ?? ($details->phone ?? null),
-                'sales_person' => $org->sales_person,
-                'certified_staff' => $org->certified_staff,
+                
+                'sales_person_id' => $org->sales_person_id ?? null,
+                'sales_person' => $salesPersonDisplay,
+                // compute certified staff by scanning groups -> members -> memberRoles
+                'certified_staff' => (function() use ($org) {
+                    try {
+                        $groups = \App\Models\Group::where('organization_id', $org->id)->with(['members.memberRoles'])->get();
+                        $qualified = [];
+                        $wanted = ['owner', 'manager', 'ceo'];
+                        foreach ($groups as $g) {
+                            foreach ($g->members as $m) {
+                                // ensure we only count each member once
+                                if (isset($qualified[$m->id])) {
+                                    continue;
+                                }
+                                $roles = $m->memberRoles->pluck('name')->map(function($n){ return strtolower(trim($n)); })->toArray();
+                                foreach ($roles as $r) {
+                                    if (in_array($r, $wanted, true)) {
+                                        $qualified[$m->id] = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        return count($qualified);
+                    } catch (\Exception $e) {
+                        // on error, fall back to stored value if present
+                        return $org->certified_staff ?? 0;
+                    }
+                })(),
             ];
         });
         return response()->json($result);
@@ -152,8 +194,40 @@ class OrganizationController extends Controller
             'city_name' => $cityName ?? ($org->city ?? $details->city ?? null),
             'admin_email' => $org->admin_email ?? ($user->email ?? null),
             'admin_phone' => $org->admin_phone ?? ($details->phone ?? null),
-            'sales_person' => $org->sales_person,
-            'certified_staff' => $org->certified_staff,
+    
+            'sales_person_id' => $org->sales_person_id ?? null,
+            'sales_person' => (function() use ($org) {
+                if (empty($org->sales_person_id)) { return null; }
+                $u = User::find($org->sales_person_id);
+                if (!$u) { return null; }
+                $name = trim((($u->first_name ?? '') . ' ' . ($u->last_name ?? '')));
+                return $name !== '' ? $name : ($u->email ?? null);
+            })(),
+            // compute certified staff same as index: count unique group members whose roles include owner/manager/ceo
+            'certified_staff' => (function() use ($org) {
+                try {
+                    $groups = \App\Models\Group::where('organization_id', $org->id)->with(['members.memberRoles'])->get();
+                    $qualified = [];
+                    $wanted = ['owner', 'manager', 'ceo'];
+                    foreach ($groups as $g) {
+                        foreach ($g->members as $m) {
+                            if (isset($qualified[$m->id])) {
+                                continue;
+                            }
+                            $roles = $m->memberRoles->pluck('name')->map(function($n){ return strtolower(trim($n)); })->toArray();
+                            foreach ($roles as $r) {
+                                if (in_array($r, $wanted, true)) {
+                                    $qualified[$m->id] = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    return count($qualified);
+                } catch (\Exception $e) {
+                    return $org->certified_staff ?? 0;
+                }
+            })(),
             // include nested user and details for frontend that relies on them
             'user' => $user,
         ]);
@@ -167,7 +241,8 @@ class OrganizationController extends Controller
         $validated = $request->validate([
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
-            'sales_person' => 'nullable|string',
+            
+            'sales_person_id' => 'nullable|integer|exists:users,id',
             'last_contacted' => 'nullable|date',
             'certified_staff' => 'nullable|integer',
             'user_id' => 'nullable|integer|exists:users,id',
@@ -175,8 +250,8 @@ class OrganizationController extends Controller
             'organization_size' => 'sometimes|nullable|string|max:255',
         ]);
         // Create organization record
-        $orgFields = array_filter($validated, function ($k) {
-            return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'user_id', 'organization_name', 'organization_size']);
+            $orgFields = array_filter($validated, function ($k) {
+                return in_array($k, ['contract_start', 'contract_end', 'sales_person_id', 'last_contacted', 'certified_staff', 'user_id', 'organization_name', 'organization_size']);
         }, ARRAY_FILTER_USE_KEY);
         $org = Organization::create($orgFields);
 
@@ -216,7 +291,8 @@ class OrganizationController extends Controller
            
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
-            'sales_person' => 'nullable|string',
+           
+            'sales_person_id' => 'nullable|integer|exists:users,id',
             'last_contacted' => 'nullable|date',
             'certified_staff' => 'nullable|integer',
             // user / user_details fields (frontend sends these)
@@ -231,14 +307,14 @@ class OrganizationController extends Controller
             'city_id' => 'sometimes|nullable|integer|exists:cities,id',
             'state_id' => 'sometimes|nullable|integer|exists:states,id',
             'country_id' => 'sometimes|nullable|integer|exists:countries,id',
-            'zip' => 'sometimes|nullable|string|max:64',
+            'zip' => 'sometimes|nullable|string|min:6|max:6',
         ]);
 
         DB::beginTransaction();
         try {
             // Update allowed organization columns (include organization_name)
             $orgFields = array_filter($validated, function ($k) {
-                return in_array($k, ['contract_start', 'contract_end', 'sales_person', 'last_contacted', 'certified_staff', 'organization_name', 'organization_size']);
+                return in_array($k, ['contract_start', 'contract_end',  'sales_person_id', 'last_contacted', 'certified_staff', 'organization_name', 'organization_size']);
             }, ARRAY_FILTER_USE_KEY);
             if (!empty($orgFields)) {
                 $org->update($orgFields);

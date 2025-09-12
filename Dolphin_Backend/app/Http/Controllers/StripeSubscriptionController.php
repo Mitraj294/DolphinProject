@@ -201,7 +201,7 @@ class StripeSubscriptionController extends Controller
                     $orgData = [
                         'contract_start' => null,
                         'contract_end' => null,
-                        'sales_person' => null,
+                        'sales_person_id' => null,
                         'last_contacted' => null,
                         'certified_staff' => null,
                         'user_id' => $user->id,

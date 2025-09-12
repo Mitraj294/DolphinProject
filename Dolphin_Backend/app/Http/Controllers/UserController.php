@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\UserRole;
 use App\Models\UserDetail;
 
+
 class UserController extends Controller
 {
 
@@ -91,6 +92,8 @@ class UserController extends Controller
                 'role_id' => $role->id,
             ]);
 
+          
+
             return response()->json([
                 'message' => 'User created successfully',
                 'user' => $user->load('roles', 'userDetails'),
@@ -167,6 +170,7 @@ class UserController extends Controller
             }
             // Remove all roles and assign the new one (single role per user)
             $user->roles()->sync([$role->id]);
+
             // Reload user with roles and userDetails to return updated info
             $user = User::with(['roles', 'userDetails'])->find($user->id);
             $details = $user->userDetails;

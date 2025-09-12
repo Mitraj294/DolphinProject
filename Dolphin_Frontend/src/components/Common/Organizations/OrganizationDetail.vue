@@ -6,19 +6,34 @@
     <div class="page">
       <div class="org-detail-outer">
         <div class="org-detail-main-card">
-          <div class="org-detail-main-card-header">
-            <button
-              class="btn btn-primary"
-              @click="$router.push(`/organizations/${orgDetail.id}/edit`)"
+          <div class="org-detail-header-row">
+            <div
+              class="org-detail-main-card-header-title"
+              style="
+                font-family: 'Helvetica Neue LT Std', Helvetica, Arial,
+                  sans-serif;
+                font-weight: 600;
+                font-size: 24px;
+                color: #222;
+              "
             >
-              <img
-                src="@/assets/images/EditWhite.svg"
-                alt="Edit"
-                class="org-edit-icon"
-              />
-              Edit Details
-            </button>
+              {{ orgDetail.organization_name }}
+            </div>
+            <div class="org-detail-main-card-header">
+              <button
+                class="btn btn-primary"
+                @click="$router.push(`/organizations/${orgDetail.id}/edit`)"
+              >
+                <img
+                  src="@/assets/images/EditWhite.svg"
+                  alt="Edit"
+                  class="org-edit-icon"
+                />
+                Edit Details
+              </button>
+            </div>
           </div>
+
           <div class="org-detail-main-cols">
             <!-- Main details: Organization and Admin, side by side -->
             <div
@@ -74,7 +89,20 @@
                     }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Sales Person</span><b>{{ orgDetail.sales_person }}</b>
+                    <span>Sales Person</span
+                    ><b>
+                      <template v-if="salesPersonUser">
+                        {{ salesPersonUser.name || salesPersonUser.email }}
+                      </template>
+                      <template v-else>
+                        {{
+                          orgDetail.sales_person ||
+                          (orgDetail.sales_person_id
+                            ? 'ID: ' + orgDetail.sales_person_id
+                            : 'N/A')
+                        }}
+                      </template>
+                    </b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Last Contacted</span
@@ -192,31 +220,38 @@
 import MainLayout from '@/components/layout/MainLayout.vue';
 import axios from 'axios';
 import storage from '@/services/storage.js';
+
 export default {
   name: 'OrganizationDetail',
   components: { MainLayout },
+
+  // Component State
   data() {
     return {
-      orgDetail: {},
-      countryName: '',
+      orgDetail: {}, // raw organization object (from API)
+      countryName: '', // resolved name (from ID lookups)
       stateName: '',
       cityName: '',
-      currentPlan: null,
+      currentPlan: null, // billing plan info
+      salesPersonUser: null, // resolved sales person user
     };
   },
+
+  // Derived Values
   computed: {
+    /**
+     * Build a formatted address array.
+     * Uses userDetails if available, falls back to orgDetail.
+     */
     addressDisplay() {
-      const arr = [];
-      // prefer userDetails address fields when present
-      const details =
-        this.orgDetail.user && this.orgDetail.user.userDetails
-          ? this.orgDetail.user.userDetails
-          : this.orgDetail;
-      // Address: prefer details.address then orgDetail.address
+      const parts = [];
+      const details = this.orgDetail.user?.userDetails || this.orgDetail;
+
+      // Address line
       const addr = details.address || this.orgDetail.address || '';
-      if (addr) arr.push(addr);
-      // Prefer explicit name fields returned from API (city_name/state_name/country)
-      // then local lookup names, then details/orgDetail string fields
+      if (addr) parts.push(addr);
+
+      // City / State / Zip / Country
       const city =
         this.orgDetail.city_name ||
         this.cityName ||
@@ -236,67 +271,65 @@ export default {
         details.country ||
         this.orgDetail.country ||
         '';
-      if (city) arr.push(city);
-      if (state) arr.push(state);
-      if (zip) arr.push(zip);
-      if (country) arr.push(country);
-      return arr.filter((f) => f && String(f).trim().length > 0);
+
+      if (city) parts.push(city);
+      if (state) parts.push(state);
+      if (zip) parts.push(zip);
+      if (country) parts.push(country);
+
+      return parts.filter((p) => String(p).trim().length > 0);
     },
   },
 
+  // Lifecycle
   async mounted() {
     await this.fetchOrganization();
     await this.lookupLocationNames();
     await this.fetchOrgBillingPreview();
   },
+
+  // Methods
   methods: {
+    // API: Fetch organization details
     async fetchOrganization() {
+      const authToken = storage.get('authToken');
+      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
+      const orgId = this.$route.params.id || null;
+
       try {
-        const authToken = storage.get('authToken');
-        const headers = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
-        // Prefer numeric id param when available (route: /organizations/:id)
-        const orgId = this.$route.params.id || null;
+        // Try /organizations/:id endpoint first
         if (orgId) {
-          try {
-            const res = await axios.get(
-              `http://127.0.0.1:8000/api/organizations/${orgId}`,
-              { headers }
-            );
-            if (res && res.data) {
-              this.orgDetail = res.data;
-              return;
-            }
-          } catch (e) {
-            // fall through to index-based lookup
+          const res = await axios.get(
+            `http://127.0.0.1:8000/api/organizations/${orgId}`,
+            { headers }
+          );
+          if (res?.data) {
+            this.orgDetail = res.data;
+            this.resolveSalesPerson();
+            return;
           }
         }
 
-        // Fallback: if no id param, or show returned nothing, try index and match by organization_name param
+        // Fallback: get list and find by name
+        const res = await axios.get(`http://127.0.0.1:8000/api/organizations`, {
+          headers,
+        });
         const orgName = this.$route.params.orgName;
-        let res = null;
-        try {
-          res = await axios.get(`http://127.0.0.1:8000/api/organizations`, {
-            headers,
-          });
-          if (res.data && Array.isArray(res.data)) {
-            const found = orgName
-              ? res.data.find((o) => o.organization_name === orgName)
-              : res.data[0];
-            if (found) {
-              this.orgDetail = found;
-              return;
-            }
-          }
-        } catch (e) {
-          // fallback
+        const found = orgName
+          ? res.data.find((o) => o.organization_name === orgName)
+          : res.data[0];
+
+        this.orgDetail = found || {};
+        if (this.orgDetail.sales_person_id) {
+          this.fetchSalesPersonUser(this.orgDetail.sales_person_id);
         }
-        this.orgDetail = res && res.data && res.data.length ? res.data[0] : {};
       } catch (e) {
+        console.error('Error fetching organization details:', e.message || e);
         this.orgDetail = {};
       }
     },
+
+    // API: Fetch billing preview
     async fetchOrgBillingPreview() {
       try {
         const API_BASE_URL =
@@ -305,59 +338,81 @@ export default {
         const headers = authToken
           ? { Authorization: `Bearer ${authToken}` }
           : {};
-        const orgId =
-          this.orgDetail && this.orgDetail.id
-            ? this.orgDetail.id
-            : this.$route.params.id || null;
+        const orgId = this.orgDetail?.id || this.$route.params.id;
+
         if (!orgId) return;
+
         const res = await axios.get(
           `${API_BASE_URL}/api/billing/current?org_id=${orgId}`,
-          { headers }
+          {
+            headers,
+          }
         );
-        this.currentPlan = res && res.data ? res.data : null;
+        this.currentPlan = res?.data || null;
       } catch (e) {
+        console.error('Failed to fetch organization billing preview:', e);
         this.currentPlan = null;
       }
     },
+
+    // API: Resolve salesperson user
+    resolveSalesPerson() {
+      if (this.orgDetail?.sales_person) {
+        // API returned string directly (no need to fetch user)
+        this.salesPersonUser = { name: this.orgDetail.sales_person };
+      } else if (this.orgDetail?.sales_person_id) {
+        // Need to fetch user list
+        this.fetchSalesPersonUser(this.orgDetail.sales_person_id);
+      }
+    },
+
+    async fetchSalesPersonUser(userId) {
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const authToken = storage.get('authToken');
+        const headers = authToken
+          ? { Authorization: `Bearer ${authToken}` }
+          : {};
+
+        const res = await axios.get(`${API_BASE_URL}/api/users`, { headers });
+        const users = res.data?.users || [];
+        this.salesPersonUser = users.find((u) => u.id === userId) || null;
+      } catch (e) {
+        console.warn('Failed to fetch sales person user', e);
+        this.salesPersonUser = null;
+      }
+    },
+
+    // API: Lookup city/state/country names by IDs
     async lookupLocationNames() {
-      // Only lookup if IDs are present
       const API_BASE_URL = 'http://127.0.0.1:8000';
-      // Prefer IDs from userDetails when available
-      const details =
-        this.orgDetail.user && this.orgDetail.user.userDetails
-          ? this.orgDetail.user.userDetails
-          : this.orgDetail;
-      // Prefer IDs from details but fall back to orgDetail top-level ids
-      const countryId = details.country_id || this.orgDetail.country_id || null;
-      const stateId = details.state_id || this.orgDetail.state_id || null;
-      const cityId = details.city_id || this.orgDetail.city_id || null;
-      if (countryId) {
-        try {
+      const details = this.orgDetail.user?.userDetails || this.orgDetail;
+
+      const countryId = details.country_id || this.orgDetail.country_id;
+      const stateId = details.state_id || this.orgDetail.state_id;
+      const cityId = details.city_id || this.orgDetail.city_id;
+
+      try {
+        if (countryId) {
           const res = await axios.get(
             `${API_BASE_URL}/api/countries/${countryId}`
           );
           this.countryName = res.data?.name || '';
-        } catch (e) {
-          this.countryName = '';
         }
-      }
-      if (stateId) {
-        try {
+        if (stateId) {
           const res = await axios.get(`${API_BASE_URL}/api/states/${stateId}`);
           this.stateName = res.data?.name || '';
-        } catch (e) {
-          this.stateName = '';
         }
-      }
-      if (cityId) {
-        try {
+        if (cityId) {
           const res = await axios.get(`${API_BASE_URL}/api/cities/${cityId}`);
           this.cityName = res.data?.name || '';
-        } catch (e) {
-          this.cityName = '';
         }
+      } catch (e) {
+        console.error('Failed to fetch location names:', e);
       }
-      // fallback to old fields if not found
+
+      // fallback if nothing was resolved
       if (!this.cityName)
         this.cityName = details.city || this.orgDetail.city || '';
       if (!this.stateName)
@@ -365,85 +420,32 @@ export default {
       if (!this.countryName)
         this.countryName = details.country || this.orgDetail.country || '';
     },
+
+    // Helpers: Formatters
     planLabel(planObj) {
-      // prefer backend-provided friendly fields when present
       if (!planObj) return 'None';
       const name = planObj.plan_name || planObj.plan || 'Plan';
-      const amount = planObj.amount || planObj.plan_amount || null;
+      const amount = planObj.amount || planObj.plan_amount;
       const period = planObj.period || '';
-      if (!amount) return `${name}`;
-      return `${name} ($${this.formatAmount(amount)}/${
-        period || (parseFloat(amount) >= 1000 ? 'Year' : 'Month')
-      })`;
+      return amount
+        ? `${name} ($${this.formatAmount(amount)}/${
+            period || (parseFloat(amount) >= 1000 ? 'Year' : 'Month')
+          })`
+        : name;
     },
+
     formatAmount(amount) {
-      if (amount === null || amount === undefined || amount === '') return '';
       const num = typeof amount === 'number' ? amount : parseFloat(amount);
-      if (isNaN(num)) return amount;
-      // show without thousands sep to match existing UI
-      return num.toFixed(2);
+      return isNaN(num) ? amount : num.toFixed(2);
     },
+
     formatDate(dateVal) {
       if (!dateVal) return null;
-      // Parse DB date as UTC when in 'YYYY-MM-DD' or 'YYYY-MM-DD HH:MM:SS' form
-      const m = String(dateVal).match(
-        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
-      );
-      let d;
-      if (m) {
-        const Y = parseInt(m[1], 10);
-        const Mo = parseInt(m[2], 10) - 1;
-        const D = parseInt(m[3], 10);
-        const hh = m[4] ? parseInt(m[4], 10) : 0;
-        const mm = m[5] ? parseInt(m[5], 10) : 0;
-        const ss = m[6] ? parseInt(m[6], 10) : 0;
-        d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
-      } else {
-        d = new Date(dateVal);
-      }
-      if (isNaN(d.getTime())) return null;
-      const day = String(d.getDate()).padStart(2, '0');
-      const months = [
-        'JAN',
-        'FEB',
-        'MAR',
-        'APR',
-        'MAY',
-        'JUN',
-        'JUL',
-        'AUG',
-        'SEP',
-        'OCT',
-        'NOV',
-        'DEC',
-      ];
-      const mon = months[d.getMonth()];
-      const yr = d.getFullYear();
-      // format like: 31 AUG ,2025 (kept spacing to match your example)
-      return `${day} ${mon},${yr}`;
-    },
-    formatDateTime(dateVal) {
-      if (!dateVal) return null;
-      // Parse DB datetimes as UTC when in common SQL format
-      const m = String(dateVal).match(
-        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
-      );
-      let d;
-      if (m) {
-        const Y = parseInt(m[1], 10);
-        const Mo = parseInt(m[2], 10) - 1;
-        const D = parseInt(m[3], 10);
-        const hh = m[4] ? parseInt(m[4], 10) : 0;
-        const mm = m[5] ? parseInt(m[5], 10) : 0;
-        const ss = m[6] ? parseInt(m[6], 10) : 0;
-        d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
-      } else {
-        d = new Date(dateVal);
-      }
+      const d = new Date(dateVal);
       if (isNaN(d.getTime())) return null;
 
-      const day = String(d.getDate()).padStart(2, '0');
-      const months = [
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const mon = [
         'JAN',
         'FEB',
         'MAR',
@@ -456,18 +458,39 @@ export default {
         'OCT',
         'NOV',
         'DEC',
-      ];
-      const mon = months[d.getMonth()];
-      const yr = d.getFullYear();
+      ][d.getUTCMonth()];
+      const yr = d.getUTCFullYear();
+      return `${day} ${mon},${yr}`;
+    },
+
+    formatDateTime(dateVal) {
+      if (!dateVal) return null;
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return null;
+
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const mon = [
+        'JAN',
+        'FEB',
+        'MAR',
+        'APR',
+        'MAY',
+        'JUN',
+        'JUL',
+        'AUG',
+        'SEP',
+        'OCT',
+        'NOV',
+        'DEC',
+      ][d.getUTCMonth()];
+      const yr = d.getUTCFullYear();
 
       let hr = d.getHours();
       const min = String(d.getMinutes()).padStart(2, '0');
       const ampm = hr >= 12 ? 'PM' : 'AM';
-      hr = hr % 12;
-      hr = hr ? hr : 12; // the hour '0' should be '12'
-      const strTime = `${hr}:${min} ${ampm}`;
+      hr = hr % 12 || 12;
 
-      return `${day} ${mon},${yr} ${strTime}`;
+      return `${day} ${mon},${yr} ${hr}:${min} ${ampm}`;
     },
   },
 };
@@ -504,13 +527,26 @@ export default {
   position: relative;
 }
 
-.org-detail-main-card-header {
+.org-detail-header-row {
+  display: flex;
   width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.org-detail-main-card-header {
+  flex: 0 0 40%; /* button area */
   display: flex;
   justify-content: flex-end;
   align-items: center;
-  margin-bottom: 8px;
-  min-height: 0;
+  margin: 0;
+}
+.org-detail-main-card-header-title {
+  flex: 1 1 60%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0;
 }
 
 .org-detail-main-cols {

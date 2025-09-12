@@ -556,15 +556,16 @@ export default {
 
   min-width: 0;
   background: #fff;
-  border-radius: 24px;
+  border-radius: 20px;
   border: 1px solid #ebebeb;
+  box-sizing: border-box;
+  overflow: visible;
   box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.04);
   margin: 0 auto;
-  box-sizing: border-box;
-  padding: 32px 32px 24px 32px;
+  padding: 24px 20px 20px 20px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 24px;
   position: relative;
 }
 
@@ -584,22 +585,6 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 18px;
-}
-
-/* Responsive styles to match other pages */
-@media (max-width: 1400px) {
-  .lead-capture-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 18px 8px 12px 8px;
-  }
-}
-
-@media (max-width: 900px) {
-  .lead-capture-card {
-    padding: 8px 2vw 8px 2vw;
-    border-radius: 10px;
-  }
 }
 
 .form-input {
@@ -692,7 +677,7 @@ export default {
 }
 .error-message {
   color: red;
-  font-size: 1em;
+  font-size: 0.8em;
   margin-top: 10px;
 }
 </style>

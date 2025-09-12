@@ -10,7 +10,7 @@ class Lead extends Model
 {
     use HasFactory , SoftDeletes;
     protected $fillable = [
-    'first_name', 'last_name', 'email', 'phone', 'find_us', 'organization_name', 'organization_size', 'address', 'country_id', 'state_id', 'city_id', 'zip', 'notes', 'status'
+    'first_name', 'last_name', 'email', 'phone', 'find_us', 'organization_name', 'organization_size', 'address', 'country_id', 'state_id', 'city_id', 'zip', 'notes', 'status', 'created_by'
     ];
     /**
      * Attribute casting for dates

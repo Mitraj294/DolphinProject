@@ -37,15 +37,16 @@ class AuthController extends Controller
             'password' => 'required|string|min:6',
             'confirm_password' => 'required|string|same:password',
             'phone' => 'required|regex:/^[6-9]\d{9}$/',
-            'find_us' => ValidationRules::NULLABLE_STRING,
-            'organization_name' => ValidationRules::NULLABLE_STRING,
-            'organization_size' => ValidationRules::NULLABLE_STRING,
-            'address' => ValidationRules::NULLABLE_STRING,
+            'find_us' => ValidationRules::REQUIRED_STRING,
+            'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
+            'organization_size' => ValidationRules::REQUIRED_STRING,
+            'address' => ValidationRules::REQUIRED_STRING.'|min:10|max:500',
             // Accept numeric IDs for location fields coming from frontend
             'country' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
             'state' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
             'city' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
-            'zip' => ValidationRules::NULLABLE_STRING,
+            'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
+
         ]);
 
         if ($validator->fails()) {
@@ -55,7 +56,10 @@ class AuthController extends Controller
                 'payload' => $request->except(['password', 'confirm_password']),
                 'ip' => $request->ip(),
             ]);
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
         // Save to users table (basic info)
@@ -123,7 +127,10 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()  ) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
         $user = User::where('email', $request->email)->first();
@@ -400,7 +407,10 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
         if (!Hash::check($request->current_password, $user->password)) {

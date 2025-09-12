@@ -28,7 +28,7 @@ return new class extends Migration
             $table->string('main_contact')->nullable();
             $table->string('admin_email')->nullable();
             $table->string('admin_phone')->nullable();
-            $table->string('sales_person')->nullable();
+        
             $table->date('last_contacted')->nullable();
             $table->integer('certified_staff')->nullable();
             $table->unsignedBigInteger('user_id');

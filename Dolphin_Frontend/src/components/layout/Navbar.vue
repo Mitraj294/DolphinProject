@@ -196,41 +196,9 @@ export default {
         return 'Edit Lead';
       }
       if (routeName === 'OrganizationDetail') {
-        // Prefer explicit name from route params/queries when available
-        const orgParamName =
-          this.$route.params.orgName || this.$route.query.orgName || '';
-        if (orgParamName) return `Organization Details: ${orgParamName}`;
-        // If an id is present, try to show cached organization name as "Organization Details: <name>"
-        const orgId =
-          this.$route.params.id ||
-          this.$route.query.id ||
-          this.$route.params.orgId;
-        if (orgId) {
-          const cached = this.orgNameCache[orgId];
-          if (cached) return `Organization Details: ${cached}`;
-          if (this.orgNameFetching[orgId]) return 'Organization Details';
-          if (this.isNavbarAlive) this.fetchOrgName(orgId);
-          return 'Organization Details';
-        }
         return 'Organization Details';
       }
       if (routeName === 'OrganizationEdit') {
-        // Prefer explicit override emitted by the page
-        // If route includes an id param, try to show "Edit organization : <name>"
-        const orgId =
-          this.$route.params.id ||
-          this.$route.query.id ||
-          this.$route.params.orgId;
-        if (orgId) {
-          const cached = this.orgNameCache[orgId];
-          if (cached) return `Edit organization : ${cached}`;
-          if (this.orgNameFetching[orgId]) return 'Edit organization';
-          // Trigger async fetch and show base title immediately
-          if (this.isNavbarAlive) this.fetchOrgName(orgId);
-          return 'Edit organization';
-        }
-        const orgName = this.$route.params.orgName || '';
-        if (orgName) return `${orgName} Organization Details`;
         return 'Organization Details';
       }
       if (routeName === 'BillingDetails') {
@@ -475,43 +443,6 @@ export default {
         this.summary = { total_sent: 0, submitted: 0, pending: 0 };
         console.error('Failed to fetch assessment summary:', e);
       }
-    },
-    async fetchOrgName(orgId) {
-      if (!orgId) return null;
-      if (this.orgNameFetching[orgId]) return;
-      this.orgNameFetching[orgId] = true;
-      try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        let token = storage.get('authToken');
-        if (token && typeof token === 'object' && token.token)
-          token = token.token;
-        const config = token
-          ? { headers: { Authorization: `Bearer ${token}` } }
-          : {};
-        const res = await axios.get(
-          `${API_BASE_URL}/api/organizations/${orgId}`,
-          config
-        );
-        const payload = res && res.data ? res.data : null;
-        // backend may return organization under payload.organization or payload directly
-        const orgObj =
-          payload && payload.organization ? payload.organization : payload;
-        if (orgObj) {
-          const name =
-            orgObj.organization_name || orgObj.name || orgObj.title || '';
-          if (name && this.isNavbarAlive) {
-            this.orgNameCache[orgId] = name;
-          }
-        }
-      } catch (e) {
-        console.warn(`Failed to fetch organization name for id=${orgId}`, e);
-      } finally {
-        if (this.isNavbarAlive) {
-          delete this.orgNameFetching[orgId];
-        }
-      }
-      return null;
     },
 
     async fetchAssessmentName(assessmentId) {

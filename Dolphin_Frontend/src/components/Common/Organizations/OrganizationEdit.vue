@@ -3,7 +3,18 @@
     <div class="page">
       <div class="lead-capture-outer">
         <div class="lead-capture-card">
-          <h2 class="lead-capture-card-title">Edit Organization</h2>
+          <div
+            class="org-detail-main-card-header-title"
+            style="
+              font-family: 'Helvetica Neue LT Std', Helvetica, Arial, sans-serif;
+              font-weight: 600;
+              font-size: 24px;
+              color: #222;
+            "
+          >
+            Edit Organization : {{ form.organization_name }}
+          </div>
+
           <form
             class="lead-capture-form"
             @submit.prevent="updateDetails"
@@ -16,6 +27,12 @@
                   icon="fas fa-cog"
                   placeholder="Flexi-Finders"
                 />
+                <FormLabel
+                  v-if="errors.organization_name"
+                  class="error-message"
+                >
+                  {{ errors.organization_name[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>Organization Size</FormLabel>
@@ -42,6 +59,12 @@
                     },
                   ]"
                 />
+                <FormLabel
+                  v-if="errors.organization_size"
+                  class="error-message"
+                >
+                  {{ errors.organization_size[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>Source</FormLabel>
@@ -56,6 +79,12 @@
                     { value: 'Other', text: 'Other' },
                   ]"
                 />
+                <FormLabel
+                  v-if="errors.source"
+                  class="error-message"
+                >
+                  {{ errors.source[0] }}
+                </FormLabel>
               </div>
             </FormRow>
             <FormRow>
@@ -70,6 +99,12 @@
                     ...countries.map((c) => ({ value: c.id, text: c.name })),
                   ]"
                 />
+                <FormLabel
+                  v-if="errors.country_id"
+                  class="error-message"
+                >
+                  {{ errors.country_id[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>State</FormLabel>
@@ -82,6 +117,12 @@
                     ...states.map((s) => ({ value: s.id, text: s.name })),
                   ]"
                 />
+                <FormLabel
+                  v-if="errors.state_id"
+                  class="error-message"
+                >
+                  {{ errors.state_id[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>City</FormLabel>
@@ -96,6 +137,12 @@
                     })),
                   ]"
                 />
+                <FormLabel
+                  v-if="errors.city_id"
+                  class="error-message"
+                >
+                  {{ errors.city_id[0] }}
+                </FormLabel>
               </div>
             </FormRow>
             <FormRow>
@@ -106,6 +153,12 @@
                   icon="fas fa-map-marker-alt"
                   placeholder="Enter address"
                 />
+                <FormLabel
+                  v-if="errors.address"
+                  class="error-message"
+                >
+                  {{ errors.address[0] }}
+                </FormLabel>
               </div>
 
               <div>
@@ -115,6 +168,12 @@
                   icon="fas fa-map-pin"
                   placeholder="Enter PIN code"
                 />
+                <FormLabel
+                  v-if="errors.zip"
+                  class="error-message"
+                >
+                  {{ errors.zip[0] }}
+                </FormLabel>
               </div>
               <div><FormLabel>&nbsp;</FormLabel></div>
             </FormRow>
@@ -173,6 +232,12 @@
                   icon="fas fa-user"
                   placeholder="Enter first name"
                 />
+                <FormLabel
+                  v-if="errors.first_name"
+                  class="error-message"
+                >
+                  {{ errors.first_name[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>Last Name</FormLabel>
@@ -181,6 +246,12 @@
                   icon="fas fa-user"
                   placeholder="Enter last name"
                 />
+                <FormLabel
+                  v-if="errors.last_name"
+                  class="error-message"
+                >
+                  {{ errors.last_name[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>Admin Email</FormLabel>
@@ -190,6 +261,12 @@
                   type="email"
                   placeholder="Admin email"
                 />
+                <FormLabel
+                  v-if="errors.admin_email"
+                  class="error-message"
+                >
+                  {{ errors.admin_email[0] }}
+                </FormLabel>
               </div>
             </FormRow>
             <FormRow>
@@ -200,14 +277,32 @@
                   icon="fas fa-phone"
                   placeholder="Admin phone"
                 />
+                <FormLabel
+                  v-if="errors.admin_phone"
+                  class="error-message"
+                >
+                  {{ errors.admin_phone[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>Sales Person</FormLabel>
-                <FormInput
-                  v-model="form.salesPerson"
+                <FormDropdown
+                  v-model="form.sales_person_id"
                   icon="fas fa-user-tie"
-                  placeholder="Enter sales person name"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...salesPersons.map((u) => ({
+                      value: u.id,
+                      text: u.name || u.email,
+                    })),
+                  ]"
                 />
+                <FormLabel
+                  v-if="errors.sales_person_id"
+                  class="error-message"
+                >
+                  {{ errors.sales_person_id[0] }}
+                </FormLabel>
               </div>
               <div>
                 <FormLabel>Certified Staff</FormLabel>
@@ -217,6 +312,12 @@
                   type="number"
                   placeholder="Enter number of certified staff"
                 />
+                <FormLabel
+                  v-if="errors.certified_staff"
+                  class="error-message"
+                >
+                  {{ errors.certified_staff[0] }}
+                </FormLabel>
               </div>
             </FormRow>
             <div class="org-edit-actions">
@@ -252,9 +353,157 @@ import {
 import axios from 'axios';
 import storage from '@/services/storage.js';
 
+const API_BASE_URL =
+  process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+
+//  Utility: API Helpers
+
+function getAuthHeaders() {
+  const authToken = storage.get('authToken');
+  return authToken ? { Authorization: `Bearer ${authToken}` } : {};
+}
+
+/**
+ *  Utility: Date Helpers
+ */
+function formatContractDate(input) {
+  try {
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return input;
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const monthShort = d
+      .toLocaleString('en-GB', { month: 'short' })
+      .toUpperCase();
+    const year = d.getFullYear();
+    return `${day} ${monthShort},${year}`;
+  } catch {
+    return input;
+  }
+}
+
+function formatLastContacted(input) {
+  try {
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return input;
+
+    const day = String(d.getDate()).padStart(2, '0');
+    const monthShort = d
+      .toLocaleString('en-GB', { month: 'short' })
+      .toUpperCase();
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    return `${day} ${monthShort},${year} ${hours}:${minutes} ${ampm}`;
+  } catch {
+    return input;
+  }
+}
+
+function parseContractInput(input) {
+  if (!input) return null;
+  try {
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString().slice(0, 19).replace('T', ' ');
+  } catch {
+    return null;
+  }
+}
+
+function parseLastContactedInput(input) {
+  if (!input) return null;
+  try {
+    // Use UTC conversion to ensure difference from parseContractInput
+    const d = new Date(input);
+    if (isNaN(d.getTime())) return null;
+    // Build YYYY-MM-DD HH:MM:SS in UTC
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    const ss = String(d.getUTCSeconds()).padStart(2, '0');
+    return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ *  Utility: Mapping Backend Data → Form
+ */
+function mapOrganizationToForm(found) {
+  const user = found.user || {};
+  const userDetails = user.user_details || {};
+
+  return {
+    organization_name: found.organization_name || '',
+    organization_size: found.organization_size || '',
+    source: found.source || found.find_us || userDetails.find_us || '',
+    address: found.address || userDetails.address || '',
+    zip: found.zip || userDetails.zip || '',
+    country_id: found.country_id || userDetails.country_id || null,
+    state_id: found.state_id || userDetails.state_id || null,
+    city_id: found.city_id || userDetails.city_id || null,
+    contractStart: found.contract_start
+      ? formatContractDate(found.contract_start)
+      : '',
+    contractEnd: found.contract_end
+      ? formatContractDate(found.contract_end)
+      : '',
+    firstName:
+      user.first_name ||
+      found.first_name ||
+      (found.main_contact || '').split(' ')[0] ||
+      '',
+    lastName:
+      user.last_name ||
+      found.last_name ||
+      (found.main_contact || '').split(' ').slice(1).join(' ') ||
+      '',
+    adminEmail: user.email || found.admin_email || '',
+    adminPhone: userDetails.phone || found.admin_phone || '',
+    sales_person_id: found.sales_person_id || null,
+    lastContacted: found.last_contacted
+      ? formatLastContacted(found.last_contacted)
+      : '',
+    certifiedStaff: found.certified_staff || userDetails.certified_staff || '',
+  };
+}
+
+/**
+ *  Utility: Mapping Form → Payload for Update
+ */
+function mapFormToPayload(form) {
+  return {
+    organization_name: form.organization_name,
+    organization_size: form.organization_size || null,
+    source: form.source || null,
+    address: form.address || null,
+    city_id: form.city_id || null,
+    state_id: form.state_id || null,
+    zip: form.zip || null,
+    country_id: form.country_id || null,
+    sales_person_id: form.sales_person_id || null,
+    certified_staff: form.certifiedStaff || null,
+    first_name: form.firstName || null,
+    last_name: form.lastName || null,
+    admin_email: form.adminEmail || null,
+    admin_phone: form.adminPhone || null,
+    main_contact: `${form.firstName} ${form.lastName}`.trim(),
+    contract_start: parseContractInput(form.contractStart),
+    contract_end: parseContractInput(form.contractEnd),
+    last_contacted: parseLastContactedInput(form.lastContacted),
+  };
+}
+
 export default {
   name: 'OrganizationEdit',
   components: { MainLayout, FormRow, FormLabel, FormInput, FormDropdown },
+
   data() {
     return {
       form: {
@@ -263,31 +512,33 @@ export default {
         source: '',
         address: '',
         zip: '',
-        // Location IDs
         country_id: null,
         state_id: null,
         city_id: null,
-        // Other fields
         contractStart: '',
         contractEnd: '',
         firstName: '',
         lastName: '',
         adminEmail: '',
         adminPhone: '',
-        salesPerson: '',
+        sales_person_id: null,
         lastContacted: '',
         certifiedStaff: '',
       },
+      errors: {},
       orgId: null,
       countries: [],
       states: [],
       cities: [],
+      salesPersons: [],
     };
   },
-  mounted() {
-    this.fetchCountries();
-    this.fetchOrganization();
-    // inform navbar of page title when loaded
+
+  async mounted() {
+    await this.fetchCountries();
+    await this.fetchOrganization();
+
+    // page title
     this.$nextTick(() => {
       const name =
         this.form.organization_name ||
@@ -301,320 +552,158 @@ export default {
       }
     });
   },
+
   methods: {
     async fetchOrganization() {
       try {
-        const authToken = storage.get('authToken');
-        const headers = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
         const orgId = this.$route.params.id;
         if (!orgId) return;
 
         const res = await axios.get(
-          `http://127.0.0.1:8000/api/organizations/${orgId}`,
-          { headers }
+          `${API_BASE_URL}/api/organizations/${orgId}`,
+          {
+            headers: getAuthHeaders(),
+          }
         );
 
-        const found = res.data;
-        if (found) {
-          // Prefer user object if it exists, otherwise fallback to org fields
-          const user = found.user || {};
-          const userDetails = user.user_details || {};
+        if (res.data) {
+          this.orgId = res.data.id;
+          this.form = mapOrganizationToForm(res.data);
 
-          const fName = user.first_name || found.first_name || '';
-          const lName = user.last_name || found.last_name || '';
-
-          // Prefer explicit source field, fallback to find_us on org or user_details
-          const sourceVal =
-            found.source || found.find_us || userDetails.find_us || '';
-
-          // Prefer org-level location ids, otherwise use user_details values
-          const countryId = found.country_id || userDetails.country_id || null;
-          const stateId = found.state_id || userDetails.state_id || null;
-          const cityId = found.city_id || userDetails.city_id || null;
-
-          this.orgId = found.id; // Save org id for update
-          this.form = {
-            organization_name: found.organization_name || '',
-            organization_size: found.organization_size || '',
-            source: sourceVal || '',
-            address: found.address || userDetails.address || '',
-            zip: found.zip || userDetails.zip || '',
-            country_id: countryId,
-            state_id: stateId,
-            city_id: cityId,
-            contractStart: found.contract_start
-              ? this.formatContractDate(found.contract_start)
-              : '',
-            contractEnd: found.contract_end
-              ? this.formatContractDate(found.contract_end)
-              : '',
-            firstName: fName || (found.main_contact || '').split(' ')[0] || '',
-            lastName:
-              lName ||
-              (found.main_contact || '').split(' ').slice(1).join(' ') ||
-              '',
-            adminEmail: user.email || found.admin_email || '',
-            adminPhone: userDetails.phone || found.admin_phone || '',
-            salesPerson: found.sales_person || '',
-            lastContacted: found.last_contacted
-              ? this.formatLastContacted(found.last_contacted)
-              : '',
-            certifiedStaff:
-              found.certified_staff || userDetails.certified_staff || '',
-          };
           if (this.form.country_id) await this.fetchStates();
           if (this.form.state_id) await this.fetchCities();
+
+          if (res.data.sales_person) {
+            this.salesPersons = [
+              {
+                id: res.data.sales_person_id || null,
+                name: res.data.sales_person,
+              },
+            ];
+          } else {
+            await this.fetchSalesPersons();
+          }
         }
       } catch (e) {
-        // fallback: leave form as is
         console.error('Failed to fetch organization details', e);
       }
     },
-    formatContractDate(input) {
-      // expected input: ISO timestamp string
-      try {
-        // Parse DB datetimes as UTC when in SQL format, else fallback
-        const m = String(input).match(
-          /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
-        );
-        let d;
-        if (m) {
-          const Y = parseInt(m[1], 10);
-          const Mo = parseInt(m[2], 10) - 1;
-          const D = parseInt(m[3], 10);
-          const hh = m[4] ? parseInt(m[4], 10) : 0;
-          const mm = m[5] ? parseInt(m[5], 10) : 0;
-          const ss = m[6] ? parseInt(m[6], 10) : 0;
-          d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
-        } else {
-          d = new Date(input);
-        }
-        const day = String(d.getDate()).padStart(2, '0');
-        const monthShort = d
-          .toLocaleString('en-GB', { month: 'short' })
-          .toUpperCase();
-        const year = d.getFullYear();
-        return `${day} ${monthShort},${year}`;
-      } catch (e) {
-        console.error('Error formatting contract date:', e);
-        return input;
-      }
-    },
-    formatLastContacted(input) {
-      try {
-        // Parse DB datetimes as UTC when in SQL format
-        const m = String(input).match(
-          /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/
-        );
-        let d;
-        if (m) {
-          const Y = parseInt(m[1], 10);
-          const Mo = parseInt(m[2], 10) - 1;
-          const D = parseInt(m[3], 10);
-          const hh = m[4] ? parseInt(m[4], 10) : 0;
-          const mm = m[5] ? parseInt(m[5], 10) : 0;
-          const ss = m[6] ? parseInt(m[6], 10) : 0;
-          d = new Date(Date.UTC(Y, Mo, D, hh, mm, ss));
-        } else {
-          d = new Date(input);
-        }
-        const day = String(d.getDate()).padStart(2, '0');
-        const monthShort = d
-          .toLocaleString('en-GB', { month: 'short' })
-          .toUpperCase();
-        const year = d.getFullYear();
-        let hours = d.getHours();
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        hours = hours % 12;
 
-        return `${day} ${monthShort},${year} ${hours}:${minutes} ${ampm}`;
-      } catch (e) {
-        console.error('Error formatting last contacted date:', e);
-        return input;
-      }
-    },
-    // Parse human-friendly contract date (e.g. "05 AUG,2025") to ISO string
-    parseContractInput(input) {
-      if (!input) return null;
-      try {
-        const cleaned = String(input).replace(/,/g, '').replace(/\s+/g, ' ');
-        const parts = cleaned.split(' '); // [day, MON, YYYY]
-        let d = null;
-        if (parts.length >= 3) {
-          const dateStr = `${parts[0]} ${parts[1]} ${parts[2]}`;
-          d = new Date(dateStr);
-        }
-        if (!d || isNaN(d.getTime())) {
-          d = new Date(input);
-        }
-        if (isNaN(d.getTime())) return null;
-        // Return MySQL DATETIME in UTC: 'YYYY-MM-DD HH:MM:SS'
-        const Y = d.getUTCFullYear();
-        const M = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const D = String(d.getUTCDate()).padStart(2, '0');
-        const h = String(d.getUTCHours()).padStart(2, '0');
-        const m = String(d.getUTCMinutes()).padStart(2, '0');
-        const s = String(d.getUTCSeconds()).padStart(2, '0');
-        return `${Y}-${M}-${D} ${h}:${m}:${s}`;
-      } catch (e) {
-        console.error('Error parsing contract date:', e);
-        return null;
-      }
-    },
-    // Parse lastContacted like "22 AUG,2025 9:42 AM" to ISO
-    parseLastContactedInput(input) {
-      if (!input) return null;
-      try {
-        const s = String(input).replace(/,/g, ' ');
-        const d = new Date(s);
-        if (isNaN(d.getTime())) return null;
-        const Y = d.getUTCFullYear();
-        const M = String(d.getUTCMonth() + 1).padStart(2, '0');
-        const D = String(d.getUTCDate()).padStart(2, '0');
-        const h = String(d.getUTCHours()).padStart(2, '0');
-        const m = String(d.getUTCMinutes()).padStart(2, '0');
-        const s2 = String(d.getUTCSeconds()).padStart(2, '0');
-        return `${Y}-${M}-${D} ${h}:${m}:${s2}`;
-      } catch (e) {
-        console.error('Error parsing last contacted date:', e);
-        return null;
-      }
-    },
-    onDisabledClick() {
-      const msg = 'This field is not editable.';
-      if (this.$toast && typeof this.$toast.add === 'function') {
-        this.$toast.add({
-          severity: 'info',
-          summary: 'Not editable',
-          detail: msg,
-          life: 3000,
-        });
-      } else if (this.$root && typeof this.$root.$emit === 'function') {
-        this.$root.$emit('show-toast', {
-          severity: 'info',
-          summary: 'Not editable',
-          detail: msg,
-          life: 3000,
-        });
-      } else {
-        console.info(msg);
-      }
-    },
     async updateDetails() {
       try {
-        const authToken = storage.get('authToken');
-        const headers = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
-        // Find org id
-        const orgId = this.orgId;
-        if (!orgId) {
-          if (this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: 'error',
-              summary: 'Update Failed',
-              detail: 'Organization not found.',
-              life: 3500,
-            });
-          }
+        // clear previous errors
+        this.errors = {};
+        if (!this.orgId) {
+          this.$toast?.add({
+            severity: 'error',
+            summary: 'Update Failed',
+            detail: 'Organization not found.',
+            life: 3500,
+          });
           return;
         }
 
-        // Convert user-facing formatted dates back to ISO timestamp strings where possible
-        const contractStartISO = this.parseContractInput(
-          this.form.contractStart
-        );
-        const contractEndISO = this.parseContractInput(this.form.contractEnd);
-        const lastContactedISO = this.parseLastContactedInput(
-          this.form.lastContacted
+        const payload = mapFormToPayload(this.form);
+
+        await axios.put(
+          `${API_BASE_URL}/api/organizations/${this.orgId}`,
+          payload,
+          {
+            headers: getAuthHeaders(),
+          }
         );
 
-        // Prepare payload (convert camelCase to snake_case for backend)
-        const payload = {
-          organization_name: this.form.organization_name,
-          // send backend-friendly organization_size display string
-          organization_size: this.form.organization_size || null,
-          source: this.form.source || null,
-          address: this.form.address || null,
-          city_id: this.form.city_id || null,
-          state_id: this.form.state_id || null,
-          zip: this.form.zip || null,
-          country_id: this.form.country_id || null,
-          sales_person: this.form.salesPerson || null,
-          certified_staff: this.form.certifiedStaff || null,
-          first_name: this.form.firstName || null,
-          last_name: this.form.lastName || null,
-          admin_email: this.form.adminEmail || null,
-          admin_phone: this.form.adminPhone || null,
-          main_contact: `${this.form.firstName} ${this.form.lastName}`.trim(),
-          // include contract and last_contacted fields when available (or null to clear)
-          contract_start: contractStartISO,
-          contract_end: contractEndISO,
-          last_contacted: lastContactedISO,
-        };
-        await axios.put(
-          `http://127.0.0.1:8000/api/organizations/${orgId}`,
-          payload,
-          { headers }
-        );
-        if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'success',
-            summary: 'Updated',
-            detail: 'Organization updated successfully.',
-            life: 3500,
-          });
-        }
-        const id = this.orgId || this.$route.params.id;
-        // clear override and navigate
-        if (this.$root && this.$root.$emit)
-          this.$root.$emit('page-title-override', null);
-        this.$router.push(`/organizations/${id}`);
+        this.$toast?.add({
+          severity: 'success',
+          summary: 'Updated',
+          detail: 'Organization updated successfully.',
+          life: 3500,
+        });
+
+        this.$root?.$emit('page-title-override', null);
+        this.$router.push(`/organizations/${this.orgId}`);
       } catch (e) {
         console.error('Failed to update organization', e);
-        if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
+        // If validation errors from backend (Laravel returns 422 with errors object)
+        if (e.response && e.response.status === 422 && e.response.data) {
+          this.errors = e.response.data.errors || {};
+          // show first validation message in toast as summary
+          const firstField = Object.keys(this.errors)[0];
+          const firstMsg = this.errors[firstField]
+            ? this.errors[firstField][0]
+            : 'Validation failed';
+          this.$toast?.add({
             severity: 'error',
-            summary: 'Update Failed',
-            detail: 'Failed to update organization.',
-            life: 4500,
+            summary: 'Validation Error',
+            detail: firstMsg,
+            life: 6000,
           });
+          return;
         }
+
+        this.$toast?.add({
+          severity: 'error',
+          summary: 'Update Failed',
+          detail: 'Failed to update organization.',
+          life: 4500,
+        });
       }
     },
+
+    // helper to read error text for a given field name (accepts camelCase or snake_case)
+    errorText(field) {
+      if (!this.errors) return null;
+      // try snake_case
+      const snake = field.replace(/[A-Z]/g, (m) => `_${m.toLowerCase()}`);
+      if (this.errors[snake] && this.errors[snake].length)
+        return this.errors[snake][0];
+      if (this.errors[field] && this.errors[field].length)
+        return this.errors[field][0];
+      return null;
+    },
+
     async fetchCountries() {
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
       const res = await axios.get(`${API_BASE_URL}/api/countries`);
       this.countries = res.data;
     },
+
     async fetchStates() {
       if (!this.form.country_id) {
         this.states = [];
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
       const res = await axios.get(
         `${API_BASE_URL}/api/states?country_id=${this.form.country_id}`
       );
       this.states = res.data;
     },
+
     async fetchCities() {
       if (!this.form.state_id) {
         this.cities = [];
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
       const res = await axios.get(
         `${API_BASE_URL}/api/cities?state_id=${this.form.state_id}`
       );
       this.cities = res.data;
     },
+
+    async fetchSalesPersons() {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/users`, {
+          headers: getAuthHeaders(),
+        });
+        const users = (res.data && res.data.users) || [];
+        this.salesPersons = users.filter((u) =>
+          (u.roles || []).some((r) => r.name === 'salesperson')
+        );
+      } catch (e) {
+        console.warn('Failed to fetch sales persons', e);
+        this.salesPersons = [];
+      }
+    },
+
     onCountryChange() {
       this.form.state_id = null;
       this.form.city_id = null;
@@ -622,6 +711,7 @@ export default {
       this.cities = [];
       this.fetchStates();
     },
+
     onStateChange() {
       this.form.city_id = null;
       this.cities = [];
@@ -741,24 +831,19 @@ export default {
   background: #005fa3;
 }
 /* Responsive styles to match other pages */
-@media (max-width: 1400px) {
-  .lead-capture-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 18px 8px 12px 8px;
-  }
-  .org-edit-divider {
-    margin: 16px 0 16px 0;
-  }
+
+.org-detail-main-card-header-title {
+  flex: 1 1 60%;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin: 0;
 }
 
-@media (max-width: 900px) {
-  .lead-capture-card {
-    padding: 8px 2vw 8px 2vw;
-    border-radius: 10px;
-  }
-  .org-edit-divider {
-    margin: 12px 0 12px 0;
-  }
+.error-message {
+  color: #d32f2f; /* red */
+  font-size: 0.8em;
+  margin-top: 6px;
+  display: block;
 }
 </style>

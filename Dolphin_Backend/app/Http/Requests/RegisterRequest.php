@@ -35,7 +35,7 @@ class RegisterRequest extends FormRequest
             'country' => 'nullable|integer|exists:countries,id',
             'state' => 'nullable|integer|exists:states,id',
             'city' => 'nullable|integer|exists:cities,id',
-            'zip' => 'nullable|string|max:32',
+           'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
         ];
     }
 }

@@ -93,13 +93,17 @@
               ref="phoneInput"
               required
             />
+
+              </div>
+            <div >
             <FormLabel
               v-if="errors.phone"
               class="error-message1
               "
               >{{ errors.phone[0] }}</FormLabel
             >
-          </div>
+            </div>
+        
         </div>
         <button
           type="submit"
@@ -166,6 +170,7 @@
                     text: '1-99 Employees (Small)',
                   },
                 ]"
+                required
               /><div>
               <FormLabel
                 v-if="errors.organization_size"
@@ -194,6 +199,7 @@
                         { value: 'Other', text: 'Other' },
                       ]),
                 ]"
+                required
               />
               <FormLabel
                 v-if="errors.find_us"
@@ -290,8 +296,9 @@
                 v-model="organization_address"
                 placeholder="Organization Address"
                 ref="orgAddressInput"
-     
+                required
               />
+               </div>
               <div>
             <FormLabel
                 v-if="errors.organization_address"
@@ -299,7 +306,7 @@
                 "
                 >{{ errors.organization_address[0] }}</FormLabel>
                 </div>
-            </div>
+           
           </div>
 
           <div class="form-field zip-field">
@@ -311,15 +318,17 @@
                 v-model="organization_zip"
                 placeholder="Zip Code"
                 ref="orgZipInput"
-           
-              /><div>
+                required
+              />
+              </div>
+              <div>
               <FormLabel
                 v-if="errors.organization_zip"
                 class="error-message1
                 "
                 >{{ errors.organization_zip[0] }}</FormLabel
               ></div>
-            </div>
+            
           </div>
         </div>
 
@@ -1334,7 +1343,7 @@ select {
 .error-message1
  {
     color: red;
-    font-size: 1em;
+    font-size: 0.8em;
     margin-top: 8px;
 
 }

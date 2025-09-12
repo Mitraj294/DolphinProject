@@ -16,7 +16,8 @@ class Organization extends Model
     'organization_size',
         'contract_start',
         'contract_end',
-        'sales_person',
+ 
+    'sales_person_id',
     'last_contacted',
         'certified_staff',
         'user_id',
@@ -26,6 +27,11 @@ class Organization extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function salesPersonUser()
+    {
+        return $this->belongsTo(User::class, 'sales_person_id');
     }
 
     // Add relationship to get all users in the organization

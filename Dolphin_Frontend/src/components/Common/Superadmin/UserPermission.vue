@@ -251,6 +251,9 @@ export default {
         last_name: '',
         email: '',
         role: '',
+        successMessage: '',
+        errorMessage: '',
+        errors: {},
       },
       // Centralized role options for consistent UI
       roleOptions: [

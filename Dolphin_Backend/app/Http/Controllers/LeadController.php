@@ -53,14 +53,15 @@ class LeadController extends Controller
             'email' => ValidationRules::REQUIRED_EMAIL,
             'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'find_us' => ValidationRules::REQUIRED_STRING,
-            'organization_name' => ValidationRules::REQUIRED_STRING,
+            'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
             'organization_size' => ValidationRules::REQUIRED_STRING,
             'notes' => ValidationRules::OPTIONAL_STRING,
-            'address' => ValidationRules::REQUIRED_STRING,
-            'country_id' => ValidationRules::REQUIRED_INTEGER,
-            'state_id' => ValidationRules::REQUIRED_INTEGER,
-            'city_id' => ValidationRules::REQUIRED_INTEGER,
-            'zip' => 'required|digits:6',
+            'address' => ValidationRules::REQUIRED_STRING.'|min:10|max:500',
+            'country' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
+            'state' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
+            'city' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
+            'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
+
         ]);
         $lead->update($data);
         return response()->json(['message' => 'Lead updated successfully', 'lead' => $lead]);
@@ -73,15 +74,19 @@ class LeadController extends Controller
           'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
             'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'find_us' => ValidationRules::REQUIRED_STRING,
-            'organization_name' => 'required|string|max:255',
+            'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
             'organization_size' => ValidationRules::REQUIRED_STRING,
             'notes' => ValidationRules::OPTIONAL_STRING,
-            'address' => ValidationRules::REQUIRED_STRING,
-            'country_id' => 'required|integer|exists:countries,id',
-            'state_id' => 'required|integer|exists:states,id',
-            'city_id' => 'required|integer|exists:cities,id',
-            'zip' => 'required|digits:6',
+            'address' => ValidationRules::REQUIRED_STRING.'|min:10|max:500',
+            'country_id' => ValidationRules::REQUIRED_INTEGER.'|exists:countries,id',
+            'state_id' => ValidationRules::REQUIRED_INTEGER.'|exists:states,id',
+            'city_id' => ValidationRules::REQUIRED_INTEGER.'|exists:cities,id',
+            'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
         ]);
+        // If an authenticated user made this request, record them as the creator
+        if ($request->user()) {
+            $data['created_by'] = $request->user()->id;
+        }
         $lead = Lead::create($data);
         return response()->json(['message' => 'Lead saved successfully', 'lead' => $lead], 201);
     }

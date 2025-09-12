@@ -172,6 +172,8 @@ export default {
     async handleAddUser() {
       if (this.loading) return;
       this.loading = true;
+      // clear previous field errors
+      this.errors = {};
 
       try {
         const storage = require('@/services/storage').default;
@@ -226,8 +228,10 @@ export default {
             errorMessage = error.response.data.message;
           }
           if (error.response.data.errors) {
-            errorMessage +=
-              ' ' + Object.values(error.response.data.errors).flat().join(' ');
+            // If backend returned validation errors, attach them to `this.errors` so the template can show field labels
+            this.errors = error.response.data.errors;
+          } else {
+            this.errors = {};
           }
         } else if (error.code === 'ERR_NETWORK') {
           errorMessage =
@@ -297,24 +301,6 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 18px;
-}
-
-/* Removed local button styles. Use only global .btn classes for buttons. */
-
-/* Responsive styles to match other pages */
-@media (max-width: 1400px) {
-  .lead-capture-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 18px 8px 12px 8px;
-  }
-}
-
-@media (max-width: 900px) {
-  .lead-capture-card {
-    padding: 8px 2vw 8px 2vw;
-    border-radius: 10px;
-  }
 }
 
 .form-input {
@@ -404,5 +390,11 @@ export default {
 }
 .org-edit-update:hover {
   background: #005fa3;
+}
+
+.error-message1 {
+  color: red;
+  font-size: 0.8em;
+  margin-top: 8px;
 }
 </style>

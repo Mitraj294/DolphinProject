@@ -224,7 +224,7 @@ export default {
     goToDetail(org) {
       this.$router.push({
         name: 'OrganizationDetail',
-        params: { id: org.id },
+        params: { id: org.id, orgName: org.name },
       });
     },
     formatDate(dateVal) {

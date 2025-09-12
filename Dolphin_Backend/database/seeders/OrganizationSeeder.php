@@ -27,7 +27,7 @@ class OrganizationSeeder extends Seeder
                 'main_contact' => 'Meet',
                 'admin_email' => 'meetrajsinhjadeja04@gmail.com',
                 'admin_phone' => '9662300727',
-                'sales_person' => 'Raj',
+               
                 'last_contacted' => '2024-12-15',
                 'certified_staff' => 2,
                 'created_at' => now(),

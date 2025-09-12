@@ -94,21 +94,21 @@
               <div>
                 <FormLabel>Organization Name</FormLabel>
                 <FormInput
-                  v-model="form.orgName"
+                  v-model="form.organization_name"
                   icon="fas fa-cog"
                   placeholder="Flexi-Finders"
                   required
                 />
                 <FormLabel
-                  v-if="errors.orgName"
+                  v-if="errors.organization_name"
                   class="error-message"
-                  >{{ errors.orgName[0] }}</FormLabel
+                  >{{ errors.organization_name[0] }}</FormLabel
                 >
               </div>
               <div>
                 <FormLabel>Organization Size</FormLabel>
                 <FormDropdown
-                  v-model="form.orgSize"
+                  v-model="form.organization_size"
                   icon="fas fa-users"
                   :options="[
                     {
@@ -284,8 +284,8 @@ export default {
         phone: '',
         password: '',
         findUs: '',
-        orgName: '',
-        orgSize: '',
+        organization_name: '',
+        organization_size: '',
         address: '',
         country_id: null,
         state_id: null,
@@ -447,8 +447,8 @@ export default {
             phone: this.form.phone,
             password: this.form.password,
             find_us: this.form.findUs,
-            organization_name: this.form.orgName,
-            organization_size: this.form.orgSize,
+            organization_name: this.form.organization_name,
+            organization_size: this.form.organization_size,
             address: this.form.address,
             country_id: this.form.country_id,
             state_id: this.form.state_id,
@@ -496,8 +496,8 @@ export default {
         phone: '',
         password: '',
         findUs: '',
-        orgName: '',
-        orgSize: '',
+        organization_name: '',
+        organization_size: '',
         address: '',
         country_id: '',
         state_id: '',
@@ -561,24 +561,6 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 18px;
-}
-
-/* Removed local button styles. Use only global .btn classes for buttons. */
-
-/* Responsive styles to match other pages */
-@media (max-width: 1400px) {
-  .lead-capture-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 18px 8px 12px 8px;
-  }
-}
-
-@media (max-width: 900px) {
-  .lead-capture-card {
-    padding: 8px 2vw 8px 2vw;
-    border-radius: 10px;
-  }
 }
 
 .form-input {
@@ -671,7 +653,7 @@ export default {
 }
 .error-message {
   color: red;
-  font-size: 1em;
+  font-size: 0.8em;
   margin-top: 10px;
 }
 </style>
