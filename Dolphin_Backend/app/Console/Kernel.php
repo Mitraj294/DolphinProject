@@ -22,7 +22,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('tokens:cleanup --force')->dailyAt('02:00')->description('Clean up expired OAuth tokens');
 
         // Update subscription statuses hourly (mark active subscriptions past end as expired)
-        $schedule->command('subscriptions:update-status')->dailyAt('05:00')->description('Mark expired subscriptions as expired in DB');
+        $schedule->command('subscriptions:update-status')->dailyAt('05:05')->description('Mark expired subscriptions as expired in DB');
 
 
     }

@@ -332,11 +332,11 @@ export default {
         return null;
       }
     },
-    async checkSubscriptionStatus(orgId = null) {
+    async checkSubscriptionStatus(user_id) {
       try {
-        const url = orgId
-          ? `${API_BASE_URL}/api/subscription/status?org_id=${encodeURIComponent(
-              orgId
+        const url = user_id
+          ? `${API_BASE_URL}/api/subscription/status?user_id=${encodeURIComponent(
+              user_id
             )}`
           : `${API_BASE_URL}/api/subscription/status`;
         const response = await axios.get(url);

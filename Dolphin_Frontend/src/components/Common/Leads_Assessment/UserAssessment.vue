@@ -217,7 +217,7 @@ export default {
               resSub.data.subscribed)
           );
         } catch (e) {
-          isSubscribed.value = false;
+          isSubscribed.value = 'expired';
         }
       } catch (error) {
         if (error.response && error.response.status === 401) {

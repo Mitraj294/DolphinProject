@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\Subscription;
-use Carbon\Carbon;
+use App\Models\Subscription; 
+use Carbon\Carbon; 
 
 class UpdateSubscriptionStatus extends Command
 {
@@ -13,7 +13,7 @@ class UpdateSubscriptionStatus extends Command
      *
      * @var string
      */
-    protected $signature = 'app:update-subscription-status';
+    protected $signature = 'subscriptions:update-status';
 
     /**
      * The console command description.
