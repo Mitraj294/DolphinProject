@@ -282,7 +282,7 @@ export default {
   padding-top: 0;
   margin-left: 0;
   margin-top: 0;
-  z-index: 10;
+  z-index: 11;
 }
 .sidebar.expanded {
   width: 200px;

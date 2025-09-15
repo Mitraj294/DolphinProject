@@ -165,6 +165,11 @@ export default {
 .main-content.sidebar-expanded {
   margin-left: 200px; /* Sidebar width when expanded */
 }
+@media (max-width: 425px) {
+  .main-content.sidebar-expanded {
+    margin-left: 0;
+  }
+}
 
 .fixed-navbar {
   margin-left: 0;
@@ -176,6 +181,14 @@ export default {
   top: 0;
   width: calc(100vw - 65px);
   z-index: 11;
+}
+@media (max-width: 425px) {
+  .fixed-navbar {
+    left: 0;
+    width: 100%;
+    min-width: 320px;
+    max-width: 425px;
+  }
 }
 
 .main-content.sidebar-expanded .fixed-navbar {

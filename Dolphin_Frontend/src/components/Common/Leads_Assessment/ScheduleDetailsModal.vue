@@ -9,7 +9,7 @@
       style="max-width: 900px; width: 90%"
     >
       <button
-        class="modal-close-btn"
+        class="modal-close"
         @click="$emit('close')"
       >
         &times;

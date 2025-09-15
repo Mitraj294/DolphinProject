@@ -3,8 +3,16 @@
   <nav
     v-bind="$attrs"
     class="navbar"
+    :class="{ 'sidebar-expanded': sidebarExpanded }"
   >
     <div class="navbar-left">
+      <div class="sidebar-logo1">
+        <img
+          src="@/assets/images/Logo.svg"
+          alt="Logo"
+          style="width: 25px; height: 25px; object-fit: contain"
+        />
+      </div>
       <span class="navbar-page">{{ pageTitle }}</span>
     </div>
     <div class="navbar-actions">
@@ -15,20 +23,20 @@
         style="display: flex; align-items: center; position: relative"
       >
         <span
-          style="
-            height: 36px;
-            width: 34px;
-            vertical-align: middle;
-            margin-right: 8px;
-            cursor: pointer;
-            display: inline-block;
-            position: relative;
-          "
+          :style="{
+            height: isVerySmallScreen ? '28px' : '36px',
+            width: isVerySmallScreen ? '26px' : '34px',
+            verticalAlign: 'middle',
+            marginRight: '8px',
+            cursor: 'pointer',
+            display: 'inline-block',
+            position: 'relative',
+          }"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="34"
-            height="36"
+            :width="isVerySmallScreen ? 26 : 34"
+            :height="isVerySmallScreen ? 28 : 36"
             viewBox="0 0 256 256"
           >
             <g
@@ -83,16 +91,18 @@
             class="navbar-dropdown"
             ref="dropdown"
           >
-            <div
-              class="navbar-dropdown-item"
-              v-if="roleName"
-              @click="goToProfile"
-            >
+            <div class="navbar-dropdown-item0">
               <i class="fas fa-user"></i>
-              Profile
+              <div
+                class="navbar-dropdown-item"
+                v-if="roleName"
+                @click="goToProfile"
+              >
+                Profile
+              </div>
             </div>
             <div
-              class="navbar-dropdown-item"
+              class="navbar-dropdown-item0"
               v-if="roleName != 'superadmin'"
               @click="
                 $router.push({ name: 'ManageSubscription' });
@@ -100,14 +110,25 @@
               "
             >
               <i class="fas fa-credit-card"></i>
-              Manage Subscriptions
+              <div
+                class="navbar-dropdown-item"
+                v-if="roleName != 'superadmin'"
+                @click="
+                  $router.push({ name: 'ManageSubscription' });
+                  dropdownOpen = false;
+                "
+              >
+                Manage Subscriptions
+              </div>
             </div>
-            <div
-              class="navbar-dropdown-item"
-              @click="confirmLogout"
-            >
+            <div class="navbar-dropdown-item0">
               <i class="fas fa-sign-out-alt"></i>
-              Logout
+              <div
+                class="navbar-dropdown-item"
+                @click="confirmLogout"
+              >
+                Logout
+              </div>
             </div>
           </div>
         </transition>
@@ -556,7 +577,7 @@ export default {
     },
     // handleLogoutCancel and logout removed: PrimeVue confirm used instead
     checkScreen() {
-      this.isVerySmallScreen = window.innerWidth <= 420;
+      this.isVerySmallScreen = window.innerWidth <= 425;
     },
     updateNotificationCount() {
       const count = Number(storage.get('notificationCount'));
@@ -706,25 +727,36 @@ export default {
   max-width: 100vw;
   overflow-x: auto;
 }
+.navbar.sidebar-expanded {
+  width: calc(100vw - 200px);
+}
+@media (max-width: 425px) {
+  .navbar.sidebar-expanded {
+    width: calc(100vw + 1px);
+  }
+}
 @media (max-width: 425px) {
   .navbar {
-    min-width: 425px;
-    padding-right: 10px;
-    padding-left: 7px;
+    width: calc(100vw + 1px);
+    min-width: 320px;
+    max-width: 100vw;
+    margin: 0 1px 0 1px;
+    padding: 0 0 0 8px;
+    height: 70px;
     justify-content: space-between;
   }
 }
 .navbar-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
   min-width: 130px;
 }
 .navbar-actions {
   display: flex;
   align-items: center;
   gap: 0;
-  min-width: 180px;
+  min-width: 80px;
 }
 .navbar-page {
   position: static;
@@ -781,6 +813,14 @@ export default {
   position: static;
   z-index: 1;
 }
+@media (max-width: 425px) {
+  .navbar-avatar {
+    width: 28px;
+    height: 28px;
+    font-size: 1rem;
+    margin-right: 4px;
+  }
+}
 .navbar-username {
   font-weight: 500;
   color: #222;
@@ -802,7 +842,7 @@ export default {
   transition: background 0.13s;
   user-select: none;
 }
-@media (max-width: 420px) {
+@media (max-width: 425px) {
   .navbar-profile-btn {
     padding: 2px 4px 2px 2px;
   }
@@ -817,6 +857,13 @@ export default {
   margin-left: 4px;
   display: inline-block;
   vertical-align: middle;
+}
+@media (max-width: 425px) {
+  .navbar-chevron {
+    width: 14px;
+    height: 14px;
+    margin-left: 2px;
+  }
 }
 .navbar-dropdown {
   position: fixed;
@@ -833,6 +880,16 @@ export default {
   align-items: stretch;
   animation: dropdown-fade-in 0.18s;
 }
+@media (max-width: 425px) {
+  .navbar-dropdown {
+    top: 68px;
+    right: 16px;
+    min-width: 140px;
+    max-width: 160px;
+    border-radius: 16px;
+    padding: 12px 0;
+  }
+}
 .navbar-dropdown-item {
   padding: 12px 20px;
   font-size: 1rem;
@@ -844,10 +901,39 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
+  justify-content: center; /* horizontally center icon + label */
+  text-align: center; /* center text fallback */
+  width: 100%; /* make items fill dropdown width so centering is apparent */
+}
+.navbar-dropdown-item0 {
+  padding: 0 20px;
+  font-size: 1rem;
+  color: #222;
+  cursor: default;
+  user-select: none;
+  transition: background 0.15s;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center; /* horizontally center icon + label */
+  text-align: center; /* center text fallback */
+  width: 100%; /* make items fill dropdown width so centering is apparent */
+}
+@media (max-width: 425px) {
+  .navbar-dropdown-item {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+    text-align: center;
+    gap: 8px;
+    justify-content: center; /* ensure mobile keeps centered layout */
+    width: 100%;
+  }
 }
 .navbar-dropdown-item:first-child {
   cursor: default;
 }
+
 .navbar-dropdown-item:hover {
   background: #f5f5f5;
 }
@@ -944,6 +1030,16 @@ export default {
   pointer-events: none;
   z-index: 1;
 }
+@media (max-width: 450px) {
+  .navbar-badge {
+    top: -4px;
+    left: 10px;
+    width: 14px;
+    height: 16px;
+    font-size: 0.75rem;
+    padding: 0 4px;
+  }
+}
 
 @media (max-width: 420px) {
   .navbar-username {
@@ -982,6 +1078,26 @@ export default {
   background: #ff0000;
   color: #ffffff;
   border-color: #e00f0f;
+}
+
+.sidebar-logo1 {
+  display: none;
+}
+@media (max-width: 425px) {
+  .sidebar-logo1 {
+    width: auto;
+    min-width: unset;
+    max-width: unset;
+    height: 65px;
+    min-height: 65px;
+    max-height: 65px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fafafa;
+    position: relative;
+    flex-direction: column;
+  }
 }
 </style>
 

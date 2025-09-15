@@ -61,103 +61,109 @@ Route::get('/cities/{id}', [\App\Http\Controllers\LocationController::class, 'ge
  These routes require a valid access token but are accessible to all roles.
 */
 Route::middleware('auth:api')->group(function () {
+    // Basic authentication routes that don't require subscription check
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
     Route::get('/token/status', [AuthController::class, 'tokenStatus']);
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
-   
-Route::prefix('profile')->group(function () {
-    Route::patch('/', [AuthController::class, 'updateProfile']);
-    Route::get('/', [AuthController::class, 'profile']);
-    Route::delete('/', [AuthController::class, 'deleteAccount']);
-});
-    // Notifications for all users
-    Route::get('/announcements/user', [NotificationController::class, 'userAnnouncements']);
-    Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
-    // Returns notifications for the currently authenticated user
-    Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
-    Route::post('/announcements/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
-    // Allow authenticated users to create assessments
-    Route::post('/assessments', [AssessmentController::class, 'store']);
-    Route::get('/assessments', [AssessmentController::class, 'show'])->withoutMiddleware(['auth:api', 'auth']);
-    Route::get('/questions', [AnswerController::class, 'getQuestions']);
-    Route::post('/answers', [AnswerController::class, 'store']);
-    Route::get('/answers', [AnswerController::class, 'getUserAnswers']);
-    Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
 
-    // Stripe endpoints: allow any authenticated user to create a checkout session or open customer portal
+    // Subscription and billing routes - accessible even with expired subscription
     Route::post('/stripe/checkout-session', [StripeSubscriptionController::class, 'createCheckoutSession']);
     Route::post('/stripe/customer-portal', [StripeSubscriptionController::class, 'createCustomerPortal']);
-
-    // These routes are accessible to all roles, but the logic inside the controller may differ.
     Route::get('/subscription', [SubscriptionController::class, 'getUserSubscription']);
     Route::get('/user/subscription', [SubscriptionController::class, 'getUserSubscription']);
     Route::get('/subscription/status', [SubscriptionController::class, 'subscriptionStatus']);
     Route::get('/billing/current', [SubscriptionController::class, 'getCurrentPlan']);
     Route::get('/billing/history', [SubscriptionController::class, 'getBillingHistory']);
 
-    /*
-    
- Authenticated Routes (Role-based)
-    
- These routes are protected by the new `auth.role` middleware.
+    // Profile routes - accessible even with expired subscription
+    Route::prefix('profile')->group(function () {
+        Route::patch('/', [AuthController::class, 'updateProfile']);
+        Route::get('/', [AuthController::class, 'profile']);
+        Route::delete('/', [AuthController::class, 'deleteAccount']);
+    });
 
-    */
-
-    // Superadmin only routes
-    Route::middleware('auth.role:superadmin')->group(function () {
-        Route::get('/users', [UserController::class, 'index']);
-        Route::post('/users', [UserController::class, 'store']);
+    // Routes that require active subscription - blocked if subscription is expired
+    Route::middleware('subscription.check')->group(function () {
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
         
-        Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
-        Route::patch('/users/{id}/soft-delete', [UserController::class, 'softDelete']);
-        Route::delete('/users/{id}', [UserController::class, 'destroy']);
-        Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
-        Route::get('/organizations', [OrganizationController::class, 'index']);
-        Route::post('/organizations', [OrganizationController::class, 'store']);
-        Route::prefix('organizations/{id}')->group(function(){
-            Route::get('/', [OrganizationController::class, 'show']);
-            Route::put('/', [OrganizationController::class, 'update']);
-            Route::delete('/', [OrganizationController::class, 'destroy']);
-        });
-        Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
-        Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
-        Route::post('/announcements/send', [NotificationController::class, 'send']);
-        Route::get('/notifications', [NotificationController::class, 'allNotifications']);
-    });
-
-    // Dolphin Admin specific routes (per permissions.js)
-    Route::middleware('auth.role:dolphinadmin,superadmin')->group(function () {
-        Route::post('/leads', [LeadController::class, 'store']);
-    Route::get('/leads/{id}', [LeadController::class, 'show']);
-        Route::get('/leads', [LeadController::class, 'index']);
-        Route::patch('/leads/{id}', [LeadController::class, 'update']);
+        // Notifications for all users
+        Route::get('/announcements/user', [NotificationController::class, 'userAnnouncements']);
+        Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
+        // Returns notifications for the currently authenticated user
+        Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
+        Route::post('/announcements/{id}/read', [NotificationController::class, 'markAsRead']);
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
         
-    Route::post('/notifications/send', [NotificationController::class, 'send']);
+        // Allow authenticated users to create assessments
+        Route::post('/assessments', [AssessmentController::class, 'store']);
+        Route::get('/assessments', [AssessmentController::class, 'show'])->withoutMiddleware(['auth:api', 'auth']);
+        Route::get('/questions', [AnswerController::class, 'getQuestions']);
+        Route::post('/answers', [AnswerController::class, 'store']);
+        Route::get('/answers', [AnswerController::class, 'getUserAnswers']);
+        Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
 
-        Route::post('/notifications/send', [NotificationController::class, 'send']);
-    });
+        /*
+        
+     Authenticated Routes (Role-based)
+        
+     These routes are protected by both subscription check and role middleware.
 
-    // Organization Admin specific routes (per permissions.js)
-    Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {
-        Route::get('/groups', [GroupController::class, 'index']);
-        Route::get('/groups/{id}', [GroupController::class, 'show']);
-        Route::post('/groups', [GroupController::class, 'store']);
-    // Member roles listing (used by frontend selects)
-    Route::get('/member-roles', [\App\Http\Controllers\MemberRoleController::class, 'index']);
-        Route::get('/members', [MemberController::class, 'index']);
-        Route::post('/members', [MemberController::class, 'store']);
-        Route::prefix('members/{id}')->group(function(){
-            Route::get('/', [MemberController::class, 'show']);
-            Route::put('/', [MemberController::class, 'update']);
-            Route::delete('/', [MemberController::class, 'destroy']);
+        */
+
+        // Superadmin only routes
+        Route::middleware('auth.role:superadmin')->group(function () {
+            Route::get('/users', [UserController::class, 'index']);
+            Route::post('/users', [UserController::class, 'store']);
+            
+            Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
+            Route::patch('/users/{id}/soft-delete', [UserController::class, 'softDelete']);
+            Route::delete('/users/{id}', [UserController::class, 'destroy']);
+            Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
+            Route::get('/organizations', [OrganizationController::class, 'index']);
+            Route::post('/organizations', [OrganizationController::class, 'store']);
+            Route::prefix('organizations/{id}')->group(function(){
+                Route::get('/', [OrganizationController::class, 'show']);
+                Route::put('/', [OrganizationController::class, 'update']);
+                Route::delete('/', [OrganizationController::class, 'destroy']);
+            });
+            Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
+            Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
+            Route::post('/announcements/send', [NotificationController::class, 'send']);
+            Route::get('/notifications', [NotificationController::class, 'allNotifications']);
         });
-    });
 
-    // Allow assessment scheduling for dolphin admins, organization admins, and superadmins
-    Route::middleware('auth.role:dolphinadmin,organizationadmin,superadmin')->group(function () {
-        Route::post('/assessment-schedules', [\App\Http\Controllers\AssessmentScheduleController::class, 'store']);
+        // Dolphin Admin specific routes (per permissions.js)
+        Route::middleware('auth.role:dolphinadmin,superadmin')->group(function () {
+            Route::post('/leads', [LeadController::class, 'store']);
+            Route::get('/leads/{id}', [LeadController::class, 'show']);
+            Route::get('/leads', [LeadController::class, 'index']);
+            Route::patch('/leads/{id}', [LeadController::class, 'update']);
+            
+            Route::post('/notifications/send', [NotificationController::class, 'send']);
+        });
+
+        // Organization Admin specific routes (per permissions.js)
+        Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {
+            Route::get('/groups', [GroupController::class, 'index']);
+            Route::get('/groups/{id}', [GroupController::class, 'show']);
+            Route::post('/groups', [GroupController::class, 'store']);
+            // Member roles listing (used by frontend selects)
+            Route::get('/member-roles', [\App\Http\Controllers\MemberRoleController::class, 'index']);
+            Route::get('/members', [MemberController::class, 'index']);
+            Route::post('/members', [MemberController::class, 'store']);
+            Route::prefix('members/{id}')->group(function(){
+                Route::get('/', [MemberController::class, 'show']);
+                Route::put('/', [MemberController::class, 'update']);
+                Route::delete('/', [MemberController::class, 'destroy']);
+            });
+        });
+
+        // Allow assessment scheduling for dolphin admins, organization admins, and superadmins
+        Route::middleware('auth.role:dolphinadmin,organizationadmin,superadmin')->group(function () {
+            Route::post('/assessment-schedules', [\App\Http\Controllers\AssessmentScheduleController::class, 'store']);
+        });
+        
+        // End of subscription.check middleware group
     });
 });
 

@@ -61,7 +61,7 @@ export default {
   margin: 8px auto 24px auto;
   position: relative;
   min-height: 64px;
-  /* border-top: 1px solid #f0f0f0; */ /* Removed top border/line */
+
   box-shadow: none;
   overflow: visible !important;
   z-index: 1; /* Lower than dropdown overlay */
@@ -124,7 +124,7 @@ export default {
 @media (max-width: 900px) {
   .footer-box {
     margin: 16px auto 0 auto;
-    /* border-top: none; */
+
     overflow: visible !important;
   }
   .footer-controls,

@@ -29,17 +29,8 @@
         </colgroup>
         <TableHeader
           :columns="[
-            {
-              label: 'Assessment Name',
-              key: 'name',
-              style: 'width: 30%',
-              minWidth: '200px',
-            },
-            {
-              label: 'Actions',
-              key: 'actions',
-              style: 'width: 70%',
-            },
+            { label: 'Assessment Name', key: 'name', style: 'width: 30%' },
+            { label: 'Actions', key: 'actions', style: 'width: 70%' },
           ]"
         />
         <tbody>
@@ -638,8 +629,8 @@ export default {
       } else if (userId) {
         params.user_id = userId;
       } else {
-        console.log(
-          '[OrganizationAdminAssessmentsCard] No organization_id or user_id found in storage'
+        console.warn(
+          '[OrganizationAdminAssessmentsCard] No orgId or userId found in storage'
         );
       }
 

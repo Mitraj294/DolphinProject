@@ -1062,41 +1062,4 @@ input:checked + .switch-slider:before {
     border-bottom-right-radius: 10px;
   }
 }
-@media (max-width: 600px) {
-  .subscription-plans-container {
-    padding: 0 2vw 8px 2vw;
-    min-height: 180px;
-  }
-  .subscription-plans-title {
-    font-size: 1.1rem;
-  }
-  .subscription-plans-options {
-    flex-direction: column;
-    gap: 16px;
-  }
-  .plan-card {
-    min-width: 0;
-    width: 100%;
-    height: auto;
-    padding: 12px 4px;
-  }
-  .plan-card-header {
-    padding-left: 8px;
-  }
-  .plan-card-badge {
-    font-size: 0.85rem;
-    padding: 2px 18px;
-    top: 8px;
-    right: -24px;
-  }
-  .plan-card-price {
-    font-size: 1.3rem;
-    margin: 10px 0 10px 0;
-  }
-  .plan-card-btn,
-  .plan-card-btn--current {
-    font-size: 1rem;
-    padding: 8px 0;
-  }
-}
 </style>

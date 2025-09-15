@@ -180,7 +180,7 @@ export default {
   box-shadow: none;
   overflow: visible !important;
   margin: 0;
-  z-index: 10;
+  z-index: 5;
 }
 .footer-controls {
   width: 100%;
