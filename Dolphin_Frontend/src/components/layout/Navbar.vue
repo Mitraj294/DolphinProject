@@ -691,7 +691,6 @@ export default {
 .navbar {
   width: calc(100vw - 50px);
   height: 70px;
-  left: 50px;
   border: 0.6px solid #f0f0f0;
   border-radius: 1px;
   background: #fafafa;
@@ -917,25 +916,6 @@ export default {
   z-index: 1;
 }
 
-@media (max-width: 900px) {
-  .navbar {
-    width: calc(100vw - 38px);
-    left: 38px;
-    height: 54px;
-    min-height: 54px;
-    max-height: 54px;
-    padding: 0 8px;
-  }
-  .navbar-avatar {
-    width: 28px;
-    height: 28px;
-    font-size: 1rem;
-  }
-  .navbar-page {
-    font-size: 18px;
-    line-height: 22px;
-  }
-}
 @media (max-width: 420px) {
   .navbar-username {
     display: none !important;

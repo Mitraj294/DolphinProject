@@ -251,14 +251,16 @@ export default {
 
 <style scoped>
 :root {
+  --sidebar-collapsed-width: 65px;
+  --sidebar-expanded-width: 200px;
   --sidebar-navbar-height: 56px;
 }
 .sidebar {
   box-sizing: border-box;
   position: fixed;
-  width: 65px;
-  min-width: 65px;
-  max-width: 65px;
+  width: var(--sidebar-collapsed-width);
+  min-width: var(--sidebar-collapsed-width);
+  max-width: var(--sidebar-collapsed-width);
   height: 100vh;
   left: 0;
   top: 0;
@@ -275,50 +277,36 @@ export default {
   margin-left: 0;
   margin-top: 0;
   z-index: 10;
+  transition: width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease;
 }
 .sidebar.expanded {
-  width: 200px;
-  min-width: 200px;
-  max-width: 200px;
+  width: var(--sidebar-expanded-width);
+  min-width: var(--sidebar-expanded-width);
+  max-width: var(--sidebar-expanded-width);
 }
 .sidebar-logo {
-  width: auto;
-  min-width: unset;
-  max-width: unset;
+  width: 100%;
   height: 70px;
   min-height: 70px;
-  max-height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #fafafa;
   position: relative;
   flex-direction: column;
+  flex-shrink: 0;
 }
 .sidebar-logo.expanded {
-  width: auto;
-  max-width: unset;
-  min-width: unset;
-  height: 70px;
-  flex-direction: row;
   justify-content: flex-start;
-  align-items: center;
-  padding-left: 16px;
+  padding: 16px;
 }
 .sidebar-logo img {
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
-  min-height: 40px;
-  max-width: 40px;
-  max-height: 40px;
+  width: 35px;
+  height: 35px;
+  min-width: 35px;
+  max-width: 35px;
   object-fit: contain;
   display: block;
-  position: static;
-  left: unset;
-  top: unset;
-  transform: none;
-  margin: 0;
 }
 .sidebar-logo-label {
   display: inline-block;
@@ -335,7 +323,7 @@ export default {
 .sidebar-menu {
   position: relative;
   width: 100%;
-  max-width: 100%;
+  min-width: 65px;
   height: 100%;
   padding: 0;
   margin: 0;
@@ -344,27 +332,21 @@ export default {
   align-items: center;
 }
 
-.sidebar.expanded ul.sidebar-menu {
+.sidebar.expanded .sidebar-menu {
   margin-top: 32px;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center !important;
+  align-items: center;
 }
 
 .sidebar.expanded li {
   height: 56px;
-  margin-top: 0;
-  margin-bottom: 0;
-  padding: 0 0 0 0;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: flex-start !important;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
   gap: 12px;
   width: 100%;
-  min-width: 0;
-  max-width: 100%;
 }
 
 .sidebar.expanded li:first-child {
@@ -525,107 +507,6 @@ export default {
 }
 .sidebar-link-expanded:not(.active):hover .sidebar-svg {
   filter: none;
-}
-
-@media (max-width: 900px) {
-  .sidebar {
-    width: 45px;
-    min-width: 45px;
-    max-width: 45px;
-  }
-  .sidebar.expanded {
-    width: 120px;
-    min-width: 120px;
-    max-width: 120px;
-  }
-  .sidebar-logo,
-  .sidebar-menu {
-    max-width: 100%;
-  }
-  .sidebar-logo {
-    width: 40px;
-    min-width: 40px;
-    max-width: 40px;
-    height: 50px;
-    min-height: 50px;
-    max-height: 50px;
-    padding-left: 0;
-  }
-  .sidebar-logo.expanded {
-    width: 120px;
-    min-width: 120px;
-    max-width: 120px;
-    height: 50px;
-    padding-left: 8px;
-  }
-  .sidebar-logo img {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    min-height: 28px;
-    max-width: 28px;
-    max-height: 28px;
-  }
-  .sidebar-logo-label {
-    font-size: 0.9rem;
-    margin-left: 6px;
-  }
-  .sidebar.expanded li {
-    height: 56px;
-    margin: 6px 0 6px 4px;
-    padding: 0;
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 8px;
-    width: 100%;
-    min-width: 0;
-    max-width: 100%;
-  }
-  .sidebar.expanded .sidebar-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 5px !important;
-  }
-  .sidebar.expanded .sidebar-menu-label {
-    font-size: 0.5rem;
-    font-weight: 500;
-    color: #222;
-    margin-left: 4px;
-    margin-right: 4px;
-    white-space: nowrap;
-  }
-  .sidebar:not(.expanded) li {
-    width: 32px !important;
-    height: 32px !important;
-    min-width: 32px !important;
-    min-height: 32px !important;
-    left: calc(50% - 16px) !important;
-    top: unset;
-    margin: 0 !important;
-    padding: 0 !important;
-  }
-  .sidebar:not(.expanded) .sidebar-icon {
-    width: 28px !important;
-    height: 28px !important;
-    min-width: 28px !important;
-    min-height: 28px !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .sidebar:not(.expanded) .sidebar-icon img.sidebar-svg {
-    width: 18px !important;
-    height: 18px !important;
-    min-width: 18px !important;
-    min-height: 18px !important;
-    max-width: 22px !important;
-    max-height: 22px !important;
-  }
 }
 
 .logout-confirm-overlay {

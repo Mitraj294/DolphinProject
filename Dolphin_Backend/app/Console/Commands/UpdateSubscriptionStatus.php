@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\Subscription; 
-use Carbon\Carbon; 
+use App\Models\Subscription;
+use Carbon\Carbon;
 
 class UpdateSubscriptionStatus extends Command
 {

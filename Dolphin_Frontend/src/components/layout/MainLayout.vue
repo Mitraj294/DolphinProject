@@ -60,11 +60,6 @@ export default {
   },
   computed: {
     sidebarBtnLeft() {
-      if (this.windowWidth <= 900) {
-        return this.sidebarExpanded
-          ? `calc(120px - 15px)`
-          : `calc(45px - 15px)`;
-      }
       return this.sidebarExpanded ? `calc(200px - 15px)` : `calc(65px - 15px)`;
     },
   },
@@ -107,8 +102,6 @@ export default {
   min-height: 0;
   height: auto;
   width: 100vw;
-  /* Remove fixed height and overflow to allow page to grow naturally */
-  /* height: auto; */
   margin: 0;
   overflow: visible;
 }
@@ -186,32 +179,6 @@ export default {
 }
 
 /* Responsive: reduce margin on smaller screens */
-
-@media (max-width: 900px) {
-  .main-content {
-    margin-left: 45px; /* Sidebar width on small screens */
-    padding-top: 54px; /* Navbar height on small screens */
-    max-width: 100vw;
-    overflow-x: hidden;
-  }
-  .main-content.sidebar-expanded {
-    margin-left: 120px; /* Expanded sidebar width on small screens */
-  }
-  .fixed-navbar {
-    left: 45px;
-    width: calc(100vw - 45px);
-    height: 54px;
-    min-height: 54px;
-    max-height: 54px;
-  }
-  .main-content.sidebar-expanded .fixed-navbar {
-    left: 120px;
-    width: calc(100vw - 120px);
-  }
-  .sidebar-circle-btn {
-    top: calc(54px - 15px); /* Navbar height - half button size */
-  }
-}
 
 /* Remove unwanted horizontal scrollbar for the whole app */
 :global(html),

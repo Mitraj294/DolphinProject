@@ -201,35 +201,20 @@ class SubscriptionController extends Controller
             }
         }
 
-        $subscription = $user ? $user->subscriptions()->where('status', 'active')->orderByDesc('subscription_end')->first() : null;
+        // Find the most recent subscription for the user, regardless of status.
+        // The scheduled command `subscriptions:update-status` ensures the status is authoritative.
+        $subscription = $user ? $user->subscriptions()->orderByDesc('created_at')->first() : null;
+
         $subscriptionEnd = null;
-        $isExpired = false;
         if ($subscription && $subscription->subscription_end) {
             $subscriptionEnd = $subscription->subscription_end->toDateTimeString();
         }
-        if ($subscriptionEnd) {
-            try {
-                $end = \Carbon\Carbon::parse($subscriptionEnd);
-                $isExpired = $end->isPast();
-            } catch (\Exception $e) {
-                // If parsing fails, default to not expired
-                $isExpired = false;
-            }
-        }
-
-        // Determine returned status: if DB says active but end date is past, report expired
-        $returnedStatus = $subscription ? $subscription->status : 'none';
-        if ($returnedStatus === 'active' && $isExpired) {
-            $returnedStatus = 'expired';
-        }
 
         return response()->json([
-            'status' => $returnedStatus,
+            'status' => $subscription ? $subscription->status : 'none',
             'plan_amount' => $subscription ? $subscription->amount : null,
             'subscription_id' => $subscription ? $subscription->id : null,
             'subscription_end' => $subscriptionEnd,
-            'is_expired' => $isExpired,
-            'raw_status' => $subscription ? $subscription->status : null,
         ]);
     }
 }

@@ -255,12 +255,10 @@ export default {
           const orgId = userObj.organization_id || userObj.org_id || null;
           const subStatus = await this.checkSubscriptionStatus(orgId);
           if (subStatus) {
-            storage.set(
-              'subscription_is_expired',
-              subStatus.is_expired ? '1' : '0'
-            );
+            storage.set('subscription_status', subStatus.status || null);
+            storage.set('subscription_end', subStatus.subscription_end || null);
 
-            if (subStatus.is_expired) {
+            if (subStatus.status === 'expired') {
               this.toast.add({
                 severity: 'error',
                 summary: 'Subscription Expired',
@@ -332,11 +330,11 @@ export default {
         return null;
       }
     },
-    async checkSubscriptionStatus(user_id) {
+    async checkSubscriptionStatus(orgId = null) {
       try {
-        const url = user_id
-          ? `${API_BASE_URL}/api/subscription/status?user_id=${encodeURIComponent(
-              user_id
+        const url = orgId
+          ? `${API_BASE_URL}/api/subscription/status?org_id=${encodeURIComponent(
+              orgId
             )}`
           : `${API_BASE_URL}/api/subscription/status`;
         const response = await axios.get(url);

@@ -29,7 +29,7 @@ class Subscription extends Model
         'customer_name',
         'customer_email',
         'customer_country',
-        'meta',    
+        'meta',
     ];
   protected $casts = [
         'payment_date' => 'datetime',

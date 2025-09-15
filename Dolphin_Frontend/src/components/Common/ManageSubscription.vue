@@ -77,24 +77,11 @@ export default {
     try {
       const status = await fetchSubscriptionStatus();
       this.isSubscribed = status && status.status === 'active';
-      // Prefer explicit flag from API if provided
-      if (status && typeof status.is_expired !== 'undefined') {
-        this.isExpired = !!status.is_expired;
-      } else if (status && status.subscription_end) {
-        // Fallback: compare subscription_end to now
-        try {
-          const end = new Date(status.subscription_end);
-          this.isExpired = end < new Date();
-        } catch (e) {
-          console.error('Error parsing subscription_end:', e);
-          this.isExpired = false;
-        }
-      } else {
-        this.isExpired = false;
-      }
+      this.isExpired = status && status.status === 'expired';
     } catch (e) {
       console.error(e);
       this.isSubscribed = false;
+      this.isExpired = false;
     } finally {
       this.loading = false;
     }
