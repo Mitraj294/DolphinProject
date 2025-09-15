@@ -702,18 +702,29 @@ export default {
   z-index: 11;
   margin: 0;
   padding: 0 24px;
+  min-width: 260px;
   max-width: 100vw;
   overflow-x: auto;
+}
+@media (max-width: 425px) {
+  .navbar {
+    min-width: 425px;
+    padding-right: 10px;
+    padding-left: 7px;
+    justify-content: space-between;
+  }
 }
 .navbar-left {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 130px;
 }
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 0; /* No gap between bell and right section */
+  gap: 0;
+  min-width: 180px;
 }
 .navbar-page {
   position: static;
@@ -729,6 +740,19 @@ export default {
   text-overflow: ellipsis;
   max-width: 60vw;
   min-width: 0;
+}
+@media (max-width: 675px) {
+  .navbar-page {
+    font-size: 24px;
+    line-height: 24px;
+  }
+}
+@media (max-width: 425px) {
+  .navbar-page {
+    font-size: 18px;
+    line-height: 24px;
+    max-width: 180px;
+  }
 }
 .navbar-right {
   display: flex;
@@ -753,7 +777,7 @@ export default {
   font-weight: 600;
   font-size: 1.2rem;
   margin-right: 6px;
-  margin-left: 6px;
+
   position: static;
   z-index: 1;
 }
@@ -771,12 +795,17 @@ export default {
   position: relative;
   min-width: 0;
   flex-shrink: 1;
-  flex-wrap: wrap;
+
   cursor: pointer;
   border-radius: 24px;
   padding: 2px 8px 2px 2px;
   transition: background 0.13s;
   user-select: none;
+}
+@media (max-width: 420px) {
+  .navbar-profile-btn {
+    padding: 2px 4px 2px 2px;
+  }
 }
 .navbar-profile-btn:focus,
 .navbar-profile-btn:hover {

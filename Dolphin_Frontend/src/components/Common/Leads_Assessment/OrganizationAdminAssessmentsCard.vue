@@ -29,8 +29,17 @@
         </colgroup>
         <TableHeader
           :columns="[
-            { label: 'Assessment Name', key: 'name', style: 'width: 30%' },
-            { label: 'Actions', key: 'actions', style: 'width: 70%' },
+            {
+              label: 'Assessment Name',
+              key: 'name',
+              style: 'width: 30%',
+              minWidth: '200px',
+            },
+            {
+              label: 'Actions',
+              key: 'actions',
+              style: 'width: 70%',
+            },
           ]"
         />
         <tbody>

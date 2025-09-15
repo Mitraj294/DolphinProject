@@ -157,7 +157,7 @@ table td:first-child {
 /* --- Table Outer Styles --- */
 .table-outer {
     width: 100%;
-
+    min-width: 260px;
     display: flex;
     flex-direction: column;
     align-items: center;

@@ -533,7 +533,7 @@ export default {
 .lead-detail-outer {
   width: 100%;
 
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;
@@ -575,6 +575,8 @@ export default {
   flex-direction: column;
   gap: 32px;
   width: 100%;
+  min-width: 240px;
+  max-width: 100%;
   justify-content: center;
   align-items: stretch;
   margin-bottom: 0;
@@ -624,7 +626,7 @@ export default {
   margin: 10px;
   box-sizing: border-box;
   width: 100%;
-  min-width: 0;
+  min-width: 240px;
   max-width: 100%;
   min-height: 270px;
   justify-content: flex-start;
@@ -666,40 +668,9 @@ export default {
   display: flex;
 }
 
-@media (max-width: 1400px) {
-  .lead-detail-main-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 18px 8px 12px 8px;
-  }
-  .lead-detail-main-cols {
-    gap: 32px;
-  }
-  .lead-detail-main-cols-group {
-    gap: 32px;
-  }
-  .lead-detail-main-cols,
-  .lead-detail_row--split {
-    gap: 0;
-  }
-  .lead-detail-col {
-    min-width: 0;
-    max-width: 100%;
-    margin: 0 0 18px 0;
-  }
-  .lead-detail-list-card--box {
-    padding: 18px 8px;
-    font-size: 15px;
-    min-height: 0;
-    min-width: 0;
-    max-width: 100%;
-    width: 100%;
-  }
-}
-
 @media (max-width: 900px) {
   .lead-detail-main-card {
-    padding: 8px 2vw 8px 2vw;
+    padding: 8px;
     border-radius: 10px;
   }
   .lead-detail-main-cols {
@@ -725,12 +696,13 @@ export default {
     margin: 0 0 18px 0;
   }
   .lead-detail-list-card--box {
-    padding: 8px 4px;
+    padding: 8px;
+    margin: 0;
     font-size: 12px;
     gap: 6px;
     min-height: 0;
-    min-width: 0;
-    max-width: 100%;
+    min-width: 240px;
+
     width: 100%;
   }
 }

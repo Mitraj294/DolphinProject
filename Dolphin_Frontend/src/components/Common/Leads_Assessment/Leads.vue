@@ -871,7 +871,7 @@ export default {
   background: #fff;
   border-radius: 12px;
   padding: 32px 32px 24px 32px;
-  min-width: 480px;
+  min-width: 280px;
   max-width: 600px;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
   display: flex;

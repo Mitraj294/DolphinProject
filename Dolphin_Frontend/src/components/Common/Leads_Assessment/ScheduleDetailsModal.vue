@@ -201,18 +201,22 @@
                       {
                         label: 'Group',
                         key: 'group',
+                        minWidth: '200px',
                       },
                       {
                         label: 'Members',
                         key: 'members',
+                        minWidth: '200px',
                       },
                       {
                         label: 'Email',
                         key: 'email',
+                        minWidth: '200px',
                       },
                       {
                         label: 'Member Roles',
                         key: 'member_roles',
+                        minWidth: '200px',
                       },
                     ]"
                   />
@@ -436,18 +440,22 @@
                     {
                       label: 'Member Name',
                       key: 'name',
+                      minWidth: '200px',
                     },
                     {
                       label: 'Email',
                       key: 'email',
+                      minWidth: '200px',
                     },
                     {
                       label: 'Groups',
                       key: 'groups',
+                      minWidth: '200px',
                     },
                     {
                       label: 'Member Roles',
                       key: 'rolesDisplay',
+                      minWidth: '200px',
                     },
                   ]"
                 />

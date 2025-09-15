@@ -13,11 +13,26 @@
         <table class="table">
           <TableHeader
             :columns="[
-              { label: 'Organizations Name', key: 'name', sortable: true },
-              { label: 'Size', key: 'size' },
-              { label: 'Admin Name', key: 'main_contact' },
-              { label: 'Contract Start', key: 'contractStart', sortable: true },
-              { label: 'Contract End', key: 'contractEnd', sortable: true },
+              {
+                label: 'Organizations Name',
+                key: 'name',
+                sortable: true,
+                minWidth: '200px',
+              },
+              { label: 'Size', key: 'size', minWidth: '100px' },
+              { label: 'Admin Name', key: 'main_contact', minWidth: '150px' },
+              {
+                label: 'Contract Start',
+                key: 'contractStart',
+                sortable: true,
+                minWidth: '150px',
+              },
+              {
+                label: 'Contract End',
+                key: 'contractEnd',
+                sortable: true,
+                minWidth: '150px',
+              },
               {
                 label: 'Last Contacted',
                 key: 'last_contacted',

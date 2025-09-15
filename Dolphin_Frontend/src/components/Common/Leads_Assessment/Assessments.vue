@@ -35,8 +35,7 @@ export default {
 <style scoped>
 .assessments-table-outer {
   width: 100%;
-
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;

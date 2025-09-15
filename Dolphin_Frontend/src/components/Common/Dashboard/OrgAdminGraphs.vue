@@ -125,7 +125,7 @@ const chartOptions = {
 <style scoped>
 .org-admin-graphs-outer {
   width: 100%;
-
+  min-width: 260px;
   display: flex;
   flex-direction: column;
   align-items: center;

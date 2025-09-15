@@ -365,7 +365,7 @@ export default {
 .send-assessment-table-outer {
   width: 100%;
 
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;
@@ -389,6 +389,11 @@ export default {
   flex-direction: column;
   gap: 32px;
   position: relative;
+}
+@media (max-width: 600px) {
+  .send-assessment-table-card {
+    padding: 8px;
+  }
 }
 .send-assessment-table-header {
   width: 100%;
@@ -417,6 +422,7 @@ export default {
 }
 .send-assessment-form {
   width: 100%;
+  min-width: 240px;
 }
 .send-assessment-row {
   display: flex;

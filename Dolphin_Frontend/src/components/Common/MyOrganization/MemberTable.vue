@@ -6,8 +6,8 @@
         <table class="table">
           <TableHeader
             :columns="[
-              { label: 'Group Name', key: 'name' },
-              { label: 'Actions', key: 'action' },
+              { label: 'Group Name', key: 'name', minWidth: '200px' },
+              { label: 'Actions', key: 'action', minWidth: '200px' },
             ]"
           />
           <tbody>

@@ -298,8 +298,7 @@ export default {
 <style scoped>
 .assessment-table-outer {
   width: 100%;
-
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;
@@ -544,97 +543,7 @@ export default {
   text-align: left;
 }
 /* Responsive styles to match base pages */
-@media (max-width: 1400px) {
-  .assessment-table-outer {
-    margin: 0 12px 12px 12px;
-    max-width: 100%;
-  }
-  .assessment-table-card {
-    border-radius: 14px;
-    max-width: 100%;
-  }
-  .assessment-summary-cards {
-    padding: 8px 8px 0 8px;
-    border-top-left-radius: 14px;
-    border-top-right-radius: 14px;
-  }
-  .assessment-table-container {
-    padding: 0 8px 8px 8px;
-    border-bottom-left-radius: 14px;
-    border-bottom-right-radius: 14px;
-  }
-  .assessment-table th,
-  .assessment-table td {
-    font-size: 12px;
-    padding: 8px 4px;
-  }
-  .rounded-th-left {
-    border-top-left-radius: 14px;
-    border-bottom-left-radius: 14px;
-  }
-  .rounded-th-right {
-    border-top-right-radius: 14px;
-    border-bottom-right-radius: 14px;
-  }
-}
-@media (max-width: 900px) {
-  .assessment-table-card {
-    border-radius: 10px;
-  }
-  .assessment-summary-cards {
-    padding: 8px 4px 0 4px;
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-  }
-  .assessment-table-container {
-    padding: 0 4px 4px 4px;
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-  }
-  .assessment-table th,
-  .assessment-table td {
-    font-size: 11px;
-    padding: 6px 2px;
-  }
-  .rounded-th-left {
-    border-top-left-radius: 10px;
-    border-bottom-left-radius: 10px;
-  }
-  .rounded-th-right {
-    border-top-right-radius: 10px;
-    border-bottom-right-radius: 10px;
-  }
-}
-@media (max-width: 600px) {
-  .assessment-modal-content {
-    padding: 0;
-    font-size: 0.92rem;
-    min-width: 0;
-    max-width: 98vw;
-    border-radius: 12px;
-  }
-  .assessment-modal-header-row {
-    padding: 8px;
-  }
-  .assessment-modal-header-row h2 {
-    font-size: 1rem;
-  }
-  .assessment-modal-scrollable {
-    padding: 12px 8px 12px 8px;
-    max-height: calc(65vh - 48px);
-  }
-  .assessment-summary-cards {
-    flex-direction: column;
-    gap: 8px;
-    align-items: stretch;
-  }
-  .assessment-summary-card {
-    min-width: 0;
-    width: 100%;
-    padding: 12px 6px;
-    font-size: 0.95rem;
-  }
-}
+
 .member-name-td {
   padding-left: 20px !important;
 }

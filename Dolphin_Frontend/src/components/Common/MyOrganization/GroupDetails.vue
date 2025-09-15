@@ -77,19 +77,19 @@
                       :columns="[
                         {
                           label: 'Name',
-                          key: 'name',
+                          key: 'name',minWidth: '200px'
                         },
                         {
                           label: 'Email',
-                          key: 'email',
+                          key: 'email',minWidth: '200px'
                         },
                         {
                           label: 'Role',
-                          key: 'role',
+                          key: 'role',minWidth: '200px'
                         },
                         {
                           label: 'Actions',
-                          key: 'actions',
+                          key: 'actions',minWidth: '200px'
                         },
                       ]"
                     />

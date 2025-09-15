@@ -566,8 +566,7 @@ export default {
 /* --- Layout and spacing to match Leads/OrganizationTable --- */
 .notifications-table-outer {
   width: 100%;
-
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;

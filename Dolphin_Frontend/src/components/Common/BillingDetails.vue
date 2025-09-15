@@ -79,12 +79,28 @@
             <table class="table">
               <TableHeader
                 :columns="[
-                  { label: 'Payment Method', key: 'paymentMethodType' },
-                  { label: 'Payment Date', key: 'paymentDate' },
-                  { label: 'Subscription End', key: 'subscriptionEnd' },
-                  { label: 'Amount', key: 'amount' },
-                  { label: 'Download', key: 'invoice' },
-                  { label: 'Description', key: 'description' },
+                  {
+                    label: 'Payment Method',
+                    key: 'paymentMethodType',
+                    minWidth: '200px',
+                  },
+                  {
+                    label: 'Payment Date',
+                    key: 'paymentDate',
+                    minWidth: '200px',
+                  },
+                  {
+                    label: 'Subscription End',
+                    key: 'subscriptionEnd',
+                    minWidth: '200px',
+                  },
+                  { label: 'Amount', key: 'amount', minWidth: '200px' },
+                  { label: 'Download', key: 'invoice', minWidth: '200px' },
+                  {
+                    label: 'Description',
+                    key: 'description',
+                    minWidth: '200px',
+                  },
                 ]"
               />
               <tbody>

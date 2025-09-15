@@ -19,6 +19,7 @@
       <Sidebar
         :role="userRole"
         :expanded="sidebarExpanded"
+        @menu-item-clicked="handleSidebarClick"
       />
 
       <div class="page-content">
@@ -60,6 +61,9 @@ export default {
   },
   computed: {
     sidebarBtnLeft() {
+      if (this.windowWidth <= 425) {
+        return this.sidebarExpanded ? `calc(200px - 15px)` : '-15px';
+      }
       return this.sidebarExpanded ? `calc(200px - 15px)` : `calc(65px - 15px)`;
     },
   },
@@ -68,10 +72,13 @@ export default {
       this.sidebarExpanded = !this.sidebarExpanded;
       storage.set('sidebarExpanded', this.sidebarExpanded ? '1' : '0');
     },
-    collapseSidebar() {
-      this.sidebarExpanded = false;
-      storage.set('sidebarExpanded', '0');
+
+    handleSidebarClick() {
+      if (this.sidebarExpanded && this.windowWidth < 768) {
+        this.toggleSidebar();
+      }
     },
+
     handleResize() {
       this.windowWidth = window.innerWidth;
     },
@@ -111,7 +118,7 @@ export default {
   width: 30px;
   height: 30px;
   top: 55px;
-  /* left is now set dynamically */
+
   border-radius: 50%;
   border-width: 1px;
   background: #ffffff;
@@ -122,6 +129,11 @@ export default {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+}
+@media (max-width: 425px) {
+  .sidebar-circle-btn {
+    top: 55px;
+  }
 }
 
 .sidebar-circle-icon {
@@ -143,6 +155,11 @@ export default {
   width: 100vw;
   max-width: 100vw;
   overflow-x: hidden; /* Prevent horizontal scroll on main layout */
+}
+@media (max-width: 425px) {
+  .main-content {
+    margin-left: 0;
+  }
 }
 
 .main-content.sidebar-expanded {
@@ -177,7 +194,9 @@ export default {
   overflow: visible !important;
   height: auto;
 }
+</style>
 
+<style scoped>
 /* Responsive: reduce margin on smaller screens */
 
 /* Remove unwanted horizontal scrollbar for the whole app */

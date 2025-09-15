@@ -18,11 +18,23 @@
               <table class="table">
                 <TableHeader
                   :columns="[
-                    { label: 'Name', key: 'name' },
-                    { label: 'Email', key: 'email' },
-                    { label: 'Phone Number', key: 'phone' },
-                    { label: 'Role', key: 'role' },
-                    { label: 'Actions', key: 'actions' },
+                    { label: 'Name', key: 'name', minWidth: '200px' },
+                    {
+                      label: 'Email',
+                      key: 'email',
+                      minWidth: '200px',
+                    },
+                    {
+                      label: 'Phone Number',
+                      key: 'phone',
+                      minWidth: '150px',
+                    },
+                    { label: 'Role', key: 'role', minWidth: '150px' },
+                    {
+                      label: 'Actions',
+                      key: 'actions',
+                      minWidth: '100px',
+                    },
                   ]"
                   @sort="sortBy"
                 />

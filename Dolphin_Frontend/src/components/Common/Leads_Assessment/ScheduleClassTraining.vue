@@ -116,7 +116,7 @@ export default {
 .schedule-demo-outer {
   width: 100%;
 
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;
@@ -140,6 +140,11 @@ export default {
   flex-direction: column;
   gap: 32px;
   position: relative;
+}
+@media (max-width: 600px) {
+  .schedule-demo-card {
+    padding: 8px;
+  }
 }
 .schedule-demo-title {
   font-size: 22px;
@@ -238,48 +243,5 @@ export default {
   font-family: inherit;
   padding: 0 36px 0 16px; /* left for icon, right for chevron */
   box-sizing: border-box;
-}
-@media (max-width: 1400px) {
-  .schedule-demo-card {
-    max-width: 100%;
-    border-radius: 14px;
-    padding: 18px 8px 12px 8px;
-  }
-  .schedule-demo-row {
-    gap: 12px;
-  }
-}
-@media (max-width: 900px) {
-  .schedule-demo-card {
-    padding: 8px 2vw 8px 2vw;
-    border-radius: 10px;
-  }
-  .schedule-demo-row {
-    flex-direction: column !important;
-    gap: 12px;
-  }
-  .schedule-demo-schedule-inputs {
-    flex-direction: column;
-    gap: 10px;
-    width: 100%;
-  }
-  .schedule-demo-schedule-inputs .form-box {
-    height: auto;
-    min-width: 0;
-    width: 100%;
-    padding: 0 4px;
-    border-radius: 7px;
-    font-size: 15px;
-    box-sizing: border-box;
-  }
-  .schedule-demo-schedule-inputs input.form-input[type='date'],
-  .schedule-demo-schedule-inputs input.form-input[type='time'] {
-    width: 100%;
-    min-width: 0;
-    padding: 8px 8px 8px 36px;
-    font-size: 15px;
-    border-radius: 7px;
-    box-sizing: border-box;
-  }
 }
 </style>

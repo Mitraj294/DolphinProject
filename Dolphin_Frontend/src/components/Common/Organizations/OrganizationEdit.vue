@@ -730,7 +730,7 @@ export default {
 .lead-capture-outer {
   width: 100%;
 
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;
@@ -743,7 +743,7 @@ export default {
 .lead-capture-card {
   width: 100%;
 
-  min-width: 0;
+  min-width: 240px;
   background: #fff;
   border-radius: 24px;
   border: 1px solid #ebebeb;
@@ -755,6 +755,11 @@ export default {
   flex-direction: column;
   gap: 32px;
   position: relative;
+}
+@media (max-width: 600px) {
+  .lead-capture-card {
+    padding: 8px;
+  }
 }
 
 .lead-capture-card-title {
@@ -775,6 +780,7 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 18px;
+  min-width: 240px;
 }
 
 /* Ensure form-box inside child form components has no left/right padding for this page */
@@ -798,6 +804,7 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 18px;
+  min-width: 240px;
 }
 
 .org-edit-cancel {

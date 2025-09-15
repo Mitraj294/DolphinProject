@@ -518,7 +518,7 @@ export default {
 .lead-capture-outer {
   width: 100%;
 
-  min-width: 0;
+  min-width: 260px;
 
   display: flex;
   flex-direction: column;
@@ -531,7 +531,7 @@ export default {
 .lead-capture-card {
   width: 100%;
 
-  min-width: 0;
+  min-width: 240px;
   background: #fff;
   border-radius: 24px;
   border: 1px solid #ebebeb;
@@ -544,6 +544,11 @@ export default {
   gap: 32px;
   position: relative;
 }
+@media (max-width: 600px) {
+  .lead-capture-card {
+    padding: 8px;
+  }
+}
 
 .lead-capture-card-title {
   font-size: 22px;
@@ -555,12 +560,14 @@ export default {
 
 .lead-capture-form {
   width: 100%;
+  min-width: 200px;
 }
 
 .lead-capture-actions {
   display: flex;
   justify-content: flex-end;
   gap: 18px;
+  min-width: 240px;
 }
 
 .form-input {
@@ -621,6 +628,7 @@ export default {
   display: flex;
   justify-content: flex-end;
   gap: 18px;
+  min-width: 240px;
 }
 
 .org-edit-cancel {

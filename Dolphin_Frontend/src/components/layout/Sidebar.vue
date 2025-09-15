@@ -3,7 +3,8 @@
     :class="['sidebar', { expanded, 'sidebar-disabled': sidebarDisabled }]"
     :aria-hidden="sidebarDisabled ? 'true' : null"
     :tabindex="sidebarDisabled ? -1 : null"
-    role="organizationadmin"
+    role="navigation"
+    aria-label="Sidebar"
   >
     <div
       class="sidebar-logo"
@@ -29,7 +30,7 @@
         :style="
           expanded
             ? {
-                width: '94%',
+                width: '100%',
                 display: 'flex',
                 alignItems: 'center',
                 padding: '6px',
@@ -40,6 +41,7 @@
         "
       >
         <router-link
+          @click="handleLinkClick"
           :to="item.route"
           :class="[
             'sidebar-link',
@@ -193,7 +195,11 @@ export default {
         { route: '/user-permission', label: 'User + Permission' },
         { route: '/leads', label: 'Leads' },
         { route: '/my-organization', label: 'My Organization' },
-        { route: '/training-resources', label: 'Training & Resources' },
+        {
+          route: '/training-resources',
+          label: 'Training & Resources',
+          style: { fontSize: '0.8rem !important' },
+        },
         { route: '/assessments', label: 'Assessments' },
       ];
       // Filter menus based on permissions
@@ -203,8 +209,10 @@ export default {
     },
   },
   methods: {
+    handleLinkClick() {
+      this.$emit('menu-item-clicked');
+    },
     getCircleStyle(idx) {
-      const iconSpacing = idx === 0 ? 24 : 54;
       const top = idx === 0 ? 24 : 54 * idx + 24;
       return {
         position: 'absolute',
@@ -251,16 +259,14 @@ export default {
 
 <style scoped>
 :root {
-  --sidebar-collapsed-width: 65px;
-  --sidebar-expanded-width: 200px;
   --sidebar-navbar-height: 56px;
 }
 .sidebar {
   box-sizing: border-box;
   position: fixed;
-  width: var(--sidebar-collapsed-width);
-  min-width: var(--sidebar-collapsed-width);
-  max-width: var(--sidebar-collapsed-width);
+  width: 65px;
+  min-width: 65px;
+  max-width: 65px;
   height: 100vh;
   left: 0;
   top: 0;
@@ -277,36 +283,50 @@ export default {
   margin-left: 0;
   margin-top: 0;
   z-index: 10;
-  transition: width 0.3s ease, min-width 0.3s ease, max-width 0.3s ease;
 }
 .sidebar.expanded {
-  width: var(--sidebar-expanded-width);
-  min-width: var(--sidebar-expanded-width);
-  max-width: var(--sidebar-expanded-width);
+  width: 200px;
+  min-width: 200px;
+  max-width: 200px;
 }
 .sidebar-logo {
-  width: 100%;
+  width: auto;
+  min-width: unset;
+  max-width: unset;
   height: 70px;
   min-height: 70px;
+  max-height: 70px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: #fafafa;
   position: relative;
   flex-direction: column;
-  flex-shrink: 0;
 }
 .sidebar-logo.expanded {
+  width: auto;
+  max-width: unset;
+  min-width: unset;
+  height: 70px;
+  flex-direction: row;
   justify-content: flex-start;
-  padding: 16px;
+  align-items: center;
+  padding-left: 16px;
 }
 .sidebar-logo img {
-  width: 35px;
-  height: 35px;
-  min-width: 35px;
-  max-width: 35px;
+  width: Zpx;
+  height: Zpx;
+  min-width: Zpx;
+  min-height: Zpx;
+  max-width: Zpx;
+  max-height: Zpx;
   object-fit: contain;
   display: block;
+  position: static;
+  left: unset;
+  top: unset;
+  transform: none;
+  margin: 0;
 }
 .sidebar-logo-label {
   display: inline-block;
@@ -323,7 +343,7 @@ export default {
 .sidebar-menu {
   position: relative;
   width: 100%;
-  min-width: 65px;
+  max-width: 100%;
   height: 100%;
   padding: 0;
   margin: 0;
@@ -332,21 +352,27 @@ export default {
   align-items: center;
 }
 
-.sidebar.expanded .sidebar-menu {
+.sidebar.expanded ul.sidebar-menu {
   margin-top: 32px;
-  align-items: center;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center !important;
 }
 
 .sidebar.expanded li {
   height: 56px;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
+  margin-top: 0;
+  margin-bottom: 0;
+  padding: 0 0 0 0;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
   gap: 12px;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .sidebar.expanded li:first-child {
@@ -492,9 +518,7 @@ export default {
   font-weight: 500;
   color: #0164a5;
 }
-.sidebar-link-expanded.active .sidebar-menu-label-expanded {
-  color: #fff !important;
-}
+
 .sidebar-link-expanded:not(.active):hover {
   background: #fff;
   color: #0164a5;
@@ -511,5 +535,11 @@ export default {
 
 .logout-confirm-overlay {
   z-index: 1000;
+}
+
+@media (max-width: 425px) {
+  .sidebar:not(.expanded) {
+    display: none;
+  }
 }
 </style>

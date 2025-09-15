@@ -113,17 +113,20 @@
                         {
                           label: 'Organization Name',
                           key: 'organization_name',
+                          minWidth: '200px',
                         },
                         {
                           label: 'User Name',
                           key: 'name',
+                          minWidth: '200px',
                         },
 
                         {
                           label: 'Emails',
                           key: 'email',
+                          minWidth: '200px',
                         },
-                        { label: 'Read At', key: 'read_at' },
+                        { label: 'Read At', key: 'read_at', minWidth: '200px' },
                       ]"
                     />
                     <tbody>
@@ -188,14 +191,17 @@
                         {
                           label: 'Group Name',
                           key: 'name',
+                          minWidth: '200px',
                         },
                         {
                           label: 'Organization Name',
                           key: 'organization_name',
+                          minWidth: '200px',
                         },
                         {
                           label: 'Org Contact Email',
                           key: 'org_contact_email',
+                          minWidth: '200px',
                         },
                       ]"
                     />
