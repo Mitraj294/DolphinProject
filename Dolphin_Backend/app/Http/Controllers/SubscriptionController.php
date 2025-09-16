@@ -33,6 +33,7 @@ class SubscriptionController extends Controller
             ->get();
         return response()->json([
             'plan_amount' => (float) $subscription->amount,
+            'plan_name' => $subscription->plan,
             'current_subscription' => $subscription,
             'history' => $history,
         ]);
@@ -213,6 +214,7 @@ class SubscriptionController extends Controller
         return response()->json([
             'status' => $subscription ? $subscription->status : 'none',
             'plan_amount' => $subscription ? $subscription->amount : null,
+            'plan_name' => $subscription ? $subscription->description : null,
             'subscription_id' => $subscription ? $subscription->id : null,
             'subscription_end' => $subscriptionEnd,
         ]);

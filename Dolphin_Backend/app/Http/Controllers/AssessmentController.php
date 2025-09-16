@@ -121,6 +121,14 @@ class AssessmentController extends Controller
         return response()->json(['assessments' => $assessments]);
     }
 
+    /**
+     * List assessments (alias for show)
+     */
+    public function index(Request $request)
+    {
+        return $this->show($request);
+    }
+
     public function store(Request $request)
     {
         // Validate input

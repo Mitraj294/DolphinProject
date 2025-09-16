@@ -103,7 +103,11 @@
             </div>
             <div
               class="navbar-dropdown-item0"
-              v-if="roleName != 'superadmin'"
+              v-if="
+                roleName != 'superadmin' ||
+                roleName != 'dolphinadmin' ||
+                roleName != 'salesperson'
+              "
               @click="
                 $router.push({ name: 'ManageSubscription' });
                 dropdownOpen = false;

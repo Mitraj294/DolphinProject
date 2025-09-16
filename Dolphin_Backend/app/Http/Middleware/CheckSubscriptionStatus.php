@@ -5,7 +5,6 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\Subscription;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckSubscriptionStatus
@@ -13,44 +12,51 @@ class CheckSubscriptionStatus
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * This middleware checks if the authenticated user has an active subscription.
+     * If not, it blocks access to the route. The decision of which routes
+     * to protect is handled in the web/api routes files.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Only check subscription status for authenticated users
-        if (!Auth::check()) {
+        $user = Auth::user();
+        // Skip checks for unauthenticated users, admin/sales roles, or users with an active subscription
+        $skip = !Auth::check()
+            || (method_exists($user, 'hasRole') && (
+                $user->hasRole('superadmin') ||
+                $user->hasRole('dolphinadmin') ||
+                $user->hasRole('saleperson') ||
+                $user->hasRole('user')
+            ))
+            || ($user && $user->subscriptions()->where('status', 'active')->exists());
+        if ($skip) {
             return $next($request);
         }
 
-        $user = Auth::user();
-        
-        // Get the user's most recent subscription
-        $subscription = $user->subscriptions()->orderByDesc('created_at')->first();
-        
-        // Check if subscription exists and is expired
-        if ($subscription && $subscription->status === 'expired') {
-            // For API requests, return JSON response
-            if ($request->expectsJson() || $request->is('api/*')) {
-                return response()->json([
-                    'message' => 'Your subscription has expired. Please renew your subscription to continue using this service.',
-                    'status' => 'expired',
-                    'subscription_end' => $subscription->subscription_end ? $subscription->subscription_end->toDateTimeString() : null,
-                    'subscription_id' => $subscription->id,
-                    'redirect_url' => '/manage-subscription'
-                ], 403);
-            }
-            
-            // For web requests, redirect to manage-subscription page
-            return redirect('/manage-subscription')
-                ->with('error', 'Your subscription has expired. Please renew your subscription to continue using this service.')
-                ->with('subscription_data', [
-                    'status' => 'expired',
-                    'subscription_end' => $subscription->subscription_end ? $subscription->subscription_end->toDateTimeString() : null,
-                    'subscription_id' => $subscription->id
-                ]);
-        }
+        // --- If no active subscription is found, BLOCK access ---
 
-        // Allow access if no subscription exists (new users) or subscription is not expired
-        return $next($request);
+        // Optionally, get the latest subscription to provide more context in the error message.
+        $latestSubscription = $user->subscriptions()->orderByDesc('created_at')->first();
+        $status = $latestSubscription ? $latestSubscription->status : 'none';
+        $message = $status === 'expired'
+            ? 'Your subscription has expired. Please renew your subscription to continue.'
+            : 'You do not have an active subscription. Please subscribe to access this feature.';
+
+        // For API requests, return a standardized JSON 403 error.
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'message' => $message,
+                'status' => $status,
+                'subscription_end' => $latestSubscription?->subscription_end?->toDateTimeString(),
+                'subscription_id' => $latestSubscription?->id,
+                'redirect_url' => '/manage-subscription'
+            ], 403);
+        }
+        
+        // For standard web requests, redirect them to the subscription management page.
+        return redirect('/manage-subscription')->with('error', $message);
     }
 }

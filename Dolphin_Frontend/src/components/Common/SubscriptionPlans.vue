@@ -314,7 +314,7 @@ export default {
       try {
         const authToken = storage.get('authToken');
         const API_BASE_URL = 'http://127.0.0.1:8000';
-        const res = await axios.get(`${API_BASE_URL}/api/user/subscription`, {
+        const res = await axios.get(`${API_BASE_URL}/api/subscription`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
         // Assume API returns { plan_amount: 250 } or { plan_amount: 2500 }
@@ -324,18 +324,13 @@ export default {
         const { fetchCurrentUser } = await import('@/services/user');
         const user = await fetchCurrentUser();
         const oldRole = storage.get('role');
-        console.log('[Subscription] Old role:', oldRole);
+
         if (user && user.role) {
           console.log('[Subscription] New role from backend:', user.role);
-          if (user.role !== oldRole) {
-            storage.set('role', user.role);
-            console.log(
-              '[Subscription] Role updated in storage. Reloading page...'
-            );
-            window.location.reload();
-          } else {
-            console.log('[Subscription] Role unchanged, no reload needed.');
-          }
+        } else if (user.role !== oldRole) {
+          storage.set('role', user.role);
+
+          window.location.reload();
         } else {
           console.warn('[Subscription] Could not fetch user or user.role');
         }

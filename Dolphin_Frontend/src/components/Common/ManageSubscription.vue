@@ -17,25 +17,21 @@
               <div class="manage-subscription-msg">
                 <div v-if="loading">Loading subscription status...</div>
                 <div
-                  v-else-if="isSubscribed"
+                  v-else-if="status === 'active'"
                   class="manage-subscription-msg green"
                 >
-                  You are subscribed to a plan.
+                  You are subscribed to the {{ plan_name }} {{ status }} plan.
                 </div>
-
                 <div
-                  v-else-if="isExpired"
+                  v-else-if="status === 'expired'"
                   class="manage-subscription-msg red"
                 >
-                  Your Plan is expired, please renew your plan.
+                  Your Plan {{ plan_name }} expired on {{ subscriptionEnd }}.
+                  Please renew.
                 </div>
                 <div
                   v-else
-                  style="
-                    color: #222 !important;
-                    font-weight: 600 !important;
-                    font-size: 1.2rem !important;
-                  "
+                  class="manage-subscription-msg"
                 >
                   You have not selected any plans yet.
                 </div>
@@ -68,20 +64,23 @@ export default {
   components: { MainLayout },
   data() {
     return {
-      isSubscribed: false,
-      isExpired: false,
+      status: null,
+      plan_name: null,
+      subscriptionEnd: null,
       loading: true,
     };
   },
   async mounted() {
     try {
-      const status = await fetchSubscriptionStatus();
-      this.isSubscribed = status && status.status === 'active';
-      this.isExpired = status && status.status === 'expired';
+      const res = await fetchSubscriptionStatus();
+      this.status = res.status || 'none';
+      this.plan_name = res.plan_name || null;
+      this.subscriptionEnd = res.subscription_end;
     } catch (e) {
       console.error(e);
-      this.isSubscribed = false;
-      this.isExpired = false;
+      this.status = 'none';
+      this.plan_name = null;
+      this.subscriptionEnd = null;
     } finally {
       this.loading = false;
     }

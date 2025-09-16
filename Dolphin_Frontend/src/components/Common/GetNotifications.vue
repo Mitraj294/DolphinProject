@@ -1,141 +1,154 @@
 <template>
-  <div class="page">
-    <div class="notifications-table-outer">
-      <div class="notifications-table-card">
-        <div class="notifications-controls">
-          <div class="notifications-date-wrapper">
-            <input
-              type="date"
-              placeholder="Select Date"
-              class="notifications-date"
-              v-model="selectedDate"
-              @change="onDateChange"
-            />
-            <button
-              v-if="selectedDate"
-              class="mark-all"
-              style="margin-left: 8px; height: 36px"
-              @click="clearDate"
-            >
-              Clear
-            </button>
-          </div>
-          <div class="notifications-tabs">
-            <button
-              :class="[
-                'notifications-tab-btn-left',
-                { active: tab === 'unread' },
-              ]"
-              @click="switchTab('unread')"
-            >
-              Unread
-            </button>
-            <button
-              :class="[
-                'notifications-tab-btn-right',
-                { active: tab === 'all' },
-              ]"
-              @click="switchTab('all')"
-            >
-              All
-            </button>
-          </div>
-          <button
-            v-if="tab === 'unread' && notifications.length > 0"
-            class="mark-all"
-            :disabled="markAllLoading"
-            @click="markAllAsRead"
-            style="
-              margin-top: 10px;
-              background: #fff;
-              color: #0164a5;
-              border: none;
-              border-radius: 6px;
-              padding: 4px 10px;
-              font-size: 0.95rem;
-              cursor: pointer;
-            "
-          >
-            <i
-              class="fas fa-check"
-              style="margin-right: 6px"
-            ></i>
-            <span v-if="!markAllLoading">Mark All As Read</span>
-            <span v-else>Marking...</span>
-          </button>
-        </div>
-        <div class="notifications-list">
-          <div
-            v-for="(item, id) in paginatedNotifications"
-            :key="id"
-            class="notification-item"
-          >
-            <div
-              class="notification-meta"
-              style="display: flex; flex-direction: column; align-items: center"
-            >
-              <img
-                src="@/assets/images/Logo.svg"
-                class="notification-icon"
-                alt="Company logo"
+  <MainLayout>
+    <div class="page">
+      <div class="notifications-table-outer">
+        <div class="notifications-table-card">
+          <div class="notifications-controls">
+            <div class="notifications-date-wrapper">
+              <input
+                type="date"
+                placeholder="Select Date"
+                class="notifications-date"
+                v-model="selectedDate"
+                @change="onDateChange"
               />
-            </div>
-            <div class="notification-body">
-              <span class="notification-date">{{ item.date }}</span>
-              <span class="notification-text">
-                <span class="notification-title">Dolphin.</span>
-                {{ item.body }}
-              </span>
-            </div>
-            <div
-              class="notification-meta"
-              style="display: flex; flex-direction: column; align-items: center"
-            >
               <button
-                v-if="tab === 'unread' && !item.read_at"
+                v-if="selectedDate"
                 class="mark-all"
-                @click="markAsRead(id)"
-                style="
-                  margin-top: 10px;
-                  background: #fff;
-                  color: #0164a5;
-                  border: none;
-                  border-radius: 6px;
-                  padding: 4px 10px;
-                  font-size: 0.95rem;
-                  cursor: pointer;
-                "
+                style="margin-left: 8px; height: 36px"
+                @click="clearDate"
               >
-                <i class="fas fa-check"></i>
+                Clear
               </button>
             </div>
+            <div class="notifications-tabs">
+              <button
+                :class="[
+                  'notifications-tab-btn-left',
+                  { active: tab === 'unread' },
+                ]"
+                @click="switchTab('unread')"
+              >
+                Unread
+              </button>
+              <button
+                :class="[
+                  'notifications-tab-btn-right',
+                  { active: tab === 'all' },
+                ]"
+                @click="switchTab('all')"
+              >
+                All
+              </button>
+            </div>
+            <button
+              v-if="tab === 'unread' && notifications.length > 0"
+              class="mark-all"
+              :disabled="markAllLoading"
+              @click="markAllAsRead"
+              style="
+                margin-top: 10px;
+                background: #fff;
+                color: #0164a5;
+                border: none;
+                border-radius: 6px;
+                padding: 4px 10px;
+                font-size: 0.95rem;
+                cursor: pointer;
+              "
+            >
+              <i
+                class="fas fa-check"
+                style="margin-right: 6px"
+              ></i>
+              <span v-if="!markAllLoading">Mark All As Read</span>
+              <span v-else>Marking...</span>
+            </button>
           </div>
+          <div class="notifications-list">
+            <div
+              v-for="(item, id) in paginatedNotifications"
+              :key="id"
+              class="notification-item"
+            >
+              <div
+                class="notification-meta"
+                style="
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                "
+              >
+                <img
+                  src="@/assets/images/Logo.svg"
+                  class="notification-icon"
+                  alt="Company logo"
+                />
+              </div>
+              <div class="notification-body">
+                <span class="notification-date">{{ item.date }}</span>
+                <span class="notification-text">
+                  <span class="notification-title">Dolphin.</span>
+                  {{ item.body }}
+                </span>
+              </div>
+              <div
+                class="notification-meta"
+                style="
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                "
+              >
+                <button
+                  v-if="tab === 'unread' && !item.read_at"
+                  class="mark-all"
+                  @click="markAsRead(id)"
+                  style="
+                    margin-top: 10px;
+                    background: #fff;
+                    color: #0164a5;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 4px 10px;
+                    font-size: 0.95rem;
+                    cursor: pointer;
+                  "
+                >
+                  <i class="fas fa-check"></i>
+                </button>
+              </div>
+            </div>
 
-          <div
-            v-if="paginatedNotifications.length === 0"
-            class="no-data"
-          >
-            <span v-if="tab === 'unread'">No unread notifications found.</span>
-            <span v-else>No notification found.</span>
+            <div
+              v-if="paginatedNotifications.length === 0"
+              class="no-data"
+            >
+              <span v-if="tab === 'unread'"
+                >No unread notifications found.</span
+              >
+              <span v-else>No notification found.</span>
+            </div>
           </div>
         </div>
+        <Pagination
+          :pageSize="pageSize"
+          :pageSizes="[5, 10, 20]"
+          :currentPage="page"
+          :totalPages="totalPages"
+          :isNotifications="true"
+          :showPageDropdown="showPageDropdown"
+          @goToPage="goToPage"
+          @selectPageSize="selectPageSize"
+          @togglePageDropdown="togglePageDropdown"
+        />
       </div>
-      <Pagination
-        :pageSize="pageSize"
-        :pageSizes="[5, 10, 20]"
-        :currentPage="page"
-        :totalPages="totalPages"
-        :isNotifications="true"
-        :showPageDropdown="showPageDropdown"
-        @goToPage="goToPage"
-        @selectPageSize="selectPageSize"
-        @togglePageDropdown="togglePageDropdown"
-      />
     </div>
-  </div>
+  </MainLayout>
 </template>
 
 <script>
+import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
 import storage from '@/services/storage';
 import authMiddleware from '@/middleware/authMiddleware';
@@ -145,7 +158,7 @@ import { ref } from 'vue';
 const date = ref();
 export default {
   name: 'GetNotification',
-  components: { Pagination },
+  components: { Pagination, MainLayout },
   data() {
     return {
       tab: 'unread',

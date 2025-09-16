@@ -46,7 +46,7 @@ axios.interceptors.response.use(
     if (error.response && error.response.status === 403 && error.response.data) {
       const data = error.response.data;
       if (data.status === 'expired' && data.redirect_url) {
-        console.log('Subscription expired, updating storage and redirecting');
+        console.log('Subscription expired, updating storage');
         
         // Update subscription status in storage
         storage.set('subscription_status', 'expired');
@@ -57,8 +57,26 @@ axios.interceptors.response.use(
           storage.set('subscription_id', data.subscription_id);
         }
         
-        // Redirect to manage subscription page
-        router.push('/manage-subscription');
+        // Only redirect if not already on an allowed page for expired subscriptions
+        const currentPath = router.currentRoute.value.path;
+        const allowedPagesForExpired = [
+          '/manage-subscription',
+          '/subscriptions/plans',
+          '/profile',
+          '/organizations/billing-details'
+        ];
+        
+        const isOnAllowedPage = allowedPagesForExpired.some(page => 
+          currentPath === page || currentPath.startsWith(page)
+        );
+        
+        if (!isOnAllowedPage) {
+          console.log('Redirecting to manage subscription page');
+          router.push('/manage-subscription');
+        } else {
+          console.log('Already on allowed page, not redirecting');
+        }
+        
         return Promise.reject(error); // Still reject to prevent continued processing
       }
     }
