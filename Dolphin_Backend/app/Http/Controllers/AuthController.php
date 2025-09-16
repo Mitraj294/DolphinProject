@@ -1,136 +1,69 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\Organization;
+use App\Models\Role;
+use App\Models\Lead;
+use App\Models\Country;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
-
-class ValidationRules
-{
-    public const REQUIRED_INTEGER = 'required|integer';
-    public const REQUIRED_STRING = 'required|string';
-    public const REQUIRED_EMAIL = 'required|email';
-    public const OPTIONAL_INTEGER = 'nullable|integer';
-    public const REQUIRED_BOOLEAN = 'required|boolean';
-    public const REQUIRED_DATE = 'required|date';
-    public const NULLABLE_STRING = 'nullable|string|max:255';
-
-}
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
+    // Register a new user, their details, and organization.
+     
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => ValidationRules::REQUIRED_STRING,
-            'last_name' => ValidationRules::REQUIRED_STRING,
-            'email' => ValidationRules::REQUIRED_EMAIL . '|unique:users,email,NULL,id,deleted_at,NULL',
-            'password' => 'required|string|min:6',
-            'confirm_password' => 'required|string|same:password',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,NULL,id,deleted_at,NULL',
+            'password' => 'required|string|min:6|confirmed',
             'phone' => 'required|regex:/^[6-9]\d{9}$/',
-            'find_us' => ValidationRules::REQUIRED_STRING,
-            'organization_name' => ValidationRules::REQUIRED_STRING.'|min:8|max:500',
-            'organization_size' => ValidationRules::REQUIRED_STRING,
-            'address' => ValidationRules::REQUIRED_STRING.'|min:10|max:500',
-            // Accept numeric IDs for location fields coming from frontend
-            'country' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
-            'state' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
-            'city' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
+            'find_us' => 'required|string',
+            'organization_name' => 'required|string|min:8|max:500',
+            'organization_size' => 'required|string',
+            'address' => 'required|string|min:10|max:500',
+            'country' => 'required|integer|exists:countries,id',
+            'state' => 'required|integer|exists:states,id',
+            'city' => 'required|integer|exists:cities,id',
             'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
-
         ]);
 
         if ($validator->fails()) {
-            // Log validation errors and payload (exclude passwords)
-            Log::warning('Register validation failed', [
-                'errors' => $validator->errors()->toArray(),
-                'payload' => $request->except(['password', 'confirm_password']),
-                'ip' => $request->ip(),
-            ]);
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
+            
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
-        // Save to users table (basic info)
-        $user = User::create([
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'phone' => $request->phone,
-            'country' => $request->country,
-        ]);
-
-        // Save all registration details to user_details table (names are stored on users table)
-        // Persist registration details to user_details using *_id columns for locations
-        \App\Models\UserDetail::create([
-            'user_id' => $user->id,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'find_us' => $request->find_us,
-           
-            'address' => $request->address,
-            'country_id' => $request->country ?: null,
-            'state_id' => $request->state ?: null,
-            'city_id' => $request->city ?: null,
-            'zip' => $request->zip,
-        ]);
-
-        \App\Models\Organization::create([
-            'user_id' => $user->id,
-            'organization_name' => $request->organization_name,
-            'organization_size' => $request->organization_size,
-        ]);
-
-        // Assign default role in user_roles table
-        $role = \App\Models\Role::where('name', 'user')->first();
-        if ($role) {
-            // Remove all roles and assign the new one (single role per user)
-            $user->roles()->sync([$role->id]);
-        }
-
-        // Try to find a corresponding lead by this email and mark it as Registered
         try {
-            $lead = \App\Models\Lead::where('email', $user->email)->first();
-            if ($lead) {
-                $lead->status = 'Registered';
-                $lead->registered_at = now();
-                $lead->save();
-            }
-        } catch (\Exception $e) {
-            // Log but don't block registration success
-            Log::warning('Failed to update lead status to Registered after user registration', ['email' => $user->email, 'error' => $e->getMessage()]);
-        }
+            $user = $this->createUserAndDetails($request->all());
+            $this->updateLeadStatus($user->email);
 
-        return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
+            return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
+        } catch (\Exception $e) {
+            Log::error('User registration failed', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'An unexpected error occurred during registration.'], 500);
+        }
     }
 
-
-
+    //Authenticate a user and issue a Passport token.
+     
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'email'    => 'required|email',
             'password' => 'required|string',
-            'remember' => 'nullable|boolean',
         ]);
 
-        if ($validator->fails()  ) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
+        if ($validator->fails()) {
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
 
         $user = User::where('email', $request->email)->first();
@@ -139,144 +72,43 @@ class AuthController extends Controller
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
-        // Issue token via an internal kernel request to avoid self-HTTP deadlocks in dev server
-        try {
-            $tokenParams = [
-                'grant_type'    => 'password',
-                'client_id'     => config('passport.password_client_id'),
-                'client_secret' => config('passport.password_client_secret'),
-                'username'      => $request->email,
-                'password'      => $request->password,
-                'scope'         => '',
-            ];
-            
-            // Send as form params so the framework populates the POST bag
-            $server = [
-                'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
-                'HTTP_ACCEPT'  => 'application/json',
-            ];
-            $tokenRequest = \Illuminate\Http\Request::create('/oauth/token', 'POST', $tokenParams, [], [], $server);
-            $response = app()->handle($tokenRequest);
-        } catch (\Throwable $e) {
-            \Log::error('OAuth token dispatch failed', [
-                'error' => $e->getMessage(),
-            ]);
-            return response()->json([
-                'error' => 'Unable to generate token',
-                'details' => 'Token dispatch failed.'
-            ], 500);
+        $tokenResponse = $this->issueToken($request);
+        if ($tokenResponse->getStatusCode() >= 400) {
+            return $tokenResponse;
         }
 
-        if (method_exists($response, 'getStatusCode') ? $response->getStatusCode() >= 400 : false) {
-            try {
-                \Log::error('OAuth token error response', [
-                    'status' => $response->getStatusCode(),
-                    'body' => $response->getContent(),
-                ]);
-            } catch (\Throwable $e) {
-                \Log::error('Failed to log OAuth token error response', [
-                    'email' => $request->input('email'),
-                    'error' => $e->getMessage(),
-                ]);
-            }
-            return response()->json([
-                'error'   => 'Unable to generate token',
-                'details' => json_decode($response->getContent(), true)
-            ], $response->getStatusCode());
-        }
-
-        $tokenData = json_decode($response->getContent(), true);
-
-        // Fix eager loading - remove the nested country relationship for now
-        $user = User::with(['userDetails', 'roles'])->find($user->id);
-        $role = $user->roles->first()->name ?? 'user';
-        $details = $user->userDetails;
-
-        $org = Organization::where('user_id', $user->id)->first();
-        if ($org) {
-            $org->last_contacted = now();
-            $org->save();
-        }
-
-        Log::info('Login endpoint hit', [
-            'email' => $request->input('email'),
-            'time'  => now()->toDateTimeString(),
-        ]);
-
-        // Get country information safely
-        $countryName = '';
-        if ($details && $details->country_id) {
-            $country = \App\Models\Country::find($details->country_id);
-            $countryName = $country ? $country->name : '';
-        }
+        $tokenData = json_decode($tokenResponse->getContent(), true);
+        $userPayload = $this->buildUserPayload($user);
 
         return response()->json([
             'message'       => 'Login successful',
             'access_token'  => $tokenData['access_token'],
             'refresh_token' => $tokenData['refresh_token'],
             'expires_in'    => $tokenData['expires_in'],
-        // Compatibility fields for older frontend code
-        'token'         => $tokenData['access_token'],
-        'expires_at'    => now()->addSeconds(intval($tokenData['expires_in'] ?? 0))->toISOString(),
-            'user' => [
-                'id'             => $user->id,
-                'email'          => $user->email,
-                'role'           => $role,
-                'roles'          => $user->roles,
-                'first_name'     => $user->first_name ?? '',
-                'last_name'      => $user->last_name ?? '',
-                'phone'          => $details->phone ?? '',
-                'country'        => $countryName,
-                'name'           => trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? '')),
-                'userDetails'    => $details,
-                'organization_id'=> $org?->id,
-            ],
+            'user'          => $userPayload,
         ]);
     }
 
-
+    //Get the authenticated user's profile information.
+     
     public function profile(Request $request)
     {
-        $user = $request->user();
-        // Eager load userDetails and roles
-        $user = User::with(['userDetails', 'roles'])->find($user->id);
-        $role = $user->roles->first()->name ?? 'user';
-        $details = $user->userDetails;
-        // Resolve organization id for the profile response
-        $org = Organization::where('user_id', $user->id)->first();
-        return response()->json([
-            'id' => $user->id,
-            'email' => $user->email,
-            'role' => $role,
-            'roles' => $user->roles,
-                // Prefer names from users table
-                'first_name' => $user->first_name ?? '',
-                'last_name' => $user->last_name ?? '',
-                'phone' => $details->phone ?? '',
-                'country_id' => $details->country_id ?? null,
-                'country' => $details->country ? $details->country->name : '',
-                'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
-                'userDetails' => $details,
-                'organization_id' => $org ? $org->id : null,
-        ]);
+        $userPayload = $this->buildUserPayload($request->user());
+        return response()->json($userPayload);
     }
-
+    
+    //Update the authenticated user's profile.
+     
     public function updateProfile(Request $request)
     {
         $user = $request->user();
-        // Accept structured payloads from frontend. Possible shapes:
-        // { user: { email }, user_details: { first_name, last_name, phone, country }, admin_email }
-        $payload = $request->all();
-
-        // Validate top-level user.email if provided
-        $validator = Validator::make($payload, [
-            // soft-deleted users will not be considered when checking uniqueness
+        $validator = Validator::make($request->all(), [
             'user.email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id . ',id,deleted_at,NULL',
             'user_details.first_name' => 'sometimes|nullable|string|max:255',
             'user_details.last_name' => 'sometimes|nullable|string|max:255',
-            'user_details.phone' => 'sometimes|regex:/^[6-9]\d{9}$/',
-            'user_details.country' => 'sometimes|nullable|string',
-            'admin_email' => 'sometimes|nullable|email',
+            'user_details.phone' => 'sometimes|nullable|regex:/^[6-9]\d{9}$/',
+
+            'user_details.country' => 'sometimes|nullable',
         ]);
 
         if ($validator->fails()) {
@@ -285,133 +117,37 @@ class AuthController extends Controller
 
         DB::beginTransaction();
         try {
-            // Update user table (email) and basic fields if provided
-            if (isset($payload['user'])) {
-                $u = $payload['user'];
-                $shouldSaveUser = false;
-                if (isset($u['email']) && $u['email'] !== $user->email) {
-                    $user->email = $u['email'];
-                    $shouldSaveUser = true;
-                }
-                // allow updating basic name/phone on users table as well
-                if (isset($payload['user_details'])) {
-                    $ud = $payload['user_details'];
-                    if (isset($ud['first_name']) && $ud['first_name'] !== $user->first_name) {
-                        $user->first_name = $ud['first_name'];
-                        $shouldSaveUser = true;
-                    }
-                    if (isset($ud['last_name']) && $ud['last_name'] !== $user->last_name) {
-                        $user->last_name = $ud['last_name'];
-                        $shouldSaveUser = true;
-                    }
-                    // Do not store phone on users table anymore; keep phone in user_details
-                }
-                if ($shouldSaveUser) {
-                    $user->save();
-                }
-            }
-
-            // Update/insert user_details
-            $detailsData = $payload['user_details'] ?? [];
-            if (!empty($detailsData)) {
-                $userDetail = UserDetail::firstOrNew(['user_id' => $user->id]);
-                // Names are authoritative on users table; only persist other profile fields here
-                if ((isset($detailsData['first_name'])) &&   ($detailsData['first_name'] !== $user->first_name)  ) {
-                
-                
-                        $user->first_name = $detailsData['first_name'];
-                        $user->save();
-                    
-                }
-                if ((isset($detailsData['last_name']))  &&   ($detailsData['last_name'] !== $user->last_name) ) {
-                  
-                        $user->last_name = $detailsData['last_name'];
-                        $user->save();
-                    
-                }
-                if (isset($detailsData['phone'])) {
-                    $userDetail->phone = $detailsData['phone'];
-                }
-                // Frontend sends country as string id; store in country_id if numeric-like
-                if (isset($detailsData['country'])) {
-                    $countryVal = $detailsData['country'];
-                    // If frontend sent an object/array (e.g. { value, text, id, name }), try to extract a primitive
-                    if (is_array($countryVal)) {
-                        $countryVal = $countryVal['value'] ?? $countryVal['id'] ?? $countryVal['name'] ?? '';
-                    } elseif (is_object($countryVal)) {
-                        $countryVal = $countryVal->value ?? $countryVal->id ?? $countryVal->name ?? '';
-                    }
-
-                    if (is_numeric($countryVal)) {
-                        $userDetail->country_id = intval($countryVal);
-                    } elseif  (is_string($countryVal) && trim($countryVal) !== '') {
-                        $countryVal = trim($countryVal);
-                        // Try to resolve by name first (most common). Only attempt other columns if they exist.
-                        $countryModel = \App\Models\Country::where('name', $countryVal)->first();
-                        // Check optional columns safely
-                        if (!$countryModel && \Illuminate\Support\Facades\Schema::hasColumn('countries', 'code')) {
-                            $countryModel = \App\Models\Country::where('code', $countryVal)->first();
-                        }
-                        if (!$countryModel && \Illuminate\Support\Facades\Schema::hasColumn('countries', 'iso')) {
-                            $countryModel = \App\Models\Country::where('iso', $countryVal)->first();
-                        }
-                        if ($countryModel) {
-                            $userDetail->country_id = $countryModel->id;
-                        } else {
-                            // unknown string, null the country_id to avoid DB errors
-                            $userDetail->country_id = null;
-                        }
-                    } else {
-                        $userDetail->country_id = null;
-                    }
-                }
-                // Email is authoritative on users table. If frontend provided an
-                // email under user_details, use it to update the users.email.
-                if ((isset($detailsData['email'])) &&  ($detailsData['email'] !== $user->email) ) {
-                   
-                        $user->email = $detailsData['email'];
-                        $user->save();
-                    
-                }
-
-                $userDetail->user_id = $user->id;
-                $userDetail->save();
-            }
-
-            // organizations.admin_email column was removed in a migration. The
-            // admin contact information is now sourced from the owning user's
-            // `users` / `user_details` records. If an admin_email was provided
-            // we'll log it so callers can optionally update their user record
-            // through the dedicated user/profile endpoints.
-            if (!empty($payload['admin_email'])) {
-                \Log::info('updateProfile: received admin_email but organizations.admin_email has been removed; ignoring. admin_email=' . $payload['admin_email'], ['user_id' => $user->id]);
-            }
+            $this->updateUserRecord($user, $request->input('user', []), $request->input('user_details', []));
+            $this->updateUserDetailsRecord($user, $request->input('user_details', []));
 
             DB::commit();
-            // reload user with details/roles
-            $user = User::with(['userDetails', 'roles'])->find($user->id);
-            return response()->json(['message' => 'Profile updated successfully', 'user' => $user]);
+
+            return response()->json([
+                'message' => 'Profile updated successfully',
+                'user' => $this->buildUserPayload($user->fresh())
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Failed to update profile', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Failed to update profile', 'error' => $e->getMessage()], 500);
+            Log::error('Failed to update profile', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'Failed to update profile'], 500);
         }
     }
 
+
+    //Change the authenticated user's password.
+     
     public function changePassword(Request $request)
     {
-        $user = $request->user();
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
-            'new_password' => 'required|string|min:6|confirmed',
+            'new_password'     => 'required|string|min:6|confirmed',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
+            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
         }
+
+        $user = $request->user();
 
         if (!Hash::check($request->current_password, $user->password)) {
             return response()->json(['error' => 'Current password is incorrect'], 400);
@@ -420,93 +156,234 @@ class AuthController extends Controller
         $user->password = Hash::make($request->new_password);
         $user->save();
 
-        return response()->json(['message' => 'Password changed successfully'], 200);
+        return response()->json(['message' => 'Password changed successfully']);
     }
 
-
+    /**
+     * Send a password reset link to the user.
+     */
     public function sendResetLinkEmail(Request $request)
     {
-        $request->validate(['email' => ValidationRules::REQUIRED_EMAIL]);
+        $request->validate(['email' => 'required|email']);
+
         $status = Password::sendResetLink($request->only('email'));
+
         return $status === Password::RESET_LINK_SENT
             ? response()->json(['message' => __($status)])
             : response()->json(['message' => __($status)], 400);
     }
-
+    
+    /**
+     * Reset the user's password.
+     */
     public function resetPassword(Request $request)
     {
         $request->validate([
-            'token' => 'required',
-            'email' => ValidationRules::REQUIRED_EMAIL,
+            'token'    => 'required',
+            'email'    => 'required|email',
             'password' => 'required|min:8|confirmed',
         ]);
-        $status = Password::reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
-            function ($user, $password) {
-                $user->forceFill([
-                    'password' => Hash::make($password)
-                ])->save();
-            }
-        );
+
+        $status = Password::reset($request->only('email', 'password', 'password_confirmation', 'token'), function ($user, $password) {
+            $user->password = Hash::make($password);
+            $user->save();
+        });
+
         return $status === Password::PASSWORD_RESET
             ? response()->json(['message' => __($status)])
             : response()->json(['message' => __($status)], 400);
     }
-
+    
+    /**
+     * Soft delete the authenticated user's account.
+     */
     public function deleteAccount(Request $request)
     {
-        $user = $request->user();
-        // Only soft delete the user
-        $user->delete();
+        $request->user()->delete();
         return response()->json(['message' => 'Account deleted successfully']);
     }
 
-   
+    /**
+     * Get the currently authenticated user. Alias for profile().
+     */
     public function user(Request $request)
     {
-        $user = $request->user();
-        $user = User::with(['userDetails', 'roles'])->find($user->id);
-        $role = $user->roles->first()->name ?? 'user';
-        $details = $user->userDetails;
- 
-        $org = Organization::where('user_id', $user->id)->first();
-        return response()->json([
-            'id' => $user->id,
-            'email' => $user->email,
-            'role' => $role,
-            'roles' => $user->roles,
-                // Prefer names from users table
-                'first_name' => $user->first_name ?? '',
-                'last_name' => $user->last_name ?? '',
-                'phone' => $details->phone ?? '',
-                'country' => $details->country ?? '',
-                'name' => trim(($user->first_name ?? '') . (($user->last_name ?? '') ? ' ' . $user->last_name : '')),
-                'userDetails' => $details,
-        'organization_id' => $org ? $org->id : null,
-        'organization_name' => $org ? $org->organization_name : null,
-        ]);
+        return $this->profile($request);
     }
-
+    
+    /**
+     * Log the user out (Revoke the token).
+     */
     public function logout(Request $request)
     {
         $request->user()->token()->revoke();
         return response()->json(['message' => 'Successfully logged out']);
     }
-
+    
     /**
-     * Check token status and return expiration info
+     * Check the validity and expiration of the current token.
      */
     public function tokenStatus(Request $request)
     {
-        $user = $request->user();
-        $token = $user->token();
-        
+        $token = $request->user()->token();
         return response()->json([
             'valid' => true,
             'expires_at' => $token->expires_at,
-            'expires_in_seconds' => \Carbon\Carbon::now()->diffInSeconds($token->expires_at, false),
-            'user_id' => $user->id,
         ]);
     }
 
+    // --- Private Helper Methods ---
+
+    /**
+     * Create a user and their associated details in a transaction.
+     */
+    private function createUserAndDetails(array $data): User
+    {
+        return DB::transaction(function () use ($data) {
+            $user = User::create([
+                'first_name' => $data['first_name'],
+                'last_name' => $data['last_name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'phone' => $data['phone'],
+            ]);
+
+            UserDetail::create([
+                'user_id' => $user->id,
+                'find_us' => $data['find_us'],
+                'address' => $data['address'],
+                'country_id' => $data['country'],
+                'state_id' => $data['state'],
+                'city_id' => $data['city'],
+                'zip' => $data['zip'],
+            ]);
+
+            Organization::create([
+                'user_id' => $user->id,
+                'organization_name' => $data['organization_name'],
+                'organization_size' => $data['organization_size'],
+            ]);
+
+            $user->roles()->attach(Role::where('name', 'user')->first());
+
+            return $user;
+        });
+    }
+
+    /**
+     * Update the lead status for a newly registered user.
+     */
+    private function updateLeadStatus(string $email): void
+    {
+        try {
+            $lead = Lead::where('email', $email)->first();
+            if ($lead) {
+                $lead->update(['status' => 'Registered', 'registered_at' => now()]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to update lead status after registration', ['email' => $email, 'error' => $e->getMessage()]);
+        }
+    }
+    
+    /**
+     * Build the standard user payload for API responses.
+     */
+    private function buildUserPayload(User $user): array
+    {
+        $user->loadMissing(['userDetails.country', 'roles']);
+        $org = Organization::where('user_id', $user->id)->first();
+
+        return [
+            'id' => $user->id,
+            'email' => $user->email,
+            'role' => $user->roles->first()->name ?? 'user',
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'phone' => $user->userDetails->phone ?? null,
+            'country' => $user->userDetails->country->name ?? null,
+            'country_id' => $user->userDetails->country_id ?? null,
+            'organization_id' => $org?->id,
+            'organization_name' => $org?->organization_name,
+        ];
+    }
+
+    /**
+     * Update the main user record fields.
+     */
+    private function updateUserRecord(User $user, array $userData, array $detailsData): void
+    {
+        $user->fill([
+            'email' => $userData['email'] ?? $detailsData['email'] ?? $user->email,
+            'first_name' => $detailsData['first_name'] ?? $user->first_name,
+            'last_name' => $detailsData['last_name'] ?? $user->last_name,
+        ]);
+
+        if ($user->isDirty()) {
+            $user->save();
+        }
+    }
+
+    /**
+     * Update the user_details record.
+     */
+    private function updateUserDetailsRecord(User $user, array $detailsData): void
+    {
+        if (empty($detailsData)) {
+            return;
+        }
+
+        $userDetail = UserDetail::firstOrNew(['user_id' => $user->id]);
+        $userDetail->phone = $detailsData['phone'] ?? $userDetail->phone;
+        
+        if (isset($detailsData['country'])) {
+            $userDetail->country_id = $this->resolveCountryId($detailsData['country']);
+        }
+
+        if ($userDetail->isDirty()) {
+            $userDetail->save();
+        }
+    }
+    
+    /**
+     * Resolve a country ID from various possible input formats.
+     */
+    private function resolveCountryId($countryInput): ?int
+    {
+        if (is_numeric($countryInput)) {
+            return (int) $countryInput;
+        }
+
+        if (is_string($countryInput) && !empty(trim($countryInput))) {
+            $country = Country::where('name', trim($countryInput))->orWhere('code', trim($countryInput))->first();
+            return $country?->id;
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Issue a Passport token via an internal request.
+     */
+    private function issueToken(Request $request)
+    {
+        $proxy = Request::create('/oauth/token', 'POST', [
+            'grant_type' => 'password',
+            'client_id' => config('passport.password_client_id'),
+            'client_secret' => config('passport.password_client_secret'),
+            'username' => $request->email,
+            'password' => $request->password,
+            'scope' => '',
+        ]);
+
+        $response = app()->handle($proxy);
+
+        if ($response->getStatusCode() >= 400) {
+            Log::error('OAuth token dispatch failed.', [
+                'status' => $response->getStatusCode(),
+                'response' => $response->getContent()
+            ]);
+        }
+
+        return $response;
+    }
 }

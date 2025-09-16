@@ -5,6 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Country;
+use App\Models\State;
+use App\Models\City;
 
 class UserDetail extends Model
 {
@@ -32,5 +35,20 @@ class UserDetail extends Model
     public function country()
     {
         return $this->belongsTo(Country::class, 'country_id');
+    }
+    /**
+     * Relationship to State model.
+     */
+    public function state()
+    {
+        return $this->belongsTo(State::class, 'state_id');
+    }
+
+    /**
+     * Relationship to City model.
+     */
+    public function city()
+    {
+        return $this->belongsTo(City::class, 'city_id');
     }
 }

@@ -253,7 +253,6 @@ import {
   FormInput,
   FormDropdown,
   FormBox,
-  FormPassword,
 } from '@/components/Common/Common_UI/Form';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
@@ -267,7 +266,7 @@ export default {
     FormInput,
     FormDropdown,
     FormBox,
-    FormPassword,
+
     Toast,
   },
   setup() {
