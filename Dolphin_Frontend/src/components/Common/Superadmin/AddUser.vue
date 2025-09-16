@@ -301,10 +301,6 @@ export default {
           life: 8000,
         });
 
-        this.mailService.sendWelcomeEmail(
-          this.form.email,
-          response.data.password
-        );
         // Reset form
         this.form = {
           firstName: '',
