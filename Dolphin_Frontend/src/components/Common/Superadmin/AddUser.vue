@@ -77,6 +77,24 @@
                 >
               </div>
               <div>
+                <FormLabel>Country</FormLabel>
+                <FormDropdown
+                  v-model="form.country_id"
+                  icon="fas fa-globe"
+                  @change="onCountryChange"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...countries.map((c) => ({ value: c.id, text: c.name })),
+                  ]"
+                  required
+                />
+                <FormLabel
+                  v-if="errors.country_id"
+                  class="error-message1"
+                  >{{ errors.country_id[0] }}</FormLabel
+                >
+              </div>
+              <div>
                 <FormLabel>Select User Role</FormLabel>
                 <FormDropdown
                   v-model="form.role"
@@ -92,7 +110,6 @@
                   >{{ errors.role[0] }}</FormLabel
                 >
               </div>
-              <div></div>
             </FormRow>
             <div v-if="form.role === 'organizationadmin'">
               <FormRow>
@@ -206,6 +223,7 @@ export default {
         lastName: '',
         email: '',
         phone: '',
+        country_id: null,
         role: null,
         organization_name: '',
         organization_size: '',
@@ -216,13 +234,30 @@ export default {
         { value: 'salesperson', text: 'Sales Person' },
         { value: 'user', text: 'User' },
       ],
+      countries: [],
 
       successMessage: '',
       errorMessage: '',
       errors: {},
     };
   },
+  mounted() {
+    this.fetchCountries();
+  },
   methods: {
+    async fetchCountries() {
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await axios.get(`${API_BASE_URL}/api/countries`);
+        this.countries = res.data || [];
+      } catch (e) {
+        console.warn('Failed to fetch countries', e);
+      }
+    },
+    onCountryChange(value) {
+      // placeholder for handling country change if needed
+    },
     async handleAddUser() {
       if (this.loading) return;
       this.loading = true;
@@ -240,6 +275,7 @@ export default {
           last_name: this.form.lastName,
           email: this.form.email,
           phone: this.form.phone,
+          country_id: this.form.country_id,
           role: this.form.role,
           // send organization fields (backend uses required_if for validation)
           organization_name: this.form.organization_name,
@@ -265,6 +301,10 @@ export default {
           life: 8000,
         });
 
+        this.mailService.sendWelcomeEmail(
+          this.form.email,
+          response.data.password
+        );
         // Reset form
         this.form = {
           firstName: '',

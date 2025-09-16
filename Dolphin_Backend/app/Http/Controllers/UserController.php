@@ -67,6 +67,7 @@ class UserController extends Controller
                 'first_name' => 'required|string|max:255',
                 'last_name' => 'required|string|max:255',
                 'phone' => 'required|regex:/^[6-9]\d{9}$/',
+                'country_id' => 'required|integer|exists:countries,id',
                 'role' => 'required|string|in:user,organizationadmin,dolphinadmin,superadmin,salesperson',
 
                 'organization_name' => 'nullable|string|max:255|required_if:role,organizationadmin',
@@ -90,6 +91,7 @@ class UserController extends Controller
                     'organization_name' => $validatedData['organization_name'] ?? null,
                     'organization_size' => $validatedData['organization_size'] ?? null,
                     'user_id' => $user->id,
+                    'country_id' => $validatedData['country_id'] ?? null,
                 ]);
             }
 

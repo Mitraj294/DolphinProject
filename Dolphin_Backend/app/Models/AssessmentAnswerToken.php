@@ -16,4 +16,5 @@ class AssessmentAnswerToken extends Model
     ];
 
     public $timestamps = true;
+    
 }

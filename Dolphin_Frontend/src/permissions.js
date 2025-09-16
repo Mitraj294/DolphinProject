@@ -1,129 +1,152 @@
+// 1. ROLES
+// Defines all possible user roles as constants to avoid magic strings.
 export const ROLES = {
   SUPERADMIN: 'superadmin',
   DOLPHINADMIN: 'dolphinadmin',
-  USER: 'user',
   ORGANIZATIONADMIN: 'organizationadmin',
   SALESPERSON: 'salesperson',
+  USER: 'user',
 };
+
+
+// 2. SHARED PERMISSION SETS
+// Define common groups of routes to keep permissions DRY and easy to manage.
+
+const PERMISSIONS_BASE = [
+  '/dashboard',
+  '/profile',
+  '/get-notification',
+];
+
+const PERMISSIONS_SUBSCRIPTION = [
+  '/manage-subscription',
+  '/subscriptions/plans',
+  '/organizations/billing-details',
+];
+
+const PERMISSIONS_LEAD_MANAGEMENT = [
+  '/leads',
+  '/leads/lead-capture',
+  '/leads/send-assessment',
+  '/leads/send-assessment/:id',
+  '/leads/schedule-demo',
+  '/leads/schedule-class-training',
+  '/leads/:id/edit',
+  '/leads/:email', // Note: Consider using /leads/:id for consistency
+];
+
+const PERMISSIONS_ASSESSMENT_USER = [
+  '/assessments',
+  '/assessments/:assessmentId/summary',
+];
+
+const PERMISSIONS_ORGANIZATION_ADMIN = [
+  '/my-organization',
+  '/my-organization/members',
+  '/training-resources',
+];
+
+const PERMISSIONS_SUPERADMIN_ORGS = [
+  '/organizations',
+  '/organizations/:id',
+  '/organizations/:id/edit',
+  // Note: /:orgName routes are functionally similar to /:id and could potentially be consolidated
+  '/organizations/:orgName',
+  '/organizations/:orgName/edit',
+];
+
+const PERMISSIONS_SUPERADMIN_USERS = [
+  '/user-permission',
+  '/user-permission/add',
+];
+
+
+// 3. ROLE TO PERMISSION MAPPING
+// Assign permissions to each role by combining the shared sets.
+// Using a Set ensures that the final list of routes is unique.
 
 export const PERMISSIONS = {
   [ROLES.SUPERADMIN]: {
-    routes: [
-      '/dashboard',
-      '/organizations',
+    routes: [...new Set([
+      ...PERMISSIONS_BASE,
+      ...PERMISSIONS_SUBSCRIPTION,
+      ...PERMISSIONS_LEAD_MANAGEMENT,
+      ...PERMISSIONS_ASSESSMENT_USER,
+      ...PERMISSIONS_ORGANIZATION_ADMIN, // Superadmin can do everything an org admin can
+      ...PERMISSIONS_SUPERADMIN_ORGS,
+      ...PERMISSIONS_SUPERADMIN_USERS,
       '/notifications',
-      '/leads',
-  '/leads/send-assessment',
-  '/leads/send-assessment/:id',
-      '/leads/schedule-demo',
-      '/leads/schedule-class-training',
-      '/organizations/:orgName',
-      '/organizations/:orgName',
-      '/organizations/:id',
-      '/organizations/:orgName/edit',
-      '/organizations/:id/edit',
-      '/leads/lead-capture',
-  '/leads/:id/edit',
-      '/leads/:email',
-      '/members', 
-      '/my-organization/members', 
-  '/assessments/send-assessment',
-  '/assessments/send-assessment/:id',
-      '/assessments/:assessmentId/summary',
-      '/user-permission',
-      '/user-permission/add',
-      '/organizations/billing-details',
-      '/profile',
-    ],
-
+    ])],
   },
+
   [ROLES.DOLPHINADMIN]: {
-    routes: [
-      '/dashboard',
-      '/leads',
-  '/leads/send-assessment',
-  '/leads/send-assessment/:id',
-      '/leads/schedule-demo',
-      '/leads/schedule-class-training',
-      '/leads/lead-capture',
-  '/leads/:id/edit',
-      '/leads/:email',
-  '/assessments/send-assessment',
-  '/assessments/send-assessment/:id',
-      '/assessments/:assessmentId/summary',
-      '/get-notification',
-      '/subscriptions/plans',
-      '/organizations/billing-details',
-      '/profile',
-     
-    ],
-    
+    routes: [...new Set([
+      ...PERMISSIONS_BASE,
+      ...PERMISSIONS_SUBSCRIPTION,
+      ...PERMISSIONS_LEAD_MANAGEMENT,
+      '/assessments/:assessmentId/summary', // Can view summaries
+    ])],
   },
-  [ROLES.USER]: {
-    routes: [
-      '/dashboard',
-      '/assessments',
- 
-      '/assessments/:assessmentId/summary',
-      '/get-notification',
-      '/subscriptions/plans',
-      '/organizations/billing-details',
-      '/profile',
-      '/subscriptions/plans', 
-  '/manage-subscription', 
-    ],
 
-  },
   [ROLES.ORGANIZATIONADMIN]: {
-    routes: [
-      '/dashboard',
-      '/my-organization',
-      '/training-resources',
-      '/assessments',
-      '/members',
-      '/my-organization/members',
-
-      '/assessments',
-      '/assessments/:assessmentId/summary',
-      '/get-notification',
-      '/subscriptions/plans',
-      '/organizations/billing-details',
-      '/profile',
-     
-    ],
-
+    routes: [...new Set([
+      ...PERMISSIONS_BASE,
+      ...PERMISSIONS_SUBSCRIPTION,
+      ...PERMISSIONS_ASSESSMENT_USER,
+      ...PERMISSIONS_ORGANIZATION_ADMIN,
+    ])],
   },
-  [ROLES.SALESPERSON]: {
-    routes: [
-      '/dashboard',
-      '/leads',
-  '/leads/send-assessment',
-  '/leads/send-assessment/:id',
-  '/assessments/send-assessment',
-  '/assessments/send-assessment/:id',
-      '/assessments/:assessmentId/summary',
-      '/get-notification',
-      '/subscriptions/plans',
-      '/organizations/billing-details',
-      '/profile',
-      '/subscriptions/plans', 
-  '/manage-subscription', 
-    ],
 
+  [ROLES.SALESPERSON]: {
+    routes: [...new Set([
+      ...PERMISSIONS_BASE,
+      ...PERMISSIONS_SUBSCRIPTION,
+      '/leads', // Can access the main leads page
+      '/assessments/:assessmentId/summary', // Can view summaries
+    ])],
+  },
+
+  [ROLES.USER]: {
+    routes: [...new Set([
+      ...PERMISSIONS_BASE,
+      ...PERMISSIONS_SUBSCRIPTION,
+      ...PERMISSIONS_ASSESSMENT_USER,
+    ])],
   },
 };
 
-// Utility to check if a role can access a route/component
+
+// 4. UTILITY FUNCTION
+/**
+ * Checks if a given role has permission to access a specific route.
+ * This function supports dynamic route segments (e.g., /leads/:id).
+ *
+ * @param {string} role The user's role (e.g., 'superadmin').
+ * @param {string} type The type of permission to check (currently only 'routes').
+ * @param {string} name The path of the route to check (e.g., '/leads/123').
+ * @returns {boolean} True if the user has permission, otherwise false.
+ */
 export function canAccess(role, type, name) {
-  if (!PERMISSIONS[role]) return false;
-  if (type === 'routes') {
-    // Allow dynamic route matching (e.g. /organizations/:orgName)
-    return PERMISSIONS[role][type].some(pattern => {
-      if (pattern === name) return true;
-      // Convert /organizations/:orgName to regex
+  const permissionsForRole = PERMISSIONS[role];
+  if (!permissionsForRole || !permissionsForRole[type]) {
+    return false;
+  }
+
+  // Use .some() to find if any defined route pattern matches the current route name.
+  return permissionsForRole[type].some(pattern => {
+    // Direct match (e.g., '/dashboard' === '/dashboard')
+    if (pattern === name) {
+      return true;
+    }
+    
+    // Dynamic match for routes with params like '/leads/:id'
+    // This converts the pattern into a regular expression.
+    // e.g., '/leads/:id' becomes /^/leads/[^/]+$/
+    if (pattern.includes(':')) {
       const regex = new RegExp('^' + pattern.replace(/:[^/]+/g, '[^/]+') + '$');
       return regex.test(name);
-    });
-  }
-  return PERMISSIONS[role][type] && PERMISSIONS[role][type].includes(name);
+    }
+
+    return false;
+  });
 }

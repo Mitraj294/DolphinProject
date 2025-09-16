@@ -104,9 +104,9 @@
             <div
               class="navbar-dropdown-item0"
               v-if="
-                roleName != 'superadmin' ||
-                roleName != 'dolphinadmin' ||
-                roleName != 'salesperson'
+                !['superadmin', 'dolphinadmin', 'salesperson'].includes(
+                  roleName
+                )
               "
               @click="
                 $router.push({ name: 'ManageSubscription' });
@@ -116,7 +116,11 @@
               <i class="fas fa-credit-card"></i>
               <div
                 class="navbar-dropdown-item"
-                v-if="roleName != 'superadmin'"
+                v-if="
+                  !['superadmin', 'dolphinadmin', 'salesperson'].includes(
+                    roleName
+                  )
+                "
                 @click="
                   $router.push({ name: 'ManageSubscription' });
                   dropdownOpen = false;
