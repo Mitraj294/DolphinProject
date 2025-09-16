@@ -1,57 +1,83 @@
-
-import { createRouter, createWebHistory } from 'vue-router'
-import Login from '@/components/auth/Login.vue'
-import Register from '@/components/auth/Register.vue'
-import ThankYou from '@/components/auth/ThankYou.vue'
-import ThanksPage from '@/components/Common/ThanksPage.vue';
-import Dashboard from '@/components/Common/Dashboard/Dashboard.vue'
-import Organizations from '@/components/Common/Organizations/Organizations.vue'
-import Notifications from '@/components/Common/Superadmin/Notifications.vue'
-import Leads from '@/components/Common/Leads_Assessment/Leads.vue'
-import TrainingResources from '@/components/Common/TrainingResources.vue'
-import Assessments from '@/components/Common/Leads_Assessment/Assessments.vue'
-import MyOrganization from '@/components/Common/MyOrganization/MyOrganization.vue'
-import LeadCapture from '@/components/Common/Leads_Assessment/LeadCapture.vue'
-import SendAssessment from '@/components/Common/Leads_Assessment/SendAssessment.vue'
-import ScheduleDemo from '@/components/Common/Leads_Assessment/ScheduleDemo.vue'
-import ManageSubscription from '@/components/Common/ManageSubscription.vue';
-import GetNotifications from '@/components/Common/GetNotifications.vue'
-import UserPermission from '@/components/Common/Superadmin/UserPermission.vue'
-import ForgotPassword from '@/components/auth/ForgotPassword.vue'
-import Profile from '@/components/Common/Profile.vue'
-import AssessmentAnswerPage from '@/components/Common/AssessmentAnswerPage.vue'
-import ResetPassword from '@/components/auth/ResetPassword.vue' 
-import AddUser from '@/components/Common/Superadmin/AddUser.vue'  
-import SubscriptionPlans from '@/components/Common/SubscriptionPlans.vue'
-import LeadDetail from '@/components/Common/Leads_Assessment/LeadDetail.vue'
-import EditLead from '@/components/Common/Leads_Assessment/EditLead.vue'
-import OrganizationDetail from '@/components/Common/Organizations/OrganizationDetail.vue'
-import OrganizationEdit from '@/components/Common/Organizations/OrganizationEdit.vue'
-import ScheduleClassTraining from '@/components/Common/Leads_Assessment/ScheduleClassTraining.vue'
-import BillingDetails from '@/components/Common/BillingDetails.vue'
-import MemberListing from '@/components/Common/MyOrganization/MemberListing.vue'  
-import AssessmentSummary from '@/components/Common/Leads_Assessment/AssessmentSummary.vue'
-import { ROLES, PERMISSIONS, canAccess } from '@/permissions.js'
+import { createRouter, createWebHistory } from 'vue-router';
 import storage from '../services/storage';
+import { ROLES, canAccess } from '@/permissions.js';
+import { fetchSubscriptionStatus } from '@/services/subscription.js';
+
+/*
+|--------------------------------------------------------------------------
+| Route Component Imports
+|--------------------------------------------------------------------------
+|
+| Using a hybrid strategy for optimal performance.
+| - STATIC IMPORTS: For core, frequently-used components (e.g., Login, Dashboard).
+| - DYNAMIC IMPORTS (Lazy Loading): For feature-specific, heavier components.
+|
+*/
+
+// --- Static Imports (Core Components) ---
+import Login from '@/components/auth/Login.vue';
+import Register from '@/components/auth/Register.vue';
+import ForgotPassword from '@/components/auth/ForgotPassword.vue';
+import ResetPassword from '@/components/auth/ResetPassword.vue';
+import Dashboard from '@/components/Common/Dashboard/Dashboard.vue';
+import Profile from '@/components/Common/Profile.vue';
+import AssessmentAnswerPage from '@/components/Common/AssessmentAnswerPage.vue';
+
+// --- Dynamic Imports (Lazy-Loaded Feature Components) ---
+const ThankYou = () => import('@/components/auth/ThankYou.vue');
+const ThanksPage = () => import('@/components/Common/ThanksPage.vue');
+const TrainingResources = () => import('@/components/Common/TrainingResources.vue');
+const GetNotifications = () => import('@/components/Common/GetNotifications.vue');
+
+// Subscription
+const ManageSubscription = () => import('@/components/Common/ManageSubscription.vue');
+const SubscriptionPlans = () => import('@/components/Common/SubscriptionPlans.vue');
+const BillingDetails = () => import('@/components/Common/BillingDetails.vue');
+
+// Superadmin
+const UserPermission = () => import('@/components/Common/Superadmin/UserPermission.vue');
+const AddUser = () => import('@/components/Common/Superadmin/AddUser.vue');
+const Notifications = () => import('@/components/Common/Superadmin/Notifications.vue');
+
+// Leads & Assessments
+const Leads = () => import('@/components/Common/Leads_Assessment/Leads.vue');
+const LeadDetail = () => import('@/components/Common/Leads_Assessment/LeadDetail.vue');
+const EditLead = () => import('@/components/Common/Leads_Assessment/EditLead.vue');
+const LeadCapture = () => import('@/components/Common/Leads_Assessment/LeadCapture.vue');
+const SendAssessment = () => import('@/components/Common/Leads_Assessment/SendAssessment.vue');
+const ScheduleDemo = () => import('@/components/Common/Leads_Assessment/ScheduleDemo.vue');
+const ScheduleClassTraining = () => import('@/components/Common/Leads_Assessment/ScheduleClassTraining.vue');
+const Assessments = () => import('@/components/Common/Leads_Assessment/Assessments.vue');
+const AssessmentSummary = () => import('@/components/Common/Leads_Assessment/AssessmentSummary.vue');
+
+// Organization
+const Organizations = () => import('@/components/Common/Organizations/Organizations.vue');
+const OrganizationDetail = () => import('@/components/Common/Organizations/OrganizationDetail.vue');
+const OrganizationEdit = () => import('@/components/Common/Organizations/OrganizationEdit.vue');
+const MyOrganization = () => import('@/components/Common/MyOrganization/MyOrganization.vue');
+const MemberListing = () => import('@/components/Common/MyOrganization/MemberListing.vue');
+
+
+// --- Route Definitions ---
 
 const routes = [
+  // --- Public Routes ---
   {
-    path: '/thanks',
-    name: 'ThanksPage',
-    component: ThanksPage,
-    meta: { public: true }
+    path: '/',
+    name: 'Login',
+    component: Login,
+    meta: { public: true, guestOnly: true }
   },
   {
-    path: '/thanks',
-    name: 'ThanksPage',
-    component: ThanksPage,
-    meta: { public: true }
+    path: '/register',
+    name: 'Register',
+    component: Register,
+    meta: { public: true, guestOnly: true }
   },
- 
   {
-    path: '/assessment/answer/:token',
-    name: 'AssessmentAnswerPage',
-    component: AssessmentAnswerPage,
+    path: '/forgot-password',
+    name: 'ForgotPassword',
+    component: ForgotPassword,
     meta: { public: true }
   },
   {
@@ -61,96 +87,30 @@ const routes = [
     meta: { public: true }
   },
   {
-    path: '/user-permission/add', 
-    name: 'AddUser',
-    component:   AddUser,
-  
-  },
-  {
-    path: '/',
-    name: 'Login',
-    component: Login
-  },
-  {
-    path: '/register',
-    name: 'Register',
-    component: Register
-  },
-  {
     path: '/thankyou',
     name: 'ThankYou',
-    component: ThankYou
-  },
-  {
-    path: '/dashboard',
-    name: 'Dashboard',
-    component: Dashboard
-  },
-  {
-    path: '/organizations',
-    name: 'Organizations',
-    component: Organizations
-  },
-  {
-    path: '/notifications',
-    name: 'Notifications',
-    component: Notifications
-  },
-  {
-    path: '/leads',
-    name: 'Leads',
-    component: Leads
-  },
-  {
-    path: '/training-resources',
-    name: 'TrainingResources',
-    component: TrainingResources
-  },
-  {
-    path: '/assessments',
-    name: 'Assessments',
-    component: Assessments
-  },
-  {
-    path: '/my-organization',
-    name: 'MyOrganization',
-    component: MyOrganization
-  },
-  {
-    path: '/manage-subscription',
-    name: 'ManageSubscription',
-    component: ManageSubscription
-  },
-  {
-    path: '/get-notification',
-    name: 'GetNotification',
-    component: GetNotifications,
-    meta: { layout: 'main' }
-  },
-  {
-    path: '/assessments/send-assessment/:id?',
-    name: 'SendAssessmentAssessments',
-    component: SendAssessment,
-    props: true,
-  },
-  {
-    path: '/user-permission',
-    name: 'UserPermission',
-    component: UserPermission
-  },
-  {
-    path: '/forgot-password',
-    name: 'ForgotPassword',
-    component: ForgotPassword,
+    component: ThankYou,
     meta: { public: true }
   },
   {
-    path: '/subscriptions/plans',
-    name: 'SubscriptionPlans',
-    component: SubscriptionPlans,
-    meta: {
-      requiresAuth: true,
-    }
+    path: '/thanks',
+    name: 'ThanksPage',
+    component: ThanksPage,
+    meta: { public: true }
+  },
+  {
+    path: '/assessment/answer/:token',
+    name: 'AssessmentAnswerPage',
+    component: AssessmentAnswerPage,
+    meta: { public: true }
+  },
+
+  // --- Authenticated Routes ---
+  {
+    path: '/dashboard',
+    name: 'Dashboard',
+    component: Dashboard,
+    meta: { requiresAuth: true }
   },
   {
     path: '/profile',
@@ -159,173 +119,239 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
+  // Subscription & Billing
   {
-    path: '/leads/:id',
-    name: 'LeadDetail',
-    component: LeadDetail,
-    props: true
+    path: '/manage-subscription',
+    name: 'ManageSubscription',
+    component: ManageSubscription,
+    meta: { requiresAuth: true, roles: [ROLES.USER, ROLES.ORGANIZATIONADMIN] }
   },
   {
-    path: '/leads/:id/edit',
-    name: 'EditLead',
-    component: EditLead,
-    props: true
-  },
-  {
-    path: '/organizations/:id',
-    name: 'OrganizationDetail',
-    component: OrganizationDetail,
-    props: true
-  },
-
-  {
-    path: '/organizations/:orgName',
-    name: 'OrganizationDetailByName',
-    component: OrganizationDetail,  
-    props: true
+    path: '/subscriptions/plans',
+    name: 'SubscriptionPlans',
+    component: SubscriptionPlans,
+    meta: { requiresAuth: true, roles: [ROLES.USER, ROLES.ORGANIZATIONADMIN] }
   },
   {
     path: '/organizations/billing-details',
     name: 'BillingDetails',
     component: BillingDetails,
-    props: true
+    props: true,
+    meta: { requiresAuth: true }
+  },
+  
+  // Organizations
+  {
+    path: '/organizations',
+    name: 'Organizations',
+    component: Organizations,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/organizations/:id',
+    name: 'OrganizationDetail',
+    component: OrganizationDetail,
+    props: true,
+    meta: { requiresAuth: true }
   },
   {
     path: '/organizations/:id/edit',
     name: 'OrganizationEdit',
     component: OrganizationEdit,
-    props: true
-  },
-
-  {
-    path: '/organizations/:orgName/edit',
-    name: 'OrganizationEditByName',
-    component: OrganizationEdit,
-    props: true
-  },
-  {
-    path: '/leads/lead-capture',
-    name: 'LeadCapture',
-    component: LeadCapture
-  },
-  {
-    path: '/leads/send-assessment/:id?',
-    name: 'SendAssessment',
-    component: SendAssessment,
     props: true,
+    meta: { requiresAuth: true }
   },
+  
+  // My Organization
   {
-    path: '/leads/schedule-demo',
-    name: 'ScheduleDemo',
-    component: ScheduleDemo
-  },
-  {
-    path: '/leads/schedule-class-training',
-    name: 'ScheduleClassTraining',
-    component: ScheduleClassTraining,
+    path: '/my-organization',
+    name: 'MyOrganization',
+    component: MyOrganization,
+    meta: { requiresAuth: true }
   },
   {
     path: '/my-organization/members',
     name: 'MemberListing',
     component: MemberListing,
-    props: true
+    props: true,
+    meta: { requiresAuth: true }
+  },
+
+  // Leads
+  {
+    path: '/leads',
+    name: 'Leads',
+    component: Leads,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/leads/lead-capture',
+    name: 'LeadCapture',
+    component: LeadCapture,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/leads/:id',
+    name: 'LeadDetail',
+    component: LeadDetail,
+    props: true,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/leads/:id/edit',
+    name: 'EditLead',
+    component: EditLead,
+    props: true,
+    meta: { requiresAuth: true }
+  },
+
+  // Assessments
+  {
+    path: '/assessments',
+    name: 'Assessments',
+    component: Assessments,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/assessments/send-assessment/:id?',
+    name: 'SendAssessment',
+    component: SendAssessment,
+    props: true,
+    meta: { requiresAuth: true }
   },
   {
     path: '/assessments/:assessmentId/summary',
     name: 'AssessmentSummary',
     component: AssessmentSummary,
-    props: true
+    props: true,
+    meta: { requiresAuth: true }
+  },
+
+  // Superadmin
+  {
+    path: '/user-permission',
+    name: 'UserPermission',
+    component: UserPermission,
+    meta: { requiresAuth: true, roles: [ROLES.SUPERADMIN] }
+  },
+  {
+    path: '/user-permission/add',
+    name: 'AddUser',
+    component: AddUser,
+    meta: { requiresAuth: true, roles: [ROLES.SUPERADMIN] }
+  },
+  {
+    path: '/notifications',
+    name: 'Notifications',
+    component: Notifications,
+    meta: { requiresAuth: true, roles: [ROLES.SUPERADMIN] }
+  },
+  
+  // Other Authenticated Routes
+  {
+    path: '/training-resources',
+    name: 'TrainingResources',
+    component: TrainingResources,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/get-notification',
+    name: 'GetNotification',
+    component: GetNotifications,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/leads/schedule-demo',
+    name: 'ScheduleDemo',
+    component: ScheduleDemo,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/leads/schedule-class-training',
+    name: 'ScheduleClassTraining',
+    component: ScheduleClassTraining,
+    meta: { requiresAuth: true }
+  },
+
+  // --- Catch-all Route ---
+  {
+    path: '/:catchAll(.*)',
+    redirect: '/dashboard'
   }
-]
+];
+
 
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
   routes
-})
-
-router.addRoute({
-  path: '/:catchAll(.*)',
-  redirect: '/dashboard'
 });
 
-//if no route matches, redirect to /dashboard
-router.beforeEach((to, from, next) => {
 
-  // If user already has role saved and valid, redirect root/login to dashboard
+// --- Navigation Guard ---
+
+router.beforeEach(async (to, from, next) => {
   const authToken = storage.get('authToken');
   const role = storage.get('role');
-  if ((to.path === '/' || to.path === '/login') && role && PERMISSIONS[role]) {
-    return next('/dashboard');
-  }
 
-  // Allow public routes (e.g., forgot-password) for everyone
-  if (to.meta && to.meta.public) {
+  // Allow access to public routes
+  if (to.meta.public) {
+    if (authToken && to.meta.guestOnly) {
+      return next('/dashboard'); // Redirect logged-in users from login/register
+    }
     return next();
   }
 
-  // login / thank you / register for everyone (thankyou/register are public entry points)
-  if (to.path === '/thankyou' || to.path === '/register') {
-    return next();
-  }
-
-  // If no role, redirect to login.
-  // But if the target is already the login page ('/'), allow it to proceed
-  // to avoid repeatedly redirecting to the same route which causes an
-  // infinite redirect loop.
-  if (!role || !PERMISSIONS[role]) {
-    if (to.path === '/' || to.path === '/login') {
+  // --- Handle Authenticated Users ---
+  if (authToken) {
+    // Allow access to subscription management pages regardless of subscription status
+    const subscriptionPages = ['ManageSubscription', 'SubscriptionPlans', 'BillingDetails'];
+    if (subscriptionPages.includes(to.name)) {
       return next();
     }
-    return next('/');
-  }
+    try {
+      const subscriptionStatus = await fetchSubscriptionStatus();
+      storage.set('subscription_status', subscriptionStatus.status);
 
-  // Check subscription status for users with expired subscriptions
-  const subscriptionStatus = storage.get('subscription_status');
-  const allowedRoutesForExpired = [
-    '/profile',
-    '/manage-subscription', 
-    '/subscriptions/plans',
-    '/organizations/billing-details'
-  ];
-
-  // If subscription is expired, only allow specific routes
-  if (subscriptionStatus === 'expired') {
-    if (allowedRoutesForExpired.includes(to.path)) {
-      // Allow access to these specific routes even with expired subscription
-      if (to.path === '/manage-subscription' || to.path === '/subscriptions/plans') {
-        if (role === ROLES.USER || role === ROLES.ORGANIZATIONADMIN) {
+      // Handle expired subscriptions
+      if (subscriptionStatus.status === 'expired') {
+        const allowedRoutesForExpired = [
+          'Profile',
+          'ManageSubscription',
+          'SubscriptionPlans',
+          'BillingDetails'
+        ];
+        if (allowedRoutesForExpired.includes(to.name)) {
           return next();
         }
-        return next('/dashboard');
+        return next('/manage-subscription'); // Force to subscription management
       }
-      // For profile and billing-details, check normal permissions
+
+      // Check role-based permissions
+      if (to.meta.roles && !to.meta.roles.includes(role)) {
+        return next('/dashboard'); // Redirect if role is not allowed
+      }
+
+      // Check general route permissions
       if (canAccess(role, 'routes', to.path)) {
         return next();
       } else {
-        return next('/dashboard');
+        return next('/dashboard'); // Redirect if not authorized
       }
-    } else {
-      // Redirect to manage-subscription for all other routes when subscription is expired
-      return next('/manage-subscription');
+    } catch (error) {
+      // If fetching status fails, redirect to login
+      console.error("Error fetching subscription status:", error);
+      storage.clear(); // Clear storage on error
+      return next('/');
     }
   }
 
-  // Allow manage-subscription and subscription plans only for USER and ORGANIZATIONADMIN
-  if (to.path === '/manage-subscription' || to.path === '/subscriptions/plans') {
-    if (role === ROLES.USER || role === ROLES.ORGANIZATIONADMIN) {
-      return next();
-    }
-    // other roles not allowed
-    return next('/dashboard');
+  // --- Handle Unauthenticated Users ---
+  if (to.meta.requiresAuth) {
+    return next('/'); // Redirect to login for protected routes
   }
 
-  // Check if the role can access the route (normal flow for active subscriptions)
-  if (canAccess(role, 'routes', to.path)) {
-    return next();
-  } else {
-    // unauthorized users to dashboard
-    return next('/dashboard');
-  }
+  // Default case
+  next();
 });
 
-export default router
+export default router;
