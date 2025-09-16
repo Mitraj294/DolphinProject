@@ -311,7 +311,6 @@ export default {
   flex-direction: row;
   justify-content: flex-start;
   align-items: center;
-  padding-left: 16px;
 }
 .sidebar-logo img {
   width: Zpx;
@@ -472,7 +471,7 @@ export default {
   align-items: center !important;
   justify-content: flex-start !important;
   width: 100%; /* Ensure 100% width, not more */
-  border-radius: 16px;
+  border-radius: 8px;
 
   min-height: 48px;
 

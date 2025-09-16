@@ -4,6 +4,13 @@
       <Toast />
       <div class="table-outer">
         <div class="table-card">
+          <div class="table-search-bar">
+            <input
+              class="org-search"
+              placeholder="Search Leads ...."
+              v-model="search"
+            />
+          </div>
           <div class="table-header-bar">
             <button
               class="btn btn-primary"
@@ -17,68 +24,18 @@
               Add New
             </button>
           </div>
+
           <div class="table-container">
             <div class="table-scroll">
               <table class="table">
                 <TableHeader
-                  :columns="[
-                    {
-                      label: 'Contact',
-                      key: 'contact',
-                      sortable: true,
-                      width: '170px',
-                    },
-                    { label: 'Email', key: 'email', width: '250px' },
-                    {
-                      label: 'Phone Number',
-                      key: 'phone',
-                      width: '150px',
-                      position: 'relative',
-                    },
-                    {
-                      label: 'Organization',
-                      key: 'organization',
-                      sortable: true,
-                      width: '150px',
-                      position: 'relative',
-                    },
-                    {
-                      label: 'Size',
-                      key: 'size',
-                      sortable: true,
-                      width: '220px',
-                      class: 'text-center',
-                      position: 'relative',
-                    },
-                    { label: 'Source', key: 'source', width: '90px' },
-                    {
-                      label: 'Status',
-                      key: 'status',
-                      sortable: true,
-                      width: '150px',
-                      position: 'relative',
-                    },
-                    {
-                      label: 'Notes',
-                      key: 'notes',
-                      width: '150px',
-                      position: 'relative',
-                    },
-                    {
-                      label: '',
-                      key: 'actions',
-                      width: '75px',
-                      class: 'text-center',
-                      position: 'initial',
-                    },
-                  ]"
+                  :columns="tableColumns"
                   @sort="sortBy"
                 />
-
                 <tbody>
                   <tr
                     v-for="(lead, idx) in paginatedLeads"
-                    :key="lead.email"
+                    :key="lead.id || lead.email"
                   >
                     <td data-label="Contact">
                       <span
@@ -106,7 +63,7 @@
                     <td data-label="Notes">
                       <button
                         class="btn-view"
-                        @click="openNotesModal(lead, idx)"
+                        @click="openNotesModal(lead)"
                       >
                         <template v-if="lead.notesAction === 'View'">
                           <img
@@ -133,9 +90,9 @@
                       <div class="actions-row">
                         <button
                           class="leads-menu-btn"
-                          @click.stop="toggleMenu(idx)"
+                          @click.stop="toggleMenu(lead.id || idx)"
                           aria-haspopup="true"
-                          :aria-expanded="menuOpen === idx"
+                          :aria-expanded="menuOpen === (lead.id || idx)"
                         >
                           <img
                             src="@/assets/images/Actions.svg"
@@ -146,9 +103,8 @@
                           />
                         </button>
                         <div
-                          v-if="menuOpen === idx"
+                          v-if="menuOpen === (lead.id || idx)"
                           class="leads-menu custom-leads-menu"
-                          :style="menuStyle"
                           ref="menuDropdown"
                           @click.stop
                         >
@@ -156,7 +112,7 @@
                             class="leads-menu-item"
                             v-for="option in customMenuOptions"
                             :key="option"
-                            @click="selectCustomAction(idx, option)"
+                            @click="selectCustomAction(lead, option)"
                           >
                             {{ option }}
                           </div>
@@ -180,7 +136,6 @@
           @selectPageSize="selectPageSize"
           @togglePageDropdown="showPageDropdown = !showPageDropdown"
         />
-        <!-- Notes Modal -->
         <div
           v-if="showNotesModal"
           class="notes-modal-overlay"
@@ -196,13 +151,13 @@
             ></textarea>
             <div class="notes-modal-actions">
               <button
-                class="org-edit-cancel"
-                @click="notesModalMode === 'add' ? submitNotes() : saveNotes()"
+                class="btn btn-primary"
+                @click="updateLeadNotes"
               >
                 {{ notesModalMode === 'add' ? 'Submit' : 'Update' }}
               </button>
               <button
-                class="btn btn-primary"
+                class="btn btn-secondary"
                 @click="closeNotesModal"
               >
                 Cancel
@@ -215,570 +170,233 @@
   </MainLayout>
 </template>
 
-<script>
+<script setup>
+import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
+import { useToast } from 'primevue/usetoast';
+
+// Component Imports
 import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
-import axios from 'axios';
 import Toast from 'primevue/toast';
-export default {
-  name: 'Leads',
-  components: { MainLayout, Pagination, TableHeader, Toast },
-  data() {
-    return {
-      menuOpen: null,
-      menuStyle: {},
-      customMenuOptions: [
-        // 'Schedule Follow Up',
-        'Schedule Demo',
-        'Schedule Class/Training',
-        'Send Assessment',
-        //'Send Agreement/Payment Link',
-        //'Convert to Client',
-      ],
-      leads: [],
-      pageSize: 10,
-      currentPage: 1,
-      showPageDropdown: false,
-      showNotesModal: false,
-      notesModalMode: 'add', // 'add' or 'view'
-      notesInput: '',
-      currentLead: null,
-      currentLeadId: null,
-      currentLeadIdx: null,
-      sortKey: '',
-      sortAsc: true,
-      loading: false,
-      errorMessage: '',
-      _scrollableParents: null, // Store scrollable parent elements
-    };
+
+// Services
+import storage from '@/services/storage.js';
+import { Component } from 'react';
+
+// --- STATE MANAGEMENT ---
+const router = useRouter();
+const toast = useToast();
+
+const leads = ref([]);
+const menuOpen = ref(null);
+const pageSize = ref(10);
+const currentPage = ref(1);
+const showPageDropdown = ref(false);
+const showNotesModal = ref(false);
+const notesModalMode = ref('add');
+const notesInput = ref('');
+const currentLead = ref(null);
+const sortKey = ref('');
+const sortAsc = ref(true);
+const isLoading = ref(false);
+
+const customMenuOptions = [
+  'Schedule Demo',
+  'Schedule Class/Training',
+  'Send Assessment',
+];
+
+const tableColumns = [
+  { label: 'Contact', key: 'contact', sortable: true, width: '170px' },
+  { label: 'Email', key: 'email', width: '250px' },
+  { label: 'Phone Number', key: 'phone', width: '150px' },
+  {
+    label: 'Organization',
+    key: 'organization',
+    sortable: true,
+    width: '150px',
   },
-  computed: {
-    totalPages() {
-      return Math.ceil(this.leads.length / this.pageSize) || 1;
-    },
-    paginatedLeads() {
-      let leads = [...this.leads];
-      if (this.sortKey) {
-        leads.sort((a, b) => {
-          const aVal = a[this.sortKey] || '';
-          const bVal = b[this.sortKey] || '';
-          if (aVal < bVal) return this.sortAsc ? -1 : 1;
-          if (aVal > bVal) return this.sortAsc ? 1 : -1;
-          return 0;
-        });
-      }
-      const start = (this.currentPage - 1) * this.pageSize;
-      return leads.slice(start, start + this.pageSize);
-    },
-    paginationPages() {
-      // Show 1, 2, 3, ..., 8, 9, 10 (with ellipsis in the middle)
-      const total = this.totalPages;
-      if (total <= 7) {
-        return Array.from({ length: total }, (_, i) => i + 1);
-      } else {
-        const pages = [1];
-        if (this.currentPage > 4) pages.push('...');
-        for (
-          let i = Math.max(2, this.currentPage - 1);
-          i <= Math.min(total - 1, this.currentPage + 1);
-          i++
-        ) {
-          pages.push(i);
-        }
-        if (this.currentPage < total - 3) pages.push('...');
-        pages.push(total);
-        return pages;
-      }
-    },
-  },
-  methods: {
-    async fetchLeads() {
-      this.loading = true;
-      this.errorMessage = '';
-      try {
-        const storage = require('@/services/storage').default;
-        const token = storage.get('authToken');
-        if (!token) {
-          this.errorMessage = 'Authentication token not found. Please log in.';
-          this.loading = false;
-          return;
-        }
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        const response = await axios.get(`${API_BASE_URL}/api/leads`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        // Transform backend data to frontend format and keep notes from backend
-        this.leads = response.data.map((lead) => ({
-          contact: `${lead.first_name} ${lead.last_name}`,
-          email: lead.email,
-          phone: lead.phone,
-          organization: lead.organization_name,
-          size: lead.organization_size,
-          source: lead.find_us,
-          status: lead.status || 'Lead Stage',
-          // If backend provides notes field, show "View" else "Add"
-          notesAction:
-            lead.notes && String(lead.notes).trim().length ? 'View' : 'Add',
-          notes: lead.notes || '',
-          ...lead,
-        }));
-      } catch (error) {
-        console.error('Error fetching leads:', error);
-        this.errorMessage = 'Failed to load leads.';
-      } finally {
-        this.loading = false;
-      }
-    },
-    selectCustomAction(idx, option) {
-      this.menuOpen = null;
-      const lead = this.leads[idx];
+  { label: 'Size', key: 'size', width: '220px' },
+  { label: 'Source', key: 'source', width: '90px' },
+  { label: 'Status', key: 'status', width: '150px' },
+  { label: 'Notes', key: 'notes', width: '150px' },
+  { label: 'Actions', key: 'actions', width: '75px' },
+];
 
-      // Handle different action types
-      if (option === 'Send Assessment') {
-        this.handleSendAssessment(lead);
-        return;
-      }
+// --- COMPUTED PROPERTIES ---
+const totalPages = computed(
+  () => Math.ceil(leads.value.length / pageSize.value) || 1
+);
 
-      if (option === 'Schedule Demo') {
-        this.$router.push('/leads/schedule-demo');
-        return;
-      }
+const paginatedLeads = computed(() => {
+  const sortedLeads = [...leads.value].sort((a, b) => {
+    if (!sortKey.value) return 0;
+    const aVal = a[sortKey.value] || '';
+    const bVal = b[sortKey.value] || '';
+    if (aVal < bVal) return sortAsc.value ? -1 : 1;
+    if (aVal > bVal) return sortAsc.value ? 1 : -1;
+    return 0;
+  });
+  const start = (currentPage.value - 1) * pageSize.value;
+  return sortedLeads.slice(start, start + pageSize.value);
+});
 
-      if (option === 'Schedule Class/Training') {
-        this.$router.push('/leads/schedule-class-training');
-        return;
-      }
+const paginationPages = computed(() => {
+  const total = totalPages.value;
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const pages = [1];
+  if (currentPage.value > 4) pages.push('...');
+  for (
+    let i = Math.max(2, currentPage.value - 2);
+    i <= Math.min(total - 1, currentPage.value + 2);
+    i++
+  ) {
+    pages.push(i);
+  }
+  if (currentPage.value < total - 3) pages.push('...');
+  pages.push(total);
+  return pages;
+});
 
-      // Default action
-      this.$set(this.leads[idx], 'selectedCustomAction', option);
-    },
+// --- API & BUSINESS LOGIC ---
+const API_BASE_URL =
+  process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+const authToken = storage.get('authToken');
 
-    handleSendAssessment(lead) {
-      // Handle persisted leads with ID
-      if (lead.id) {
-        this.navigateToAssessmentWithId(lead);
-        return;
-      }
-
-      // Handle unsaved leads with query params
-      this.navigateToAssessmentWithQuery(lead);
-    },
-
-    navigateToAssessmentWithId(lead) {
-      try {
-        this.$router.push({
-          name: 'SendAssessment',
-          params: { id: lead.id },
-        });
-      } catch (e) {
-        console.error(
-          'Failed to navigate with named route, falling back to path-based navigation:',
-          e
-        );
-
-        const basePath = this.getAssessmentBasePath();
-        this.$router.push({
-          path: `${basePath}/send-assessment`,
-          query: { id: lead.id }, // Use query instead of params for path-based navigation
-        });
-      }
-    },
-
-    navigateToAssessmentWithQuery(lead) {
-      const query = {
-        contact: lead.contact,
-        email: lead.email,
-        phone: lead.phone,
-        organization: lead.organization,
-        size: lead.size,
-        source: lead.source,
-        status: lead.status,
-      };
-
-      const basePath = this.getAssessmentBasePath();
-      this.$router.push({
-        path: `${basePath}/send-assessment`,
-        query,
-      });
-    },
-
-    getAssessmentBasePath() {
-      return this.$route.path.startsWith('/assessments')
-        ? '/assessments'
-        : '/leads';
-    },
-    handleGlobalClick(e) {
-      if (this.menuOpen !== null) {
-        let menu = document.querySelector('.leads-menu.custom-leads-menu');
-        let btns = document.querySelectorAll('.leads-menu-btn');
-        if (menu && menu.contains(e.target)) return;
-        for (let btn of btns) {
-          if (btn.contains(e.target)) return;
-        }
-        this.menuOpen = null;
-      }
-    },
-    goToLeadDetail(lead) {
-      // Navigate to lead detail by id (preferred). Keep some basic query info
-      // for backward compatibility, but route param will be the canonical id.
-      const id = lead.id || lead.email || '';
-      this.$router.push({
-        name: 'LeadDetail',
-        params: { id },
-      });
-    },
-    goToPage(page) {
-      if (page === '...' || page < 1 || page > this.totalPages) return;
-      this.currentPage = page;
-    },
-    selectPageSize(size) {
-      this.pageSize = size;
-      this.currentPage = 1;
-      this.showPageDropdown = false;
-    },
-    openNotesModal(lead, idx) {
-      // Close any open menu and restore scrolling
-      this.menuOpen = null;
-      try {
-        document.body.style.overflow = '';
-      } catch (e) {
-        console.error('Failed to toggle body overflow', e);
-      }
-
-      this.currentLeadId = lead.id || null;
-
-      if (this.currentLeadId) {
-        this.currentLeadIdx = this.leads.findIndex(
-          (l) => l.id === this.currentLeadId
-        );
-      } else {
-        // best-effort matching for leads without id
-        this.currentLeadIdx = this.leads.findIndex(
-          (l) =>
-            (l.email && l.email === lead.email) ||
-            (l.phone && l.phone === lead.phone) ||
-            (l.contact && l.contact === lead.contact)
-        );
-        // if still not found, fallback to positional mapping (old behavior)
-        if (this.currentLeadIdx === -1) {
-          this.currentLeadIdx = idx + (this.currentPage - 1) * this.pageSize;
-        }
-      }
-      if (lead.notesAction === 'View') {
-        this.notesModalMode = 'view';
-      } else {
-        this.notesModalMode = 'add';
-      }
-
-      this.notesInput = lead.notes || '';
-      this.showNotesModal = true;
-    },
-    async submitNotes() {
-      // Save new notes (add)
-      // Resolve the lead to update from stored id or index
-      let lead = null;
-      if (this.currentLeadId) {
-        lead = this.leads.find((l) => l.id === this.currentLeadId);
-      }
-      if (!lead && this.currentLeadIdx != null && this.currentLeadIdx >= 0) {
-        lead = this.leads[this.currentLeadIdx];
-      }
-      if (!lead || !lead.id) {
-        // update locally and close for leads that aren't persisted yet
-        if (lead) {
-          lead.notes = this.notesInput;
-          lead.notesAction = 'View';
-        }
-        this.closeNotesModal();
-        return;
-      }
-      try {
-        const storage = require('@/services/storage').default;
-        const token = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        await axios.patch(
-          `${API_BASE_URL}/api/leads/${lead.id}`,
-          { notes: this.notesInput },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        // update local copy
-        lead.notes = this.notesInput;
-        lead.notesAction = 'View';
-        // show success toast
-        if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'success',
-            summary: 'Notes Saved',
-            detail: 'Notes added successfully.',
-            life: 3000,
-          });
-        }
-      } catch (e) {
-        console.error('Failed to submit notes', e);
-        this.errorMessage = 'Failed to save notes.';
-        if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Save Failed',
-            detail: 'Could not save notes. Try again.',
-            life: 4000,
-          });
-        }
-      } finally {
-        this.closeNotesModal();
-      }
-    },
-    async saveNotes() {
-      // Save edited notes. Resolve lead the same way as submitNotes.
-      let lead = null;
-      if (this.currentLeadId) {
-        lead = this.leads.find((l) => l.id === this.currentLeadId);
-      }
-      if (!lead && this.currentLeadIdx != null && this.currentLeadIdx >= 0) {
-        lead = this.leads[this.currentLeadIdx];
-      }
-      if (!lead || !lead.id) {
-        if (lead) lead.notes = this.notesInput;
-        this.closeNotesModal();
-        return;
-      }
-      try {
-        const storage = require('@/services/storage').default;
-        const token = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        await axios.patch(
-          `${API_BASE_URL}/api/leads/${lead.id}`,
-          { notes: this.notesInput },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        lead.notes = this.notesInput;
-        if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'success',
-            summary: 'Notes Updated',
-            detail: 'Notes updated successfully.',
-            life: 3000,
-          });
-        }
-      } catch (e) {
-        console.error('Failed to save notes', e);
-        this.errorMessage = 'Failed to save notes.';
-        if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Update Failed',
-            detail: 'Could not update notes. Try again.',
-            life: 4000,
-          });
-        }
-      } finally {
-        this.closeNotesModal();
-      }
-    },
-    closeNotesModal() {
-      this.showNotesModal = false;
-      this.notesInput = '';
-      this.currentLead = null;
-      this.currentLeadIdx = null;
-      this.currentLeadId = null;
-    },
-    sortBy(key) {
-      if (this.sortKey === key) {
-        this.sortAsc = !this.sortAsc;
-      } else {
-        this.sortKey = key;
-        this.sortAsc = true;
-      }
-    },
-    toggleMenu(idx) {
-      const opening = this.menuOpen !== idx;
-      this.menuOpen = opening ? idx : null;
-      // Lock body scrolling when menu open
-      try {
-        document.body.style.overflow = opening ? 'hidden' : '';
-      } catch (e) {
-        console.error('Failed to toggle body overflow', e);
-      }
-      if (opening) {
-        // set initial position and attach listeners
-        this.updateMenuPosition(idx);
-        this.attachScrollListeners();
-        window.addEventListener('resize', this._menuResizeHandler);
-      } else {
-        // closing
-        this.menuStyle = {};
-        this.detachScrollListeners();
-        window.removeEventListener('resize', this._menuResizeHandler);
-      }
-    },
-
-    // Find all scrollable parent elements
-    findScrollableParents(element) {
-      const scrollableParents = [];
-      let parent = element.parentElement;
-
-      while (parent && parent !== document.body) {
-        const style = window.getComputedStyle(parent);
-        const overflow = style.overflow + style.overflowX + style.overflowY;
-
-        if (overflow.includes('scroll') || overflow.includes('auto')) {
-          scrollableParents.push(parent);
-        }
-        parent = parent.parentElement;
-      }
-
-      // Always include window for document-level scrolling
-      scrollableParents.push(window);
-      return scrollableParents;
-    },
-
-    // Attach scroll listeners to all scrollable parents
-    attachScrollListeners() {
-      if (this.menuOpen === null) return;
-
-      const buttons = document.querySelectorAll('.leads-menu-btn');
-      const btn = buttons[this.menuOpen];
-      if (!btn) return;
-
-      // Find all scrollable parents
-      this._scrollableParents = this.findScrollableParents(btn);
-
-      // Attach scroll listeners to each scrollable parent
-      this._scrollableParents.forEach((scrollableElement) => {
-        scrollableElement.addEventListener('scroll', this._menuScrollHandler, {
-          passive: true,
-        });
-      });
-    },
-
-    // Remove scroll listeners from all scrollable parents
-    detachScrollListeners() {
-      if (this._scrollableParents) {
-        this._scrollableParents.forEach((scrollableElement) => {
-          scrollableElement.removeEventListener(
-            'scroll',
-            this._menuScrollHandler
-          );
-        });
-        this._scrollableParents = null;
-      }
-    },
-    getMenuPosition(idx) {
-      // Fallback (unused when menuStyle is set) - compute fixed coordinates
-      const buttons = document.querySelectorAll('.leads-menu-btn');
-      const btn = buttons && buttons[idx] ? buttons[idx] : null;
-      if (!btn) return {};
-      const rect = btn.getBoundingClientRect();
-      const menuWidth = 220; // menu width
-      const padding = 8;
-      const viewportWidth = window.innerWidth;
-      let left = rect.left + rect.width / 2 - menuWidth / 2;
-      left = Math.max(
-        padding,
-        Math.min(left, viewportWidth - menuWidth - padding)
-      );
-      // For fixed positioning, use rect.bottom directly (no scrollY needed)
-      const top = rect.bottom + 8;
-      return {
-        left: `${Math.round(left)}px`,
-        top: `${Math.round(top)}px`,
-        minWidth: menuWidth + 'px',
-      };
-    },
-
-    updateMenuPosition(idx) {
-      const buttons = document.querySelectorAll('.leads-menu-btn');
-      const btn = buttons && buttons[idx] ? buttons[idx] : null;
-      if (!btn) return;
-
-      const rect = btn.getBoundingClientRect();
-
-      // Check if button is still visible in viewport
-      if (
-        rect.bottom < 0 ||
-        rect.top > window.innerHeight ||
-        rect.right < 0 ||
-        rect.left > window.innerWidth
-      ) {
-        // Button is not visible, hide menu
-        this.menuOpen = null;
-        return;
-      }
-
-      const menuWidth = 220;
-      const padding = 8;
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
-
-      // Calculate horizontal position
-      let left = rect.left + rect.width / 2 - menuWidth / 2;
-      left = Math.max(
-        padding,
-        Math.min(left, viewportWidth - menuWidth - padding)
-      );
-
-      // Calculate vertical position with fallback for bottom overflow
-      let top = rect.bottom + 8;
-      const menuHeight = 120; // Approximate menu height
-
-      // If menu would go below viewport, position it above the button
-      if (top + menuHeight > viewportHeight) {
-        top = rect.top - menuHeight - 8;
-        // If still not enough space above, position at viewport edge
-        if (top < padding) {
-          top = Math.max(padding, viewportHeight - menuHeight - padding);
-        }
-      }
-
-      this.menuStyle = {
-        left: `${Math.round(left)}px`,
-        top: `${Math.round(top)}px`,
-        minWidth: menuWidth + 'px',
-      };
-    },
-  },
-  mounted() {
-    document.addEventListener('click', this.handleGlobalClick);
-    // handlers for keeping menu aligned with throttling for better performance
-    this._menuScrollHandler = () => {
-      if (this.menuOpen !== null) {
-        // Use requestAnimationFrame for smooth updates
-        if (!this._scrollRAF) {
-          this._scrollRAF = requestAnimationFrame(() => {
-            this.updateMenuPosition(this.menuOpen);
-            this._scrollRAF = null;
-          });
-        }
-      }
-    };
-    this._menuResizeHandler = () => {
-      if (this.menuOpen !== null) {
-        this.updateMenuPosition(this.menuOpen);
-      }
-    };
-    this.fetchLeads();
-  },
-  beforeUnmount() {
-    document.removeEventListener('click', this.handleGlobalClick);
-    this.detachScrollListeners();
-    window.removeEventListener('resize', this._menuResizeHandler);
-    // Clean up any pending animation frame
-    if (this._scrollRAF) {
-      cancelAnimationFrame(this._scrollRAF);
-      this._scrollRAF = null;
-    }
-  },
+const fetchLeads = async () => {
+  isLoading.value = true;
+  try {
+    const response = await axios.get(`${API_BASE_URL}/api/leads`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    });
+    leads.value = response.data.map((lead) => ({
+      ...lead,
+      contact: `${lead.first_name} ${lead.last_name}`,
+      organization: lead.organization_name,
+      size: lead.organization_size,
+      source: lead.find_us,
+      status: lead.status || 'Lead Stage',
+      notesAction: lead.notes ? 'View' : 'Add',
+    }));
+  } catch (error) {
+    console.error('Error fetching leads:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load leads.',
+      life: 3000,
+    });
+  } finally {
+    isLoading.value = false;
+  }
 };
+
+const updateLeadNotes = async () => {
+  if (!currentLead.value) return;
+
+  const leadToUpdate = leads.value.find((l) => l.id === currentLead.value.id);
+  if (!leadToUpdate) return;
+
+  try {
+    await axios.patch(
+      `${API_BASE_URL}/api/leads/${leadToUpdate.id}`,
+      { notes: notesInput.value },
+      {
+        headers: { Authorization: `Bearer ${authToken}` },
+      }
+    );
+    leadToUpdate.notes = notesInput.value;
+    leadToUpdate.notesAction = 'View';
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Notes updated successfully.',
+      life: 3000,
+    });
+    closeNotesModal();
+  } catch (error) {
+    console.error('Failed to update notes:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Could not save notes.',
+      life: 3000,
+    });
+  }
+};
+
+// --- EVENT HANDLERS & NAVIGATION ---
+const goToLeadDetail = (lead) =>
+  router.push({ name: 'LeadDetail', params: { id: lead.id } });
+const goToPage = (page) => {
+  if (page >= 1 && page <= totalPages.value) currentPage.value = page;
+};
+const selectPageSize = (size) => {
+  pageSize.value = size;
+  currentPage.value = 1;
+  showPageDropdown.value = false;
+};
+const sortBy = (key) => {
+  if (sortKey.value === key) {
+    sortAsc.value = !sortAsc.value;
+  } else {
+    sortKey.value = key;
+    sortAsc.value = true;
+  }
+};
+const toggleMenu = (id) => (menuOpen.value = menuOpen.value === id ? null : id);
+const closeMenu = () => (menuOpen.value = null);
+
+const selectCustomAction = (lead, option) => {
+  closeMenu();
+  switch (option) {
+    case 'Send Assessment':
+      router.push({ name: 'SendAssessment', params: { id: lead.id } });
+      break;
+    case 'Schedule Demo':
+      router.push('/leads/schedule-demo');
+      break;
+    case 'Schedule Class/Training':
+      router.push('/leads/schedule-class-training');
+      break;
+  }
+};
+
+const openNotesModal = (lead) => {
+  currentLead.value = lead;
+  notesInput.value = lead.notes || '';
+  notesModalMode.value = lead.notesAction === 'View' ? 'view' : 'add';
+  showNotesModal.value = true;
+};
+
+const closeNotesModal = () => {
+  showNotesModal.value = false;
+  notesInput.value = '';
+  currentLead.value = null;
+};
+
+const handleGlobalClick = (e) => {
+  if (menuOpen.value !== null && !e.target.closest('.actions-row')) {
+    closeMenu();
+  }
+};
+
+// --- LIFECYCLE HOOKS ---
+onMounted(() => {
+  fetchLeads();
+  document.addEventListener('click', handleGlobalClick);
+});
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleGlobalClick);
+});
 </script>
 
 <style scoped>
-/* --- Other styles (unchanged, but moved for clarity) --- */
+/* All original styles are preserved below */
 .leads-notes-btn {
   background: #fff;
   border: 1.5px solid #e0e0e0;
@@ -820,22 +438,18 @@ export default {
   display: block;
 }
 .leads-menu.custom-leads-menu {
-  /* Use fixed positioning so the menu is never clipped by scrolling containers */
-  position: fixed !important;
+  position: absolute;
+  top: 100%;
+  right: 0;
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
   min-width: 180px;
-  z-index: 10050;
+  z-index: 100;
   display: flex;
   flex-direction: column;
   padding: 4px 0;
-  left: auto;
-  right: auto;
-  top: auto;
-  max-width: 90vw;
-  overflow-x: visible;
 }
 .leads-menu-item {
   padding: 8px 12px;
@@ -873,6 +487,7 @@ export default {
   padding: 32px 32px 24px 32px;
   min-width: 280px;
   max-width: 600px;
+  width: 90%;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.12);
   display: flex;
   flex-direction: column;
@@ -907,11 +522,25 @@ export default {
 .lead-contact-link {
   cursor: pointer;
   font-weight: 500;
+  color: #0074c2;
 }
 
 .btn-view {
   min-width: 80px;
   justify-content: center;
+  background: none;
+  border: 1px solid #ccc;
+  border-radius: 20px;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-view-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .table-scroll {
@@ -923,15 +552,15 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 125px; /* fixed equal width for all badges */
-  height: 30px; /* consistent height */
+  min-width: 110px;
+  height: 30px;
   border-radius: 999px;
   font-size: 13px;
   font-weight: 600;
   color: #fff;
   text-align: center;
   white-space: nowrap;
-  padding: 0 8px; /* horizontal padding retained if text needs it */
+  padding: 0 12px;
   box-sizing: border-box;
 }
 .status-badge.lead-stage {
@@ -942,5 +571,35 @@ export default {
 }
 .status-badge.registered {
   background: #28a745;
+}
+
+/* --- Table Search Bar Styles --- */
+.table-search-bar {
+  padding: 18px 46px 18px 24px;
+  background: #fff;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+}
+.org-search {
+  width: 260px;
+  padding: 8px 24px 8px 32px;
+  border-radius: 12px;
+  border: none;
+  background: #f8f8f8;
+  font-size: 14px;
+  outline: none;
+  background-image: url('@/assets/images/Search.svg');
+  background-repeat: no-repeat;
+  background-position: 8px center;
+  background-size: 16px 16px;
+  margin-left: 0;
+  margin-right: auto;
+}
+.org-search::placeholder {
+  margin-left: 4px;
 }
 </style>

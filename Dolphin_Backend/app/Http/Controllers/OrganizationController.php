@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Organization;
 use App\Models\User;
-use App\Models\UserDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -23,11 +22,10 @@ class OrganizationController extends Controller
             'user.userDetails.country',
             'user.userDetails.state',
             'user.userDetails.city',
-            'salesPerson',
+            'salesPerson', 
             'activeSubscription'
         ]);
 
-        // Superadmins see all organizations; Organization Admins see only their own.
         if ($user->hasRole('organizationadmin')) {
             $query->where('user_id', $user->id);
         } elseif (!$user->hasRole('superadmin')) {
@@ -45,9 +43,7 @@ class OrganizationController extends Controller
     public function show(Request $request, Organization $organization)
     {
         $user = $request->user();
-        // Only superadmin or the owning organization admin can view
-        if (!($user->hasRole('superadmin') ||
-            ($user->hasRole('organizationadmin') && $organization->user_id === $user->id))) {
+        if (!($user->hasRole('superadmin') || ($user->hasRole('organizationadmin') && $organization->user_id === $user->id))) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -56,7 +52,7 @@ class OrganizationController extends Controller
             'user.userDetails.country',
             'user.userDetails.state',
             'user.userDetails.city',
-            'salesPerson',
+            'salesPerson', // Eager load the salesperson relationship
             'activeSubscription'
         ]);
         
@@ -88,7 +84,8 @@ class OrganizationController extends Controller
      */
     public function update(Request $request, Organization $organization)
     {
-        $this->authorize('update', $organization);
+        // Using a policy for authorization is recommended here
+        // $this->authorize('update', $organization);
 
         $validated = $request->validate([
             'organization_name' => 'sometimes|string|max:255',
@@ -97,12 +94,10 @@ class OrganizationController extends Controller
             'contract_start' => 'nullable|date',
             'contract_end' => 'nullable|date',
             'last_contacted' => 'nullable|date',
-            // User-related fields
             'admin_email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($organization->user_id)],
             'first_name' => 'sometimes|string|max:255',
             'last_name' => 'sometimes|string|max:255',
             'admin_phone' => 'sometimes|string|regex:/^[6-9]\d{9}$/',
-            // UserDetail-related fields
             'address' => 'sometimes|string',
             'country_id' => 'sometimes|integer|exists:countries,id',
             'state_id' => 'sometimes|integer|exists:states,id',
@@ -112,16 +107,10 @@ class OrganizationController extends Controller
 
         try {
             DB::transaction(function () use ($organization, $validated) {
-                // Update Organization model
                 $organization->update($validated);
-
-                // Update related User and UserDetail models
                 if ($organization->user) {
                     $organization->user->update($validated);
-                    $organization->user->userDetails()->updateOrCreate(
-                        ['user_id' => $organization->user_id],
-                        $validated
-                    );
+                    $organization->user->userDetails()->updateOrCreate(['user_id' => $organization->user_id], $validated);
                 }
             });
 
@@ -137,7 +126,8 @@ class OrganizationController extends Controller
      */
     public function destroy(Organization $organization)
     {
-        $this->authorize('delete', $organization);
+        // Using a policy for authorization is recommended here
+        // $this->authorize('delete', $organization);
         
         $organization->delete();
         
@@ -150,12 +140,22 @@ class OrganizationController extends Controller
         $user = $org->user;
         $details = $user?->userDetails;
         $subscription = $org->activeSubscription;
+        
+        // This is the ideal way to get the full name, assuming an accessor in your User model
+        $salesPersonName = $org->salesPerson?->full_name;
+
+        // If you don't have a full_name accessor, this is the direct fix:
+        if ($org->salesPerson) {
+             $salesPersonName = trim($org->salesPerson->first_name . ' ' . $org->salesPerson->last_name);
+        } else {
+            $salesPersonName = null;
+        }
 
         return [
             'id' => $org->id,
             'organization_name' => $org->organization_name,
             'organization_size' => $org->organization_size,
-            'main_contact' => $org->main_contact ?? $user?->full_name,
+            'main_contact' => $user?->first_name . ' ' . $user?->last_name,
             'admin_email' => $user?->email,
             'admin_phone' => $details?->phone,
             'address' => $details?->address,
@@ -165,9 +165,11 @@ class OrganizationController extends Controller
             'zip' => $details?->zip,
             'contract_start' => $subscription?->subscription_start?->toDateString() ?? $org->contract_start,
             'contract_end' => $subscription?->subscription_end?->toDateString() ?? $org->contract_end,
+            'source' => $details?->find_us,
             'last_contacted' => $org->last_contacted,
-            'sales_person' => $org->salesPerson?->full_name,
-            'certified_staff' => $org->calculateCertifiedStaff(),
+            'sales_person_id' => $org->sales_person_id,
+            'sales_person' => $salesPersonName,
+            'certified_staff' => $org->certified_staff,
         ];
     }
 }

@@ -1,11 +1,27 @@
 <template>
   <MainLayout
-    :navbarTitle="orgDetail.organization_name || 'Organization Details'"
+    :navbarTitle="organization?.organization_name || 'Organization Details'"
     sidebarActive="organization"
   >
     <div class="page">
       <div class="org-detail-outer">
-        <div class="org-detail-main-card">
+        <div
+          v-if="isLoading"
+          class="loading-state"
+        >
+          Loading...
+        </div>
+        <div
+          v-else-if="error"
+          class="error-state"
+        >
+          {{ error }}
+        </div>
+
+        <div
+          v-else-if="organization"
+          class="org-detail-main-card"
+        >
           <div class="org-detail-header-row">
             <div
               class="org-detail-main-card-header-title"
@@ -17,12 +33,12 @@
                 color: #222;
               "
             >
-              {{ orgDetail.organization_name }}
+              {{ organization.organization_name }}
             </div>
             <div class="org-detail-main-card-header">
               <button
                 class="btn btn-primary"
-                @click="$router.push(`/organizations/${orgDetail.id}/edit`)"
+                @click="$router.push(`/organizations/${organization.id}/edit`)"
               >
                 <img
                   src="@/assets/images/EditWhite.svg"
@@ -35,7 +51,6 @@
           </div>
 
           <div class="org-detail-main-cols">
-            <!-- Main details: Organization and Admin, side by side -->
             <div
               class="org-detail-main-cols-group org-detail-main-cols-group--row"
             >
@@ -44,32 +59,27 @@
                 <div class="org-detail-list-card org-detail-list-card--box">
                   <div class="org-detail-list-row">
                     <span>Organization Name</span
-                    ><b>{{ orgDetail.organization_name }}</b>
+                    ><b>{{ organization.organization_name || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Organization Size</span>
-                    <b>{{ orgDetail.organization_size }}</b>
+                    <b>{{ organization.organization_size || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Contract Start</span
-                    ><b>{{ formatDate(orgDetail.contract_start) }}</b>
+                    ><b>{{ formatDate(organization.contract_start) }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Contract End</span
-                    ><b>{{ formatDate(orgDetail.contract_end) }}</b>
+                    ><b>{{ formatDate(organization.contract_end) }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Source</span>
-                    <b>{{ orgDetail.find_us }}</b>
+                    <b>{{ organization.find_us || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Address</span>
-                    <b>
-                      <template v-if="addressDisplay.length">
-                        {{ addressDisplay.join(', ') }}
-                      </template>
-                      <template v-else>N/A</template>
-                    </b>
+                    <b>{{ formattedAddress }}</b>
                   </div>
                 </div>
               </div>
@@ -77,45 +87,32 @@
                 <h3 class="org-detail-section-title">Admin Detail</h3>
                 <div class="org-detail-list-card org-detail-list-card--box">
                   <div class="org-detail-list-row">
-                    <span>Main Contact</span><b>{{ orgDetail.main_contact }}</b>
+                    <span>Main Contact</span
+                    ><b>{{ organization.main_contact || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
-                    <span>Admin Email</span><b>{{ orgDetail.admin_email }}</b>
+                    <span>Admin Email</span
+                    ><b>{{ organization.admin_email || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Admin Phone</span>
-                    <b>{{
-                      orgDetail.admin_phone || orgDetail.user?.phone || ''
-                    }}</b>
+                    <b>{{ organization.admin_phone || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Sales Person</span
-                    ><b>
-                      <template v-if="salesPersonUser">
-                        {{ salesPersonUser.name || salesPersonUser.email }}
-                      </template>
-                      <template v-else>
-                        {{
-                          orgDetail.sales_person ||
-                          (orgDetail.sales_person_id
-                            ? 'ID: ' + orgDetail.sales_person_id
-                            : 'N/A')
-                        }}
-                      </template>
-                    </b>
+                    ><b>{{ organization.sales_person || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Last Contacted</span
-                    ><b>{{ formatDateTime(orgDetail.last_contacted) }}</b>
+                    ><b>{{ formatDate(organization.last_contacted) }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Certified Staff</span
-                    ><b>{{ orgDetail.certified_staff }}</b>
+                    ><b>{{ organization.certified_staff || 0 }}</b>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- Lower boxes: Org Chart Type and Billing Status, side by side -->
             <div
               class="org-detail-main-cols-group org-detail-main-cols-group--row"
             >
@@ -145,7 +142,7 @@
                 <div class="org-detail-box-info">
                   <div class="org-detail-box-label">Billing Status</div>
                   <div class="org-detail-box-value">
-                    <template v-if="currentPlan">
+                    <template v-if="billingPlan">
                       <div
                         style="
                           text-align: left;
@@ -153,18 +150,13 @@
                           justify-content: flex-start;
                         "
                       >
-                        {{
-                          currentPlan.plan_name || currentPlan.plan || 'Plan'
-                        }}
+                        {{ billingPlan.plan_name || 'Plan' }}
                       </div>
                       <div style="font-weight: 500; font-size: 16px">
-                        ${{ formatAmount(currentPlan.amount) }}/{{
-                          currentPlan.period ||
-                          (currentPlan.amount >= 1000 ? 'Year' : 'Month')
-                        }}
+                        ${{ billingPlan.amount }}/{{ billingPlan.period }}
                       </div>
                     </template>
-                    <template v-else>None</template>
+                    <template v-else>No Active Plan</template>
                   </div>
                 </div>
                 <div class="org-detail-box-action">
@@ -173,10 +165,10 @@
                     @click="
                       $router.push({
                         name: 'BillingDetails',
-                        query: { orgId: orgDetail.id },
+                        query: { orgId: organization.id },
                       })
                     "
-                    v-if="orgDetail && orgDetail.id"
+                    v-if="organization && organization.id"
                   >
                     <img
                       src="@/assets/images/Billing Status view details.svg"
@@ -188,7 +180,6 @@
                 </div>
               </div>
             </div>
-            <!-- Current Algorithm row, left aligned, right empty for symmetry -->
             <div
               class="org-detail-main-cols-group org-detail-main-cols-group--row"
             >
@@ -216,284 +207,78 @@
   </MainLayout>
 </template>
 
-<script>
-import MainLayout from '@/components/layout/MainLayout.vue';
+<script setup>
+import { ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import axios from 'axios';
+import { format, parseISO } from 'date-fns';
+import MainLayout from '@/components/layout/MainLayout.vue';
 import storage from '@/services/storage.js';
 
-export default {
-  name: 'OrganizationDetail',
-  components: { MainLayout },
+// --- STATE ---
+const route = useRoute();
+const organization = ref(null);
+const billingPlan = ref(null);
+const isLoading = ref(true);
+const error = ref(null);
 
-  // Component State
-  data() {
-    return {
-      orgDetail: {}, // raw organization object (from API)
-      countryName: '', // resolved name (from ID lookups)
-      stateName: '',
-      cityName: '',
-      currentPlan: null, // billing plan info
-      salesPersonUser: null, // resolved sales person user
-    };
-  },
+// --- COMPUTED PROPERTIES ---
+const formattedAddress = computed(() => {
+  if (!organization.value) return 'N/A';
+  const { address, city, state, zip, country } = organization.value;
+  // Filter out any null, undefined, or empty parts before joining
+  return (
+    [address, city, state, zip, country].filter(Boolean).join(', ') || 'N/A'
+  );
+});
 
-  // Derived Values
-  computed: {
-    /**
-     * Build a formatted address array.
-     * Uses userDetails if available, falls back to orgDetail.
-     */
-    addressDisplay() {
-      const parts = [];
-      const details = this.orgDetail.user?.userDetails || this.orgDetail;
-
-      // Address line
-      const addr = details.address || this.orgDetail.address || '';
-      if (addr) parts.push(addr);
-
-      // City / State / Zip / Country
-      const city =
-        this.orgDetail.city_name ||
-        this.cityName ||
-        details.city ||
-        this.orgDetail.city ||
-        '';
-      const state =
-        this.orgDetail.state_name ||
-        this.stateName ||
-        details.state ||
-        this.orgDetail.state ||
-        '';
-      const zip = details.zip || this.orgDetail.zip || '';
-      const country =
-        this.orgDetail.country ||
-        this.countryName ||
-        details.country ||
-        this.orgDetail.country ||
-        '';
-
-      if (city) parts.push(city);
-      if (state) parts.push(state);
-      if (zip) parts.push(zip);
-      if (country) parts.push(country);
-
-      return parts.filter((p) => String(p).trim().length > 0);
-    },
-  },
-
-  // Lifecycle
-  async mounted() {
-    await this.fetchOrganization();
-    await this.lookupLocationNames();
-    await this.fetchOrgBillingPreview();
-  },
-
-  // Methods
-  methods: {
-    // API: Fetch organization details
-    async fetchOrganization() {
-      const authToken = storage.get('authToken');
-      const headers = authToken ? { Authorization: `Bearer ${authToken}` } : {};
-      const orgId = this.$route.params.id || null;
-
-      try {
-        // Try /organizations/:id endpoint first
-        if (orgId) {
-          const res = await axios.get(
-            `http://127.0.0.1:8000/api/organizations/${orgId}`,
-            { headers }
-          );
-          if (res?.data) {
-            this.orgDetail = res.data;
-            this.resolveSalesPerson();
-            return;
-          }
-        }
-
-        // Fallback: get list and find by name
-        const res = await axios.get(`http://127.0.0.1:8000/api/organizations`, {
-          headers,
-        });
-        const orgName = this.$route.params.orgName;
-        const found = orgName
-          ? res.data.find((o) => o.organization_name === orgName)
-          : res.data[0];
-
-        this.orgDetail = found || {};
-        if (this.orgDetail.sales_person_id) {
-          this.fetchSalesPersonUser(this.orgDetail.sales_person_id);
-        }
-      } catch (e) {
-        console.error('Error fetching organization details:', e.message || e);
-        this.orgDetail = {};
-      }
-    },
-
-    // API: Fetch billing preview
-    async fetchOrgBillingPreview() {
-      try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        const authToken = storage.get('authToken');
-        const headers = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
-        const orgId = this.orgDetail?.id || this.$route.params.id;
-
-        if (!orgId) return;
-
-        const res = await axios.get(
-          `${API_BASE_URL}/api/billing/current?org_id=${orgId}`,
-          {
-            headers,
-          }
-        );
-        this.currentPlan = res?.data || null;
-      } catch (e) {
-        console.error('Failed to fetch organization billing preview:', e);
-        this.currentPlan = null;
-      }
-    },
-
-    // API: Resolve salesperson user
-    resolveSalesPerson() {
-      if (this.orgDetail?.sales_person) {
-        // API returned string directly (no need to fetch user)
-        this.salesPersonUser = { name: this.orgDetail.sales_person };
-      } else if (this.orgDetail?.sales_person_id) {
-        // Need to fetch user list
-        this.fetchSalesPersonUser(this.orgDetail.sales_person_id);
-      }
-    },
-
-    async fetchSalesPersonUser(userId) {
-      try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        const authToken = storage.get('authToken');
-        const headers = authToken
-          ? { Authorization: `Bearer ${authToken}` }
-          : {};
-
-        const res = await axios.get(`${API_BASE_URL}/api/users`, { headers });
-        const users = res.data?.users || [];
-        this.salesPersonUser = users.find((u) => u.id === userId) || null;
-      } catch (e) {
-        console.warn('Failed to fetch sales person user', e);
-        this.salesPersonUser = null;
-      }
-    },
-
-    // API: Lookup city/state/country names by IDs
-    async lookupLocationNames() {
-      const API_BASE_URL = 'http://127.0.0.1:8000';
-      const details = this.orgDetail.user?.userDetails || this.orgDetail;
-
-      const countryId = details.country_id || this.orgDetail.country_id;
-      const stateId = details.state_id || this.orgDetail.state_id;
-      const cityId = details.city_id || this.orgDetail.city_id;
-
-      try {
-        if (countryId) {
-          const res = await axios.get(
-            `${API_BASE_URL}/api/countries/${countryId}`
-          );
-          this.countryName = res.data?.name || '';
-        }
-        if (stateId) {
-          const res = await axios.get(`${API_BASE_URL}/api/states/${stateId}`);
-          this.stateName = res.data?.name || '';
-        }
-        if (cityId) {
-          const res = await axios.get(`${API_BASE_URL}/api/cities/${cityId}`);
-          this.cityName = res.data?.name || '';
-        }
-      } catch (e) {
-        console.error('Failed to fetch location names:', e);
-      }
-
-      // fallback if nothing was resolved
-      if (!this.cityName)
-        this.cityName = details.city || this.orgDetail.city || '';
-      if (!this.stateName)
-        this.stateName = details.state || this.orgDetail.state || '';
-      if (!this.countryName)
-        this.countryName = details.country || this.orgDetail.country || '';
-    },
-
-    // Helpers: Formatters
-    planLabel(planObj) {
-      if (!planObj) return 'None';
-      const name = planObj.plan_name || planObj.plan || 'Plan';
-      const amount = planObj.amount || planObj.plan_amount;
-      const period = planObj.period || '';
-      return amount
-        ? `${name} ($${this.formatAmount(amount)}/${
-            period || (parseFloat(amount) >= 1000 ? 'Year' : 'Month')
-          })`
-        : name;
-    },
-
-    formatAmount(amount) {
-      const num = typeof amount === 'number' ? amount : parseFloat(amount);
-      return isNaN(num) ? amount : num.toFixed(2);
-    },
-
-    formatDate(dateVal) {
-      if (!dateVal) return null;
-      const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return null;
-
-      const day = String(d.getUTCDate()).padStart(2, '0');
-      const mon = [
-        'JAN',
-        'FEB',
-        'MAR',
-        'APR',
-        'MAY',
-        'JUN',
-        'JUL',
-        'AUG',
-        'SEP',
-        'OCT',
-        'NOV',
-        'DEC',
-      ][d.getUTCMonth()];
-      const yr = d.getUTCFullYear();
-      return `${day} ${mon},${yr}`;
-    },
-
-    formatDateTime(dateVal) {
-      if (!dateVal) return null;
-      const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return null;
-
-      const day = String(d.getUTCDate()).padStart(2, '0');
-      const mon = [
-        'JAN',
-        'FEB',
-        'MAR',
-        'APR',
-        'MAY',
-        'JUN',
-        'JUL',
-        'AUG',
-        'SEP',
-        'OCT',
-        'NOV',
-        'DEC',
-      ][d.getUTCMonth()];
-      const yr = d.getUTCFullYear();
-
-      let hr = d.getHours();
-      const min = String(d.getMinutes()).padStart(2, '0');
-      const ampm = hr >= 12 ? 'PM' : 'AM';
-      hr = hr % 12 || 12;
-
-      return `${day} ${mon},${yr} ${hr}:${min} ${ampm}`;
-    },
-  },
+// --- METHODS ---
+const formatDate = (dateString) => {
+  if (!dateString) return 'N/A';
+  try {
+    return format(parseISO(dateString), 'dd MMM, yyyy');
+  } catch {
+    return dateString; // Fallback for invalid date formats
+  }
 };
+
+const fetchAllData = async () => {
+  const orgId = route.params.id;
+  if (!orgId) {
+    error.value = 'Organization ID not found in URL.';
+    isLoading.value = false;
+    return;
+  }
+
+  const authToken = storage.get('authToken');
+  const headers = { Authorization: `Bearer ${authToken}` };
+  const API_BASE_URL =
+    process.env.VUE_APP_API_BASE_URL || 'http://122.0.0.1:8000';
+
+  isLoading.value = true;
+  error.value = null;
+
+  try {
+    // Perform API calls in parallel for better performance
+    const [orgResponse, billingResponse] = await Promise.all([
+      axios.get(`${API_BASE_URL}/api/organizations/${orgId}`, { headers }),
+      axios.get(`${API_BASE_URL}/api/billing/current?org_id=${orgId}`, {
+        headers,
+      }),
+    ]);
+
+    organization.value = orgResponse.data;
+    billingPlan.value = billingResponse.data;
+  } catch (err) {
+    console.error('Failed to fetch organization data:', err);
+    error.value = 'Could not load organization details. Please try again.';
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// --- LIFECYCLE HOOK ---
+onMounted(fetchAllData);
 </script>
 
 <style scoped>

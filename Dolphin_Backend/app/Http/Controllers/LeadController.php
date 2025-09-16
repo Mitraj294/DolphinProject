@@ -135,13 +135,13 @@ class LeadController extends Controller
                                 $safeName = htmlspecialchars((string)($lead->first_name ?? $lead->email), ENT_QUOTES, 'UTF-8');
                                
                                 $defaultTemplate = <<<HTML
-<h2>Hello {$safeName},</h2>
-<p>You've been invited to complete your signup. Please click the button below to enter your details and activate your account.</p>
-<p style="text-align: center;">
-    <a href="{$safeLink}" style="display: inline-block; padding: 12px 24px; background-color: #0164A5; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">Complete Signup</a>
-</p>
-<p style="font-size: 13px; color: #888888; text-align: center;">If you did not request this, you can safely ignore this email.</p>
-HTML;
+                                    <h2>Hello {$safeName},</h2>
+                                    <p>You've been invited to complete your signup. Please click the button below to enter your details and activate your account.</p>
+                                    <p style="text-align: center;">
+                                        <a href="{$safeLink}" style="display: inline-block; padding: 12px 24px; background-color: #0164A5; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: bold;">Complete Signup</a>
+                                    </p>
+                                    <p style="font-size: 13px; color: #888888; text-align: center;">If you did not request this, you can safely ignore this email.</p>
+                                    HTML;
 
 
             // ensure variables are defined so we don't hit "Undefined variable" when no organization/user is found

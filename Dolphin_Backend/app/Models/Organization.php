@@ -36,6 +36,8 @@ class Organization extends Model
         return $this->belongsTo(User::class, 'sales_person_id');
     }
 
+
+
     // Add relationship to get all users in the organization
     public function users()
     {

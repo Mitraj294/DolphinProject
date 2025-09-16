@@ -109,16 +109,7 @@
                   :key="idx"
                 >
                   <td>
-                    <div v-if="item.paymentMethodType || item.paymentMethod">
-                      <span v-if="item.paymentMethodType">{{
-                        item.paymentMethodType.toUpperCase()
-                      }}</span>
-                      <br v-if="item.paymentMethodType && item.paymentMethod" />
-                      <span v-if="item.paymentMethod">{{
-                        item.paymentMethod
-                      }}</span>
-                    </div>
-                    <span v-else>-</span>
+                    {{ item.payment_method }}
                   </td>
 
                   <td>
