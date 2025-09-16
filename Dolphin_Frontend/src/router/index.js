@@ -177,7 +177,7 @@ const routes = [
     component: OrganizationDetail,
     props: true
   },
-  // Legacy route kept for compatibility (orgName)
+
   {
     path: '/organizations/:orgName',
     name: 'OrganizationDetailByName',
@@ -196,7 +196,7 @@ const routes = [
     component: OrganizationEdit,
     props: true
   },
-  // Legacy edit route by name
+
   {
     path: '/organizations/:orgName/edit',
     name: 'OrganizationEditByName',
@@ -279,6 +279,37 @@ router.beforeEach((to, from, next) => {
     return next('/');
   }
 
+  // Check subscription status for users with expired subscriptions
+  const subscriptionStatus = storage.get('subscription_status');
+  const allowedRoutesForExpired = [
+    '/profile',
+    '/manage-subscription', 
+    '/subscriptions/plans',
+    '/organizations/billing-details'
+  ];
+
+  // If subscription is expired, only allow specific routes
+  if (subscriptionStatus === 'expired') {
+    if (allowedRoutesForExpired.includes(to.path)) {
+      // Allow access to these specific routes even with expired subscription
+      if (to.path === '/manage-subscription' || to.path === '/subscriptions/plans') {
+        if (role === ROLES.USER || role === ROLES.ORGANIZATIONADMIN) {
+          return next();
+        }
+        return next('/dashboard');
+      }
+      // For profile and billing-details, check normal permissions
+      if (canAccess(role, 'routes', to.path)) {
+        return next();
+      } else {
+        return next('/dashboard');
+      }
+    } else {
+      // Redirect to manage-subscription for all other routes when subscription is expired
+      return next('/manage-subscription');
+    }
+  }
+
   // Allow manage-subscription and subscription plans only for USER and ORGANIZATIONADMIN
   if (to.path === '/manage-subscription' || to.path === '/subscriptions/plans') {
     if (role === ROLES.USER || role === ROLES.ORGANIZATIONADMIN) {
@@ -288,7 +319,7 @@ router.beforeEach((to, from, next) => {
     return next('/dashboard');
   }
 
-  // Check if the role can access the route
+  // Check if the role can access the route (normal flow for active subscriptions)
   if (canAccess(role, 'routes', to.path)) {
     return next();
   } else {

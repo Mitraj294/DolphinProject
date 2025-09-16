@@ -30,7 +30,7 @@ axios.interceptors.request.use(
   }
 );
 
-// Add a response interceptor to handle 401 errors
+// Add a response interceptor to handle 401 errors and subscription expiry
 axios.interceptors.response.use(
   (response) => {
     return response;
@@ -41,6 +41,28 @@ axios.interceptors.response.use(
       storage.clear();
       router.push('/login');
     }
+    
+    // Handle subscription expired responses (403 with specific structure)
+    if (error.response && error.response.status === 403 && error.response.data) {
+      const data = error.response.data;
+      if (data.status === 'expired' && data.redirect_url) {
+        console.log('Subscription expired, updating storage and redirecting');
+        
+        // Update subscription status in storage
+        storage.set('subscription_status', 'expired');
+        if (data.subscription_end) {
+          storage.set('subscription_end', data.subscription_end);
+        }
+        if (data.subscription_id) {
+          storage.set('subscription_id', data.subscription_id);
+        }
+        
+        // Redirect to manage subscription page
+        router.push('/manage-subscription');
+        return Promise.reject(error); // Still reject to prevent continued processing
+      }
+    }
+    
     return Promise.reject(error);
   }
 );
