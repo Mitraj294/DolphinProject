@@ -61,6 +61,7 @@
 
 <script>
 import MainLayout from '@/components/layout/MainLayout.vue';
+
 import { fetchSubscriptionStatus } from '@/services/subscription.js';
 
 export default {
