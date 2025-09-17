@@ -1,86 +1,106 @@
 # Dolphin Full Stack Project
 
-This repository contains both the backend (Laravel) and frontend (Vue.js) applications for the Dolphin project.
+Dolphin is a comprehensive web application designed for assessment and lead management. It features a decoupled architecture with a Laravel-powered backend and a Vue.js single-page application (SPA) frontend.
 
-## Structure
+## Project Structure
 
+The repository is organized as a monorepo containing the two main parts of the application:
+
+-   `Dolphin_Backend/`: The Laravel backend API. It handles business logic, data storage, and authentication.
+-   `Dolphin_Frontend/`: The Vue.js frontend. It provides the user interface and consumes the backend API.
+
+## Tech Stack
+
+-   **Backend**: PHP, Laravel
+-   **Frontend**: JavaScript, Vue.js
+-   **Database**: MySQL (or other Laravel-supported database)
+-   **API**: RESTful API with Laravel Passport for authentication.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your local machine:
+
+-   PHP (>= 8.1)
+-   Composer
+-   Node.js & npm
+-   A database server (e.g., MySQL)
+
+## Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone <repository-url>
+cd Dolphin
 ```
-Dolphin_Backend/   # Laravel PHP backend
-Dolphin_Frontend/  # Vue.js frontend
+
+### 2. Backend Setup
+
+Navigate to the backend directory and set up the Laravel application.
+
+```bash
+cd Dolphin_Backend
+
+# Install PHP dependencies
+composer install
+
+# Create a copy of the .env.example file
+cp .env.example .env
+
+# Generate an application key
+php artisan key:generate
+
+# Configure your database credentials in the .env file
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=dolphin
+# DB_USERNAME=root
+# DB_PASSWORD=
+
+# Run database migrations
+php artisan migrate
+
+# Set up Laravel Passport for API authentication
+php artisan passport:install
 ```
 
-- Use the provided `start-dev.sh` script to run both servers for development.
-- See individual README files in each folder for more details.
+### 3. Frontend Setup
 
-## Quick Start
+Navigate to the frontend directory and set up the Vue.js application.
 
-1. Install dependencies for both projects:
-   - Backend: `composer install`
-   - Frontend: `npm install`
-2. Start both servers:
-   - Run `./start-dev.sh` from the root directory.
+```bash
+cd ../Dolphin_Frontend
 
-## Development URLs
-- Backend: http://127.0.0.1:8000
-- Frontend: http://127.0.0.1:8080
+# Install JavaScript dependencies
+npm install
 
-## About
-This project is a full-stack web application for assessment and lead management, built with Laravel and Vue.js.
+# Create a .env file for environment variables
+# You may need to create a .env.local file and add the following:
+VUE_APP_API_BASE_URL=http://127.0.0.1:8000
+```
 
-sdolphin632@gmail.com
+### 4. Running the Application
 
-git add .
-git commit -m "daily update"
-git push
-////////////////////////////////////////////////////////////
+A convenience script `start-dev.sh` is provided to start both the backend and frontend development servers concurrently.
+
+From the root directory of the project:
+
+```bash
 ./start-dev.sh
-ngrok http 8000
- mysql -u  dolphin123 -p
-SELECT * FROM `users`;
- cd Dolphin_Backend
- php artisan queue:work
- php artisan schedule:work
+```
 
+Once running, the application will be accessible at the following URLs:
 
-//////////////
+-   **Frontend (Vue.js)**: `http://localhost:8080`
+-   **Backend (Laravel)**: `http://localhost:8000`
 
+## Key Features
 
-
-
-///////////////////
-if by mistake we lost clients data in
-"oauth_clients" table then run below commands
-
-first
-cd /home/digilab/Dolphin/Dolphin_Backend
-php artisan passport:client --personal --name="Dolphin Personal Access Client"
-php artisan passport:client --password --name="Dolphin Password Grant Client"
-
-then# Replace with the values printed above
-echo 'PASSPORT_PASSWORD_CLIENT_ID=YOUR_CLIENT_ID' >> .env
-echo 'PASSPORT_PASSWORD_CLIENT_SECRET=YOUR_CLIENT_SECRET' >> .env
-
-and clear caches
-php artisan config:clear && php artisan cache:clear && php artisan optimize:clear
-///////////////////
-
-
-
-
-notifications date wise filter
-Notification VIEW DETAILS PAGE
-
-use
-
-modelValue	string	
-null
-Value of the content.
-
-name	parameters	returnType	description	
-update:modelValue	
-value: string
-void
-Emitted when the value changes.
-
-name	type	description
-htmlValue	string	Current value as html.
+-   User Registration and Authentication
+-   Organization and Group Management
+-   Lead Management and Prefill Forms
+-   Customizable Assessments
+-   Notification System (Scheduled and Immediate)
+-   Role-based Permissions
+-   Stripe Integration for Payments

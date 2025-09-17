@@ -1,3 +1,76 @@
+# Dolphin Frontend
+
+This directory contains the Vue.js single-page application (SPA) that serves as the frontend for the Dolphin project. It provides a modern, responsive user interface for interacting with the backend API.
+
+## Tech Stack
+
+-   **Framework**: Vue.js
+-   **Routing**: Vue Router
+-   **State Management**: Implicit via component state and props (no global state manager like Vuex)
+-   **HTTP Client**: Axios
+-   **UI Components**: PrimeVue and custom-built components
+
+## Features
+
+-   User-friendly interface for all application features.
+-   Dynamic forms for registration, lead capture, and assessments.
+-   Interactive tables with sorting, pagination, and filtering.
+-   Role-based views for regular users and superadmins.
+-   Responsive design for usability across different screen sizes.
+
+## Getting Started
+
+### 1. Prerequisites
+
+-   Node.js and npm
+
+### 2. Installation
+
+From within the `Dolphin_Frontend` directory:
+
+```bash
+# Install JavaScript dependencies
+npm install
+```
+
+### 3. Environment Configuration
+
+Create a `.env.local` file in the `Dolphin_Frontend` directory to override default environment variables. At a minimum, you should specify the backend API URL.
+
+```ini
+# .env.local
+VUE_APP_API_BASE_URL=http://127.0.0.1:8000
+```
+
+### 4. Running the Development Server
+
+```bash
+# Start the Vue.js development server
+npm run serve
+```
+
+The frontend application will be available at `http://localhost:8080`.
+
+## Building for Production
+
+To create a production-ready build of the application:
+
+```bash
+# Compile and minify for production
+npm run build
+```
+
+The output will be generated in the `dist/` directory and can be served by any static file server.
+
+## Key Directories
+
+-   `src/components`: Contains reusable Vue components, organized by feature area.
+-   `src/router`: Defines the application's routes and navigation guards.
+-   `src/services`: Includes modules for interacting with the backend API (e.g., `auth.js`, `storage.js`).
+-   `src/views`: Top-level components that correspond to specific pages/routes.
+-   `src/layout`: Components that define the main structure of the application, like `MainLayout.vue`.
+-   `src/assets`: Stores static assets like images, fonts, and global CSS.
+-   `public/`: Contains the root `index.html` file and other assets that are copied directly to the build output.
 
 # Dolphin Frontend (Vue.js)
 
