@@ -500,7 +500,7 @@ export default {
             : '',
         };
         if (scheduled_at) payload.scheduled_at = scheduled_at;
-        await axios.post(apiUrl + '/announcements/send', payload, {
+        await axios.post(apiUrl + '/notifications/send', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (this.isAlive) {

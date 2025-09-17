@@ -90,13 +90,21 @@
               &times;
             </button>
             <div class="modal-title">Edit Profile</div>
-            <div class="modal-desc">Update your profile information.</div>
+            <div
+              class="modal-desc"
+              style="font-size: 1.5rem !important"
+            >
+              Update your profile information.
+            </div>
             <form
               class="modal-form"
               @submit.prevent="handleUpdateProfile"
             >
-              <FormRow>
-                <FormLabel>First Name</FormLabel>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >First Name</FormLabel
+                >
                 <FormInput
                   v-model="editForm.first_name"
                   icon="fas fa-user"
@@ -105,8 +113,11 @@
                   required
                 />
               </FormRow>
-              <FormRow>
-                <FormLabel>Last Name</FormLabel>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Last Name</FormLabel
+                >
                 <FormInput
                   v-model="editForm.last_name"
                   icon="fas fa-user"
@@ -115,8 +126,11 @@
                   required
                 />
               </FormRow>
-              <FormRow>
-                <FormLabel>Email</FormLabel>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Email</FormLabel
+                >
                 <FormInput
                   v-model="editForm.email"
                   icon="fas fa-envelope"
@@ -125,8 +139,11 @@
                   required
                 />
               </FormRow>
-              <FormRow>
-                <FormLabel>Phone</FormLabel>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Phone</FormLabel
+                >
                 <FormInput
                   v-model="editForm.phone"
                   icon="fas fa-phone"
@@ -134,8 +151,11 @@
                   placeholder="Enter phone number"
                 />
               </FormRow>
-              <FormRow>
-                <FormLabel>Country</FormLabel>
+              <FormRow style="margin-bottom: 0 !important">
+                <FormLabel
+                  style="font-size: 1rem !important; margin: 0 !important"
+                  >Country</FormLabel
+                >
                 <FormDropdown
                   v-model="editForm.country_id"
                   icon="fas fa-globe"
@@ -155,7 +175,7 @@
                 </button>
                 <button
                   type="button"
-                  class="btn btn-secondary"
+                  class="org-edit-cancel"
                   @click="isEditModalVisible = false"
                 >
                   Cancel
@@ -171,17 +191,14 @@
             class="profile-password-form"
             @submit.prevent="handleChangePassword"
           >
-            <FormRow
-              style="max-width: 400px"
-              alignment="center"
-            >
-              <div>
-                <FormLabel>Current Password*</FormLabel>
+            <div class="profile-info-row">
+              <div class="profile-label">Current Password*</div>
+              <div class="profile-value">
                 <div style="position: relative; width: 100%">
                   <FormInput
                     v-model="passwordForm.current_password"
                     icon="fas fa-lock"
-                    type="password"
+                    :type="showPassword ? 'text' : 'password'"
                     required
                   />
                   <span
@@ -201,11 +218,11 @@
                   </span>
                 </div>
               </div>
-            </FormRow>
+            </div>
 
-            <FormRo style="max-width: 400px">
-              <div>
-                <FormLabel>New Password*</FormLabel>
+            <div class="profile-info-row">
+              <div class="profile-label">New Password*</div>
+              <div class="profile-value">
                 <div style="position: relative; width: 100%">
                   <FormInput
                     v-model="passwordForm.new_password"
@@ -230,16 +247,16 @@
                   </span>
                 </div>
               </div>
-            </FormRo>
-            <FormRow style="max-width: 400px">
-              <div>
-                <FormLabel>Confirm New Password*</FormLabel>
+            </div>
+            <div class="profile-info-row">
+              <div class="profile-label">Confirm New Password*</div>
+              <div class="profile-value">
                 <div style="position: relative; width: 100%">
                   <FormInput
                     v-model="passwordForm.new_password_confirmation"
                     icon="fas fa-lock"
                     class="form-input"
-                    type="password"
+                    :type="showPassword ? 'text' : 'password'"
                     required
                   />
                   <span
@@ -259,7 +276,7 @@
                   </span>
                 </div>
               </div>
-            </FormRow>
+            </div>
 
             <div class="profile-save-btn-row">
               <button
@@ -522,12 +539,25 @@ onMounted(() => {
   box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.06);
   padding: 24px 32px;
 }
+@media (max-width: 600px) {
+  .profile-card {
+    padding: 16px 20px;
+  }
+}
 
 .profile-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+}
+@media (max-width: 600px) {
+  .profile-header {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+    gap: 16px;
+  }
 }
 
 .profile-title {
@@ -552,22 +582,44 @@ onMounted(() => {
   display: flex;
   border-bottom: 1px solid #f0f0f0;
   padding: 16px 0;
+  gap: 20px;
 }
-
+@media (max-width: 600px) {
+  .profile-info-row {
+    flex-direction: column;
+    padding: 8px 0;
+    gap: 8px;
+  }
+}
 .profile-info-row:last-child {
   border-bottom: none;
 }
 
 .profile-label {
-  width: 160px;
+  min-width: 180px;
   color: #888;
   font-weight: 500;
+  align-content: center;
+}
+@media (max-width: 600px) {
+  .profile-label {
+    min-width: 80px;
+    text-align: justify;
+  }
 }
 
 .profile-value {
+  flex-grow: 1;
   color: #222;
   font-weight: 500;
   word-break: break-word;
+  text-align: left;
+}
+@media (max-width: 600px) {
+  .profile-value {
+    min-width: 100px;
+    text-align: left;
+  }
 }
 
 .profile-actions {
@@ -588,7 +640,11 @@ onMounted(() => {
 .profile-password-form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+}
+
+.profile-password-form .profile-value {
+  flex-grow: 1;
+  max-width: none;
 }
 
 .profile-form-row {
@@ -650,6 +706,7 @@ onMounted(() => {
   padding: 0;
 }
 .form-box {
+  min-width: 220px;
   position: relative;
   display: flex;
   align-items: center;
@@ -661,5 +718,32 @@ onMounted(() => {
   margin-bottom: 0;
   box-sizing: border-box;
   transition: border 0.18s;
+}
+.modal-form .form-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 18px;
+}
+
+.modal-form .form-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: left;
+  margin-bottom: 6px;
+}
+.org-edit-cancel {
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: #f0f0f0;
+  color: #333;
+  font-weight: 500;
+  transition: background 0.2s;
+  border: none;
+}
+.org-edit-cancel:hover {
+  background: #e0e0e0;
 }
 </style>

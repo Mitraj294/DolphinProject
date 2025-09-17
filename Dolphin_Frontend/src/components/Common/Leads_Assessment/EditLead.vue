@@ -74,14 +74,12 @@
                   icon="fas fa-search"
                   :options="[
                     { value: null, text: 'Select', disabled: true },
-                    { value: 'Google', text: 'Google' },
-                    { value: 'Friend', text: 'Friend' },
-                    { value: 'Colleague', text: 'Colleague' },
-                    { value: 'Other', text: 'Other' },
+                    ...findUsOptions.map((o) => ({ value: o, text: o })),
                   ]"
                   required
-                /><FormLabel
-                  v-if="errors.find_us"
+                />
+                <FormLabel
+                  v-if="errors.findUs"
                   class="error-message"
                   >{{ errors.find_us[0] }}</FormLabel
                 >
@@ -103,24 +101,12 @@
                 >
               </div>
               <div>
-                <FormLabel>Organization Size</FormLabel>
                 <FormDropdown
                   v-model="form.organization_size"
                   icon="fas fa-users"
                   :options="[
                     { value: null, text: 'Select', disabled: true },
-                    {
-                      value: '250+ Employees (Large)',
-                      text: '250+ Employees (Large)',
-                    },
-                    {
-                      value: '100-249 Employees (Medium)',
-                      text: '100-249 Employees (Medium)',
-                    },
-                    {
-                      value: '1-99 Employees (Small)',
-                      text: '1-99 Employees (Small)',
-                    },
+                    ...orgSizeOptions.map((o) => ({ value: o, text: o })),
                   ]"
                   required
                 />
@@ -248,6 +234,7 @@ import {
   FormDropdown,
   FormBox,
 } from '@/components/Common/Common_UI/Form';
+import { findUsOptions, orgSizeOptions } from '@/utils/formUtils';
 import axios from 'axios';
 
 export default {
@@ -262,6 +249,8 @@ export default {
   },
   data() {
     return {
+      findUsOptions,
+      orgSizeOptions,
       form: {
         first_name: '',
         last_name: '',

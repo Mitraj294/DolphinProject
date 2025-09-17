@@ -11,62 +11,39 @@
                 placeholder="Search Leads ...."
                 v-model="search"
               />
-              <FormDropdown
-                icon="fas fa-building"
-                v-model="selectedOrgSize"
-                :options="[
-                  {
-                    value: '250+ Employees (Large)',
-                    text: 'Large',
-                  },
-                  {
-                    value: '100-249 Employees (Medium)',
-                    text: 'Medium',
-                  },
-                  {
-                    value: '1-99 Employees (Small)',
-                    text: 'Small',
-                  },
-                ]"
-                placeholder="Size"
-                style="
-                  max-width: 150px;
-
-                  border: 1.5px solid #e0e0e0;
-                  border-radius: 999px;
-                "
-              />
-              <FormDropdown
-                icon="fas fa-search"
-                v-model="selectedSource"
-                :options="[
-                  { value: 'Google', text: 'Google' },
-                  { value: 'Friend', text: 'Friend' },
-                  { value: 'Colleague', text: 'Colleague' },
-                  { value: 'Other', text: 'Other' },
-                ]"
-                placeholder="Source"
-                style="
-                  max-width: 150px;
-
-                  border: 1.5px solid #e0e0e0;
-                  border-radius: 999px;
-                "
-              />
-            </div>
-            <div class="table-search-bar-filters">
-              <button
-                class="btn btn-primary add-new-btn"
-                @click="$router.push('/leads/lead-capture')"
-              >
-                <img
-                  src="@/assets/images/Add.svg"
-                  alt="Add"
-                  class="leads-add-btn-icon"
+              <div class="table-search-bar-filters">
+                <FormDropdown
+                  v-model="form.organization_size"
+                  icon="fas fa-users"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...orgSizeOptions.map((o) => ({ value: o, text: o })),
+                  ]"
+                  required
                 />
-                Add New
-              </button>
+                <FormDropdown
+                  v-model="form.find_us"
+                  icon="fas fa-search"
+                  :options="[
+                    { value: null, text: 'Select', disabled: true },
+                    ...findUsOptions.map((o) => ({ value: o, text: o })),
+                  ]"
+                  required
+                />
+              </div>
             </div>
+
+            <button
+              class="btn btn-primary add-new-btn"
+              @click="$router.push('/leads/lead-capture')"
+            >
+              <img
+                src="@/assets/images/Add.svg"
+                alt="Add"
+                class="leads-add-btn-icon"
+              />
+              Add New
+            </button>
           </div>
 
           <div class="table-container">
@@ -214,11 +191,7 @@
   </MainLayout>
 </template>
 
-<script setup>
-// Dropdown state
-const selectedOrgSize = ref(null);
-const selectedSource = ref(null);
-
+<script>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
@@ -229,235 +202,324 @@ import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import Toast from 'primevue/toast';
-
+import { findUsOptions, orgSizeOptions } from '@/utils/formUtils';
 // Services
 import storage from '@/services/storage.js';
 
-// --- STATE MANAGEMENT ---
-const router = useRouter();
-const toast = useToast();
-
-const leads = ref([]);
-const menuOpen = ref(null);
-const pageSize = ref(10);
-const currentPage = ref(1);
-const showPageDropdown = ref(false);
-const showNotesModal = ref(false);
-const notesModalMode = ref('add');
-const notesInput = ref('');
-const currentLead = ref(null);
-const sortKey = ref('');
-const sortAsc = ref(true);
-const isLoading = ref(false);
-
-const customMenuOptions = [
-  'Schedule Demo',
-  'Schedule Class/Training',
-  'Send Assessment',
-];
-
-const tableColumns = [
-  { label: 'Contact', key: 'contact', sortable: true, width: '170px' },
-  { label: 'Email', key: 'email', width: '250px' },
-  { label: 'Phone Number', key: 'phone', width: '150px' },
-  {
-    label: 'Organization',
-    key: 'organization',
-    sortable: true,
-    width: '150px',
+export default {
+  name: 'Leads',
+  components: {
+    MainLayout,
+    Pagination,
+    TableHeader,
+    Toast,
+    FormDropdown,
   },
-  { label: 'Size', key: 'size', width: '220px' },
-  { label: 'Source', key: 'source', width: '90px' },
-  { label: 'Status', key: 'status', width: '150px' },
-  { label: 'Notes', key: 'notes', width: '150px' },
-  { label: 'Actions', key: 'actions', width: '75px' },
-];
+  setup() {
+    const router = useRouter();
+    const toast = useToast();
 
-// --- FILTERED & PAGINATED LEADS ---
-const filteredLeads = computed(() => {
-  return leads.value.filter((lead) => {
-    const orgSizeMatch =
-      !selectedOrgSize.value || lead.size === selectedOrgSize.value;
-    const sourceMatch =
-      !selectedSource.value || lead.source === selectedSource.value;
-    return orgSizeMatch && sourceMatch;
-  });
-});
+    const leads = ref([]);
+    const menuOpen = ref(null);
+    const pageSize = ref(10);
+    const currentPage = ref(1);
+    const showPageDropdown = ref(false);
+    const showNotesModal = ref(false);
+    const notesModalMode = ref('add');
+    const notesInput = ref('');
+    const currentLead = ref(null);
+    const sortKey = ref('');
+    const sortAsc = ref(true);
+    const isLoading = ref(false);
+    const search = ref('');
 
-const totalPages = computed(
-  () => Math.ceil(filteredLeads.value.length / pageSize.value) || 1
-);
+    const customMenuOptions = [
+      'Schedule Demo',
+      'Schedule Class/Training',
+      'Send Assessment',
+    ];
 
-const paginatedLeads = computed(() => {
-  const sortedLeads = [...filteredLeads.value].sort((a, b) => {
-    if (!sortKey.value) return 0;
-    const aVal = a[sortKey.value] || '';
-    const bVal = b[sortKey.value] || '';
-    if (aVal < bVal) return sortAsc.value ? -1 : 1;
-    if (aVal > bVal) return sortAsc.value ? 1 : -1;
-    return 0;
-  });
-  const start = (currentPage.value - 1) * pageSize.value;
-  return sortedLeads.slice(start, start + pageSize.value);
-});
-
-const paginationPages = computed(() => {
-  const total = totalPages.value;
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages = [1];
-  if (currentPage.value > 4) pages.push('...');
-  for (
-    let i = Math.max(2, currentPage.value - 2);
-    i <= Math.min(total - 1, currentPage.value + 2);
-    i++
-  ) {
-    pages.push(i);
-  }
-  if (currentPage.value < total - 3) pages.push('...');
-  pages.push(total);
-  return pages;
-});
-
-// --- API & BUSINESS LOGIC ---
-const API_BASE_URL =
-  process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-const authToken = storage.get('authToken');
-
-const fetchLeads = async () => {
-  isLoading.value = true;
-  try {
-    const response = await axios.get(`${API_BASE_URL}/api/leads`, {
-      headers: { Authorization: `Bearer ${authToken}` },
-    });
-    leads.value = response.data.map((lead) => ({
-      ...lead,
-      contact: `${lead.first_name} ${lead.last_name}`,
-      organization: lead.organization_name,
-      size: lead.organization_size,
-      source: lead.find_us,
-      status: lead.status || 'Lead Stage',
-      notesAction: lead.notes ? 'View' : 'Add',
-    }));
-  } catch (error) {
-    console.error('Error fetching leads:', error);
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load leads.',
-      life: 3000,
-    });
-  } finally {
-    isLoading.value = false;
-  }
-};
-
-const updateLeadNotes = async () => {
-  if (!currentLead.value) return;
-
-  const leadToUpdate = leads.value.find((l) => l.id === currentLead.value.id);
-  if (!leadToUpdate) return;
-
-  try {
-    await axios.patch(
-      `${API_BASE_URL}/api/leads/${leadToUpdate.id}`,
-      { notes: notesInput.value },
+    const tableColumns = [
+      { label: 'Contact', key: 'contact', sortable: true, width: '170px' },
+      { label: 'Email', key: 'email', width: '250px' },
+      { label: 'Phone Number', key: 'phone', width: '150px' },
       {
-        headers: { Authorization: `Bearer ${authToken}` },
+        label: 'Organization',
+        key: 'organization',
+        sortable: true,
+        width: '150px',
+      },
+      { label: 'Size', width: '100px' },
+      { label: 'Source', width: '120px' },
+      { label: 'Status', key: 'status', sortable: true, width: '150px' },
+      { label: 'Notes', key: 'notesAction', width: '100px' },
+      { label: 'Actions', key: 'actions', width: '80px' },
+    ];
+
+    const form = ref({
+      organization_size: null,
+      find_us: null,
+    });
+
+    const filteredLeads = computed(() => {
+      let filtered = leads.value;
+
+      if (search.value) {
+        const searchTerm = search.value.toLowerCase();
+        filtered = filtered.filter(
+          (lead) =>
+            lead.contact.toLowerCase().includes(searchTerm) ||
+            lead.email.toLowerCase().includes(searchTerm) ||
+            lead.organization.toLowerCase().includes(searchTerm)
+        );
       }
+
+      if (form.value.organization_size) {
+        filtered = filtered.filter(
+          (lead) => lead.size === form.value.organization_size
+        );
+      }
+
+      if (form.value.find_us) {
+        filtered = filtered.filter(
+          (lead) => lead.source === form.value.find_us
+        );
+      }
+
+      return filtered;
+    });
+
+    const statusOrder = {
+      'Lead Stage': 1,
+      'Assessment Sent': 2,
+      Registered: 3,
+    };
+
+    const sortedLeads = computed(() => {
+      if (!sortKey.value) return filteredLeads.value;
+
+      return [...filteredLeads.value].sort((a, b) => {
+        let comparison = 0;
+        if (sortKey.value === 'status') {
+          const orderA = statusOrder[a.status || 'Lead Stage'] || 0;
+          const orderB = statusOrder[b.status || 'Lead Stage'] || 0;
+          comparison = orderA - orderB;
+        } else {
+          const valA = a[sortKey.value];
+          const valB = b[sortKey.value];
+          if (valA < valB) comparison = -1;
+          if (valA > valB) comparison = 1;
+        }
+        return sortAsc.value ? comparison : -comparison;
+      });
+    });
+
+    const totalPages = computed(() =>
+      Math.ceil(sortedLeads.value.length / pageSize.value)
     );
-    leadToUpdate.notes = notesInput.value;
-    leadToUpdate.notesAction = 'View';
-    toast.add({
-      severity: 'success',
-      summary: 'Success',
-      detail: 'Notes updated successfully.',
-      life: 3000,
+
+    const paginatedLeads = computed(() => {
+      const start = (currentPage.value - 1) * pageSize.value;
+      const end = start + pageSize.value;
+      return sortedLeads.value.slice(start, end);
     });
-    closeNotesModal();
-  } catch (error) {
-    console.error('Failed to update notes:', error);
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Could not save notes.',
-      life: 3000,
+
+    const paginationPages = computed(() => {
+      const pages = [];
+      for (let i = 1; i <= totalPages.value; i++) {
+        pages.push(i);
+      }
+      return pages;
     });
-  }
-};
 
-// --- EVENT HANDLERS & NAVIGATION ---
-const goToLeadDetail = (lead) =>
-  router.push({ name: 'LeadDetail', params: { id: lead.id } });
-const goToPage = (page) => {
-  if (page >= 1 && page <= totalPages.value) currentPage.value = page;
-};
-const selectPageSize = (size) => {
-  pageSize.value = size;
-  currentPage.value = 1;
-  showPageDropdown.value = false;
-};
-const sortBy = (key) => {
-  if (sortKey.value === key) {
-    sortAsc.value = !sortAsc.value;
-  } else {
-    sortKey.value = key;
-    sortAsc.value = true;
-  }
-};
-const toggleMenu = (id) => (menuOpen.value = menuOpen.value === id ? null : id);
-const closeMenu = () => (menuOpen.value = null);
+    const fetchLeads = async () => {
+      isLoading.value = true;
+      try {
+        const token = storage.get('authToken');
+        if (!token) {
+          router.push('/login');
+          return;
+        }
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const response = await axios.get(`${API_BASE_URL}/api/leads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-const selectCustomAction = (lead, option) => {
-  closeMenu();
-  switch (option) {
-    case 'Send Assessment':
-      router.push({ name: 'SendAssessment', params: { id: lead.id } });
-      break;
-    case 'Schedule Demo':
-      router.push('/leads/schedule-demo');
-      break;
-    case 'Schedule Class/Training':
-      router.push('/leads/schedule-class-training');
-      break;
-    default:
-      // No action
-      break;
-  }
+        leads.value = response.data.map((lead) => ({
+          id: lead.id,
+          contact: `${lead.first_name} ${lead.last_name}`,
+          email: lead.email,
+          phone: lead.phone,
+          organization: lead.organization_name,
+          size: lead.organization_size,
+          source: lead.find_us,
+          status: lead.status,
+          notes: lead.notes,
+          notesAction: lead.notes ? 'View' : 'Add',
+        }));
+      } catch (error) {
+        console.error('Failed to fetch leads:', error);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to fetch leads.',
+          life: 3000,
+        });
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
+    const sortBy = (key) => {
+      if (sortKey.value === key) {
+        sortAsc.value = !sortAsc.value;
+      } else {
+        sortKey.value = key;
+        sortAsc.value = true;
+      }
+    };
+
+    const goToPage = (page) => {
+      if (page >= 1 && page <= totalPages.value) {
+        currentPage.value = page;
+      }
+    };
+
+    const selectPageSize = (size) => {
+      pageSize.value = size;
+      currentPage.value = 1;
+      showPageDropdown.value = false;
+    };
+
+    const toggleMenu = (leadId) => {
+      menuOpen.value = menuOpen.value === leadId ? null : leadId;
+    };
+
+    const handleClickOutside = (event) => {
+      if (menuOpen.value && !event.target.closest('.actions-row')) {
+        menuOpen.value = null;
+      }
+    };
+
+    const openNotesModal = (lead) => {
+      currentLead.value = lead;
+      notesInput.value = lead.notes || '';
+      notesModalMode.value = lead.notes ? 'view' : 'add';
+      showNotesModal.value = true;
+    };
+
+    const closeNotesModal = () => {
+      showNotesModal.value = false;
+      currentLead.value = null;
+      notesInput.value = '';
+    };
+
+    const updateLeadNotes = async () => {
+      if (!currentLead.value) return;
+      try {
+        const token = storage.get('authToken');
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        await axios.patch(
+          `${API_BASE_URL}/api/leads/${currentLead.value.id}`,
+          { notes: notesInput.value },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Notes updated successfully.',
+          life: 3000,
+        });
+        const lead = leads.value.find((l) => l.id === currentLead.value.id);
+        if (lead) {
+          lead.notes = notesInput.value;
+          lead.notesAction = notesInput.value ? 'View' : 'Add';
+        }
+        closeNotesModal();
+      } catch (error) {
+        console.error('Failed to update notes:', error);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to update notes.',
+          life: 3000,
+        });
+      }
+    };
+
+    const goToLeadDetail = (lead) => {
+      router.push({ name: 'LeadDetail', params: { id: lead.id } });
+    };
+
+    const selectCustomAction = (lead, option) => {
+      console.log(`Action "${option}" selected for lead:`, lead.contact);
+      menuOpen.value = null;
+      if (option === 'Schedule Demo') {
+        router.push({ name: 'ScheduleDemo', query: { lead_id: lead.id } });
+      } else if (option === 'Schedule Class/Training') {
+        router.push({
+          name: 'ScheduleClassTraining',
+          query: { lead_id: lead.id },
+        });
+      } else if (option === 'Send Assessment') {
+        router.push({ name: 'SendAssessment', params: { id: lead.id } });
+      }
+    };
+
+    onMounted(() => {
+      fetchLeads();
+      document.addEventListener('click', handleClickOutside);
+    });
+
+    onBeforeUnmount(() => {
+      document.removeEventListener('click', handleClickOutside);
+    });
+
+    return {
+      leads,
+      menuOpen,
+      pageSize,
+      currentPage,
+      showPageDropdown,
+      showNotesModal,
+      notesModalMode,
+      notesInput,
+      currentLead,
+      sortKey,
+      sortAsc,
+      isLoading,
+      customMenuOptions,
+      tableColumns,
+      paginatedLeads,
+      totalPages,
+      paginationPages,
+      sortBy,
+      goToPage,
+      selectPageSize,
+      toggleMenu,
+      openNotesModal,
+      closeNotesModal,
+      updateLeadNotes,
+      goToLeadDetail,
+      selectCustomAction,
+      findUsOptions,
+      orgSizeOptions,
+      form,
+      search,
+    };
+  },
 };
-
-const openNotesModal = (lead) => {
-  currentLead.value = lead;
-  notesInput.value = lead.notes || '';
-  notesModalMode.value = lead.notesAction === 'View' ? 'view' : 'add';
-  showNotesModal.value = true;
-};
-
-const closeNotesModal = () => {
-  showNotesModal.value = false;
-  notesInput.value = '';
-  currentLead.value = null;
-};
-
-const handleGlobalClick = (e) => {
-  if (menuOpen.value !== null && !e.target.closest('.actions-row')) {
-    closeMenu();
-  }
-};
-
-// --- LIFECYCLE HOOKS ---
-onMounted(() => {
-  fetchLeads();
-  document.addEventListener('click', handleGlobalClick);
-});
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', handleGlobalClick);
-});
 </script>
 
 <style scoped>
 .form-box {
   min-height: 32px !important;
+  max-height: 32px !important;
+  max-width: 210px !important;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 999px;
 }
 @media (max-width: 950px) {
   .table-search-header-row {
@@ -484,11 +546,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.org-search {
-  width: 100%;
-  min-width: 0;
-}
-
 /* Flex row for search and add button */
 .table-search-header-row {
   display: flex;
@@ -505,6 +562,15 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: row;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-right: auto;
+}
+.table-search-bar-filters-right {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: right;
   gap: 12px;
   flex-wrap: wrap;
   margin-right: auto;
@@ -699,7 +765,8 @@ onBeforeUnmount(() => {
   justify-content: flex-start;
 }
 .org-search {
-  width: 260px;
+  min-width: 210px;
+  width: 432px;
   padding: 8px 24px 8px 32px;
   border-radius: 12px;
   border: none;
@@ -715,12 +782,7 @@ onBeforeUnmount(() => {
 .org-search::placeholder {
   margin-left: 4px;
 }
-.form-box {
-  max-height: 32px !important;
-  min-height: 32px !important;
-  border: 1.5px solid #e0e0e0;
-  border-radius: 999px;
-}
+
 .form-input-with-icon {
   max-height: 32px !important;
   border: 1.5px solid #e0e0e0;

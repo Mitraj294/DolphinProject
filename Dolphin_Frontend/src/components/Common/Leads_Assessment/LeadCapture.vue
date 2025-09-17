@@ -75,10 +75,8 @@
                   v-model="form.findUs"
                   icon="fas fa-search"
                   :options="[
-                    { value: 'Google', text: 'Google' },
-                    { value: 'Friend', text: 'Friend' },
-                    { value: 'Colleague', text: 'Colleague' },
-                    { value: 'Other', text: 'Other' },
+                    { value: null, text: 'Select', disabled: true },
+                    ...findUsOptions.map((o) => ({ value: o, text: o })),
                   ]"
                   required
                 />
@@ -111,18 +109,8 @@
                   v-model="form.organization_size"
                   icon="fas fa-users"
                   :options="[
-                    {
-                      value: '250+ Employees (Large)',
-                      text: '250+ Employees (Large)',
-                    },
-                    {
-                      value: '100-249 Employees (Medium)',
-                      text: '100-249 Employees (Medium)',
-                    },
-                    {
-                      value: '1-99 Employees (Small)',
-                      text: '1-99 Employees (Small)',
-                    },
+                    { value: null, text: 'Select', disabled: true },
+                    ...orgSizeOptions.map((o) => ({ value: o, text: o })),
                   ]"
                   required
                 />
@@ -257,6 +245,7 @@ import {
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import axios from 'axios';
+import { findUsOptions, orgSizeOptions } from '@/utils/formUtils';
 export default {
   name: 'LeadCapture',
   components: {
@@ -276,6 +265,8 @@ export default {
   data() {
     return {
       showPassword: false,
+      findUsOptions,
+      orgSizeOptions,
       form: {
         firstName: '',
         lastName: '',

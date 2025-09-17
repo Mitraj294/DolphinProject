@@ -387,7 +387,7 @@ export default {
   padding: 32px 32px 24px 32px;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+
   position: relative;
 }
 @media (max-width: 600px) {

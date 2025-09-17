@@ -4,17 +4,14 @@ import { ROLES, canAccess } from '@/permissions.js';
 import { fetchSubscriptionStatus } from '@/services/subscription.js';
 
 /*
-|--------------------------------------------------------------------------
-| Route Component Imports
-|--------------------------------------------------------------------------
-|
-| Using a hybrid strategy for optimal performance.
-| - STATIC IMPORTS: For core, frequently-used components (e.g., Login, Dashboard).
-| - DYNAMIC IMPORTS (Lazy Loading): For feature-specific, heavier components.
-|
+ Route Component Imports
+ Using a hybrid strategy for optimal performance.
+ - STATIC IMPORTS: For core, frequently-used components (e.g., Login, Dashboard).
+ - DYNAMIC IMPORTS (Lazy Loading): For feature-specific, heavier components.
+
 */
 
-// --- Static Imports (Core Components) ---
+// Static Imports (Core Components)
 import Login from '@/components/auth/Login.vue';
 import Register from '@/components/auth/Register.vue';
 import ForgotPassword from '@/components/auth/ForgotPassword.vue';
@@ -23,7 +20,7 @@ import Dashboard from '@/components/Common/Dashboard/Dashboard.vue';
 import Profile from '@/components/Common/Profile.vue';
 import AssessmentAnswerPage from '@/components/Common/AssessmentAnswerPage.vue';
 
-// --- Dynamic Imports (Lazy-Loaded Feature Components) ---
+// Dynamic Imports (Lazy-Loaded Feature Components)
 const ThankYou = () => import('@/components/auth/ThankYou.vue');
 const ThanksPage = () => import('@/components/Common/ThanksPage.vue');
 const TrainingResources = () => import('@/components/Common/TrainingResources.vue');
@@ -58,10 +55,10 @@ const MyOrganization = () => import('@/components/Common/MyOrganization/MyOrgani
 const MemberListing = () => import('@/components/Common/MyOrganization/MemberListing.vue');
 
 
-// --- Route Definitions ---
+// Route Definitions
 
 const routes = [
-  // --- Public Routes ---
+  // Public Routes
   {
     path: '/',
     name: 'Login',
@@ -105,7 +102,7 @@ const routes = [
     meta: { public: true }
   },
 
-  // --- Authenticated Routes ---
+  // Authenticated Routes
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -273,7 +270,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
-  // --- Catch-all Route ---
+  // Catch-all Route
   {
     path: '/:catchAll(.*)',
     redirect: '/dashboard'
@@ -287,7 +284,7 @@ const router = createRouter({
 });
 
 
-// --- Navigation Guard ---
+// Navigation Guard
 
 router.beforeEach(async (to, from, next) => {
   const authToken = storage.get('authToken');
@@ -301,7 +298,7 @@ router.beforeEach(async (to, from, next) => {
     return next();
   }
 
-  // --- Handle Authenticated Users ---
+  // Handle Authenticated Users
   if (authToken) {
     // Allow access to subscription management pages regardless of subscription status
     const subscriptionPages = ['ManageSubscription', 'SubscriptionPlans', 'BillingDetails'];
@@ -345,7 +342,7 @@ router.beforeEach(async (to, from, next) => {
     }
   }
 
-  // --- Handle Unauthenticated Users ---
+  // Handle Unauthenticated Users
   if (to.meta.requiresAuth) {
     return next('/'); // Redirect to login for protected routes
   }
