@@ -4,25 +4,69 @@
       <Toast />
       <div class="table-outer">
         <div class="table-card">
-          <div class="table-search-bar">
-            <input
-              class="org-search"
-              placeholder="Search Leads ...."
-              v-model="search"
-            />
-          </div>
-          <div class="table-header-bar">
-            <button
-              class="btn btn-primary"
-              @click="$router.push('/leads/lead-capture')"
-            >
-              <img
-                src="@/assets/images/Add.svg"
-                alt="Add"
-                class="leads-add-btn-icon"
+          <div class="table-search-header-row">
+            <div class="table-search-bar-filters">
+              <input
+                class="org-search"
+                placeholder="Search Leads ...."
+                v-model="search"
               />
-              Add New
-            </button>
+              <FormDropdown
+                icon="fas fa-building"
+                v-model="selectedOrgSize"
+                :options="[
+                  {
+                    value: '250+ Employees (Large)',
+                    text: 'Large',
+                  },
+                  {
+                    value: '100-249 Employees (Medium)',
+                    text: 'Medium',
+                  },
+                  {
+                    value: '1-99 Employees (Small)',
+                    text: 'Small',
+                  },
+                ]"
+                placeholder="Size"
+                style="
+                  max-width: 150px;
+
+                  border: 1.5px solid #e0e0e0;
+                  border-radius: 999px;
+                "
+              />
+              <FormDropdown
+                icon="fas fa-search"
+                v-model="selectedSource"
+                :options="[
+                  { value: 'Google', text: 'Google' },
+                  { value: 'Friend', text: 'Friend' },
+                  { value: 'Colleague', text: 'Colleague' },
+                  { value: 'Other', text: 'Other' },
+                ]"
+                placeholder="Source"
+                style="
+                  max-width: 150px;
+
+                  border: 1.5px solid #e0e0e0;
+                  border-radius: 999px;
+                "
+              />
+            </div>
+            <div class="table-search-bar-filters">
+              <button
+                class="btn btn-primary add-new-btn"
+                @click="$router.push('/leads/lead-capture')"
+              >
+                <img
+                  src="@/assets/images/Add.svg"
+                  alt="Add"
+                  class="leads-add-btn-icon"
+                />
+                Add New
+              </button>
+            </div>
           </div>
 
           <div class="table-container">
@@ -171,11 +215,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue';
+// Dropdown state
+const selectedOrgSize = ref(null);
+const selectedSource = ref(null);
+
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
-
+import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
 // Component Imports
 import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
@@ -184,7 +232,6 @@ import Toast from 'primevue/toast';
 
 // Services
 import storage from '@/services/storage.js';
-import { Component } from 'react';
 
 // --- STATE MANAGEMENT ---
 const router = useRouter();
@@ -226,13 +273,23 @@ const tableColumns = [
   { label: 'Actions', key: 'actions', width: '75px' },
 ];
 
-// --- COMPUTED PROPERTIES ---
+// --- FILTERED & PAGINATED LEADS ---
+const filteredLeads = computed(() => {
+  return leads.value.filter((lead) => {
+    const orgSizeMatch =
+      !selectedOrgSize.value || lead.size === selectedOrgSize.value;
+    const sourceMatch =
+      !selectedSource.value || lead.source === selectedSource.value;
+    return orgSizeMatch && sourceMatch;
+  });
+});
+
 const totalPages = computed(
-  () => Math.ceil(leads.value.length / pageSize.value) || 1
+  () => Math.ceil(filteredLeads.value.length / pageSize.value) || 1
 );
 
 const paginatedLeads = computed(() => {
-  const sortedLeads = [...leads.value].sort((a, b) => {
+  const sortedLeads = [...filteredLeads.value].sort((a, b) => {
     if (!sortKey.value) return 0;
     const aVal = a[sortKey.value] || '';
     const bVal = b[sortKey.value] || '';
@@ -362,6 +419,9 @@ const selectCustomAction = (lead, option) => {
     case 'Schedule Class/Training':
       router.push('/leads/schedule-class-training');
       break;
+    default:
+      // No action
+      break;
   }
 };
 
@@ -396,6 +456,60 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.form-box {
+  min-height: 32px !important;
+}
+@media (max-width: 950px) {
+  .table-search-header-row {
+    display: flex;
+    flex-direction: column;
+    padding: 18px 24px 18px 24px;
+    background: #fff;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    margin-bottom: 0;
+    flex-wrap: wrap;
+    align-content: stretch;
+    align-items: flex-end;
+  }
+  .table-search-bar-filters {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-right: auto;
+    width: 100%;
+    margin-bottom: 12px;
+  }
+}
+
+.org-search {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Flex row for search and add button */
+.table-search-header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px 18px 24px;
+  background: #fff;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  margin-bottom: 0;
+}
+.table-search-bar-filters {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-right: auto;
+}
+
 /* All original styles are preserved below */
 .leads-notes-btn {
   background: #fff;
@@ -597,9 +711,19 @@ onBeforeUnmount(() => {
   background-position: 8px center;
   background-size: 16px 16px;
   margin-left: 0;
-  margin-right: auto;
 }
 .org-search::placeholder {
   margin-left: 4px;
+}
+.form-box {
+  max-height: 32px !important;
+  min-height: 32px !important;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 999px;
+}
+.form-input-with-icon {
+  max-height: 32px !important;
+  border: 1.5px solid #e0e0e0;
+  border-radius: 999px;
 }
 </style>
