@@ -157,18 +157,7 @@
                     text: 'Select Organization Size',
                     disabled: true,
                   },
-                  {
-                    value: '250+ Employees (Large)',
-                    text: '250+ Employees (Large)',
-                  },
-                  {
-                    value: '100-249 Employees (Medium)',
-                    text: '100-249 Employees (Medium)',
-                  },
-                  {
-                    value: '1-99 Employees (Small)',
-                    text: '1-99 Employees (Small)',
-                  },
+                  ...orgSizeOptions.map((o) => ({ value: o, text: o })),
                 ]"
                 required
               /><div>
@@ -190,14 +179,7 @@
                 ref="findUsSelect"
                 :options="[
                   { value: null, text: 'Select', disabled: true },
-                  ...(findUsOptions.length
-                    ? findUsOptions.map((o) => ({ value: o, text: o }))
-                    : [
-                        { value: 'Google', text: 'Google' },
-                        { value: 'Friend', text: 'Friend' },
-                        { value: 'Colleague', text: 'Colleague' },
-                        { value: 'Other', text: 'Other' },
-                      ]),
+                  ...findUsOptions.map((o) => ({ value: o, text: o })),
                 ]"
                 required
               />
@@ -451,6 +433,12 @@ import axios from 'axios';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import {
+  normalizeFindUs,
+  normalizeOrgSize,
+  findUsOptions,
+  orgSizeOptions,
+} from '@/utils/formUtils';
+import {
   FormLabel,
   FormDropdown,
   FormRow,
@@ -487,7 +475,8 @@ export default {
       cities: [],
       currentYear: new Date().getFullYear(),
       find_us: '',
-      findUsOptions: [],
+      findUsOptions: findUsOptions,
+      orgSizeOptions: orgSizeOptions,
       showPassword: false,
       showConfirmPassword: false,
            loading: false,
@@ -537,18 +526,18 @@ export default {
       // Direct element or component with focus
       if (doFocus(ref)) return;
       // Component root or raw element
-      const el = ref.$el || ref;
-      if (!el) return;
+      const rootEl = ref.$el || ref;
+      if (!rootEl) return;
       // Try common focusables inside component
       const candidate =
-        (el.querySelector &&
-          el.querySelector(
+        (rootEl.querySelector &&
+          rootEl.querySelector(
             'input, select, textarea, button, [tabindex]:not([tabindex="-1"])'
           )) ||
         null;
       if (doFocus(candidate)) return;
       // Fallback to root
-      doFocus(el);
+      doFocus(rootEl);
     },
     normalizeValidationErrors(errs) {
       if (!errs || typeof errs !== 'object') return {};
@@ -683,7 +672,9 @@ export default {
         } else if (typeof data === 'object') {
           const flat = Object.values(data).flat();
           if (flat.length) errorMessage = flat.join(' ');
-        } else if (typeof data === 'string') errorMessage = data;
+        } else if (typeof data === 'string') {
+          errorMessage = data;
+        }
        
       } else if (error?.message) {
         errorMessage = error.message;
@@ -735,9 +726,9 @@ export default {
       set('organization_state');
       set('organization_zip');
       set('find_us');
-      if (this.find_us) this.find_us = this.normalizeFindUs(this.find_us);
+      if (this.find_us) this.find_us = normalizeFindUs(this.find_us);
       if (this.organization_size)
-        this.organization_size = this.normalizeOrgSize(this.organization_size);
+        this.organization_size = normalizeOrgSize(this.organization_size);
       return changed;
     },
     setFromLead(lead = {}) {
@@ -761,49 +752,12 @@ export default {
         this.organization_city;
       this.organization_zip = lead.organization_zip || '';
       this.find_us = lead.find_us || '';
-      if (this.find_us) this.find_us = this.normalizeFindUs(this.find_us);
+      if (this.find_us) this.find_us = normalizeFindUs(this.find_us);
       if (this.organization_size)
-        this.organization_size = this.normalizeOrgSize(this.organization_size);
+        this.organization_size = normalizeOrgSize(this.organization_size);
     },
-    normalizeOrgSize(pref) {
- 
-      if (!pref && pref !== 0) return '';
-      const v = String(pref).toLowerCase();
-      if (v.includes('250') || v.includes('large') || /250\+/.test(v))
-        return '250+ Employees (Large)';
-      if (
-        v.includes('100') ||
-        v.includes('medium') ||
-        /100-249/.test(v) ||
-        /100\s*-\s*249/.test(v)
-      )
-        return '100-249 Employees (Medium)';
-      if (
-        v.includes('1') ||
-        v.includes('small') ||
-        /1-99/.test(v) ||
-        /1\s*-\s*99/.test(v)
-      )
-        return '1-99 Employees (Small)';
-      // If the incoming value already looks like one of the expected display
-      // strings, return it unchanged.
-      return String(pref);
-    },
-    normalizeFindUs(pref) {
-      if (!pref && pref !== 0) return '';
-      const v = String(pref).toLowerCase();
-      if (v.includes('google')) return 'Google';
-      if (v.includes('Colleague')) return 'Colleague';
-      if (v.includes('friend') || v.includes('referral')) return 'Friend';
-      if (v.includes('other')) return 'Other';
-      // if it already matches one of the exact values, return as-is
-      if (['Google', 'Friend', 'Colleague', 'Other'].includes(pref))
-        return pref;
-      return pref;
-    },
+
     async fetchCountries() {
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
       try {
         const res = await axios.get(`${API_BASE_URL}/api/countries`);
         this.countries = res.data || [];
@@ -836,40 +790,12 @@ export default {
         console.warn('Failed to fetch countries', e);
       }
     },
-    async fetchFindUsOptions() {
-      try {
-        const res = await axios.get(
-          `${API_BASE_URL}/api/leads/find-us-options`
-        );
-        const opts = (res.data && res.data.options) || [];
-        // normalize values to the dropdown option canonical forms where possible
-        this.findUsOptions = opts
-          .map((o) => {
-            const v = String(o || '').trim();
-            if (!v) return null;
-            const low = v.toLowerCase();
-            if (low.includes('google')) return 'Google';
-            if (low.includes('Colleague')) return 'Colleague';
-            if (low.includes('friend') || low.includes('referral'))
-              return 'Friend';
-            if (low.includes('other')) return 'Other';
-            return v;
-          })
-          .filter(Boolean);
-        if (this.findUsOptions.length === 0) {
-          console.info('No find_us options found in leads');
-        }
-      } catch (e) {
-        console.warn('Failed to fetch find_us options', e);
-      }
-    },
+
     async fetchStates() {
       if (!this.country) {
         this.states = [];
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
       const countryId = Number(this.country) || this.country;
       try {
         const res = await axios.get(`${API_BASE_URL}/api/states`, {
@@ -908,8 +834,6 @@ export default {
         this.cities = [];
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
       const stateId =
         Number(this.organization_state) || this.organization_state;
       try {
@@ -981,7 +905,7 @@ export default {
     if (this.country) await this.fetchStates();
     if (this.organization_state) await this.fetchCities();
     // attempt to fetch existing find_us options from leads table
-    await this.fetchFindUsOptions();
+    // await this.fetchFindUsOptions();
     this.$nextTick(() => {
       setTimeout(() => {
         if (this.$refs.firstNameInput) this.focusRef('firstNameInput');
