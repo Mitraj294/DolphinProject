@@ -2,174 +2,181 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SendAssessmentLinkRequest;
+use App\Http\Requests\SubmitAssessmentAnswersRequest;
 use App\Mail\AssessmentAnswerLinkMail;
 use App\Models\Assessment;
 use App\Models\AssessmentAnswerToken;
 use App\Models\AssessmentQuestion;
+use App\Models\Group;
 use App\Models\Member;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
-use Illuminate\Support\Carbon;
 
 class AssessmentAnswerLinkController extends Controller
 {
-    // Generate and send link
-    public function sendLink(Request $request)
+
+    //Generate and send an assessment link to a member.
+    //@param  SendAssessmentLinkRequest  $request
+    //@return JsonResponse
+
+    public function sendLink(SendAssessmentLinkRequest $request): JsonResponse
     {
-        $request->validate([
-            'assessment_id' => 'required|exists:assessments,id',
-            'member_id' => 'required|exists:members,id',
-            'email' => 'required|email',
-        ]);
+        try {
+            $validated = $request->validated();
+            $assessment = Assessment::findOrFail($validated['assessment_id']);
 
-        $token = Str::random(40);
-        $expiresAt = Carbon::now()->addDays(7);
+            $token = $this->createAnswerToken($assessment->id, $validated['member_id'], $validated['group_id'] ?? null);
 
-        $assessment = Assessment::findOrFail($request->assessment_id);
-        $member = Member::findOrFail($request->member_id);
+            $link = $this->generateFrontendLink($token, $validated['member_id'], $validated['group_id'] ?? null);
 
-        AssessmentAnswerToken::create([
-            'assessment_id' => $assessment->id,
-            'member_id' => $member->id,
-            'group_id' => $request->input('group_id'),
-            'token' => $token,
-            'expires_at' => $expiresAt,
-        ]);
+            Mail::to($validated['email'])->send(new AssessmentAnswerLinkMail($link, $assessment));
 
-
-    // Generate frontend link for email (adjust domain as needed for production)
-    $frontendBase = env('FRONTEND_URL', 'http://localhost:8080');
-    $groupId = $request->input('group_id');
-    $link = $frontendBase . '/assessment/answer/' . $token . '?group_id=' . $groupId . '&member_id=' . $member->id;
-    Mail::to($request->email)->send(new AssessmentAnswerLinkMail($link, $assessment));
-
-    return response()->json(['message' => 'Link sent successfully.']);
+            return response()->json(['message' => 'Link sent successfully.']);
+        } catch (\Exception $e) {
+            Log::error('Failed to send assessment link.', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'An unexpected error occurred while sending the link.'], 500);
+        }
     }
 
-    // Serve the answer page (API for frontend)
-    public function getAssessmentByToken($token)
+
+    //Retrieve assessment details using a valid token.
+    //@param  string  $token
+    //@return JsonResponse
+
+    public function getAssessmentByToken(string $token): JsonResponse
     {
-        $tokenRow = AssessmentAnswerToken::where('token', $token)
-            ->where('used', false)
-            ->where('expires_at', '>', Carbon::now())
-            ->firstOrFail();
+        try {
+            $tokenRow = AssessmentAnswerToken::where('token', $token)
+                ->where('used', false)
+                ->where('expires_at', '>', Carbon::now())
+                ->firstOrFail();
 
-        // Get assessment questions with assessment_question.id
-        $assessment = Assessment::findOrFail($tokenRow->assessment_id);
-        $assessmentQuestions = \App\Models\AssessmentQuestion::where('assessment_id', $assessment->id)
-            ->get();
+            $assessment = Assessment::with('assessmentQuestions.question')->findOrFail($tokenRow->assessment_id);
 
-        $questions = $assessmentQuestions->map(function($aq) {
-            $orgQuestion = \DB::table('organization_assessment_questions')->where('id', $aq->question_id)->first();
-            $label = $orgQuestion ? $orgQuestion->text : null;
+            $responseData = $this->buildAssessmentResponse($assessment, $tokenRow);
+
+            return response()->json(['assessment' => $responseData]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['message' => 'Invalid or expired token.'], 404);
+        } catch (\Exception $e) {
+            Log::error('Failed to get assessment by token.', ['token' => $token, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'An unexpected error occurred.'], 500);
+        }
+    }
+
+
+    //Submit answers for an assessment using a valid token.
+    //@param  SubmitAssessmentAnswersRequest  $request
+    //@param  string  $token
+    //@return JsonResponse
+
+    public function submitAnswers(SubmitAssessmentAnswersRequest $request, string $token): JsonResponse
+    {
+        try {
+            $tokenRow = AssessmentAnswerToken::where('token', $token)->firstOrFail();
+
+            $this->validateAnswersBelongToAssessment($request->answers, $tokenRow->assessment_id);
+
+            DB::transaction(function () use ($request, $tokenRow) {
+                $this->saveAnswers($request->answers, $tokenRow);
+                $tokenRow->update(['used' => true]);
+            });
+
+            return response()->json([
+                'message' => 'Answers submitted successfully.',
+                'inserted' => count($request->answers),
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            Log::error('Failed to submit answers.', ['token' => $token, 'error' => $e->getMessage()]);
+            return response()->json(['message' => 'An unexpected error occurred while submitting answers.'], 500);
+        }
+    }
+
+    // Private Helper Methods
+
+    private function createAnswerToken(int $assessmentId, int $memberId, ?int $groupId): string
+    {
+        $token = Str::random(40);
+        AssessmentAnswerToken::create([
+            'assessment_id' => $assessmentId,
+            'member_id' => $memberId,
+            'group_id' => $groupId,
+            'token' => $token,
+            'expires_at' => Carbon::now()->addDays(7),
+        ]);
+        return $token;
+    }
+
+    private function generateFrontendLink(string $token, int $memberId, ?int $groupId): string
+    {
+        $frontendBase = rtrim(env('FRONTEND_URL', 'http://localhost:8080'), '/');
+        $queryParams = http_build_query(array_filter(['group_id' => $groupId, 'member_id' => $memberId]));
+
+        return "{$frontendBase}/assessment/answer/{$token}?{$queryParams}";
+    }
+
+    private function buildAssessmentResponse(Assessment $assessment, AssessmentAnswerToken $tokenRow): array
+    {
+        $questions = $assessment->assessmentQuestions->map(function ($aq) {
             return [
                 'assessment_question_id' => $aq->id,
                 'question_id' => $aq->question_id,
-                'text' => $label
+                'text' => $aq->question->text ?? null,
             ];
         });
 
-       
-        $group = null;
-        if ($tokenRow->group_id) {
-            $group = \DB::table('groups')->where('id', $tokenRow->group_id)->first();
-        }
-
-        // Get member details
-        $member = \App\Models\Member::find($tokenRow->member_id);
-
-        // Get any previously submitted answers for this token/member/assessment
-        $answers = \DB::table('assessment_question_answers')
+        $answers = DB::table('assessment_question_answers')
             ->where('assessment_id', $assessment->id)
             ->where('member_id', $tokenRow->member_id)
             ->where('group_id', $tokenRow->group_id)
             ->get();
 
-        return response()->json([
-            'assessment' => [
-                'id' => $assessment->id,
-                'name' => $assessment->name,
-                'questions' => $questions,
-                'member' => $member,
-                'group' => $group,
-                'token' => $tokenRow->token,
-                'answers' => $answers,
-                 ],
-            ]);
-        }
+        return [
+            'id' => $assessment->id,
+            'name' => $assessment->name,
+            'questions' => $questions,
+            'member' => Member::find($tokenRow->member_id),
+            'group' => $tokenRow->group_id ? Group::find($tokenRow->group_id) : null,
+            'token' => $tokenRow->token,
+            'answers' => $answers,
+        ];
+    }
 
-    // Save answers
-    public function submitAnswers(Request $request, $token)
+    private function validateAnswersBelongToAssessment(array $answers, int $assessmentId): void
     {
-        \Log::info('submitAnswers called', [
-            'token' => $token,
-            'payload' => $request->all()
-        ]);
-        $tokenRow = AssessmentAnswerToken::where('token', $token)
-            ->where('used', false)
-            ->where('expires_at', '>', Carbon::now())
-            ->firstOrFail();
+        $assessmentQuestionIds = AssessmentQuestion::where('assessment_id', $assessmentId)->pluck('id');
+        $submittedQuestionIds = collect($answers)->pluck('assessment_question_id');
 
+        $invalidIds = $submittedQuestionIds->diff($assessmentQuestionIds);
 
-        $request->validate([
-            'answers' => 'required|array',
-        ]);
-
-        $assessmentQuestionIds = AssessmentQuestion::where('assessment_id', $tokenRow->assessment_id)
-            ->pluck('id')->toArray();
-
-        $invalid = [];
-        foreach ($request->answers as $answer) {
-            if (!in_array($answer['assessment_question_id'], $assessmentQuestionIds)) {
-                $invalid[] = $answer['assessment_question_id'];
-            }
+        if ($invalidIds->isNotEmpty()) {
+            throw new \InvalidArgumentException('Some questions do not belong to this assessment.');
         }
+    }
 
-        if (count($invalid) > 0) {
-            return response()->json([
-                'message' => 'Some assessment_question_ids are invalid for this assessment.',
-                'invalid_assessment_question_ids' => $invalid
-            ], 422);
-        }
-
-        foreach ($request->answers as $answer) {
-            // Get organization_assessment_question_id from assessment_question
-            $assessmentQuestion = \App\Models\AssessmentQuestion::find($answer['assessment_question_id']);
-            $organizationAssessmentQuestionId = $assessmentQuestion ? $assessmentQuestion->question_id : null;
-            // Always use tokenRow group_id and member_id if not present in request
-            $groupId = $tokenRow->group_id;
-            $memberId = $tokenRow->member_id;
-            if (is_null($groupId) || is_null($memberId)) {
-                \Log::error('Missing group_id or member_id in tokenRow', [
-                    'group_id' => $groupId,
-                    'member_id' => $memberId,
-                    'assessment_question_id' => $answer['assessment_question_id'],
-                    'payload' => $request->all()
-                ]);
-                return response()->json([
-                    'message' => 'group_id and member_id are required and missing for this answer.',
-                    'assessment_question_id' => $answer['assessment_question_id']
-                ], 422);
-            }
-            \DB::table('assessment_question_answers')->insert([
+    private function saveAnswers(array $answers, AssessmentAnswerToken $tokenRow): void
+    {
+        $insertData = collect($answers)->map(function ($answer) use ($tokenRow) {
+            $assessmentQuestion = AssessmentQuestion::find($answer['assessment_question_id']);
+            return [
                 'assessment_id' => $tokenRow->assessment_id,
-                'organization_assessment_question_id' => $organizationAssessmentQuestionId,
+                'organization_assessment_question_id' => $assessmentQuestion->question_id,
                 'assessment_question_id' => $answer['assessment_question_id'],
-                'member_id' => $memberId,
-                'group_id' => $groupId,
+                'member_id' => $tokenRow->member_id,
+                'group_id' => $tokenRow->group_id,
                 'answer' => $answer['answer'],
                 'created_at' => now(),
                 'updated_at' => now(),
-            ]);
-        }
+            ];
+        })->all();
 
-        $tokenRow->used = true;
-        $tokenRow->save();
-
-        return response()->json([
-            'message' => 'Answers submitted successfully.',
-            'inserted' => count($request->answers)
-        ]);
+        DB::table('assessment_question_answers')->insert($insertData);
     }
 }

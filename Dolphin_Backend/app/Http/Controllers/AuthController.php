@@ -193,11 +193,11 @@ class AuthController extends Controller
                 'last_name' => $data['last_name'],
                 'email' => $data['email'],
                 'password' => Hash::make($data['password']),
-                'phone' => $data['phone'],
             ]);
 
             UserDetail::create([
                 'user_id' => $user->id,
+                'phone' => $data['phone'],
                 'find_us' => $data['find_us'],
                 'address' => $data['address'],
                 'country_id' => $data['country'],
