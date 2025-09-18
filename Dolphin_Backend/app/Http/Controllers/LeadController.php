@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\LeadAssessmentRegistrationMail;
 
-class ValidationRules
+class LeadValidationRules
 {
     public const REQUIRED_INTEGER = 'required|integer';
     public const REQUIRED_STRING = 'required|string';
@@ -41,25 +41,25 @@ class LeadController extends Controller
             $onlyNotes = !empty($payloadKeys) && collect($payloadKeys)->every(function ($k) { return $k === 'notes'; });
             if ($request->has('notes') && $onlyNotes) {
                 $data = $request->validate([
-                    'notes' => ValidationRules::OPTIONAL_STRING,
+                    'notes' => LeadValidationRules::OPTIONAL_STRING,
                 ]);
                 $lead->update($data);
                 return response()->json(['message' => 'Notes updated successfully', 'lead' => $lead]);
             }
         }
         $data = $request->validate([
-            'first_name' =>  ValidationRules::REQUIRED_STRING,
-            'last_name' => ValidationRules::REQUIRED_STRING,
-            'email' => ValidationRules::REQUIRED_EMAIL,
+            'first_name' =>  LeadValidationRules::REQUIRED_STRING,
+            'last_name' => LeadValidationRules::REQUIRED_STRING,
+            'email' => LeadValidationRules::REQUIRED_EMAIL,
             'phone' => 'required|regex:/^[6-9]\d{9}$/',
-            'find_us' => ValidationRules::REQUIRED_STRING,
-            'organization_name' => ValidationRules::REQUIRED_STRING.'|  max:500',
-            'organization_size' => ValidationRules::REQUIRED_STRING,
-            'notes' => ValidationRules::OPTIONAL_STRING,
-            'address' => ValidationRules::REQUIRED_STRING.'|max:500',
-            'country_id' => ValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
-            'state_id' => ValidationRules::REQUIRED_INTEGER . '|exists:states,id',
-            'city_id' => ValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
+            'find_us' => LeadValidationRules::REQUIRED_STRING,
+            'organization_name' => LeadValidationRules::REQUIRED_STRING.'|  max:500',
+            'organization_size' => LeadValidationRules::REQUIRED_STRING,
+            'notes' => LeadValidationRules::OPTIONAL_STRING,
+            'address' => LeadValidationRules::REQUIRED_STRING.'|max:500',
+            'country_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
+            'state_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:states,id',
+            'city_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
             'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
 
         ]);
@@ -69,18 +69,18 @@ class LeadController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'first_name' => ValidationRules::REQUIRED_STRING,
-            'last_name' => ValidationRules::REQUIRED_STRING,
+            'first_name' => LeadValidationRules::REQUIRED_STRING,
+            'last_name' => LeadValidationRules::REQUIRED_STRING,
           'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
             'phone' => 'required|regex:/^[6-9]\d{9}$/',
-            'find_us' => ValidationRules::REQUIRED_STRING,
-            'organization_name' => ValidationRules::REQUIRED_STRING.'|max:500',
-            'organization_size' => ValidationRules::REQUIRED_STRING,
-            'notes' => ValidationRules::OPTIONAL_STRING,
-            'address' => ValidationRules::REQUIRED_STRING.'|max:500',
-            'country_id' => ValidationRules::REQUIRED_INTEGER.'|exists:countries,id',
-            'state_id' => ValidationRules::REQUIRED_INTEGER.'|exists:states,id',
-            'city_id' => ValidationRules::REQUIRED_INTEGER.'|exists:cities,id',
+            'find_us' => LeadValidationRules::REQUIRED_STRING,
+            'organization_name' => LeadValidationRules::REQUIRED_STRING.'|max:500',
+            'organization_size' => LeadValidationRules::REQUIRED_STRING,
+            'notes' => LeadValidationRules::OPTIONAL_STRING,
+            'address' => LeadValidationRules::REQUIRED_STRING.'|max:500',
+            'country_id' => LeadValidationRules::REQUIRED_INTEGER.'|exists:countries,id',
+            'state_id' => LeadValidationRules::REQUIRED_INTEGER.'|exists:states,id',
+            'city_id' => LeadValidationRules::REQUIRED_INTEGER.'|exists:cities,id',
             'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
         ]);
         // If an authenticated user made this request, record them as the creator

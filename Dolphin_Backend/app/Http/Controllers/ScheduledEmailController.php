@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\ScheduledEmail;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use App\Models\AssessmentAnswerToken;
 use App\Models\Member;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\AssessmentAnswerLinkNotification;
 
-class ValidationRules
+class ScheduledEmailValidationRules
 {
     public const REQUIRED_INTEGER = 'required|integer';
     public const REQUIRED_STRING = 'required|string';
@@ -24,13 +25,13 @@ class ScheduledEmailController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'recipient_email' => ValidationRules::REQUIRED_EMAIL,
-            'subject' => ValidationRules::REQUIRED_STRING,
-            'body' => ValidationRules::REQUIRED_STRING,
-            'send_at' => ValidationRules::REQUIRED_DATE,
-            'assessment_id' => ValidationRules::REQUIRED_INTEGER,
-            'group_id' => ValidationRules::REQUIRED_INTEGER,
-            'member_id' => ValidationRules::REQUIRED_INTEGER
+            'recipient_email' => ScheduledEmailValidationRules::REQUIRED_EMAIL,
+            'subject' => ScheduledEmailValidationRules::REQUIRED_STRING,
+            'body' => ScheduledEmailValidationRules::REQUIRED_STRING,
+            'send_at' => ScheduledEmailValidationRules::REQUIRED_DATE,
+            'assessment_id' => ScheduledEmailValidationRules::REQUIRED_INTEGER,
+            'group_id' => ScheduledEmailValidationRules::REQUIRED_INTEGER,
+            'member_id' => ScheduledEmailValidationRules::REQUIRED_INTEGER
         ]);
 
         // Lookup member by email
@@ -49,7 +50,7 @@ class ScheduledEmailController extends Controller
         $scheduledEmail = ScheduledEmail::create([
             'recipient_email' => $validated['recipient_email'],
             'subject' => $validated['subject'],
-            'body' => $emailBody, // Save full body with link
+            'body' => $emailBody,
             'send_at' => $sendAtUtc,
             'assessment_id' => $validated['assessment_id'],
             'group_id' => $validated['group_id'],
@@ -77,12 +78,12 @@ class ScheduledEmailController extends Controller
     {
         $assessmentId = $request->query('assessment_id');
         if ($assessmentId) {
-            $schedule = \DB::table('assessment_schedules')->where('assessment_id', $assessmentId)->first();
-            $assessment = \DB::table('assessments')->where('id', $assessmentId)->first();
+            $schedule =DB::table('assessment_schedules')->where('assessment_id', $assessmentId)->first();
+            $assessment =DB::table('assessments')->where('id', $assessmentId)->first();
             $emails = [];
             if ($schedule) {
                 // Optionally, filter by send_at or member_ids
-                $emails = \DB::table('scheduled_emails')
+                $emails =DB::table('scheduled_emails')
                     ->whereDate('send_at', $schedule->date)
                     ->get();
             }

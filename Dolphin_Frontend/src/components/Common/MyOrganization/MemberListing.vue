@@ -39,15 +39,31 @@
                   @sort="sortBy"
                 />
                 <tbody>
+                  <tr v-if="loading">
+                    <td
+                      colspan="5"
+                      class="no-data"
+                    >
+                      Loading members...
+                    </td>
+                  </tr>
+                  <tr v-else-if="paginatedMembers.length === 0">
+                    <td
+                      colspan="5"
+                      class="no-data"
+                    >
+                      No members found.
+                    </td>
+                  </tr>
                   <tr
-                    v-for="(member, idx) in paginatedMembers"
+                    v-else
+                    v-for="member in paginatedMembers"
                     :key="member.id"
                   >
                     <td>{{ member.first_name }} {{ member.last_name }}</td>
                     <td>{{ member.email }}</td>
                     <td>{{ member.phone }}</td>
                     <td>
-                      <!-- show all related roles: prefer member.memberRoles (objects) then member.member_role_ids (ids or objects) -->
                       <span>
                         {{ formatMemberRoles(member) }}
                       </span>
@@ -64,14 +80,6 @@
                         />
                         View
                       </button>
-                    </td>
-                  </tr>
-                  <tr v-if="paginatedMembers.length === 0">
-                    <td
-                      colspan="5"
-                      class="no-data"
-                    >
-                      No members found.
                     </td>
                   </tr>
                 </tbody>
@@ -126,32 +134,8 @@
                   <div class="profile-info-row">
                     <div class="profile-label">Role</div>
                     <div class="profile-value">
-                      <span
-                        v-if="
-                          Array.isArray(selectedMemberEdit.memberRoles) &&
-                          selectedMemberEdit.memberRoles.length
-                        "
-                      >
-                        {{
-                          selectedMemberEdit.memberRoles
-                            .map((r) => r.name || r)
-                            .join(', ')
-                        }}
-                      </span>
-                      <span
-                        v-else-if="
-                          Array.isArray(selectedMemberEdit.member_role_ids) &&
-                          selectedMemberEdit.member_role_ids.length
-                        "
-                      >
-                        {{
-                          selectedMemberEdit.member_role_ids
-                            .map((r) => (r && (r.name || r)) || r)
-                            .join(', ')
-                        }}
-                      </span>
-                      <span v-else>
-                        {{ selectedMemberEdit.member_role || '' }}
+                      <span>
+                        {{ formatMemberRoles(selectedMemberEdit) }}
                       </span>
                     </div>
                   </div>
@@ -165,6 +149,7 @@
                 <div class="profile-actions">
                   <button
                     class="btn btn-danger"
+                    style="margin: 0 12px !important"
                     @click="deleteMember(selectedMemberEdit)"
                   >
                     <i class="fas fa-trash"></i>
@@ -173,7 +158,7 @@
                   <button
                     class="org-edit-cancel"
                     @click="closeMemberModal"
-                    style="margin-left: 12px"
+                    style="margin: 0 12px"
                   >
                     Cancel
                   </button>
@@ -340,29 +325,11 @@ export default {
       sortAsc: true,
       members: [],
       filteredMembers: [],
+      loading: true,
       showMemberModal: false,
       showEditModal: false,
-      selectedMemberEdit: {
-        id: '',
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        member_role: '',
-        member_role_ids: [],
-        country: '',
-      },
-      editMember: {
-        id: '',
-        first_name: '',
-        last_name: '',
-        email: '',
-        phone: '',
-        member_role: '',
-        member_role_ids: [],
-        country: '',
-      },
-
+      selectedMemberEdit: {},
+      editMember: {},
       rolesForSelect: [],
       rolesForSelectMap: {},
     };
@@ -372,11 +339,11 @@ export default {
       return Math.ceil(this.filteredMembers.length / this.pageSize) || 1;
     },
     paginatedMembers() {
-      let sorted = [...this.filteredMembers];
+      const sorted = [...this.filteredMembers];
       if (this.sortKey) {
         sorted.sort((a, b) => {
-          let aVal = a[this.sortKey];
-          let bVal = b[this.sortKey];
+          const aVal = a[this.sortKey] || '';
+          const bVal = b[this.sortKey] || '';
           if (aVal < bVal) return this.sortAsc ? -1 : 1;
           if (aVal > bVal) return this.sortAsc ? 1 : -1;
           return 0;
@@ -389,405 +356,218 @@ export default {
       const total = this.totalPages;
       if (total <= 7) {
         return Array.from({ length: total }, (_, i) => i + 1);
-      } else {
-        const pages = [1];
-        if (this.currentPage > 4) pages.push('...');
-        for (
-          let i = Math.max(2, this.currentPage - 1);
-          i <= Math.min(total - 1, this.currentPage + 1);
-          i++
-        ) {
-          pages.push(i);
-        }
-        if (this.currentPage < total - 3) pages.push('...');
-        pages.push(total);
-        return pages;
       }
+      const pages = [1];
+      if (this.currentPage > 4) pages.push('...');
+      const start = Math.max(2, this.currentPage - 1);
+      const end = Math.min(total - 1, this.currentPage + 1);
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      if (this.currentPage < total - 3) pages.push('...');
+      pages.push(total);
+      return pages;
     },
   },
   methods: {
-    // Normalize a member object to ensure role-related fields are consistent
     normalizeMember(member) {
-      const m = { ...member };
-      // ensure member_role_ids is an array
-      if (!Array.isArray(m.member_role_ids)) {
-        // try to read group_ids or group_ids fallback
-        m.member_role_ids = Array.isArray(m.member_role_ids)
-          ? m.member_role_ids
-          : [];
-      }
-      // normalize ids to objects {id,name} when possible
-      m.member_role_ids = m.member_role_ids.map((r) =>
-        typeof r === 'object' ? r : this.getRoleForSelect(r)
-      );
-
-      // ensure memberRoles exists (objects)
-      if (!Array.isArray(m.memberRoles) || !m.memberRoles.length) {
-        m.memberRoles = m.member_role_ids.slice();
-      } else {
-        // normalize memberRoles items
-        m.memberRoles = m.memberRoles.map((r) =>
-          typeof r === 'object' ? r : this.getRoleForSelect(r)
-        );
-      }
-
-      // set a readable fallback string for older UI
-      m.member_role =
-        (m.memberRoles[0] && (m.memberRoles[0].name || m.memberRoles[0])) ||
-        m.member_role ||
-        '';
-      return m;
+      if (!member) return {};
+      const normalized = { ...member };
+      normalized.memberRoles = Array.isArray(normalized.memberRoles)
+        ? normalized.memberRoles
+        : [];
+      normalized.member_role_ids = Array.isArray(normalized.member_role_ids)
+        ? normalized.member_role_ids
+        : [];
+      return normalized;
     },
+
     openMemberModal(member) {
-      // make sure we use normalized member objects so roles have {id,name}
-      const normalized = this.normalizeMember(member);
-      this.selectedMemberEdit = { ...normalized };
-      this.selectedMemberEdit.member_role_ids = Array.isArray(
-        normalized.member_role_ids
-      )
-        ? normalized.member_role_ids.map((r) =>
-            typeof r === 'object' ? r : this.getRoleForSelect(r)
-          )
-        : [];
-      this.selectedMemberEdit.memberRoles = Array.isArray(
-        normalized.memberRoles
-      )
-        ? normalized.memberRoles.map((r) =>
-            typeof r === 'object' ? r : this.getRoleForSelect(r)
-          )
-        : [];
-      // ensure phone is present (backend now returns it)
-      this.selectedMemberEdit.phone = member.phone || '';
+      this.selectedMemberEdit = this.normalizeMember(member);
       this.showMemberModal = true;
     },
 
-    // return a comma-separated list of role names for a member
     formatMemberRoles(member) {
-      try {
-        if (Array.isArray(member.memberRoles) && member.memberRoles.length) {
-          return member.memberRoles
-            .map((r) => (r && (r.name || r)) || r)
-            .join(', ');
-        }
-        if (
-          Array.isArray(member.member_role_ids) &&
-          member.member_role_ids.length
-        ) {
-          return member.member_role_ids
-            .map((r) => (r && (r.name || r)) || r)
-            .join(', ');
-        }
-        return member.member_role || '';
-      } catch (e) {
-        console.warn('formatMemberRoles failed', e);
-        return '';
+      if (
+        member &&
+        Array.isArray(member.memberRoles) &&
+        member.memberRoles.length > 0
+      ) {
+        return member.memberRoles.map((r) => r.name).join(', ');
       }
+      return member.member_role || 'No Role';
     },
+
     async openEditModal() {
-      // Try to fetch the latest member details from API each time Edit is clicked
-      const id = this.selectedMemberEdit && this.selectedMemberEdit.id;
-      // ensure roles map exists
-      this.prepareRolesMap();
-      if (!id) {
-        this.editMember = { ...this.selectedMemberEdit };
-        this.showEditModal = true;
+      const memberId = this.selectedMemberEdit?.id;
+      if (!memberId) {
+        this.$toast.add({
+          severity: 'warn',
+          summary: 'Warning',
+          detail: 'No member selected.',
+          life: 3000,
+        });
         return;
       }
 
-      const authToken = storage.get('authToken');
-      const headers = {};
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-
       try {
-        const res = await axios.get(`${API_BASE_URL}/api/members/${id}`, {
-          headers,
-        });
-        const member = res && res.data ? res.data : this.selectedMemberEdit;
-        const normalized = this.normalizeMember(member);
-        // set selected and edit models from fresh data
-        this.selectedMemberEdit = { ...normalized };
-        const ids = normalized.member_role_ids || [];
-        this.editMember = { ...normalized };
-        this.editMember.member_role_ids = ids;
-        this.showEditModal = true;
-      } catch (e) {
-        console.error('Failed to fetch member for edit', e);
-        this.editMember = { ...this.selectedMemberEdit };
-        const ids = this.selectedMemberEdit.member_role_ids || [];
-        this.editMember.member_role_ids = ids;
-        this.showEditModal = true;
-      }
-    },
-    closeEditModal() {
-      this.showEditModal = false;
-    },
-    closeMemberModal() {
-      this.showMemberModal = false;
-      this.isEditing = false;
-    },
-    async onEditSave() {
-      const authToken = storage.get('authToken');
-      const headers = {};
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-      try {
-        // build payload and convert selected roles to ids array
-        const payload = { ...this.editMember };
-        if (Array.isArray(this.editMember.member_role_ids)) {
-          payload.member_role = this.editMember.member_role_ids.map(
-            (r) => r.id || r
-          );
-        }
+        const authToken = storage.get('authToken');
         const API_BASE_URL =
           process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-
-        const putRes = await axios.put(
-          `${API_BASE_URL}/api/members/${this.editMember.id}`,
-          payload,
+        const response = await axios.get(
+          `${API_BASE_URL}/api/members/${memberId}`,
           {
-            headers,
+            headers: { Authorization: `Bearer ${authToken}` },
           }
         );
 
-        // Regardless of PUT response shape, refresh the members list so we have
-        // canonical objects (including memberRoles) for UI. This avoids stale
-        // or partial data and ensures the edit modal shows proper labels.
-        try {
-          const listRes = await axios.get(`${API_BASE_URL}/api/members`, {
-            headers,
-          });
-          this.members = Array.isArray(listRes.data)
-            ? listRes.data.map((m) => this.normalizeMember(m))
-            : [];
-        } catch (listErr) {
-          console.error('Failed to refresh members list', listErr);
-          if (putRes && putRes.data && putRes.data.id) {
-            const pm = this.normalizeMember(putRes.data);
-            const memberIdx = this.members.findIndex((m) => m.id === pm.id);
-            if (memberIdx !== -1) this.members.splice(memberIdx, 1, pm);
-            else this.members.push(pm);
+        const memberData = response.data.data;
+        this.editMember = this.normalizeMember(memberData);
+
+        this.showEditModal = true;
+      } catch (error) {
+        console.error('Failed to fetch member details for editing:', error);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Could not load member details.',
+          life: 3000,
+        });
+        // Fallback to existing data if fetch fails
+        this.editMember = { ...this.selectedMemberEdit };
+        this.showEditModal = true;
+      }
+    },
+
+    closeMemberModal() {
+      this.showMemberModal = false;
+    },
+
+    async onEditSave() {
+      try {
+        const authToken = storage.get('authToken');
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+
+        const payload = { ...this.editMember };
+        payload.member_role = this.editMember.member_role_ids.map((r) => r.id);
+        delete payload.memberRoles;
+        delete payload.member_role_ids;
+
+        const response = await axios.put(
+          `${API_BASE_URL}/api/members/${this.editMember.id}`,
+          payload,
+          {
+            headers: { Authorization: `Bearer ${authToken}` },
           }
+        );
+
+        const updatedMember = this.normalizeMember(
+          response.data.data || response.data
+        );
+
+        const index = this.members.findIndex((m) => m.id === updatedMember.id);
+        if (index !== -1) {
+          this.members.splice(index, 1, updatedMember);
         }
 
-        // pick the updated member from refreshed list (or fallback)
-        const updatedMember =
-          this.members.find((m) => m.id === this.editMember.id) ||
-          this.normalizeMember({ ...this.editMember });
-
-        // If server didn't return role details, but we sent role ids in payload,
-        // populate member_role_ids/memberRoles from the payload so the UI updates
-        if (
-          (!updatedMember.memberRoles || !updatedMember.memberRoles.length) &&
-          Array.isArray(payload.member_role) &&
-          payload.member_role.length
-        ) {
-          updatedMember.member_role_ids = payload.member_role.map((rid) =>
-            this.getRoleForSelect(rid)
-          );
-          updatedMember.memberRoles = updatedMember.member_role_ids.slice();
-          updatedMember.member_role =
-            (updatedMember.memberRoles[0] &&
-              (updatedMember.memberRoles[0].name ||
-                updatedMember.memberRoles[0])) ||
-            updatedMember.member_role ||
-            '';
-        }
-
-        // normalize returned shape: ensure member_role_ids is array of objects when possible
-        if (Array.isArray(updatedMember.member_role_ids)) {
-          updatedMember.member_role_ids = updatedMember.member_role_ids.map(
-            (r) => (typeof r === 'object' ? r : this.getRoleForSelect(r))
-          );
-        } else {
-          updatedMember.member_role_ids = [];
-        }
-
-        // Ensure memberRoles (objects) exist for UI and set member_role (string fallback)
-        updatedMember.memberRoles = Array.isArray(updatedMember.memberRoles)
-          ? updatedMember.memberRoles
-          : updatedMember.member_role_ids.slice();
-        // set a primary string role for older UI usage
-        updatedMember.member_role =
-          (updatedMember.memberRoles[0] &&
-            (updatedMember.memberRoles[0].name ||
-              updatedMember.memberRoles[0])) ||
-          updatedMember.member_role ||
-          '';
-
-        // update members list
-        const idx = this.members.findIndex((m) => m.id === updatedMember.id);
-        if (idx !== -1) {
-          this.members.splice(idx, 1, updatedMember);
-        } else {
-          // if not present, push and refresh list search
-          this.members.push(updatedMember);
-        }
-
-        // update selected and edit models used by UI
         this.selectedMemberEdit = { ...updatedMember };
-        this.editMember = { ...updatedMember };
-
-        // ensure editMember.member_role_ids is objects for Multiselect
-        if (Array.isArray(this.editMember.member_role_ids)) {
-          this.editMember.member_role_ids = this.editMember.member_role_ids.map(
-            (r) => (typeof r === 'object' ? r : this.getRoleForSelect(r))
-          );
-        }
-
         this.onSearch();
         this.showEditModal = false;
-      } catch (e) {
-        console.error('Failed to update member', e);
-        if (this && this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Update failed',
-            detail: 'Failed to update member.',
-            sticky: true,
-          });
-        }
-      }
-    },
 
-    // helpers for role select
-    prepareRolesMap() {
-      // Build a lookup of roles used by the app from members fetched from the backend.
-      // Prefer explicit memberRoles/member_role_names when available. If none found,
-      // fallback to a small static list so UI remains usable.
-      const rolesById = {};
-      const rolesByName = {};
-
-      // collect roles from this.members
-      if (Array.isArray(this.members) && this.members.length) {
-        this.members.forEach((m) => {
-          // memberRoles array of objects {id,name}
-          if (Array.isArray(m.memberRoles)) {
-            m.memberRoles.forEach((r) => {
-              if (r && (r.id || r.name)) {
-                const id = r.id || String(r.name).toLowerCase();
-                const name = r.name || String(r);
-                rolesById[id] = { id: r.id || id, name };
-                rolesByName[String(name).toLowerCase()] = {
-                  id: r.id || id,
-                  name,
-                };
-              }
-            });
-          }
-
-          // member_role_names is sometimes provided as array of strings
-          if (Array.isArray(m.member_role_names)) {
-            m.member_role_names.forEach((name, idx) => {
-              if (name) {
-                const key = String(name).toLowerCase();
-                if (!rolesByName[key]) {
-                  const syntheticId = Object.keys(rolesById).length + 1 + idx;
-                  rolesByName[key] = { id: syntheticId, name };
-                }
-              }
-            });
-          }
-
-          // single string fallback on member_role
-          if (m.member_role && !Array.isArray(m.member_role)) {
-            const key = String(m.member_role).toLowerCase();
-            if (!rolesByName[key]) {
-              const syntheticId = Object.keys(rolesById).length + 1;
-              rolesByName[key] = { id: syntheticId, name: m.member_role };
-            }
-          }
+        this.$toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Member updated successfully.',
+          life: 3000,
+        });
+      } catch (error) {
+        console.error('Failed to update member:', error);
+        const errorDetail =
+          error.response?.data?.message || 'An unexpected error occurred.';
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Update Failed',
+          detail: errorDetail,
+          sticky: true,
         });
       }
-
-      this.rolesForSelectMap = {};
-      if (Array.isArray(this.rolesForSelect)) {
-        this.rolesForSelect.forEach((r) => (this.rolesForSelectMap[r.id] = r));
-      }
     },
 
-    // Helper method to get role object from role ID
     getRoleForSelect(roleId) {
       return (
-        this.rolesForSelectMap[roleId] || { id: roleId, name: String(roleId) }
+        this.rolesForSelectMap[roleId] || { id: roleId, name: `Role ${roleId}` }
       );
     },
 
-    onEditRolesUpdate(selected) {
-      // selected items may be objects {id,name} or ids
-      this.editMember.member_role_ids = selected.map((s) =>
-        typeof s === 'object' ? s : { id: s, name: String(s) }
-      );
+    onEditRolesUpdate(selectedItems) {
+      this.editMember.member_role_ids = selectedItems;
     },
+
     async deleteMember(member) {
-      this.isEditing = false;
       const memberDisplay =
-        member && (member.first_name || member.last_name)
-          ? `${member.first_name || ''} ${member.last_name || ''}`.trim()
-          : member.email || 'this member';
-
+        `${member.first_name} ${member.last_name}`.trim() || member.email;
       this.confirm.require({
         message: `Are you sure you want to delete ${memberDisplay}?`,
         header: 'Confirm Delete',
         icon: 'pi pi-trash',
-        acceptLabel: 'Yes',
-        rejectLabel: 'No',
         accept: async () => {
-          const authToken = storage.get('authToken');
-          const headers = {};
-          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
           try {
-            await axios.delete(
-              (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-                `/api/members/${member.id}`,
-              { headers }
-            );
+            const authToken = storage.get('authToken');
+            const API_BASE_URL =
+              process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+            await axios.delete(`${API_BASE_URL}/api/members/${member.id}`, {
+              headers: { Authorization: `Bearer ${authToken}` },
+            });
+
             this.members = this.members.filter((m) => m.id !== member.id);
             this.onSearch();
             this.showMemberModal = false;
+            this.$toast.add({
+              severity: 'info',
+              summary: 'Deleted',
+              detail: 'Member has been deleted.',
+              life: 3000,
+            });
           } catch (e) {
             console.error('Failed to delete member', e);
-            if (this && this.$toast && typeof this.$toast.add === 'function') {
-              this.$toast.add({
-                severity: 'error',
-                summary: 'Delete failed',
-                detail: 'Failed to delete member.',
-                sticky: true,
-              });
-            }
+            this.$toast.add({
+              severity: 'error',
+              summary: 'Delete Failed',
+              detail: 'Failed to delete member.',
+              sticky: true,
+            });
           }
-        },
-        reject: () => {
-          // no-op
         },
       });
     },
+
     onSearch() {
-      const q = this.searchQuery.trim().toLowerCase();
-      if (!q) {
-        this.filteredMembers = this.members;
+      const query = this.searchQuery.trim().toLowerCase();
+      if (!query) {
+        this.filteredMembers = [...this.members];
       } else {
-        this.filteredMembers = this.members.filter(
-          (m) =>
-            `${m.first_name} ${m.last_name}`.toLowerCase().includes(q) ||
-            m.email.toLowerCase().includes(q) ||
-            (m.phone || '')
-              .replace(/\s+/g, '')
-              .includes(q.replace(/\s+/g, '')) ||
-            (m.member_role || '').toLowerCase().includes(q)
+        this.filteredMembers = this.members.filter((m) =>
+          Object.values(m).some((val) =>
+            String(val).toLowerCase().includes(query)
+          )
         );
       }
       this.currentPage = 1;
     },
+
     goToPage(page) {
-      if (page === '...' || page < 1 || page > this.totalPages) return;
-      this.currentPage = page;
+      if (typeof page === 'number' && page >= 1 && page <= this.totalPages) {
+        this.currentPage = page;
+      }
     },
+
     selectPageSize(size) {
       this.pageSize = size;
       this.currentPage = 1;
       this.showPageDropdown = false;
     },
+
     sortBy(key) {
       if (this.sortKey === key) {
         this.sortAsc = !this.sortAsc;
@@ -796,79 +576,61 @@ export default {
         this.sortAsc = true;
       }
     },
-  },
-  async mounted() {
-    // Fetch members from backend
-    try {
-      const authToken = storage.get('authToken');
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-      const res = await axios.get(`${API_BASE_URL}/api/members`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      this.members = Array.isArray(res.data)
-        ? res.data.map((m) => this.normalizeMember(m))
-        : [];
-      this.filteredMembers = this.members;
 
-      // Try to fetch canonical member roles from the API. If that fails, derive from members.
+    async fetchInitialData() {
+      this.loading = true;
       try {
-        const rolesRes = await axios.get(`${API_BASE_URL}/api/member-roles`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        const authToken = storage.get('authToken');
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+
+        const [membersRes, rolesRes] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/members`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+          }),
+          axios.get(`${API_BASE_URL}/api/member-roles`, {
+            headers: { Authorization: `Bearer ${authToken}` },
+          }),
+        ]);
+
         if (Array.isArray(rolesRes.data) && rolesRes.data.length) {
           this.rolesForSelect = rolesRes.data.map((r) => ({
             id: r.id,
             name: r.name,
           }));
-          this.rolesForSelectMap = {};
-          this.rolesForSelect.forEach(
-            (r) => (this.rolesForSelectMap[r.id] = r)
-          );
-        } else {
-          this.prepareRolesMap();
+          this.rolesForSelectMap = this.rolesForSelect.reduce((map, role) => {
+            map[role.id] = role;
+            return map;
+          }, {});
         }
-      } catch (roleErr) {
-        console.warn(
-          'Failed to fetch member roles, falling back to deriving from members',
-          roleErr
-        );
-        // fallback: derive roles from members
-        this.prepareRolesMap();
+
+        const membersData = membersRes.data?.data || [];
+        this.members = membersData.map((m) => this.normalizeMember(m));
+        this.filteredMembers = [...this.members];
+      } catch (error) {
+        console.error('Failed to fetch initial data:', error);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Failed to load data',
+          detail: 'Could not fetch members and roles from the server.',
+          life: 5000,
+        });
+      } finally {
+        this.loading = false;
       }
-    } catch (e) {
-      console.error('Failed to fetch members', e);
-      this.members = [];
-      this.filteredMembers = [];
-    }
-    // If route includes member_id query, open that member's modal
-    const memberIdFromQuery =
-      this.$route && this.$route.query && this.$route.query.member_id;
+    },
+  },
+  async mounted() {
+    await this.fetchInitialData();
+    const memberIdFromQuery = this.$route.query.member_id;
     if (memberIdFromQuery) {
-      const id = Number(memberIdFromQuery);
-      const found = this.members.find((m) => m.id === id);
-      if (found) {
-        this.openMemberModal(found);
+      const member = this.members.find((m) => m.id === memberIdFromQuery);
+      if (member) {
+        this.openMemberModal(member);
       } else {
-        // try fetch single member and open
-        try {
-          const authToken = storage.get('authToken');
-          const headers = {};
-          if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
-          const API_BASE_URL =
-            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-          const res = await axios.get(`${API_BASE_URL}/api/members/${id}`, {
-            headers,
-          });
-          const member = res && res.data ? res.data : null;
-          if (member) {
-            const normalized = this.normalizeMember(member);
-            this.selectedMemberEdit = normalized;
-            this.showMemberModal = true;
-          }
-        } catch (e) {
-          console.error('Failed to fetch member from query id', e);
-        }
+        console.warn(
+          `Member with ID ${memberIdFromQuery} not found in the initial list.`
+        );
       }
     }
   },
@@ -938,28 +700,22 @@ export default {
 .org-search::placeholder {
   margin-left: 4px;
 }
-@media (max-width: 1400px) {
-  .org-search {
-    font-size: 13px;
-    padding: 8px 16px 8px 32px;
-    max-width: 320px;
-    border-radius: 12px;
-  }
-}
-@media (max-width: 900px) {
-  .org-search {
-    font-size: 11px;
-    padding: 6px 10px 6px 28px;
-    max-width: 180px;
-    border-radius: 8px;
-  }
-}
 
 .member-profile-card .profile-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 28px 32px 0 32px;
+}
+@media (max-width: 600px) {
+  .member-profile-card .profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 28px 32px 0 32px;
+    flex-direction: column;
+  }
 }
 .member-profile-card .profile-title {
   display: flex;
@@ -1013,6 +769,13 @@ export default {
   display: flex;
   justify-content: flex-end;
   padding: 18px 32px 32px 32px;
+}
+@media (max-width: 600px) {
+  .member-profile-card .profile-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
 }
 .member-profile-card .btn {
   display: inline-flex;

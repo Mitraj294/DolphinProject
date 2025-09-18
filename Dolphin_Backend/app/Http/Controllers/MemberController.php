@@ -117,6 +117,7 @@ class MemberController extends Controller
                 $member->update($validated);
                 if ($roleInput !== null) {
                     $member->member_role = $roleInput;
+                    $member->save();
                 }
             });
 
