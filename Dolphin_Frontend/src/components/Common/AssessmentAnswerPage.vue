@@ -80,9 +80,10 @@ export default {
         this.answers[q.assessment_question_id] = '';
       }
     } catch (e) {
-      this.$router.replace({
-        name: 'ThanksPage',
-        query: { already: '1' },
+      this.toast.add({
+        severity: 'error',
+        summary: 'Failed to load assessment.',
+        life: 3500,
       });
     }
   },
@@ -108,9 +109,6 @@ export default {
           `${API_BASE_URL}/api/assessment/answer/${token}`,
           payload
         );
-        this.$router.replace({
-          name: 'ThanksPage',
-        });
       } catch (e) {
         this.toast.add({
           severity: 'error',

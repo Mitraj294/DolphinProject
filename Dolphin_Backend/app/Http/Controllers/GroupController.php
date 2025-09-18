@@ -2,102 +2,141 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreGroupRequest;
 use App\Models\Group;
-
+use App\Models\Organization;
+use App\Models\User;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class GroupController extends Controller
 {
-    // organizationadmin: only their groups; superadmin: all groups
-    public function index(Request $request)
+
+    //Display a listing of the resource.
+    //@param  \Illuminate\Http\Request  $request
+    //@return \Illuminate\Http\JsonResponse
+
+    public function index(Request $request): JsonResponse
     {
-        $user = $request->user();
-        $role = $user->roles()->first();
-        if (!$role) {
-            return response()->json(['error' => 'Unauthorized.'], 403);
-        }
-        if ($role->name === 'superadmin') {
-            $groups = Group::with('members')->get();
-            return response()->json($groups);
-        } elseif ($role->name === 'organizationadmin') {
-            // organizationadmin: return groups belonging to the admin's organization
-            // determine organization id with fallback to Organization.user_id
-            $orgId = $user->organization_id;
-            if (!$orgId) {
-                $org = \App\Models\Organization::where('user_id', $user->id)->first();
-                if ($org) {
-                    $orgId = $org->id;
+        $response_data = [];
+        $status_code = 200;
+
+        try {
+            $user = $request->user();
+            $query = Group::with('members');
+
+            if ($user->hasRole('organizationadmin')) {
+                $orgId = $this->resolveOrganizationId($user);
+                if (!$orgId) {
+                    $status_code = 404;
+                    $response_data['error'] = 'Organization not found for user.';
+                } else {
+                    $query->where('organization_id', $orgId);
+                    $response_data = $query->get();
                 }
+            } elseif ($user->hasRole('superadmin')) {
+                $response_data = $query->get();
+            } else {
+                $status_code = 403;
+                $response_data['error'] = 'Unauthorized.';
             }
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve groups.', ['error' => $e->getMessage()]);
+            $status_code = 500;
+            $response_data = ['error' => 'An unexpected error occurred.'];
+        }
+
+        return response()->json($response_data, $status_code);
+    }
+
+
+    //Store a newly created resource in storage.
+    //@param  \App\Http\Requests\StoreGroupRequest  $request
+    //@return \Illuminate\Http\JsonResponse
+
+    public function store(StoreGroupRequest $request): JsonResponse
+    {
+        try {
+            $user = $request->user();
+            $validated = $request->validated();
+
+            $orgId = $this->resolveOrganizationId($user);
             if (!$orgId) {
-                return response()->json(['error' => 'Organization not found for user.'], 400);
+                return response()->json(['error' => 'Could not resolve organization for the current user.'], 400);
             }
-            $groups = Group::with('members')->where('organization_id', $orgId)->get();
-            return response()->json($groups);
-        } else {
-            return response()->json(['error' => 'Unauthorized.'], 403);
+
+            $group = Group::create([
+                'name' => $validated['name'],
+                'organization_id' => $orgId,
+                'user_id' => $user->id,
+            ]);
+
+            if (!empty($validated['member_ids'])) {
+                $group->members()->sync($validated['member_ids']);
+            }
+
+            return response()->json($group->load('members'), 201);
+        } catch (\Exception $e) {
+            Log::error('Failed to create group.', ['user_id' => $request->user()->id, 'error' => $e->getMessage()]);
+            return response()->json(['error' => 'An unexpected error occurred while creating the group.'], 500);
         }
     }
 
-    public function store(Request $request)
+
+    //Display the specified resource.
+    //@param  \Illuminate\Http\Request  $request
+    //@param  int  $id
+    //@return \Illuminate\Http\JsonResponse
+
+    public function show(Request $request, int $id): JsonResponse
     {
-        $user = $request->user();
-        $role = $user->roles()->first();
-        if (!$role || $role->name !== 'organizationadmin') {
-            return response()->json(['error' => 'Unauthorized. Only organizationadmin can create groups.'], 403);
-        }
-        // determine organization id with fallback to Organization.user_id
-        $orgId = $user->organization_id;
-        if (!$orgId) {
-            $org = \App\Models\Organization::where('user_id', $user->id)->first();
-            if ($org) {
-                $orgId = $org->id;
+        $response_data = [];
+        $status_code = 200;
+
+        try {
+            $user = $request->user();
+            $query = Group::with('members');
+
+            if ($user->hasRole('organizationadmin')) {
+                $orgId = $this->resolveOrganizationId($user);
+                $query->where('organization_id', $orgId);
+            } elseif (!$user->hasRole('superadmin')) {
+                $status_code = 403;
+                $response_data['error'] = 'Unauthorized.';
             }
+
+            if ($status_code === 200) {
+                $group = $query->findOrFail($id);
+                $response_data['group'] = $group;
+            }
+        } catch (ModelNotFoundException $e) {
+            $status_code = 404;
+            $response_data['error'] = 'Group not found or you do not have permission to view it.';
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve group.', ['group_id' => $id, 'error' => $e->getMessage()]);
+            $status_code = 500;
+            $response_data['error'] = 'An unexpected error occurred.';
         }
-        if (!$orgId) {
-            return response()->json(['error' => 'Organization not found for user.'], 400);
-        }
-        $rules = [
-            'name' => 'required|string|max:255',
-            'member_ids' => 'array',
-            'member_ids.*' => 'exists:members,id',
-        ];
-        $validated = $request->validate($rules);
-    $validated['organization_id'] = $orgId;
-    // record which user (admin) created this group
-    $validated['user_id'] = $user->id;
-        $memberIds = $request->input('member_ids', []);
-        $group = Group::create($validated);
-        if (!empty($memberIds)) {
-            $group->members()->sync($memberIds);
-        }
-        return response()->json($group->load('members'), 201);
+
+        return response()->json($response_data, $status_code);
     }
 
-    // Return a single group with members
-    public function show(Request $request, $id)
+
+    //Resolve the organization ID for a given user.
+
+    //@param  \App\Models\User  $user
+    //@return int|null
+
+    private function resolveOrganizationId(User $user): ?int
     {
-        $user = $request->user();
-        $role = $user->roles()->first();
-        if (!$role) {
-            return response()->json(['error' => 'Unauthorized.'], 403);
+        if ($user->organization_id) {
+            return $user->organization_id;
         }
 
-        if ($role->name === 'superadmin') {
-            $group = Group::with('members')->findOrFail($id);
-            return response()->json(['group' => $group, 'members' => $group->members]);
-        } elseif ($role->name === 'organizationadmin') {
-            $orgId = $user->organization_id;
-            if (!$orgId) {
-                $org = \App\Models\Organization::where('user_id', $user->id)->first();
-                if ($org){ $orgId = $org->id;}
-            }
-            if (!$orgId) {
-                return response()->json(['error' => 'Organization not found for user.'], 400);
-            }
-            $group = Group::with('members')->where('organization_id', $orgId)->findOrFail($id);
-            return response()->json(['group' => $group, 'members' => $group->members]);
-        }
-        return response()->json(['error' => 'Unauthorized.'], 403);
+        $organization = Organization::where('user_id', $user->id)->first();
+
+        return $organization?->id;
     }
 }

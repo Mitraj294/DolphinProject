@@ -10,6 +10,7 @@ use App\Models\AssessmentAnswerToken;
 use App\Models\AssessmentQuestion;
 use App\Models\Group;
 use App\Models\Member;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -19,11 +20,12 @@ use Illuminate\Support\Str;
 
 class AssessmentAnswerLinkController extends Controller
 {
-
-    //Generate and send an assessment link to a member.
-    //@param  SendAssessmentLinkRequest  $request
-    //@return JsonResponse
-
+    /**
+     * Generate and send an assessment link to a member.
+     *
+     * @param  SendAssessmentLinkRequest  $request
+     * @return JsonResponse
+     */
     public function sendLink(SendAssessmentLinkRequest $request): JsonResponse
     {
         try {
@@ -43,38 +45,59 @@ class AssessmentAnswerLinkController extends Controller
         }
     }
 
-
-    //Retrieve assessment details using a valid token.
-    //@param  string  $token
-    //@return JsonResponse
-
+    /**
+     * Retrieve assessment details using a valid token.
+     *
+     * @param  string  $token
+     * @return JsonResponse
+     */
     public function getAssessmentByToken(string $token): JsonResponse
     {
+        $response_data = [];
+        $status_code = 200;
         try {
-            $tokenRow = AssessmentAnswerToken::where('token', $token)
-                ->where('used', false)
-                ->where('expires_at', '>', Carbon::now())
-                ->firstOrFail();
+            // Use firstOrFail to handle non-existent tokens immediately.
+            $tokenRow = AssessmentAnswerToken::where('token', $token)->firstOrFail();
 
+            // Check for invalid states first with early returns.
+            // Check expiry
+            if (Carbon::now()->greaterThanOrEqualTo(Carbon::parse($tokenRow->expires_at))) {
+                $status_code = 410; // Gone
+                $response_data['error'] = 'This token has expired.';
+            }
+
+            // Check whether token was already used
+            if (!empty($tokenRow->used)) {
+                $status_code = 409; // Conflict
+                $response_data['error'] = 'This token has already been used.';
+            }
+
+            // Happy path: Token is valid, not used, and not expired.
             $assessment = Assessment::with('assessmentQuestions.question')->findOrFail($tokenRow->assessment_id);
-
             $responseData = $this->buildAssessmentResponse($assessment, $tokenRow);
 
             return response()->json(['assessment' => $responseData]);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'Invalid or expired token.'], 404);
+        } catch (ModelNotFoundException $e) {
+            Log::warning('Attempt to access an invalid or missing assessment token.', ['token' => $token]);
+            $status_code = 404;
+            $response_data['error'] = 'Invalid token or assessment not found.';
         } catch (\Exception $e) {
             Log::error('Failed to get assessment by token.', ['token' => $token, 'error' => $e->getMessage()]);
-            return response()->json(['message' => 'An unexpected error occurred.'], 500);
+            $status_code = 500;
+            $response_data['error'] = 'An unexpected error occurred.';
         }
+
+        return response()->json($response_data, $status_code);
     }
 
 
-    //Submit answers for an assessment using a valid token.
-    //@param  SubmitAssessmentAnswersRequest  $request
-    //@param  string  $token
-    //@return JsonResponse
-
+    /**
+     * Submit answers for an assessment using a valid token.
+     *
+     * @param  SubmitAssessmentAnswersRequest  $request
+     * @param  string  $token
+     * @return JsonResponse
+     */
     public function submitAnswers(SubmitAssessmentAnswersRequest $request, string $token): JsonResponse
     {
         try {
