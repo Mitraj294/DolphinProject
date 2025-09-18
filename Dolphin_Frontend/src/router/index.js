@@ -283,72 +283,82 @@ const router = createRouter({
   routes
 });
 
+// Refactored Navigation Guard Logic
 
-// Navigation Guard
+const handlePublicRoutes = (to, authToken, next) => {
+  if (!to.meta.public) return false;
+
+  if (authToken && to.meta.guestOnly) {
+    next('/dashboard');
+  } else {
+    next();
+  }
+  return true;
+};
+
+const handleExpiredSubscription = (to, next) => {
+  const allowedRoutesForExpired = [
+    'Profile',
+    'ManageSubscription',
+    'SubscriptionPlans',
+    'BillingDetails'
+  ];
+  if (allowedRoutesForExpired.includes(to.name)) {
+    next();
+  } else {
+    next('/manage-subscription');
+  }
+};
+
+const checkPermissionsAndNavigate = (to, role, next) => {
+  if (to.meta.roles && !to.meta.roles.includes(role)) {
+    return next('/dashboard');
+  }
+  
+  if (canAccess(role, 'routes', to.path)) {
+    return next();
+  }
+  
+  return next('/dashboard');
+};
+
+
+const handleAuthenticatedRoutes = async (to, role, next) => {
+  const subscriptionPages = ['ManageSubscription', 'SubscriptionPlans', 'BillingDetails'];
+  if (subscriptionPages.includes(to.name)) {
+    return next();
+  }
+
+  try {
+    const subscriptionStatus = await fetchSubscriptionStatus();
+    storage.set('subscription_status', subscriptionStatus.status);
+
+    if (subscriptionStatus.status === 'expired') {
+      handleExpiredSubscription(to, next);
+    } else {
+      checkPermissionsAndNavigate(to, role, next);
+    }
+  } catch (error) {
+    console.error("Error fetching subscription status:", error);
+    storage.clear();
+    next('/');
+  }
+};
 
 router.beforeEach(async (to, from, next) => {
   const authToken = storage.get('authToken');
   const role = storage.get('role');
 
-  // Allow access to public routes
-  if (to.meta.public) {
-    if (authToken && to.meta.guestOnly) {
-      return next('/dashboard'); // Redirect logged-in users from login/register
-    }
-    return next();
+  if (handlePublicRoutes(to, authToken, next)) {
+    return;
   }
 
-  // Handle Authenticated Users
   if (authToken) {
-    // Allow access to subscription management pages regardless of subscription status
-    const subscriptionPages = ['ManageSubscription', 'SubscriptionPlans', 'BillingDetails'];
-    if (subscriptionPages.includes(to.name)) {
-      return next();
-    }
-    try {
-      const subscriptionStatus = await fetchSubscriptionStatus();
-      storage.set('subscription_status', subscriptionStatus.status);
-
-      // Handle expired subscriptions
-      if (subscriptionStatus.status === 'expired') {
-        const allowedRoutesForExpired = [
-          'Profile',
-          'ManageSubscription',
-          'SubscriptionPlans',
-          'BillingDetails'
-        ];
-        if (allowedRoutesForExpired.includes(to.name)) {
-          return next();
-        }
-        return next('/manage-subscription'); // Force to subscription management
-      }
-
-      // Check role-based permissions
-      if (to.meta.roles && !to.meta.roles.includes(role)) {
-        return next('/dashboard'); // Redirect if role is not allowed
-      }
-
-      // Check general route permissions
-      if (canAccess(role, 'routes', to.path)) {
-        return next();
-      } else {
-        return next('/dashboard'); // Redirect if not authorized
-      }
-    } catch (error) {
-      // If fetching status fails, redirect to login
-      console.error("Error fetching subscription status:", error);
-      storage.clear(); // Clear storage on error
-      return next('/');
-    }
+    await handleAuthenticatedRoutes(to, role, next);
+  } else {
+    // This handles unauthenticated users trying to access protected routes
+    next('/');
   }
-
-  // Handle Unauthenticated Users
-  if (to.meta.requiresAuth) {
-    return next('/'); // Redirect to login for protected routes
-  }
-
-  // Default case
-  next();
 });
 
 export default router;

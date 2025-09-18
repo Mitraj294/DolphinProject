@@ -327,7 +327,7 @@ export default {
   margin-bottom: 0;
   flex-wrap: wrap;
   justify-content: flex-start;
-  padding: 24px 46px 0 24px;
+  padding: 26px;
   background: #fff;
   border-top-left-radius: 24px;
   border-top-right-radius: 24px;
@@ -375,7 +375,7 @@ export default {
   display: none;
 }
 .assessment-table {
-  min-width: 800px;
+  min-width: 500px;
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
