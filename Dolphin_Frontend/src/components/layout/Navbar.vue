@@ -173,6 +173,12 @@ export default {
       isVerySmallScreen: false,
       notificationCount: 0,
 
+      // Reactive user info that updates on impersonation
+      userFirstName: storage.get('first_name') || '',
+      userLastName: storage.get('last_name') || '',
+      userName: storage.get('userName') || '',
+      userEmail: storage.get('email') || '',
+
       leadNameCache: {},
       leadNameFetching: {},
 
@@ -195,146 +201,23 @@ export default {
   computed: {
     pageTitle() {
       if (this.overridePageTitle) return this.overridePageTitle;
-      const routeName = this.$route.name;
-      if (routeName === 'UserPermission') {
-        return 'Users + Permission';
-      }
-      if (routeName === 'AddUser') {
-        return 'Add User';
-      }
-      if (routeName === 'ScheduleClassTraining') {
-        return 'Schedule Classes/Training';
-      }
-      if (routeName === 'LeadDetail') {
-        let contact = this.$route.query.contact || '';
-        if (contact) return `${contact} Details`;
-        return 'Lead Details';
-      }
-      if (routeName === 'EditLead') {
-        // Try to display the lead's name when route param id is present
-        const leadId = this.$route.params.id || this.$route.query.id;
-        if (leadId) {
-          const cached = this.leadNameCache[leadId];
-          if (cached) return `Edit Lead : ${cached}`;
-          // If we're already fetching, show a placeholder
-          if (this.leadNameFetching[leadId]) return 'Edit Lead';
-          // Trigger async fetch (non-blocking) and return base title for now
-          if (this.isNavbarAlive) this.fetchLeadName(leadId);
-          return 'Edit Lead';
-        }
-        return 'Edit Lead';
-      }
-      if (routeName === 'OrganizationDetail') {
-        return 'Organization Details';
-      }
-      if (routeName === 'OrganizationEdit') {
-        return 'Organization Details';
-      }
-      if (routeName === 'BillingDetails') {
-        const orgName = this.$route.query.orgName || '';
-        if (orgName) return `${orgName} Organization Details`;
-        return 'Organization Details';
-      }
-      if (routeName === 'SendAssessment') {
-        return 'Send Assessment';
-      }
-      if (routeName === 'ScheduleDemo') {
-        return 'Schedule Demo';
-      }
-      if (routeName === 'Assessments') {
-        return 'Assessments';
-      }
-      if (routeName === 'AssessmentSummary') {
-        // Prefer an assessment object passed via route params/query (SPA navigation)
-        const assessmentParam =
-          this.$route.params.assessment || this.$route.query.assessment || null;
-        if (assessmentParam && assessmentParam.name) {
-          console.debug(
-            'Navbar: using assessment from route params for title',
-            assessmentParam
-          );
-          return `Assessment Summary :  ${assessmentParam.name} `;
-        }
-        // Try cached name
-        const assessmentId =
-          this.$route.params.assessmentId || this.$route.params.id;
-        if (assessmentId) {
-          const cached = this.assessmentNameCache[assessmentId];
-          if (cached) {
-            console.debug(
-              `Navbar: using cached assessment name for id=${assessmentId}`
-            );
-            return `Assessment Summary :  ${cached}`;
-          }
-          if (this.assessmentNameFetching[assessmentId]) {
-            console.debug(
-              `Navbar: assessment name fetch already in progress for id=${assessmentId}`
-            );
-            return 'Assessment Summary';
-          }
-          // trigger async fetch (non-blocking)
-          if (this.isNavbarAlive) this.fetchAssessmentName(assessmentId);
-          return 'Assessment Summary';
-        }
-        return 'Assessment Summary';
-      }
-      if (routeName === 'TrainingResources') {
-        return 'Training & Resources';
-      }
-      if (routeName === 'MyOrganization') {
-        const orgName = storage.get('organization_name');
-        return `My Organization${orgName ? ': ' + orgName : ''}`;
-      }
-      if (routeName === 'Notifications' || routeName === 'GetNotification') {
-        return 'Notification';
-      }
-      if (routeName === 'Organizations') {
-        return 'Organizations';
-      }
-      if (routeName === 'Leads') {
-        return 'Leads';
-      }
-      if (routeName === 'ThankYou') {
-        return 'Thank You';
-      }
-      if (routeName === 'Login') {
-        return 'Login';
-      }
-      if (routeName === 'LeadCapture') {
-        return 'Lead Capture';
-      }
-      if (routeName === 'ManageSubscription') {
-        return 'Manage Subscription';
-      }
-      if (routeName === 'SubscriptionPlans') {
-        return 'Subscription Plans';
-      }
-      if (routeName === 'MemberListing') {
-        return 'Member Listing';
-      }
-      if (routeName === 'Members') {
-        return 'Member Listing';
-      }
-
-      if (routeName === 'Profile') {
-        return 'Profile';
-      }
-      return this.$route.name || '';
+      const routeName = this.$route && this.$route.name;
+      return this.titleForRoute(routeName);
     },
     displayName() {
-      // Always show the CURRENT (impersonated or real) user's info
-      const firstName = storage.get('first_name');
-      const lastName = storage.get('last_name');
-      if ((firstName && firstName.trim()) || (lastName && lastName.trim())) {
-        return `${firstName ? firstName.trim() : ''}${
-          lastName && lastName.trim() ? ' ' + lastName.trim() : ''
+      if (
+        (this.userFirstName && this.userFirstName.trim()) ||
+        (this.userLastName && this.userLastName.trim())
+      ) {
+        return `${this.userFirstName ? this.userFirstName.trim() : ''}${
+          this.userLastName && this.userLastName.trim()
+            ? ' ' + this.userLastName.trim()
+            : ''
         }`.trim();
       }
-      const userName = storage.get('userName');
-      if (userName && userName.trim()) return userName.trim();
-      // Fallback: try email if available
-      const email = storage.get('email');
-      if (email && email.trim()) return email.trim();
+      if (this.userName && this.userName.trim()) return this.userName.trim();
+
+      if (this.userEmail && this.userEmail.trim()) return this.userEmail.trim();
       return 'User';
     },
     role() {
@@ -343,6 +226,125 @@ export default {
   },
 
   methods: {
+    // Returns the page title for a given route name by delegating to small helpers
+    titleForRoute(routeName) {
+      if (!routeName)
+        return this.$route && this.$route.name ? this.$route.name : '';
+
+      // Map of simple direct titles
+      const simpleMap = {
+        UserPermission: 'Users + Permission',
+        AddUser: 'Add User',
+        ScheduleClassTraining: 'Schedule Classes/Training',
+        OrganizationDetail: 'Organization Details',
+        OrganizationEdit: 'Organization Details',
+        SendAssessment: 'Send Assessment',
+        ScheduleDemo: 'Schedule Demo',
+        Assessments: 'Assessments',
+        TrainingResources: 'Training & Resources',
+        Notifications: 'Notification',
+        GetNotification: 'Notification',
+        Organizations: 'Organizations',
+        Leads: 'Leads',
+        ThankYou: 'Thank You',
+        Login: 'Login',
+        LeadCapture: 'Lead Capture',
+        ManageSubscription: 'Manage Subscription',
+        SubscriptionPlans: 'Subscription Plans',
+        MemberListing: 'Member Listing',
+        Members: 'Member Listing',
+        Profile: 'Profile',
+      };
+
+      if (simpleMap[routeName]) return simpleMap[routeName];
+
+      // Routes that need specialized handling
+      if (routeName === 'LeadDetail') return this.handleLeadDetailTitle();
+      if (routeName === 'EditLead') return this.handleEditLeadTitle();
+      if (routeName === 'BillingDetails')
+        return this.handleBillingDetailsTitle();
+      if (routeName === 'AssessmentSummary')
+        return this.handleAssessmentSummaryTitle();
+      if (routeName === 'MyOrganization')
+        return this.handleMyOrganizationTitle();
+
+      // fallback to route name or empty string
+      return this.$route && this.$route.name ? this.$route.name : '';
+    },
+
+    handleLeadDetailTitle() {
+      const contact =
+        (this.$route && this.$route.query && this.$route.query.contact) || '';
+      return contact ? `${contact} Details` : 'Lead Details';
+    },
+
+    handleEditLeadTitle() {
+      const leadId =
+        (this.$route &&
+          ((this.$route.params && this.$route.params.id) ||
+            (this.$route.query && this.$route.query.id))) ||
+        null;
+      if (!leadId) return 'Edit Lead';
+
+      const cached = this.leadNameCache[leadId];
+      if (cached) return `Edit Lead : ${cached}`;
+      if (this.leadNameFetching[leadId]) return 'Edit Lead';
+      if (this.isNavbarAlive) this.fetchLeadName(leadId);
+      return 'Edit Lead';
+    },
+
+    handleBillingDetailsTitle() {
+      const orgName =
+        (this.$route && this.$route.query && this.$route.query.orgName) || '';
+      return orgName
+        ? `${orgName} Organization Details`
+        : 'Organization Details';
+    },
+
+    handleAssessmentSummaryTitle() {
+      // Prefer an assessment object passed via route params/query (SPA navigation)
+      const assessmentParam =
+        (this.$route && this.$route.params && this.$route.params.assessment) ||
+        (this.$route && this.$route.query && this.$route.query.assessment) ||
+        null;
+      if (assessmentParam && assessmentParam.name) {
+        console.debug(
+          'Navbar: using assessment from route params for title',
+          assessmentParam
+        );
+        return `Assessment Summary :  ${assessmentParam.name} `;
+      }
+
+      const assessmentId =
+        (this.$route &&
+          ((this.$route.params && this.$route.params.assessmentId) ||
+            (this.$route.params && this.$route.params.id))) ||
+        null;
+      if (assessmentId) {
+        const cached = this.assessmentNameCache[assessmentId];
+        if (cached) {
+          console.debug(
+            `Navbar: using cached assessment name for id=${assessmentId}`
+          );
+          return `Assessment Summary :  ${cached}`;
+        }
+        if (this.assessmentNameFetching[assessmentId]) {
+          console.debug(
+            `Navbar: assessment name fetch already in progress for id=${assessmentId}`
+          );
+          return 'Assessment Summary';
+        }
+        if (this.isNavbarAlive) this.fetchAssessmentName(assessmentId);
+        return 'Assessment Summary';
+      }
+
+      return 'Assessment Summary';
+    },
+
+    handleMyOrganizationTitle() {
+      const orgName = storage.get('organization_name');
+      return `My Organization${orgName ? ': ' + orgName : ''}`;
+    },
     // simple debounce helper for methods invoked by window events
     _debounce(fn, wait = 200) {
       let t = null;
@@ -379,6 +381,61 @@ export default {
         storage.set('notificationCount', String(unread));
       } catch (e) {
         console.warn('Failed to fetch initial unread count', e);
+      }
+    },
+
+    updateUserInfo() {
+      // Update reactive user info from storage
+      this.userFirstName = storage.get('first_name') || '';
+      this.userLastName = storage.get('last_name') || '';
+      this.userName = storage.get('userName') || '';
+      this.userEmail = storage.get('email') || '';
+    },
+
+    async fetchCurrentUser() {
+      try {
+        // If any useful user info already in storage, skip network fetch
+        const firstLocal = storage.get('first_name') || '';
+        const lastLocal = storage.get('last_name') || '';
+        const userLocal = storage.get('userName') || '';
+        const emailLocal = storage.get('email') || '';
+        if (
+          firstLocal.trim() ||
+          lastLocal.trim() ||
+          userLocal.trim() ||
+          emailLocal.trim()
+        )
+          return;
+
+        let token = storage.get('authToken');
+        if (token && typeof token === 'object' && token.token)
+          token = token.token;
+        const config = token
+          ? { headers: { Authorization: `Bearer ${token}` } }
+          : {};
+
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await axios.get(`${API_BASE_URL}/api/user`, config);
+        const user = res?.data || null;
+        if (!user) return;
+
+        const first = user.first_name || user.firstName || '';
+        const last = user.last_name || user.lastName || '';
+        const uname = user.userName || user.username || user.name || '';
+        const email = user.email || '';
+
+        storage.set('first_name', first || '');
+        storage.set('last_name', last || '');
+        storage.set('userName', uname || '');
+        storage.set('email', email || '');
+
+        if (this.isNavbarAlive) this.updateUserInfo();
+      } catch (e) {
+        console.debug(
+          'Navbar: fetchCurrentUser failed',
+          e && e.message ? e.message : e
+        );
       }
     },
 
@@ -474,44 +531,51 @@ export default {
       }
     },
 
+    // Helper: build axios auth config from storage
+    _getAuthConfig() {
+      let token = storage.get('authToken');
+      if (token && typeof token === 'object' && token.token)
+        token = token.token;
+      if (typeof token !== 'string') token = '';
+      return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    },
+
+    // Helper: fetch assessment summary data (returns parsed data or null)
+    async _fetchAssessmentSummary(assessmentId, config) {
+      const API_BASE_URL =
+        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const res = await axios.get(
+        `${API_BASE_URL}/api/assessment/${assessmentId}/summary`,
+        config
+      );
+      return res && res.data ? res.data : null;
+    },
+
+    // Helper: cache name and emit page-title override
+    _processAssessmentName(assessmentId, name) {
+      if (!name || !this.isNavbarAlive) return;
+      this.assessmentNameCache[assessmentId] = name;
+      console.debug(
+        `Navbar: cached assessment name for id=${assessmentId} -> ${name}`
+      );
+      if (this.$root && this.$root.$emit) {
+        this.$root.$emit('page-title-override', `Assessment ${name} Summary`);
+      }
+    },
+
     async fetchAssessmentName(assessmentId) {
       if (!assessmentId) return null;
       if (this.assessmentNameFetching[assessmentId]) return;
       this.assessmentNameFetching[assessmentId] = true;
       console.debug(`Navbar: fetchAssessmentName start id=${assessmentId}`);
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
-        let token = storage.get('authToken');
-        if (token && typeof token === 'object' && token.token)
-          token = token.token;
-        const config = token
-          ? { headers: { Authorization: `Bearer ${token}` } }
-          : {};
-
-        // Try summary endpoint which usually contains assessment.name
-        const res = await axios.get(
-          `${API_BASE_URL}/api/assessment/${assessmentId}/summary`,
-          config
-        );
-        const data = res && res.data ? res.data : null;
+        const config = this._getAuthConfig();
+        const data = await this._fetchAssessmentSummary(assessmentId, config);
         const name =
           data && data.assessment && data.assessment.name
             ? data.assessment.name
             : null;
-        if (name && this.isNavbarAlive) {
-          this.assessmentNameCache[assessmentId] = name;
-          console.debug(
-            `Navbar: cached assessment name for id=${assessmentId} -> ${name}`
-          );
-          // Emit override so pages depending on event update immediately
-          if (this.$root && this.$root.$emit) {
-            this.$root.$emit(
-              'page-title-override',
-              `Assessment ${name} Summary`
-            );
-          }
-        }
+        this._processAssessmentName(assessmentId, name);
       } catch (e) {
         console.warn(
           `Navbar: fetchAssessmentName failed for id=${assessmentId}`,
@@ -605,6 +669,7 @@ export default {
     window.addEventListener('resize', this.checkScreen);
     this.checkScreen();
     this.updateNotificationCount();
+    this.updateUserInfo();
     // initial fetch of unread count: if we have an auth token (normal login
     // or impersonation), fetch unread notifications immediately so the
     // badge is correct after a reload/impersonation.
@@ -616,6 +681,8 @@ export default {
     } catch (e) {
       console.warn('Failed to fetch initial unread count', e);
     }
+    // Attempt to fetch current user info from server if storage lacks it
+    this.fetchCurrentUser();
     // bind handlers so `this` is preserved when invoked by window events
     this._boundFetchUnread = this.fetchUnreadCount.bind(this);
     this._boundUpdateNotificationCount =
@@ -623,9 +690,12 @@ export default {
     // When auth context changes (impersonation), refresh role and badge.
     this._boundAuthUpdated = this._debounce(() => {
       this.roleName = authMiddleware.getRole();
+      this.updateUserInfo(); // Update reactive user info for impersonation
       this.updateNotificationCount();
       try {
         this.fetchUnreadCount();
+        // Also refresh current user info on auth updates
+        this.fetchCurrentUser();
       } catch (e) {
         console.warn('Failed to fetch unread count after auth update', e);
       }

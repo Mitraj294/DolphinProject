@@ -370,24 +370,26 @@ export default {
             storage.set('superFirstName', storage.get('first_name') || '');
             storage.set('superLastName', storage.get('last_name') || '');
             storage.set('superUserName', storage.get('userName') || '');
+            storage.set('superEmail', storage.get('email') || '');
 
             // Set impersonated user's info as normal keys
             storage.set('authToken', data.impersonated_token);
-            storage.set('role', data.impersonated_role);
-            storage.set('userId', data.user_id);
-            storage.set('first_name', data.impersonated_first_name || '');
-            storage.set('last_name', data.impersonated_last_name || '');
-            if (data.impersonated_first_name || data.impersonated_last_name) {
+            storage.set('role', data.user.role);
+            storage.set('userId', data.user.id);
+            storage.set('first_name', data.user.first_name || '');
+            storage.set('last_name', data.user.last_name || '');
+            storage.set('email', data.user.email || '');
+            if (data.user.first_name || data.user.last_name) {
               storage.set(
                 'userName',
-                `${data.impersonated_first_name || ''}${
-                  data.impersonated_last_name
-                    ? ' ' + data.impersonated_last_name
+                `${data.user.first_name || ''}${
+                  data.user.last_name
+                    ? ' ' + data.user.last_name
                     : ''
                 }`.trim()
               );
             } else {
-              storage.set('userName', data.impersonated_name);
+              storage.set('userName', data.user.name || data.user.email || '');
             }
             // Notify other parts of the app (same-window) that auth info changed
             try {
@@ -422,6 +424,7 @@ export default {
       storage.set('first_name', storage.get('superFirstName') || '');
       storage.set('last_name', storage.get('superLastName') || '');
       storage.set('userName', storage.get('superUserName') || '');
+      storage.set('email', storage.get('superEmail') || '');
       // Remove all super* keys
       storage.remove('superAuthToken');
       storage.remove('superRole');
@@ -429,6 +432,7 @@ export default {
       storage.remove('superFirstName');
       storage.remove('superLastName');
       storage.remove('superUserName');
+      storage.remove('superEmail');
       this.$router.go(0);
       try {
         window.dispatchEvent(new Event('auth-updated'));

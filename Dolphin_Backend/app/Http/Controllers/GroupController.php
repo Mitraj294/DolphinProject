@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreGroupRequest;
+use App\Http\Requests\UpdateGroupRequest;
 use App\Models\Group;
 use App\Models\Organization;
 use App\Models\User;
@@ -109,7 +110,10 @@ class GroupController extends Controller
 
             if ($status_code === 200) {
                 $group = $query->findOrFail($id);
-                $response_data['group'] = $group;
+                $response_data = [
+                    'group' => $group,
+                    'members' => $group->members()->with('memberRoles')->get()
+                ];
             }
         } catch (ModelNotFoundException $e) {
             $status_code = 404;
@@ -138,5 +142,90 @@ class GroupController extends Controller
         $organization = Organization::where('user_id', $user->id)->first();
 
         return $organization?->id;
+    }
+
+    /**
+     * Update the specified resource in storage.
+     *
+     * @param  StoreGroupRequest  $request
+     * @param  int  $id
+     * @return JsonResponse
+     */
+    public function update(UpdateGroupRequest $request, int $id): JsonResponse
+    {
+        $response_data = [];
+        $status_code = 200;
+        try {
+            $user = $request->user();
+            $validated = $request->validated();
+
+            $orgId = $this->resolveOrganizationId($user);
+            if (!$orgId) {
+                $status_code = 400;
+                $response_data['error'] = 'Could not resolve organization for the current user.';
+            }
+
+            $group = Group::where('organization_id', $orgId)->findOrFail($id);
+            
+            $group->update([
+                'name' => $validated['name'],
+            ]);
+
+            if (isset($validated['member_ids'])) {
+                $group->members()->sync($validated['member_ids']);
+            }
+
+        $status_code = 200;
+        $response_data = $group->load('members');
+        } catch (ModelNotFoundException $e) {
+            $status_code = 404;
+            $response_data['error'] = 'Group not found.';
+        } catch (\Exception $e) {
+            Log::error('Failed to update group.', ['id' => $id, 'error' => $e->getMessage()]);
+            $status_code = 500;
+            $response_data['error'] = 'An unexpected error occurred while updating the group.';
+        }
+
+        return response()->json($response_data, $status_code);
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     *
+     * @param  Request  $request
+     * @param  int  $id
+     * @return JsonResponse
+     */
+    public function destroy(Request $request, int $id): JsonResponse
+    {
+        $response_data = [];
+        $status_code = 200;
+        try {
+            $user = $request->user();
+            if (!$user->hasRole('organizationadmin')) {
+                $status_code = 403;
+                $response_data['error'] = 'Unauthorized.';
+            }
+
+            $orgId = $this->resolveOrganizationId($user);
+            if (!$orgId) {
+                $status_code = 400;
+                $response_data['error'] = 'Could not resolve organization for the current user.';
+            }
+
+            $group = Group::where('organization_id', $orgId)->findOrFail($id);
+            $group->delete();
+
+            $response_data['message'] = 'Group deleted successfully.';
+        } catch (ModelNotFoundException $e) {
+            $status_code = 404;
+            $response_data['error'] = 'Group not found.';
+        } catch (\Exception $e) {
+            Log::error('Failed to delete group.', ['id' => $id, 'error' => $e->getMessage()]);
+            $status_code = 500;
+            $response_data['error'] = 'An unexpected error occurred while deleting the group.';
+        }
+
+        return response()->json($response_data, $status_code);
     }
 }

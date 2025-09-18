@@ -52,6 +52,7 @@
     border-radius: 22px;
     box-shadow: var(--modal-shadow);
     padding: 40px 48px 32px;
+    margin: 24px;
     width: 100%;
     max-width: 720px;
     min-width: 400px;
@@ -421,8 +422,9 @@ textarea {
         max-width: calc(100vw - 32px);
         min-width: 0;
         padding: 24px;
-        border-radius: 14px;
         margin: 16px;
+        border-radius: 14px;
+
     }
 
     .modal-title {
@@ -445,6 +447,7 @@ textarea {
 @media (max-width: 600px) {
     .modal-card {
         padding: 20px;
+        margin: 16px;
     }
 
     .modal-title {
@@ -613,4 +616,112 @@ textarea {
     border: solid #fff;
     border-width: 0 3px 3px 0;
     transform: rotate(52deg);
+}
+
+/* 
+   Scrollable Table Wrapper for Modal
+    */
+.recipient-table-wrap {
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: auto;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    background: var(--bg);
+    width: 100%;
+}
+
+.recipient-table-wrap::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+}
+
+.recipient-table-wrap::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.recipient-table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+}
+
+.recipient-table-wrap::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Ensure table stays full width within wrapper */
+.recipient-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.recipient-table.compact {
+    font-size: 14px;
+}
+
+.recipient-table th,
+.recipient-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-light);
+    min-width: 200px;
+    max-width: 200px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
+    vertical-align: top;
+}
+
+.recipient-table th {
+    background: var(--bg-soft);
+    color: var(--text-light);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.recipient-table td {
+    color: var(--muted-2);
+    font-weight: 500;
+}
+
+.recipient-table tbody tr:hover {
+    background: var(--primary-light);
+}
+
+/* Rounded corners for header */
+.recipient-table th.rounded-th-left {
+    border-top-left-radius: 8px;
+}
+
+.recipient-table th.rounded-th-right {
+    border-top-right-radius: 8px;
+}
+
+/* Button styles within table */
+.btn-view {
+    background: var(--primary);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--btn-radius);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+}
+
+.btn-view:hover {
+    background: var(--primary-strong);
+    transform: translateY(-1px);
+}
+
+.btn-view-icon {
+    width: 14px;
+    height: 14px;
 }

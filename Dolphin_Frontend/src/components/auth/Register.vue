@@ -674,10 +674,14 @@ export default {
           if (flat.length) errorMessage = flat.join(' ');
         } else if (typeof data === 'string') {
           errorMessage = data;
+        }else {
+          this.errors = {};
         }
        
       } else if (error?.message) {
         errorMessage = error.message;
+      }else {
+        this.errors = {};
       }
       return errorMessage;
     },

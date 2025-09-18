@@ -518,44 +518,89 @@ export default {
   computed: {
     memberDetailMap() {
       const map = {};
-      (this.allMembers || []).forEach((m) => {
-        const first = (m.first_name || m.name || '').toString().trim();
-        const last = (m.last_name || '').toString().trim();
-        let name = first;
-        if (last) name = name ? `${name} ${last}` : last;
-        if (!name) name = m.email || `Member ${m.id}`;
 
-        // Normalize member roles into a consistent memberRoles array and
-        // provide a ready-to-render rolesDisplay string (matches other components)
-        let memberRoles = [];
-        if (Array.isArray(m.memberRoles) && m.memberRoles.length) {
-          memberRoles = m.memberRoles.map((r) =>
-            typeof r === 'object' ? r : { id: r, name: String(r) }
-          );
-        } else if (
-          Array.isArray(m.member_role_ids) &&
-          m.member_role_ids.length
-        ) {
-          memberRoles = m.member_role_ids.map((id) => ({
-            id,
-            name: String(id),
-          }));
-        } else {
-          memberRoles = [];
-        }
+      // Use enhanced data from API if available
+      if (this.scheduleDetails && this.scheduleDetails.members_with_details) {
+        this.scheduleDetails.members_with_details.forEach((m) => {
+          const rolesDisplay =
+            Array.isArray(m.member_roles) && m.member_roles.length
+              ? m.member_roles.map((r) => r.name || r).join(', ')
+              : '';
 
-        const rolesDisplay =
-          Array.isArray(memberRoles) && memberRoles.length
-            ? memberRoles.map((r) => r.name || r).join(', ')
-            : m.member_role || '';
+          map[m.id] = {
+            name: m.name || 'Unknown',
+            email: m.email || '',
+            memberRoles: m.member_roles || [],
+            rolesDisplay,
+          };
+        });
+      }
 
-        map[m.id] = {
-          name,
-          email: m.email || '',
-          memberRoles,
-          rolesDisplay,
-        };
-      });
+      // Fallback to groups_with_members data
+      if (this.scheduleDetails && this.scheduleDetails.groups_with_members) {
+        this.scheduleDetails.groups_with_members.forEach((group) => {
+          if (group.members && Array.isArray(group.members)) {
+            group.members.forEach((m) => {
+              if (!map[m.id]) {
+                // Don't overwrite if already exists
+                const rolesDisplay =
+                  Array.isArray(m.member_roles) && m.member_roles.length
+                    ? m.member_roles.map((r) => r.name || r).join(', ')
+                    : '';
+
+                map[m.id] = {
+                  name: m.name || 'Unknown',
+                  email: m.email || '',
+                  memberRoles: m.member_roles || [],
+                  rolesDisplay,
+                };
+              }
+            });
+          }
+        });
+      }
+
+      // Fallback to legacy allMembers prop for backward compatibility
+      if (Object.keys(map).length === 0) {
+        (this.allMembers || []).forEach((m) => {
+          const first = (m.first_name || m.name || '').toString().trim();
+          const last = (m.last_name || '').toString().trim();
+          let name = first;
+          if (last) name = name ? `${name} ${last}` : last;
+          if (!name) name = m.email || `Member ${m.id}`;
+
+          // Normalize member roles into a consistent memberRoles array
+          let memberRoles = [];
+          if (Array.isArray(m.memberRoles) && m.memberRoles.length) {
+            memberRoles = m.memberRoles.map((r) =>
+              typeof r === 'object' ? r : { id: r, name: String(r) }
+            );
+          } else if (
+            Array.isArray(m.member_role_ids) &&
+            m.member_role_ids.length
+          ) {
+            memberRoles = m.member_role_ids.map((id) => ({
+              id,
+              name: String(id),
+            }));
+          } else {
+            memberRoles = [];
+          }
+
+          const rolesDisplay =
+            Array.isArray(memberRoles) && memberRoles.length
+              ? memberRoles.map((r) => r.name || r).join(', ')
+              : m.member_role || '';
+
+          map[m.id] = {
+            name,
+            email: m.email || '',
+            memberRoles,
+            rolesDisplay,
+          };
+        });
+      }
+
       return map;
     },
     filteredEmails() {

@@ -141,7 +141,7 @@ Route::middleware('auth:api')->group(function () {
 
         // Organization Admin & Superadmin
         Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {
-            Route::apiResource('groups', GroupController::class)->only(['index', 'show', 'store']);
+            Route::apiResource('groups', GroupController::class);
             Route::apiResource('members', MemberController::class);
             Route::get('/member-roles', [MemberRoleController::class, 'index']);
         });

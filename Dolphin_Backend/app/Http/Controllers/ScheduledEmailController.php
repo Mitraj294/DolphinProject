@@ -7,6 +7,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use App\Models\AssessmentAnswerToken;
 use App\Models\Member;
+use App\Models\Group;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\AssessmentAnswerLinkNotification;
 
@@ -78,20 +79,86 @@ class ScheduledEmailController extends Controller
     {
         $assessmentId = $request->query('assessment_id');
         if ($assessmentId) {
-            $schedule =DB::table('assessment_schedules')->where('assessment_id', $assessmentId)->first();
-            $assessment =DB::table('assessments')->where('id', $assessmentId)->first();
+            $schedule = DB::table('assessment_schedules')->where('assessment_id', $assessmentId)->first();
+            $assessment = DB::table('assessments')->where('id', $assessmentId)->first();
             $emails = [];
+            $groupsWithMembers = [];
+            $membersWithDetails = [];
+            
             if ($schedule) {
-                // Optionally, filter by send_at or member_ids
-                $emails =DB::table('scheduled_emails')
-                    ->whereDate('send_at', $schedule->date)
+                // Get scheduled emails
+                $emails = DB::table('scheduled_emails')
+                    ->where('assessment_id', $assessmentId)
                     ->get();
+
+                // Parse group_ids and member_ids from JSON strings
+                $groupIds = json_decode($schedule->group_ids, true) ?: [];
+                $memberIds = json_decode($schedule->member_ids, true) ?: [];
+
+                // Get groups with their details
+                if (!empty($groupIds)) {
+                    $groups = \App\Models\Group::whereIn('id', $groupIds)
+                        ->with(['members' => function($query) {
+                            $query->with('memberRoles');
+                        }])
+                        ->get();
+                    
+                    foreach ($groups as $group) {
+                        $groupsWithMembers[] = [
+                            'id' => $group->id,
+                            'name' => $group->name,
+                            'members' => $group->members->map(function($member) {
+                                return [
+                                    'id' => $member->id,
+                                    'name' => trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) ?: 'Unknown',
+                                    'email' => $member->email,
+                                    'member_roles' => $member->memberRoles->map(function($role) {
+                                        return [
+                                            'id' => $role->id,
+                                            'name' => $role->name
+                                        ];
+                                    })
+                                ];
+                            })
+                        ];
+                    }
+                }
+
+                // Get individual members with their details
+                if (!empty($memberIds)) {
+                    $members = \App\Models\Member::whereIn('id', $memberIds)
+                        ->with(['memberRoles', 'groups'])
+                        ->get();
+                    
+                    foreach ($members as $member) {
+                        $membersWithDetails[] = [
+                            'id' => $member->id,
+                            'name' => trim(($member->first_name ?? '') . ' ' . ($member->last_name ?? '')) ?: 'Unknown',
+                            'email' => $member->email,
+                            'groups' => $member->groups->map(function($group) {
+                                return [
+                                    'id' => $group->id,
+                                    'name' => $group->name
+                                ];
+                            }),
+                            'member_roles' => $member->memberRoles->map(function($role) {
+                                return [
+                                    'id' => $role->id,
+                                    'name' => $role->name
+                                ];
+                            })
+                        ];
+                    }
+                }
             }
+            
             return response()->json([
                 'scheduled' => (bool)$schedule,
                 'schedule' => $schedule,
                 'assessment' => $assessment,
                 'emails' => $emails,
+                'groups_with_members' => $groupsWithMembers,
+                'members_with_details' => $membersWithDetails,
             ]);
         }
         // Fallback: check ScheduledEmail by recipient_email if provided

@@ -112,9 +112,9 @@
                     <td>{{ m.email || '' }}</td>
                     <td>
                       {{
-                        Array.isArray(m.memberRoles) && m.memberRoles.length
-                          ? m.memberRoles.map((r) => r.name || r).join(', ')
-                          : m.member_role || ''
+                        Array.isArray(m.member_roles) && m.member_roles.length
+                          ? m.member_roles.map((r) => r.name || r).join(', ')
+                          : ''
                       }}
                     </td>
                     <td>
@@ -194,21 +194,8 @@ export default {
         const data = res && res.data ? res.data : null;
         // Expecting the backend to return group and members arrays
         this.group = data && data.group ? data.group : data;
-        // Normalize members array to ensure memberRoles shape
-        this.members =
-          data && data.members
-            ? data.members.map((m) => {
-                m.memberRoles = Array.isArray(m.memberRoles)
-                  ? m.memberRoles.map((r) =>
-                      typeof r === 'object' ? r : { id: r, name: String(r) }
-                    )
-                  : (m.member_role_ids || []).map((id) => ({
-                      id,
-                      name: String(id),
-                    }));
-                return m;
-              })
-            : [];
+        // Use members data as-is since member_roles comes correctly from backend
+        this.members = data && data.members ? data.members : [];
       } catch (e) {
         console.error('Error fetching group details:', e);
         this.group = null;

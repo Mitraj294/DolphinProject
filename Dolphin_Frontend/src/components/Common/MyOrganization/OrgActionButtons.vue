@@ -93,6 +93,12 @@
                 placeholder="Enter first name"
                 required
               />
+              <FormLabel
+                v-if="errors.first_name"
+                class="error-message1"
+              >
+                {{ errors.first_name[0] }}
+              </FormLabel>
             </div>
 
             <div
@@ -110,6 +116,12 @@
                 placeholder="Enter last name"
                 required
               />
+              <FormLabel
+                v-if="errors.last_name"
+                class="error-message1"
+              >
+                {{ errors.last_name[0] }}
+              </FormLabel>
             </div>
           </FormRow>
           <FormRow
@@ -137,6 +149,12 @@
                 placeholder="Enter email address"
                 required
               />
+              <FormLabel
+                v-if="errors.email"
+                class="error-message1"
+              >
+                {{ errors.email[0] }}
+              </FormLabel>
             </div>
             <div
               class="modal-form-row-div"
@@ -153,6 +171,12 @@
                 placeholder="Enter phone number"
                 required
               />
+              <FormLabel
+                v-if="errors.phone"
+                class="error-message1"
+              >
+                {{ errors.phone[0] }}
+              </FormLabel>
             </div>
           </FormRow>
           <FormRow
@@ -182,6 +206,12 @@
                 placeholder="Select role"
                 :enableSelectAll="true"
               />
+              <FormLabel
+                v-if="errors.member_role"
+                class="error-message1"
+              >
+                {{ errors.member_role[0] }}
+              </FormLabel>
             </div>
             <div
               class="modal-form-row-div"
@@ -273,6 +303,12 @@
                 placeholder="Enter group name"
                 required
               />
+              <FormLabel
+                v-if="errors.name"
+                class="error-message1"
+              >
+                {{ errors.name[0] }}
+              </FormLabel>
             </div>
 
             <div
@@ -292,6 +328,12 @@
                 placeholder="Select members"
                 :enableSelectAll="true"
               />
+              <FormLabel
+                v-if="errors.member_ids"
+                class="error-message1"
+              >
+                {{ errors.member_ids[0] }}
+              </FormLabel>
             </div>
           </FormRow>
           <div class="modal-form-actions">
@@ -350,21 +392,40 @@ export default {
         name: '',
         members: [],
       },
-      roles: [
-        { id: 1, name: 'Owner' },
-        { id: 2, name: 'CEO' },
-        { id: 3, name: 'Manager' },
-        { id: 4, name: 'Support' },
-      ],
+      roles: [],
       groups: [],
       availableMembers: [],
       toast: null,
+      errors: {},
     };
   },
-  mounted() {
+  async mounted() {
     this.toast = useToast();
+    await this.loadRoles();
   },
   methods: {
+    async loadRoles() {
+      try {
+        const authToken = storage.get('authToken');
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const res = await axios.get(`${API_BASE_URL}/api/member-roles`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+
+        if (Array.isArray(res.data)) {
+          this.roles = res.data.map((r) => ({
+            id: r.id,
+            name: r.name,
+          }));
+        }
+      } catch (e) {
+        console.error('Failed to fetch roles:', e);
+        // Fallback to hardcoded roles if API fails
+        this.roles = [];
+      }
+    },
+
     async openAddMemberModal() {
       // Fetch groups for this organization
       try {
@@ -379,6 +440,9 @@ export default {
         console.error('Failed to fetch groups:', e);
         this.groups = [];
       }
+
+      // Clear any previous errors
+      this.errors = {};
       this.showAddMemberModal = true;
     },
 
@@ -393,8 +457,9 @@ export default {
           headers: { Authorization: `Bearer ${authToken}` },
         })
         .then((res) => {
-          if (Array.isArray(res.data)) {
-            this.availableMembers = res.data.map((m) => ({
+          const memberData = res.data.data || res.data;
+          if (Array.isArray(memberData)) {
+            this.availableMembers = memberData.map((m) => ({
               ...m,
               id: m.id || m.value || m,
               name: `${m.first_name || m.firstName || ''} ${
@@ -409,6 +474,8 @@ export default {
           this.availableMembers = [];
         })
         .finally(() => {
+          // Clear any previous errors
+          this.errors = {};
           this.showAddGroupModal = true;
         });
     },
@@ -450,6 +517,20 @@ export default {
           payload,
           { headers }
         );
+
+        // Success - clear errors and close modal
+        this.errors = {};
+        this.showAddMemberModal = false;
+        this.groups = [];
+        this.newMember = {
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          roles: [],
+          groups: [],
+        };
+
         this.toast.add({
           severity: 'success',
           summary: 'Success',
@@ -458,6 +539,24 @@ export default {
         });
         this.$emit('member-added');
       } catch (e) {
+        // Handle validation errors - don't close modal
+        if (
+          e.response &&
+          e.response.status === 422 &&
+          e.response.data &&
+          e.response.data.errors
+        ) {
+          this.errors = e.response.data.errors;
+          this.toast.add({
+            severity: 'error',
+            summary: 'Validation Error',
+            detail: 'Please fix the errors below and try again.',
+            life: 3000,
+          });
+          return; // Don't close modal, let user fix errors
+        }
+
+        // Handle other types of errors
         let msg = 'Failed to add member.';
         if (e.response && e.response.data && e.response.data.message) {
           msg = e.response.data.message;
@@ -476,17 +575,19 @@ export default {
           detail: msg,
           life: 4000,
         });
+
+        // Close modal for non-validation errors
+        this.showAddMemberModal = false;
+        this.groups = [];
+        this.newMember = {
+          firstName: '',
+          lastName: '',
+          email: '',
+          phone: '',
+          roles: [],
+          groups: [],
+        };
       }
-      this.showAddMemberModal = false;
-      this.groups = [];
-      this.newMember = {
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        roles: [],
-        groups: [],
-      };
     },
 
     async saveGroup() {
@@ -506,6 +607,13 @@ export default {
           payload,
           { headers }
         );
+
+        // Success - clear errors and close modal
+        this.errors = {};
+        this.showAddGroupModal = false;
+        this.availableMembers = [];
+        this.newGroup = { name: '', members: [] };
+
         this.toast.add({
           severity: 'success',
           summary: 'Success',
@@ -514,6 +622,24 @@ export default {
         });
         this.$emit('group-added');
       } catch (e) {
+        // Handle validation errors - don't close modal
+        if (
+          e.response &&
+          e.response.status === 422 &&
+          e.response.data &&
+          e.response.data.errors
+        ) {
+          this.errors = e.response.data.errors;
+          this.toast.add({
+            severity: 'error',
+            summary: 'Validation Error',
+            detail: 'Please fix the errors below and try again.',
+            life: 3000,
+          });
+          return; // Don't close modal, let user fix errors
+        }
+
+        // Handle other types of errors
         let msg = 'Failed to add group.';
         if (e.response && e.response.data && e.response.data.message) {
           msg = e.response.data.message;
@@ -532,10 +658,12 @@ export default {
           detail: msg,
           life: 4000,
         });
+
+        // Close modal for non-validation errors
+        this.showAddGroupModal = false;
+        this.availableMembers = [];
+        this.newGroup = { name: '', members: [] };
       }
-      this.showAddGroupModal = false;
-      this.availableMembers = [];
-      this.newGroup = { name: '', members: [] };
     },
   },
 };
@@ -691,5 +819,13 @@ export default {
 
 .form-box {
   padding: 0 !important;
+}
+
+.error-message1 {
+  color: red !important;
+  font-size: 0.85rem;
+  margin-top: 4px;
+  display: block;
+  font-weight: 400;
 }
 </style>

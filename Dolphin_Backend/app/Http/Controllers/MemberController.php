@@ -111,17 +111,22 @@ class MemberController extends Controller
 
             $validated = $request->validated();
             $roleInput = $validated['member_role'] ?? null;
-            unset($validated['member_role']);
+            $groupIds = $validated['group_ids'] ?? null;
+            unset($validated['member_role'], $validated['group_ids']);
             
-            DB::transaction(function () use ($member, $validated, $roleInput) {
+            DB::transaction(function () use ($member, $validated, $roleInput, $groupIds) {
                 $member->update($validated);
+                
                 if ($roleInput !== null) {
                     $member->member_role = $roleInput;
-                    $member->save();
+                }
+                
+                if ($groupIds !== null) {
+                    $member->groups()->sync($groupIds);
                 }
             });
 
-            return (new MemberResource($member->load('memberRoles')))->response();
+            return (new MemberResource($member->load('groups', 'memberRoles')))->response();
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Member not found.'], 404);
         } catch (\Exception $e) {
