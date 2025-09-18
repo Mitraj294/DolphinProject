@@ -58,6 +58,19 @@ export default {
     const toast = useToast();
     return { toast };
   },
+  beforeRouteEnter(to, from, next) {
+    // Check if this assessment has already been completed
+    const token = to.params.token;
+    const completedAssessments = JSON.parse(
+      localStorage.getItem('completedAssessments') || '[]'
+    );
+
+    if (completedAssessments.includes(token) || from.path === '/thanks') {
+      next('/thanks?already=1');
+    } else {
+      next();
+    }
+  },
   data() {
     return {
       assessment: null,
@@ -67,6 +80,16 @@ export default {
   },
   async created() {
     const token = this.$route.params.token;
+
+    // Check if we're returning from a completed assessment
+    const completedAssessments = JSON.parse(
+      localStorage.getItem('completedAssessments') || '[]'
+    );
+    if (completedAssessments.includes(token)) {
+      this.$router.replace('/thanks?already=1');
+      return;
+    }
+
     try {
       const API_BASE_URL =
         process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -80,6 +103,22 @@ export default {
         this.answers[q.assessment_question_id] = '';
       }
     } catch (e) {
+      // Check if the assessment has already been submitted
+      if (
+        e.response &&
+        (e.response.status === 409 ||
+          (e.response.data &&
+            e.response.data.message &&
+            e.response.data.message
+              .toLowerCase()
+              .includes('already submitted')))
+      ) {
+        // Mark as completed and replace current route
+        this.markAssessmentCompleted(token);
+        this.$router.replace('/thanks?already=1');
+        return;
+      }
+
       this.toast.add({
         severity: 'error',
         summary: 'Failed to load assessment.',
@@ -105,11 +144,33 @@ export default {
           group_id: this.group_id,
           member_id: this.member_id,
         };
-        const res = await axios.post(
+        await axios.post(
           `${API_BASE_URL}/api/assessment/answer/${token}`,
           payload
         );
+
+        // Mark assessment as completed in localStorage
+        this.markAssessmentCompleted(token);
+
+        // Replace current route to prevent back button navigation
+        this.$router.replace('/thanks');
       } catch (e) {
+        // Check if the assessment has already been submitted during submission attempt
+        if (
+          e.response &&
+          (e.response.status === 409 ||
+            (e.response.data &&
+              e.response.data.message &&
+              e.response.data.message
+                .toLowerCase()
+                .includes('already submitted')))
+        ) {
+          // Mark as completed and replace current route to prevent back button navigation
+          this.markAssessmentCompleted(token);
+          this.$router.replace('/thanks?already=1');
+          return;
+        }
+
         this.toast.add({
           severity: 'error',
           summary: 'Submission failed.',
@@ -117,6 +178,19 @@ export default {
         });
       } finally {
         this.loading = false;
+      }
+    },
+    markAssessmentCompleted(token) {
+      // Store completed assessment token in localStorage to prevent re-access
+      const completedAssessments = JSON.parse(
+        localStorage.getItem('completedAssessments') || '[]'
+      );
+      if (!completedAssessments.includes(token)) {
+        completedAssessments.push(token);
+        localStorage.setItem(
+          'completedAssessments',
+          JSON.stringify(completedAssessments)
+        );
       }
     },
   },
@@ -262,89 +336,6 @@ export default {
     font-size: 1rem;
     padding: 12px;
   }
-}
-/* Modern card style */
-.assessment-answer-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f4f7fa;
-}
-.bg-lines {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 250px;
-  height: auto;
-  z-index: 0;
-}
-
-.bg-illustration {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 300px;
-  height: auto;
-  z-index: 0;
-}
-.assessment-card {
-  background: #fff;
-  padding: 2.5rem 2rem 2rem 2rem;
-  border-radius: 16px;
-  box-shadow: 18px 20px 20px 20px rgba(0, 0, 0, 0.08);
-  max-width: 480px;
-  width: 100%;
-}
-.assessment-title {
-  text-align: center;
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  color: #1a237e;
-  letter-spacing: 1px;
-}
-.question-block {
-  margin-bottom: 1.5rem;
-  display: flex;
-  flex-direction: column;
-}
-.question-label {
-  font-weight: 500;
-  text-align: left;
-  margin-bottom: 0.5rem;
-  color: #333;
-}
-.question-input {
-  padding: 0.6rem 1rem;
-  border: 1px solid #cfd8dc;
-  border-radius: 6px;
-  font-size: 1rem;
-  background: #f9fafb;
-  transition: border 0.2s;
-}
-.question-input:focus {
-  border-color: #1976d2;
-  outline: none;
-  background: #fff;
-}
-.submit-btn {
-  width: 100%;
-  padding: 0.75rem 0;
-  background: linear-gradient(90deg, #1976d2 0%, #42a5f5 100%);
-  color: #fff;
-  font-size: 1.1rem;
-  font-weight: 600;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  margin-top: 1rem;
-  transition: background 0.2s, box-shadow 0.2s;
-  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
-}
-.submit-btn:disabled {
-  background: #b0bec5;
-  cursor: not-allowed;
 }
 
 @media (max-width: 1200px) {

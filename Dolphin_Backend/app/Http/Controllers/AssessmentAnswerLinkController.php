@@ -60,36 +60,30 @@ class AssessmentAnswerLinkController extends Controller
             $tokenRow = AssessmentAnswerToken::where('token', $token)->firstOrFail();
 
             // Check for invalid states first with early returns.
-            // Check expiry
-            if (Carbon::now()->greaterThanOrEqualTo(Carbon::parse($tokenRow->expires_at))) {
-                $status_code = 410; // Gone
-                $response_data['error'] = 'This token has expired.';
-            }
-
-            // Check whether token was already used
-            if (!empty($tokenRow->used)) {
+            if ($tokenRow->used) {
                 $status_code = 409; // Conflict
-                $response_data['error'] = 'This token has already been used.';
+                $response_data['message'] = 'This assessment has already been submitted.';
+            } elseif (Carbon::now()->isAfter($tokenRow->expires_at)) {
+                $status_code = 410; // Gone
+                $response_data['message'] = 'This assessment link has expired.';
+            } else {
+                // Happy path: Token is valid, not used, and not expired.
+                $assessment = Assessment::with('assessmentQuestions.question')->findOrFail($tokenRow->assessment_id);
+                $responseData = $this->buildAssessmentResponse($assessment, $tokenRow);
+                $status_code = 200;
+                $response_data['assessment'] = $responseData;
             }
-
-            // Happy path: Token is valid, not used, and not expired.
-            $assessment = Assessment::with('assessmentQuestions.question')->findOrFail($tokenRow->assessment_id);
-            $responseData = $this->buildAssessmentResponse($assessment, $tokenRow);
-
-            return response()->json(['assessment' => $responseData]);
         } catch (ModelNotFoundException $e) {
             Log::warning('Attempt to access an invalid or missing assessment token.', ['token' => $token]);
             $status_code = 404;
-            $response_data['error'] = 'Invalid token or assessment not found.';
+            $response_data['message'] = 'Invalid token or assessment not found.';
         } catch (\Exception $e) {
             Log::error('Failed to get assessment by token.', ['token' => $token, 'error' => $e->getMessage()]);
             $status_code = 500;
-            $response_data['error'] = 'An unexpected error occurred.';
+            $response_data['message'] = 'An unexpected error occurred.';
         }
-
         return response()->json($response_data, $status_code);
     }
-
 
     /**
      * Submit answers for an assessment using a valid token.
@@ -100,8 +94,21 @@ class AssessmentAnswerLinkController extends Controller
      */
     public function submitAnswers(SubmitAssessmentAnswersRequest $request, string $token): JsonResponse
     {
+        $response_data = [];
+        $status_code = 200;
         try {
             $tokenRow = AssessmentAnswerToken::where('token', $token)->firstOrFail();
+
+            // Check if token has already been used
+            if ($tokenRow->used) {
+              $status_code = 409; // Conflict
+              $response_data['message'] = 'This assessment has already been submitted.';
+            }
+
+            // Check if token has expired
+            if (Carbon::now()->isAfter($tokenRow->expires_at)) {
+                return response()->json(['message' => 'This assessment link has expired.'], 410);
+            }
 
             $this->validateAnswersBelongToAssessment($request->answers, $tokenRow->assessment_id);
 
@@ -113,13 +120,18 @@ class AssessmentAnswerLinkController extends Controller
             return response()->json([
                 'message' => 'Answers submitted successfully.',
                 'inserted' => count($request->answers),
+                'redirect_url' => '/thanks',
+                'success' => true,
             ]);
         } catch (\InvalidArgumentException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+           $status_code = 400;
+           $response_data['message'] = $e->getMessage();
         } catch (\Exception $e) {
             Log::error('Failed to submit answers.', ['token' => $token, 'error' => $e->getMessage()]);
-            return response()->json(['message' => 'An unexpected error occurred while submitting answers.'], 500);
+            $status_code = 500;
+            $response_data['message'] = 'An unexpected error occurred while submitting answers.';
         }
+        return response()->json($response_data, $status_code);
     }
 
     // Private Helper Methods
@@ -165,7 +177,7 @@ class AssessmentAnswerLinkController extends Controller
             'id' => $assessment->id,
             'name' => $assessment->name,
             'questions' => $questions,
-            'member' => Member::find($tokenRow->member_id),
+            'member' => Member::withTrashed()->find($tokenRow->member_id),
             'group' => $tokenRow->group_id ? Group::find($tokenRow->group_id) : null,
             'token' => $tokenRow->token,
             'answers' => $answers,

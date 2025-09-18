@@ -21,7 +21,9 @@ class Assessment extends Model
     {
         return $this->belongsToMany(OrganizationAssessmentQuestion::class, 'assessment_question', 'assessment_id', 'question_id');
     }
+
+    public function assessmentQuestions()
+    {
+        return $this->hasMany(AssessmentQuestion::class, 'assessment_id');
+    }
 }
-
-
-

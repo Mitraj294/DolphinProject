@@ -22,7 +22,7 @@ class OrganizationController extends Controller
             'user.userDetails.country',
             'user.userDetails.state',
             'user.userDetails.city',
-            'salesPerson', 
+            'salesPerson',
             'activeSubscription'
         ]);
 
@@ -52,7 +52,7 @@ class OrganizationController extends Controller
             'user.userDetails.country',
             'user.userDetails.state',
             'user.userDetails.city',
-            'salesPerson', // Eager load the salesperson relationship
+            'salesPerson',
             'activeSubscription'
         ]);
         
@@ -141,8 +141,7 @@ class OrganizationController extends Controller
         $details = $user?->userDetails;
         $subscription = $org->activeSubscription;
         
-        // This is the ideal way to get the full name, assuming an accessor in your User model
-        $salesPersonName = $org->salesPerson?->full_name;
+    
 
         // If you don't have a full_name accessor, this is the direct fix:
         if ($org->salesPerson) {
