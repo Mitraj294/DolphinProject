@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\LoginRequest;
+use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\ChangePasswordRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Models\User;
 use App\Models\UserDetail;
 use App\Models\Organization;
@@ -18,32 +22,11 @@ use Illuminate\Support\Facades\Validator;
 class AuthController extends Controller
 {
     // Register a new user, their details, and organization.
-     
-    public function register(Request $request)
+
+    public function register(RegisterRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,NULL,id,deleted_at,NULL',
-            'password' => 'required|string|min:6',
-            'phone' => 'required|regex:/^[6-9]\d{9}$/',
-            'find_us' => 'required|string',
-            'organization_name' => 'required|string|max:500',
-            'organization_size' => 'required|string',
-            'address' => 'required|string|max:500',
-            'country' => 'required|integer|exists:countries,id',
-            'state' => 'required|integer|exists:states,id',
-            'city' => 'required|integer|exists:cities,id',
-            'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
-        ]);
-
-        if ($validator->fails()) {
-            
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
-        }
-
         try {
-            $user = $this->createUserAndDetails($request->all());
+            $user = $this->createUserAndDetails($request->validated());
             $this->updateLeadStatus($user->email);
 
             return response()->json(['message' => 'User registered successfully', 'user' => $user], 201);
@@ -54,18 +37,9 @@ class AuthController extends Controller
     }
 
     //Authenticate a user and issue a Passport token.
-     
-    public function login(Request $request)
+
+    public function login(LoginRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email'    => 'required|email',
-            'password' => 'required|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
-        }
-
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -90,35 +64,24 @@ class AuthController extends Controller
     }
 
     //Get the authenticated user's profile information.
-     
+
     public function profile(Request $request)
     {
         $userPayload = $this->buildUserPayload($request->user());
         return response()->json($userPayload);
     }
-    
+
     //Update the authenticated user's profile.
-     
-    public function updateProfile(Request $request)
+
+    public function updateProfile(UpdateProfileRequest $request)
     {
         $user = $request->user();
-        $validator = Validator::make($request->all(), [
-            'user.email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id . ',id,deleted_at,NULL',
-            'user_details.first_name' => 'sometimes|nullable|string|max:255',
-            'user_details.last_name' => 'sometimes|nullable|string|max:255',
-            'user_details.phone' => 'sometimes|nullable|regex:/^[6-9]\d{9}$/',
-
-            'user_details.country' => 'sometimes|nullable',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
-        }
 
         DB::beginTransaction();
         try {
-            $this->updateUserRecord($user, $request->input('user', []), $request->input('user_details', []));
-            $this->updateUserDetailsRecord($user, $request->input('user_details', []));
+            $validated = $request->validated();
+            $this->updateUserRecord($user, $validated['user'] ?? [], $validated['user_details'] ?? []);
+            $this->updateUserDetailsRecord($user, $validated['user_details'] ?? []);
 
             DB::commit();
 
@@ -135,18 +98,9 @@ class AuthController extends Controller
 
 
     //Change the authenticated user's password.
-     
-    public function changePassword(Request $request)
+
+    public function changePassword(ChangePasswordRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'current_password' => 'required|string',
-            'new_password'     => 'required|string|min:6|confirmed',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['message' => 'Validation failed', 'errors' => $validator->errors()], 422);
-        }
-
         $user = $request->user();
 
         if (!Hash::check($request->current_password, $user->password)) {
@@ -159,9 +113,8 @@ class AuthController extends Controller
         return response()->json(['message' => 'Password changed successfully']);
     }
 
-    /**
-     * Send a password reset link to the user.
-     */
+    // Send a password reset link to the user.
+
     public function sendResetLinkEmail(Request $request)
     {
         $request->validate(['email' => 'required|email']);
@@ -172,10 +125,9 @@ class AuthController extends Controller
             ? response()->json(['message' => __($status)])
             : response()->json(['message' => __($status)], 400);
     }
-    
-    /**
-     * Reset the user's password.
-     */
+
+    // Reset the user's password.
+
     public function resetPassword(Request $request)
     {
         $request->validate([
@@ -193,36 +145,32 @@ class AuthController extends Controller
             ? response()->json(['message' => __($status)])
             : response()->json(['message' => __($status)], 400);
     }
-    
-    /**
-     * Soft delete the authenticated user's account.
-     */
+
+    // Soft delete the authenticated user's account.
+
     public function deleteAccount(Request $request)
     {
         $request->user()->delete();
         return response()->json(['message' => 'Account deleted successfully']);
     }
 
-    /**
-     * Get the currently authenticated user. Alias for profile().
-     */
+    // Get the currently authenticated user. Alias for profile().
+
     public function user(Request $request)
     {
         return $this->profile($request);
     }
-    
-    /**
-     * Log the user out (Revoke the token).
-     */
+
+    // Log the user out (Revoke the token).
+
     public function logout(Request $request)
     {
         $request->user()->token()->revoke();
         return response()->json(['message' => 'Successfully logged out']);
     }
-    
-    /**
-     * Check the validity and expiration of the current token.
-     */
+
+    // Check the validity and expiration of the current token.
+
     public function tokenStatus(Request $request)
     {
         $token = $request->user()->token();
@@ -232,11 +180,11 @@ class AuthController extends Controller
         ]);
     }
 
-    // --- Private Helper Methods ---
+    // Private Helper Methods
 
-    /**
-     * Create a user and their associated details in a transaction.
-     */
+
+    // Create a user and their associated details in a transaction.
+
     private function createUserAndDetails(array $data): User
     {
         return DB::transaction(function () use ($data) {
@@ -270,9 +218,7 @@ class AuthController extends Controller
         });
     }
 
-    /**
-     * Update the lead status for a newly registered user.
-     */
+
     private function updateLeadStatus(string $email): void
     {
         try {
@@ -284,10 +230,8 @@ class AuthController extends Controller
             Log::warning('Failed to update lead status after registration', ['email' => $email, 'error' => $e->getMessage()]);
         }
     }
-    
-    /**
-     * Build the standard user payload for API responses.
-     */
+
+
     private function buildUserPayload(User $user): array
     {
         $user->loadMissing(['userDetails.country', 'roles']);
@@ -307,9 +251,7 @@ class AuthController extends Controller
         ];
     }
 
-    /**
-     * Update the main user record fields.
-     */
+
     private function updateUserRecord(User $user, array $userData, array $detailsData): void
     {
         $user->fill([
@@ -323,9 +265,7 @@ class AuthController extends Controller
         }
     }
 
-    /**
-     * Update the user_details record.
-     */
+
     private function updateUserDetailsRecord(User $user, array $detailsData): void
     {
         if (empty($detailsData)) {
@@ -334,7 +274,7 @@ class AuthController extends Controller
 
         $userDetail = UserDetail::firstOrNew(['user_id' => $user->id]);
         $userDetail->phone = $detailsData['phone'] ?? $userDetail->phone;
-        
+
         if (isset($detailsData['country'])) {
             $userDetail->country_id = $this->resolveCountryId($detailsData['country']);
         }
@@ -343,10 +283,8 @@ class AuthController extends Controller
             $userDetail->save();
         }
     }
-    
-    /**
-     * Resolve a country ID from various possible input formats.
-     */
+
+
     private function resolveCountryId($countryInput): ?int
     {
         if (is_numeric($countryInput)) {
@@ -357,13 +295,11 @@ class AuthController extends Controller
             $country = Country::where('name', trim($countryInput))->orWhere('code', trim($countryInput))->first();
             return $country?->id;
         }
-        
+
         return null;
     }
-    
-    /**
-     * Issue a Passport token via an internal request.
-     */
+
+
     private function issueToken(Request $request)
     {
         $proxy = Request::create('/oauth/token', 'POST', [

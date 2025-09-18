@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 class UserController extends Controller
 {
     //Display a listing of all users.
-     
+
     public function index()
     {
         $users = User::with(['userDetails.country', 'roles'])->get()->map(function ($user) {
@@ -27,7 +27,7 @@ class UserController extends Controller
     }
 
     //Store a new user in the database.
-     
+
     public function store(Request $request)
     {
         try {
@@ -52,7 +52,6 @@ class UserController extends Controller
                 'user' => $this->formatUserPayload($user->load('roles', 'userDetails')),
                 'password' => $plainPassword,
             ], 201);
-
         } catch (ValidationException $e) {
             Log::error('User creation validation failed:', ['errors' => $e->errors()]);
             return response()->json(['message' => 'Validation failed', 'errors' => $e->errors()], 422);
@@ -63,7 +62,7 @@ class UserController extends Controller
     }
 
     //Update the specified user's role and basic information.
-     
+
     public function updateRole(Request $request, User $user)
     {
         $validatedData = $request->validate([
@@ -75,7 +74,7 @@ class UserController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($user, $validatedData) {
+            DB::transaction(function () use ($user, $validatedData, $request) {
                 $user->update($validatedData);
 
                 $role = Role::where('name', $validatedData['role'])->firstOrFail();
@@ -95,7 +94,7 @@ class UserController extends Controller
             return response()->json(['message' => 'An error occurred while updating the user.'], 500);
         }
     }
-    
+
     //Soft delete a user.
     public function softDelete(User $user)
     {
@@ -136,7 +135,7 @@ class UserController extends Controller
     // --- Private Helper Methods ---
 
     // Create a user and their related models within a database transaction.
-     
+
     private function createUserWithRelations(array $data): User
     {
         return DB::transaction(function () use ($data) {
@@ -162,9 +161,9 @@ class UserController extends Controller
             return $user;
         });
     }
-    
+
     //Format the user data into a consistent payload for API responses.
-     
+
     private function formatUserPayload(User $user): array
     {
         return [
