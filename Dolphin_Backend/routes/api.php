@@ -112,7 +112,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/announcements/user', [NotificationController::class, 'userAnnouncements']);
         Route::post('/announcements/{id}/read', [NotificationController::class, 'markAsRead']);
         Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
-        Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
+        Route::get('/notifications/unread', [NotificationController::class, 'unread']);
         Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
 
         /*
@@ -128,7 +128,7 @@ Route::middleware('auth:api')->group(function () {
             
             Route::apiResource('organizations', OrganizationController::class);
 
-            Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
+            Route::get('/announcements', [NotificationController::class, 'indexAnnouncements']);
             Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
             Route::get('/notifications', [NotificationController::class, 'allNotifications']);
         });

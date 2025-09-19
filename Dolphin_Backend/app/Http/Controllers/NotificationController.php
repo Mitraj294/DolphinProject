@@ -1,398 +1,151 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\StoreAnnouncementRequest;
+use App\Http\Resources\AnnouncementResource;
+use App\Http\Resources\NotificationResource;
+use App\Jobs\SendScheduledAnnouncementJob;
 use App\Models\Announcement;
 use App\Models\User;
-use App\Models\Group;
-use App\Models\Organization;
-use Illuminate\Support\Facades\Notification as LaravelNotification;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use App\Notifications\GeneralNotification;
-use Carbon\Carbon;
 
-class NotificationController extends Controller {
-    // Return unread announcements for the authenticated user
-    public function unreadAnnouncements(Request $request)
+class NotificationController extends Controller
+{
+    /**
+     * Fetch all notifications for the authenticated user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function index(Request $request): JsonResponse
     {
-        $user = auth()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        // Get all announcements sent to this user that are not marked as read
-        $unread = $user->unreadNotifications()->where('type', 'App\\Notifications\\GeneralNotification')->get();
-        // Decode data payload for frontend
-        $unread->transform(function ($n) {
-            if (is_string($n->data)) {
-                $n->data = json_decode($n->data, true);
-            }
-            return $n;
-        });
-        return response()->json(['unread' => $unread]);
-    }
-    
-    // Adapter for frontend: GET /api/notifications (all)
-    public function allNotifications(Request $request)
-    {
-        try {
-            // Allow callers to request notifications for a specific notifiable.
-            // If not provided, and a user is authenticated, default to that user.
-            $notifiableType = $request->input('notifiable_type');
-            $notifiableId = $request->input('notifiable_id');
+        /** @var User $user */
+        $user = $request->user();
+        $notifications = $user->notifications()->orderByDesc('created_at')->get();
 
-            if (!$notifiableType || !$notifiableId) {
-                $user = auth()->user();
-                if ($user) {
-                    $notifiableType = 'App\\Models\\User';
-                    $notifiableId = $user->id;
-                } else {
-                    // No filter provided and no authenticated user: avoid returning
-                    // the entire notifications table; require a notifiable filter.
-                    return response()->json(['error' => 'notifiable_type and notifiable_id required'], 400);
-                }
-            }
-
-            $notifications = DB::table('notifications')
-                ->where('notifiable_type', $notifiableType)
-                ->where('notifiable_id', $notifiableId)
-                ->orderByDesc('created_at')
-                ->get();
-
-            // Decode payloads
-            $notifications->transform(function ($n) {
-                if (isset($n->data) && is_string($n->data)) {
-                    $n->data = json_decode($n->data, true);
-                }
-                return $n;
-            });
-            return response()->json(['notifications' => $notifications]);
-        } catch (\Exception $e) {
-            Log::error('Failed to fetch notifications', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch notifications'], 500);
-        }
+        return NotificationResource::collection($notifications)->response();
     }
 
-    // Adapter for frontend: GET /api/notifications/user (for authenticated user's notifications)
-    public function userNotifications(Request $request)
+    /**
+     * Fetch only the unread notifications for the authenticated user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function unread(Request $request): JsonResponse
     {
-        $user = auth()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        try {
-            $notifications = $user->notifications()->orderByDesc('created_at')->get();
-            $notifications->transform(function ($n) {
-                if (is_string($n->data)) {
-                    $n->data = json_decode($n->data, true);
-                }
-                return $n;
-            });
-            return response()->json(['notifications' => $notifications]);
-        } catch (\Exception $e) {
-            Log::error('Failed to fetch user notifications', ['user_id' => $user->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch user notifications'], 500);
-        }
+        /** @var User $user */
+        $user = $request->user();
+        $unreadNotifications = $user->unreadNotifications()->get();
+
+        return NotificationResource::collection($unreadNotifications)->response();
     }
-    // Return all announcements (for superadmin or testing)
-    // Public: Return all announcements (no auth required)
-    public function allAnnouncements()
+
+    /**
+     * Mark a specific notification as read.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @param string $notificationId
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markAsRead(Request $request, string $notificationId): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $notification = $user->notifications()->findOrFail($notificationId);
+        $notification->markAsRead();
+
+        return response()->json(['message' => 'Notification marked as read.']);
+    }
+
+    /**
+     * Mark all unread notifications as read for the authenticated user.
+     *
+     * @param \Illuminate\Http\Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $user->unreadNotifications()->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'All notifications marked as read.']);
+    }
+
+    /**
+     * [Admin] Get a list of all announcements.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function indexAnnouncements(): JsonResponse
     {
         $announcements = Announcement::orderByDesc('created_at')->get();
-        return response()->json($announcements);
+        return response()->json(['data' => $announcements]);
     }
 
-    // Return a single announcement with related pivot data (organizations, groups, admins, members)
-    
-    public function showAnnouncement($id)
+    /**
+     * [Admin] Get a single announcement and its recipient details.
+     *
+     * @param \App\Models\Announcement $announcement
+     * @return \App\Http\Resources\AnnouncementResource
+     */
+    public function showAnnouncement(Announcement $announcement): AnnouncementResource
     {
+        // The complex data transformation is now handled by the AnnouncementResource class.
+        return new AnnouncementResource($announcement);
+    }
+
+    /**
+     * [Admin] Create and dispatch a new announcement.
+     *
+     * @param \App\Http\Requests\StoreAnnouncementRequest $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function storeAnnouncement(StoreAnnouncementRequest $request): JsonResponse
+    {
+        $validated = $request->validated();
+
         try {
-            $announcement = Announcement::with(['organizations', 'groups', 'admins'])->select()->findOrFail($id);
+            /** @var Announcement $announcement */
+            $announcement = Announcement::create([
+                'body' => $validated['body'],
+                'sender_id' => Auth::id(),
+                'scheduled_at' => $validated['scheduled_at'] ?? null,
+            ]);
 
-            $data = [
-                'id' => $announcement->id,
-                'body' => $announcement->body,
-                'sender_id' => $announcement->sender_id,
-                'scheduled_at' => $announcement->scheduled_at,
-                'sent_at' => $announcement->sent_at,
-                'created_at' => $announcement->created_at,
-                'updated_at' => $announcement->updated_at,
-                'organizations' => $announcement->organizations->map(fn($org) => [
-                    'id' => $org->id,
-                    'name' => $org->organization_name,
-                    'contact_email' => $org->admin_email,
-                    'user_id' => $org->user_id,
-                    'user_first_name' => $org->user->first_name ?? null,
-                    'user_last_name' => $org->user->last_name ?? null,
-                    
-                ]),
-                'groups' => $announcement->groups->map(fn($g) => [
-                    'id' => $g->id,
-                    'name' => $g->name,
-                    'organization_id' => $g->organization_id,
-                    'organization_name' => $g->organization->organization_name ?? null,
-                    'org_contact_email' => $g->organization->admin_email ?? null,
-                ]),
-                'admins' => $announcement->admins->map(fn($a) => [
-                    'id' => $a->id,
-                    'name' => $a->first_name.' '.$a->last_name,
-                    'email' => $a->email,
-                ]),
-            ];
-
-            $notifRows = DB::table('notifications')
-                ->where('notifiable_type', 'App\\Models\\User')
-                ->whereRaw("JSON_EXTRACT(data, '$.announcement_id') = ?", [$announcement->id])
-                ->get();
-
-            $readUserMap = [];
-            foreach ($notifRows as $nr) {
-                if (!empty($nr->read_at)) {
-                    $readUserMap[$nr->notifiable_id] = true;
-                }
+            // Attach recipients to the announcement
+            if (!empty($validated['organization_ids'])) {
+                $announcement->organizations()->attach($validated['organization_ids']);
+            }
+            if (!empty($validated['group_ids'])) {
+                $announcement->groups()->attach($validated['group_ids']);
+            }
+            if (!empty($validated['user_ids'])) {
+                $announcement->users()->attach($validated['user_ids']);
             }
 
-            $orgMap = [];
-            foreach ($announcement->organizations as $o) {
-                $orgMap[$o->id] = $o;
-            }
-
-
-            if (empty($orgMap)) {
-                try {
-                    $orgIds = $announcement->groups->pluck('organization_id')->filter()->unique()->values()->toArray();
-                    if (!empty($orgIds)) {
-                        $fetchedOrgs = Organization::whereIn('id', $orgIds)->get();
-                        foreach ($fetchedOrgs as $fo) {
-                            $orgMap[$fo->id] = $fo;
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::warning('[showAnnouncement] failed to fetch referenced organizations', ['announcement_id' => $announcement->id, 'error' => $e->getMessage()]);
-                }
+            // If the announcement is not scheduled for the future, dispatch it immediately.
+            // Otherwise, the scheduled command will pick it up.
+            if (!$announcement->scheduled_at) {
+                SendScheduledAnnouncementJob::dispatch($announcement);
             }
 
             return response()->json([
-                'announcement' => $data,
-                'notifications' => $notifRows,
-            ]);
+                'message' => 'Announcement created successfully.',
+                'data' => new AnnouncementResource($announcement),
+            ], 201);
+
         } catch (\Exception $e) {
-            Log::error('[showAnnouncement] error', ['id' => $id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Announcement not found'], 404);
-        }
-    }
-
-    // Send announcement to orgs, admins, groups
-    public function send(Request $request)
-    {
-        $data = $request->validate([
-            'body' => 'required|string',
-            'organization_ids' => 'nullable|array',
-            'admin_ids' => 'nullable|array',
-            'group_ids' => 'nullable|array',
-            'scheduled_at' => 'nullable|date',
-        ]);
-        Log::info('[AnnouncementController@send] scheduled_at received', ['scheduled_at' => $data['scheduled_at'] ?? null]);
-        $scheduledAtRaw = $data['scheduled_at'] ?? null;
-        if ($scheduledAtRaw) {
-            // Try to parse with Carbon::parse, fallback to strict format if needed
-            try {
-                // Remove trailing Z or timezone if present
-                $scheduledAtRaw = preg_replace('/([TZ]|)(\+\d{2}:\d{2})$/', '', $scheduledAtRaw);
-                $scheduledAtUtc = Carbon::parse(trim($scheduledAtRaw))->setTimezone('UTC');
-            } catch (\Exception $e) {
-                Log::error('Failed to parse scheduled_at', ['input' => $scheduledAtRaw, 'error' => $e->getMessage()]);
-                $scheduledAtUtc = null;
-            }
-        } else {
-            $scheduledAtUtc = null;
-        }
-        $announcement = Announcement::create([
-            'body' => $data['body'],
-            'sender_id' => auth()->id(),
-            'scheduled_at' => $scheduledAtUtc,
-            'sent_at' => isset($data['scheduled_at']) ? null : Carbon::now(),
-        ]);
-        // Attach pivot relations. Important behavior:
-        // - If only groups are provided (group-only send), attach groups ONLY
-        //   and do NOT attach organizations or admins. This ensures a pure
-        //   group-mail send does not involve organization recipients or create
-        //   org-related DB notifications.
-        // - If organizations are provided (org-only or mixed), attach orgs,
-        //   admins and also attach groups when both are explicitly provided.
-        $hasGroups = !empty($data['group_ids']);
-        $hasOrgs = !empty($data['organization_ids']);
-
-        if ($hasGroups && !$hasOrgs) {
-            // group-only: attach groups only
-            $announcement->groups()->attach($data['group_ids']);
-        } else {
-            // org-only or mixed: attach orgs/admins if present
-            if ($hasOrgs) {
-                $announcement->organizations()->attach($data['organization_ids']);
-            }
-            if (!empty($data['admin_ids'])) {
-                $announcement->admins()->attach($data['admin_ids']);
-            }
-            // attach groups as well if provided (mixed case)
-            if ($hasGroups) {
-                $announcement->groups()->attach($data['group_ids']);
-            }
-        }
-        Log::info('[AnnouncementController@send] scheduled_at saved', ['scheduled_at' => $announcement->scheduled_at]);
-        // If scheduled, queue it. Otherwise, send now.
-        if (isset($data['scheduled_at'])) {
-            // You can dispatch a job to send later
-        } else {
-            $this->dispatchAnnouncement($announcement);
-        }
-        return response()->json(['success' => true, 'announcement' => $announcement]);
-    }
-
-    // Fetch announcements for a user
-    public function userAnnouncements(Request $request)
-    {
-        $user = auth()->user();
-        // Get announcements related to user's orgs, groups, or admin status
-        $announcements = Announcement::whereHas('admins', function($q) use ($user) {
-                $q->where('users.id', $user->id);
-            })
-            ->orWhereHas('organizations', function($q) use ($user) {
-                $q->where('organizations.id', $user->organization_id);
-            })
-            ->orWhereHas('groups', function($q) use ($user) {
-                $q->where('groups.id', $user->group_id);
-            })
-            ->orderByDesc('created_at')
-            ->get();
-        return response()->json(['announcements' => $announcements]);
-    }
-    // Mark a notification as read for the authenticated user
-    public function markAsRead($id)
-    {
-        $user = auth()->user();
-        if (!$user) {
-            return response()->json(['error' => 'Unauthorized'], 401);
-        }
-        $notification = $user->notifications()->where('id', $id)->first();
-        if ($notification) {
-            $notification->markAsRead();
-            return response()->json(['success' => true]);
-        }
-        return response()->json(['error' => 'Notification not found'], 404);
-    }
-
-    // Mark all notifications as read for the authenticated user
-    public function markAllAsRead(Request $request)
-{
-    $user = $request->user();
-
-    // Mark all unread notifications for this user as read
-    $user->unreadNotifications->markAsRead();
-
-    return response()->json([
-        'message' => 'All notifications marked as read',
-        // send back updated list
-        'notifications' => $user->notifications
-    ]);
-}
-
-    // Dispatch announcement (send email + store)
-    protected function dispatchAnnouncement(Announcement $announcement)
-
-    {
-        // Read attachments from pivot tables
-        $attachedGroups = $announcement->groups()->get();
-        $attachedOrgs = $announcement->organizations()->get();
-        $attachedAdmins = $announcement->admins()->pluck('users.id')->toArray();
-
-        $groupMemberEmails = [];
-        foreach ($attachedGroups as $group) {
-            if (method_exists($group, 'members')) {
-                try {
-                    $groupMemberEmails = array_merge($groupMemberEmails, $group->members()->pluck('email')->toArray());
-                } catch (\Exception $e) {
-                    Log::warning('[Dispatch] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
-                }
-            }
-        }
-        $groupMemberEmails = array_values(array_unique(array_filter($groupMemberEmails)));
-
-        // Collect org-related recipients (DB notifications + admin emails)
-        $orgUserIds = [];
-        $orgAdminEmails = [];
-        foreach ($attachedOrgs as $org) {
-            if (method_exists($org, 'users')) {
-                try {
-                    $orgUserIds = array_merge($orgUserIds, $org->users()->pluck('users.id')->toArray());
-                } catch (\Exception $e) {
-                    Log::warning('[Dispatch] Failed to pluck org users', ['org_id' => $org->id, 'error' => $e->getMessage()]);
-                }
-            }
-            $orgAdminEmail = $org->admin_email ?? ($org->user->email ?? null);
-            if (!empty($orgAdminEmail) && filter_var($orgAdminEmail, FILTER_VALIDATE_EMAIL)) {
-                $orgAdminEmails[] = $orgAdminEmail;
-            }
-        }
-
-        // Merge admin ids provided explicitly
-        $orgUserIds = array_values(array_unique(array_filter(array_merge($orgUserIds, $attachedAdmins))));
-        $orgAdminEmails = array_values(array_unique(array_filter($orgAdminEmails)));
-
-        // Send DB notifications to Org users (if any)
-        $users = $orgUserIds ? User::whereIn('id', $orgUserIds)->get() : collect();
-        if ($users->isNotEmpty()) {
-            LaravelNotification::send($users, new GeneralNotification($announcement));
-        }
-
-        // Mail addresses originating from org admin fields
-        $userEmails = $users->pluck('email')->filter()->unique()->values()->toArray();
-        $emailsFromOrgs = array_values(array_unique(array_filter(array_merge($orgAdminEmails, $userEmails))));
-
-        // Now decide sending strategy:
-        // - If only groups attached: send only to groupMemberEmails (mail-only)
-        // - If only orgs attached: send to org recipients (users + admin emails)
-        // - If both attached: send org recipients via DB+mail, and also mail remaining groupMemberEmails (deduped)
-
-        if (!empty($groupMemberEmails) && empty($emailsFromOrgs)) {
-            // group-only
-            foreach ($groupMemberEmails as $email) {
-                $email = trim((string)$email);
-                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
-                }
-            }
-            return;
-        }
-
-        if (empty($groupMemberEmails) && !empty($emailsFromOrgs)) {
-            // org-only
-            foreach ($emailsFromOrgs as $email) {
-                $email = trim((string)$email);
-                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
-                }
-            }
-            return;
-        }
-
-        if (!empty($groupMemberEmails) && !empty($emailsFromOrgs)) {
-            // mixed: send org recipients (DB already done), then mail remaining group members
-            foreach ($emailsFromOrgs as $email) {
-                $email = trim((string)$email);
-                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
-                }
-            }
-            // subtract org emails from groupMemberEmails
-            $remaining = array_values(array_diff($groupMemberEmails, $emailsFromOrgs));
-            foreach ($remaining as $email) {
-                $email = trim((string)$email);
-                if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    LaravelNotification::route('mail', $email)->notify(new GeneralNotification($announcement));
-                }
-            }
-        
+            Log::error('Failed to create announcement.', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['message' => 'An unexpected error occurred.'], 500);
         }
     }
 }
