@@ -568,8 +568,53 @@ export default {
           this.orgId = res.data.id;
           this.form = mapOrganizationToForm(res.data);
 
+          // If backend returned names instead of IDs for country/state/city,
+          // attempt to resolve them to IDs using the loaded lists.
+          // country
+          if (
+            !this.form.country_id &&
+            (res.data.country || res.data.country_name)
+          ) {
+            const cName = (res.data.country || res.data.country_name)
+              .toString()
+              .trim();
+            const found = this.countries.find(
+              (c) =>
+                c.name.toString().trim().toLowerCase() === cName.toLowerCase()
+            );
+            if (found) this.form.country_id = found.id;
+          }
+
+          // If we now have a country id, load states
           if (this.form.country_id) await this.fetchStates();
+
+          // state
+          if (!this.form.state_id && (res.data.state || res.data.state_name)) {
+            const sName = (res.data.state || res.data.state_name)
+              .toString()
+              .trim();
+            const foundS = this.states.find(
+              (s) =>
+                s.name.toString().trim().toLowerCase() === sName.toLowerCase()
+            );
+            if (foundS) this.form.state_id = foundS.id;
+          }
+
+          // If we now have a state id, load cities
           if (this.form.state_id) await this.fetchCities();
+
+          // city
+          if (!this.form.city_id && (res.data.city || res.data.city_name)) {
+            const cityName = (res.data.city || res.data.city_name)
+              .toString()
+              .trim();
+            const foundCity = this.cities.find(
+              (c) =>
+                c.name.toString().trim().toLowerCase() ===
+                cityName.toLowerCase()
+            );
+            if (foundCity) this.form.city_id = foundCity.id;
+          }
 
           if (res.data.sales_person) {
             this.salesPersons = [

@@ -114,6 +114,8 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
     Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
     Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    // Manual create notification (useful for testing/debug)
+    Route::post('/notifications/create', [NotificationController::class, 'createNotification']);
 
         /*
          2.2.1 Role-Based Routes (Active Subscription Required)

@@ -12,6 +12,11 @@ class Member extends Model
     use HasFactory, SoftDeletes, \Illuminate\Notifications\Notifiable;
     protected $fillable = ['first_name', 'last_name', 'email', 'phone', 'organization_id', 'user_id'];
 
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function organization()
     {
         return $this->belongsTo(Organization::class, 'organization_id');

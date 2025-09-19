@@ -12,8 +12,11 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification as LaravelNotification;
+use Illuminate\Support\Str;
 
 class SendScheduledAnnouncementJob implements ShouldQueue
 {
@@ -50,15 +53,27 @@ class SendScheduledAnnouncementJob implements ShouldQueue
      */
     public function handle(): void
     {
+        $lock = Cache::lock('announcement.'.$this->announcement->id, 10);
+
+        if (!$lock->get()) {
+            // If the lock cannot be acquired, it means another worker is already
+            // processing this announcement. Release the job back to the queue.
+            $this->release(10);
+            return;
+        }
+
         try {
             // Eager load relationships for efficiency. If any relationship name
             // or underlying column is missing (migration/model mismatch), loading
             // could throw an exception. Catch those and mark the announcement as
             // sent to avoid repeated failures while the system is being fixed.
             try {
-                // Ensure we eager-load both group users (User models) and group members (Member models)
-                // so we can create DB notifications for User models and still email Member records.
-                $this->announcement->load(['users', 'organizations.users', 'groups.users', 'groups.members']);
+                // Eager-load users, organization users and group members' user relations.
+                // Note: do NOT eager-load `groups.users` because the pivot table in this
+                // project uses `group_member.member_id` (not `user_id`) and an eager-load
+                // of `groups.users` can trigger SQL looking for `group_member.user_id`.
+                // Instead, rely on `groups.members.user` which maps members to users safely.
+                $this->announcement->load(['users', 'organizations.users', 'groups.members.user']);
             } catch (\Exception $e) {
                 Log::error("Failed to eager-load announcement relations for ID {$this->announcement->id}. Marking as sent to avoid retry loop. Error: {$e->getMessage()}");
                 // Mark as sent to prevent the scheduler from repeatedly dispatching
@@ -89,13 +104,12 @@ class SendScheduledAnnouncementJob implements ShouldQueue
             foreach ($recipients as $user) {
                 // 1. Create Database Notification
                 try {
-                    // Use notifyNow to synchronously write the database notification
-                    // and avoid relying on the queue worker's environment.
-                    if (method_exists($user, 'notifyNow')) {
-                        $user->notifyNow(new GeneralNotification($this->announcement));
-                    } else {
-                        $user->notify(new GeneralNotification($this->announcement));
-                    }
+                    // Force synchronous delivery of the notification so the
+                    // database notification row is created within this job's
+                    // lifecycle. GeneralNotification implements ShouldQueue,
+                    // but sendNow will bypass queuing for immediate persistence.
+                    LaravelNotification::sendNow($user, new GeneralNotification($this->announcement));
+                    Log::debug("Sent notification synchronously for user {$user->id} and announcement {$this->announcement->id}");
                 } catch (\Exception $e) {
                     Log::warning("Failed to create DB notification for user {$user->id} on announcement {$this->announcement->id}: {$e->getMessage()}");
                 }
@@ -110,6 +124,32 @@ class SendScheduledAnnouncementJob implements ShouldQueue
                 }
 
                 Log::info("Attempted announcement {$this->announcement->id} for user {$user->email} (ID: {$user->id})");
+
+                // Ensure a DB notification row exists for this user and announcement.
+                try {
+                    // Use JSON_UNQUOTE to compare the extracted JSON value as text
+                    $exists = \Illuminate\Support\Facades\DB::table('notifications')
+                        ->where('notifiable_type', User::class)
+                        ->where('notifiable_id', $user->id)
+                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.announcement_id')) = ?", [(string)$this->announcement->id])
+                        ->exists();
+
+                    if (!$exists) {
+                        $nid = (string) Str::uuid();
+                        \Illuminate\Support\Facades\DB::table('notifications')->insert([
+                            'id' => $nid,
+                            'type' => GeneralNotification::class,
+                            'notifiable_type' => User::class,
+                            'notifiable_id' => $user->id,
+                            'data' => json_encode([ 'announcement_id' => $this->announcement->id, 'message' => $this->announcement->body ]),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                        Log::info("Inserted DB notification for user {$user->id} and announcement {$this->announcement->id}");
+                    }
+                } catch (\Exception $e) {
+                    Log::warning("Failed to ensure DB notification row for user {$user->id}: {$e->getMessage()}");
+                }
             }
 
             // Send email-only to member emails collected from groups (dedupe against user emails)
@@ -130,6 +170,10 @@ class SendScheduledAnnouncementJob implements ShouldQueue
         } catch (\Exception $e) {
             // Catch-all: log and avoid throwing to the worker so other jobs can run.
             Log::error("Failed to process announcement ID {$this->announcement->id}. Error: {$e->getMessage()}");
+        } finally {
+            if (isset($lock)) {
+                $lock->release();
+            }
         }
     }
 
@@ -154,6 +198,14 @@ class SendScheduledAnnouncementJob implements ShouldQueue
             // which are not App\Models\User and therefore won't create DB notifications.
             if (method_exists($group, 'users')) {
                 $recipients = $recipients->merge($group->users);
+            }
+            // Also collect users from members that have a user_id
+            if (method_exists($group, 'members')) {
+                foreach ($group->members as $member) {
+                    if ($member->user) {
+                        $recipients->push($member->user);
+                    }
+                }
             }
         }
 

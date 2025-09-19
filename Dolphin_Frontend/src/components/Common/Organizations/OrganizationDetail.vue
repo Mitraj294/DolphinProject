@@ -75,7 +75,7 @@
                   </div>
                   <div class="org-detail-list-row">
                     <span>Source</span>
-                    <b>{{ organization.find_us || 'N/A' }}</b>
+                    <b>{{ organization.source || 'N/A' }}</b>
                   </div>
                   <div class="org-detail-list-row">
                     <span>Address</span>

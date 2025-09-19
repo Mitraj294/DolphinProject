@@ -28,7 +28,12 @@
                     <span>Admin Phone</span><b>{{ leadData.phone }}</b>
                   </div>
                   <div class="lead-detail-list-row">
-                    <span>Sales Person</span><b></b>
+                    <span>Sales Person</span
+                    ><b>{{
+                      leadData.sales_person ??
+                      organization.sales_person_id ??
+                      'N/A'
+                    }}</b>
                   </div>
                   <div class="lead-detail-list-row">
                     <span>Source</span><b>{{ leadData.source }}</b>
@@ -170,6 +175,8 @@ export default {
         email: '',
         phone: '',
         source: '',
+        sales_person: '',
+        sales_person_id: null,
         status: '',
         organization: '',
         size: '',
@@ -395,6 +402,8 @@ export default {
             email: leadObj.email || '',
             phone: leadObj.phone || '',
             source: leadObj.find_us || '',
+            sales_person: leadObj.sales_person || '',
+            sales_person_id: leadObj.sales_person_id || null,
             status: leadObj.status || '',
             organization: leadObj.organization_name || '',
             size: leadObj.organization_size || '',
@@ -460,6 +469,8 @@ export default {
         email: this.$route.query.email || '',
         phone: this.$route.query.phone || '',
         source: this.$route.query.source || '',
+        sales_person: this.$route.query.sales_person || '',
+        sales_person_id: this.$route.query.sales_person_id || null,
         status: this.$route.query.status || '',
         organization: this.$route.query.organization || '',
         size: this.$route.query.size || '',
@@ -496,6 +507,8 @@ export default {
             email: newQuery.email || '',
             phone: newQuery.phone || '',
             source: newQuery.source || '',
+            sales_person: newQuery.sales_person || '',
+            sales_person_id: newQuery.sales_person_id || null,
             status: newQuery.status || '',
             organization: newQuery.organization || '',
             size: newQuery.size || '',

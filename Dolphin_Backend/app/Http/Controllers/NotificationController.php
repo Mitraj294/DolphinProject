@@ -11,6 +11,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Jobs\SendScheduledAnnouncementJob;
 
 class NotificationController extends Controller {
     // Return unread announcements for the authenticated user
@@ -243,9 +244,18 @@ class NotificationController extends Controller {
             }
         }
         Log::info('[AnnouncementController@send] scheduled_at saved', ['scheduled_at' => $announcement->scheduled_at]);
-        // If scheduled, queue it. Otherwise, send now.
-        if (isset($data['scheduled_at'])) {
-            // You can dispatch a job to send later
+        // If scheduled, queue it to run at the scheduled time; otherwise send immediately.
+        if (isset($data['scheduled_at']) && $scheduledAtUtc) {
+            try {
+                // Dispatch the job to run at the scheduled UTC time. Using the job's
+                // dispatch helper preserves the Announcement model reference.
+                SendScheduledAnnouncementJob::dispatch($announcement)->delay($scheduledAtUtc);
+                Log::info('[AnnouncementController@send] scheduled announcement queued', ['announcement_id' => $announcement->id, 'scheduled_at' => $scheduledAtUtc]);
+            } catch (\Exception $e) {
+                Log::error('[AnnouncementController@send] failed to dispatch scheduled job', ['announcement_id' => $announcement->id, 'error' => $e->getMessage()]);
+                // fallback: send immediately so the announcement isn't lost
+                $this->dispatchAnnouncement($announcement);
+            }
         } else {
             $this->dispatchAnnouncement($announcement);
         }
@@ -299,6 +309,36 @@ class NotificationController extends Controller {
         'notifications' => $user->notifications
     ]);
 }
+
+    // Manual API endpoint to create a notification record (for testing)
+    public function createNotification(Request $request)
+    {
+        $data = $request->validate([
+            'notifiable_type' => 'required|string',
+            'notifiable_id' => 'required|integer',
+            'data' => 'required|array',
+        ]);
+
+        try {
+            $payload = json_encode($data['data']);
+            $id = (string) \Illuminate\Support\Str::uuid();
+            DB::table('notifications')->insert([
+                'id' => $id,
+                'type' => 'App\\Notifications\\GeneralNotification',
+                'notifiable_type' => $data['notifiable_type'],
+                'notifiable_id' => $data['notifiable_id'],
+                'data' => $payload,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $row = DB::table('notifications')->where('id', $id)->first();
+            return response()->json(['success' => true, 'notification' => $row]);
+        } catch (\Exception $e) {
+            Log::error('[createNotification] failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Failed to create notification'], 500);
+        }
+    }
 
     // Dispatch announcement (send email + store)
     protected function dispatchAnnouncement(Announcement $announcement)

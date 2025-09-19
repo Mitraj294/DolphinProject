@@ -101,6 +101,7 @@
                 >
               </div>
               <div>
+                <FormLabel>Organization Size</FormLabel>
                 <FormDropdown
                   v-model="form.organization_size"
                   icon="fas fa-users"

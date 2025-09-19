@@ -107,10 +107,29 @@ class OrganizationController extends Controller
 
         try {
             DB::transaction(function () use ($organization, $validated) {
-                $organization->update($validated);
+                $organizationData = array_filter($validated, function ($key) {
+                    return in_array($key, ['organization_name', 'organization_size', 'sales_person_id', 'contract_start', 'contract_end', 'last_contacted']);
+                }, ARRAY_FILTER_USE_KEY);
+
+                $userData = array_filter($validated, function ($key) {
+                    return in_array($key, ['admin_email', 'first_name', 'last_name']);
+                }, ARRAY_FILTER_USE_KEY);
+
+                $userDetailsData = array_filter($validated, function ($key) {
+                    return in_array($key, ['admin_phone', 'address', 'country_id', 'state_id', 'city_id', 'zip']);
+                }, ARRAY_FILTER_USE_KEY);
+
+                if (!empty($organizationData)) {
+                    $organization->update($organizationData);
+                }
+
                 if ($organization->user) {
-                    $organization->user->update($validated);
-                    $organization->user->userDetails()->updateOrCreate(['user_id' => $organization->user_id], $validated);
+                    if (!empty($userData)) {
+                        $organization->user->update($userData);
+                    }
+                    if (!empty($userDetailsData)) {
+                        $organization->user->userDetails()->updateOrCreate(['user_id' => $organization->user_id], $userDetailsData);
+                    }
                 }
             });
 
