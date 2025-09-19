@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
 use App\Notifications\GeneralNotification;
 
 class SendScheduledAnnouncementJob implements ShouldQueue
@@ -25,7 +26,7 @@ class SendScheduledAnnouncementJob implements ShouldQueue
         $userIds = [];
         $memberEmails = [];
 if ($this->announcement->sent_at) {
-    \Log::info('[Job] Announcement already sent, skipping', ['announcement_id' => $this->announcement->id]);
+    Log::info('[Job] Announcement already sent, skipping', ['announcement_id' => $this->announcement->id]);
     return;
 }
         // Determine attachment types early. If this is a pure group-only
@@ -43,12 +44,12 @@ if ($this->announcement->sent_at) {
                         $emails = $group->members()->pluck('email')->toArray();
                         $memberEmails = array_merge($memberEmails, $emails);
                     } catch (\Exception $e) {
-                        \Log::warning('[Job] Failed to pluck group members (group-only fast-path)', ['group_id' => $group->id, 'error' => $e->getMessage()]);
+                        Log::warning('[Job] Failed to pluck group members (group-only fast-path)', ['group_id' => $group->id, 'error' => $e->getMessage()]);
                     }
                 }
             }
             $memberEmails = array_values(array_unique(array_filter($memberEmails)));
-            \Log::info('Announcement job member emails (group-only)', ['member_emails' => $memberEmails]);
+            Log::info('Announcement job member emails (group-only)', ['member_emails' => $memberEmails]);
 
             // Send mail-only to group member emails
             foreach ($memberEmails as $email) {
@@ -57,19 +58,19 @@ if ($this->announcement->sent_at) {
                 if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     try {
                         Notification::route('mail', $email)->notify(new GeneralNotification($this->announcement));
-                        \Log::info('[Job] Mail sent to member (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+                        Log::info('[Job] Mail sent to member (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email]);
                     } catch (\Exception $e) {
-                        \Log::error('[Job] Failed to send mail to member (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email, 'error' => $e->getMessage()]);
+                        Log::error('[Job] Failed to send mail to member (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email, 'error' => $e->getMessage()]);
                     }
                 } else {
-                    \Log::warning('[Job] Skipping invalid member email (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+                    Log::warning('[Job] Skipping invalid member email (group-only)', ['announcement_id' => $this->announcement->id, 'email' => $email]);
                 }
             }
 
             // mark sent and exit
             $this->announcement->sent_at = now();
             $this->announcement->save();
-            \Log::info('[Job] Announcement group-only fast-path completed', ['announcement_id' => $this->announcement->id]);
+            Log::info('[Job] Announcement group-only fast-path completed', ['announcement_id' => $this->announcement->id]);
             return;
         }
     // NOTE: Only include announcement-level admins when organizations are
@@ -126,7 +127,7 @@ if ($this->announcement->sent_at) {
                             $userIds = array_merge($userIds, $memberUserIds);
                         }
                     } catch (\Exception $e) {
-                        \Log::warning('[Job] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
+                        Log::warning('[Job] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
                     }
                 }
             }
@@ -136,29 +137,29 @@ if ($this->announcement->sent_at) {
         $userIds = array_values(array_unique(array_filter($userIds)));
         $memberEmails = array_values(array_unique(array_filter($memberEmails)));
 
-        \Log::info('Announcement job user IDs', ['user_ids' => $userIds]);
-        \Log::info('Announcement job member emails', ['member_emails' => $memberEmails]);
+        Log::info('Announcement job user IDs', ['user_ids' => $userIds]);
+        Log::info('Announcement job member emails', ['member_emails' => $memberEmails]);
 
         // Get user models for notification
         $users = $userIds ? \App\Models\User::whereIn('id', $userIds)->get() : collect();
-        \Log::info('Announcement job found users', ['count' => $users->count(), 'user_ids' => $users->pluck('id')->toArray()]);
+        Log::info('Announcement job found users', ['count' => $users->count(), 'user_ids' => $users->pluck('id')->toArray()]);
 
         // Send notification to users (database + mail)
         if ($users->isNotEmpty()) {
             try {
                 Notification::send($users, new GeneralNotification($this->announcement));
-                \Log::info('[Job] Notifications sent to users', [
+                Log::info('[Job] Notifications sent to users', [
                     'announcement_id' => $this->announcement->id,
                     'user_ids' => $users->pluck('id')->toArray()
                 ]);
             } catch (\Exception $e) {
-                \Log::error('[Job] Failed to send notifications', [
+                Log::error('[Job] Failed to send notifications', [
                     'announcement_id' => $this->announcement->id,
                     'error' => $e->getMessage()
                 ]);
             }
         } else {
-            \Log::warning('[Job] No users found for announcement notification', ['announcement_id' => $this->announcement->id]);
+            Log::warning('[Job] No users found for announcement notification', ['announcement_id' => $this->announcement->id]);
         }
 
         // Avoid sending duplicate emails to addresses that belong to User models
@@ -170,19 +171,19 @@ if ($this->announcement->sent_at) {
     $email = trim((string)$email);
     // Add an explicit check to make sure the email is not empty after trimming
     if (empty($email)) {
-        \Log::warning('[Job] Skipping empty member email', ['announcement_id' => $this->announcement->id]);
+        Log::warning('[Job] Skipping empty member email', ['announcement_id' => $this->announcement->id]);
         continue;
     }
     
     if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
         try {
             Notification::route('mail', $email)->notify(new GeneralNotification($this->announcement));
-            \Log::info('[Job] Mail sent to member', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+            Log::info('[Job] Mail sent to member', ['announcement_id' => $this->announcement->id, 'email' => $email]);
         } catch (\Exception $e) {
-            \Log::error('[Job] Failed to send mail to member', ['announcement_id' => $this->announcement->id, 'email' => $email, 'error' => $e->getMessage()]);
+            Log::error('[Job] Failed to send mail to member', ['announcement_id' => $this->announcement->id, 'email' => $email, 'error' => $e->getMessage()]);
         }
     } else {
-        \Log::warning('[Job] Skipping invalid member email', ['announcement_id' => $this->announcement->id, 'email' => $email]);
+        Log::warning('[Job] Skipping invalid member email', ['announcement_id' => $this->announcement->id, 'email' => $email]);
     }
 }
 
@@ -190,7 +191,7 @@ if ($this->announcement->sent_at) {
         // Only set sent_at if notifications or mails were attempted
         $this->announcement->sent_at = now();
         $this->announcement->save();
-        \Log::info('[Job] Announcement job completed', ['announcement_id' => $this->announcement->id]);
+        Log::info('[Job] Announcement job completed', ['announcement_id' => $this->announcement->id]);
     }
 
     /**
@@ -203,7 +204,7 @@ if ($this->announcement->sent_at) {
         try {
             return $relation ? $relation->pluck('users.id')->toArray() : [];
         } catch (\Exception $e) {
-            \Log::warning('[Job] safePluckUserIds failed', ['error' => $e->getMessage()]);
+            Log::warning('[Job] safePluckUserIds failed', ['error' => $e->getMessage()]);
             return [];
         }
     }

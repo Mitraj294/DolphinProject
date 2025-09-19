@@ -152,6 +152,7 @@ import storage from '@/services/storage';
 import axios from 'axios';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
+
 export default {
   name: 'Navbar',
   inheritAttrs: false,
@@ -167,28 +168,21 @@ export default {
   data() {
     return {
       dropdownOpen: false,
-      // showLogoutConfirm removed — PrimeVue Confirm will be used
       overridePageTitle: null,
       roleName: authMiddleware.getRole(),
       isVerySmallScreen: false,
       notificationCount: 0,
-
-      // Reactive user info that updates on impersonation
       userFirstName: storage.get('first_name') || '',
       userLastName: storage.get('last_name') || '',
       userName: storage.get('userName') || '',
       userEmail: storage.get('email') || '',
-
       leadNameCache: {},
       leadNameFetching: {},
-
       orgNameCache: {},
       orgNameFetching: {},
       assessmentNameCache: {},
       assessmentNameFetching: {},
-      // lifecycle flag to avoid mutating state after unmount
       isNavbarAlive: false,
-      // bound handlers for window events (so `this` stays correct)
       _boundFetchUnread: null,
       _boundUpdateNotificationCount: null,
       _boundAuthUpdated: null,
@@ -224,14 +218,11 @@ export default {
       return authMiddleware.getRole();
     },
   },
-
   methods: {
-    // Returns the page title for a given route name by delegating to small helpers
     titleForRoute(routeName) {
       if (!routeName)
         return this.$route && this.$route.name ? this.$route.name : '';
 
-      // Map of simple direct titles
       const simpleMap = {
         UserPermission: 'Users + Permission',
         AddUser: 'Add User',
@@ -258,7 +249,6 @@ export default {
 
       if (simpleMap[routeName]) return simpleMap[routeName];
 
-      // Routes that need specialized handling
       if (routeName === 'LeadDetail') return this.handleLeadDetailTitle();
       if (routeName === 'EditLead') return this.handleEditLeadTitle();
       if (routeName === 'BillingDetails')
@@ -268,16 +258,13 @@ export default {
       if (routeName === 'MyOrganization')
         return this.handleMyOrganizationTitle();
 
-      // fallback to route name or empty string
       return this.$route && this.$route.name ? this.$route.name : '';
     },
-
     handleLeadDetailTitle() {
       const contact =
         (this.$route && this.$route.query && this.$route.query.contact) || '';
       return contact ? `${contact} Details` : 'Lead Details';
     },
-
     handleEditLeadTitle() {
       const leadId =
         (this.$route &&
@@ -292,7 +279,6 @@ export default {
       if (this.isNavbarAlive) this.fetchLeadName(leadId);
       return 'Edit Lead';
     },
-
     handleBillingDetailsTitle() {
       const orgName =
         (this.$route && this.$route.query && this.$route.query.orgName) || '';
@@ -300,9 +286,7 @@ export default {
         ? `${orgName} Organization Details`
         : 'Organization Details';
     },
-
     handleAssessmentSummaryTitle() {
-      // Prefer an assessment object passed via route params/query (SPA navigation)
       const assessmentParam =
         (this.$route && this.$route.params && this.$route.params.assessment) ||
         (this.$route && this.$route.query && this.$route.query.assessment) ||
@@ -340,12 +324,10 @@ export default {
 
       return 'Assessment Summary';
     },
-
     handleMyOrganizationTitle() {
       const orgName = storage.get('organization_name');
       return `My Organization${orgName ? ': ' + orgName : ''}`;
     },
-    // simple debounce helper for methods invoked by window events
     _debounce(fn, wait = 200) {
       let t = null;
       return (...args) => {
@@ -383,18 +365,14 @@ export default {
         console.warn('Failed to fetch initial unread count', e);
       }
     },
-
     updateUserInfo() {
-      // Update reactive user info from storage
       this.userFirstName = storage.get('first_name') || '';
       this.userLastName = storage.get('last_name') || '';
       this.userName = storage.get('userName') || '';
       this.userEmail = storage.get('email') || '';
     },
-
     async fetchCurrentUser() {
       try {
-        // If any useful user info already in storage, skip network fetch
         const firstLocal = storage.get('first_name') || '';
         const lastLocal = storage.get('last_name') || '';
         const userLocal = storage.get('userName') || '';
@@ -438,10 +416,8 @@ export default {
         );
       }
     },
-
     async fetchLeadName(leadId) {
       if (!leadId) return null;
-      // prevent duplicate concurrent fetches per id
       if (this.leadNameFetching[leadId]) return;
       this.leadNameFetching[leadId] = true;
       try {
@@ -470,7 +446,6 @@ export default {
             leadObj.email ||
             '';
           if (name && this.isNavbarAlive) {
-            // assign directly to reactive object
             this.leadNameCache[leadId] = name;
           }
         }
@@ -493,10 +468,8 @@ export default {
         );
         const data = res.data;
 
-        // Set navbar title from the fetched data
         if (data.assessment && data.assessment.name) {
           const assessmentName = data.assessment.name;
-          // Use the event bus to update the navbar title
           if (this.$root && this.$root.$emit) {
             this.$root.$emit(
               'page-title-override',
@@ -505,7 +478,6 @@ export default {
           }
         }
 
-        // Transform backend data to frontend rows
         this.rows = (data.members || []).map((member) => ({
           name:
             member.name ||
@@ -530,8 +502,6 @@ export default {
         console.error('Failed to fetch assessment summary:', e);
       }
     },
-
-    // Helper: build axios auth config from storage
     _getAuthConfig() {
       let token = storage.get('authToken');
       if (token && typeof token === 'object' && token.token)
@@ -539,8 +509,6 @@ export default {
       if (typeof token !== 'string') token = '';
       return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     },
-
-    // Helper: fetch assessment summary data (returns parsed data or null)
     async _fetchAssessmentSummary(assessmentId, config) {
       const API_BASE_URL =
         process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
@@ -550,8 +518,6 @@ export default {
       );
       return res && res.data ? res.data : null;
     },
-
-    // Helper: cache name and emit page-title override
     _processAssessmentName(assessmentId, name) {
       if (!name || !this.isNavbarAlive) return;
       this.assessmentNameCache[assessmentId] = name;
@@ -562,7 +528,6 @@ export default {
         this.$root.$emit('page-title-override', `Assessment ${name} Summary`);
       }
     },
-
     async fetchAssessmentName(assessmentId) {
       if (!assessmentId) return null;
       if (this.assessmentNameFetching[assessmentId]) return;
@@ -618,22 +583,18 @@ export default {
           this.handleLogoutYes();
         },
         reject: () => {
-          // No action needed on cancel
           this.dropdownOpen = false;
         },
       });
     },
     handleLogoutYes() {
-      // If impersonating, revert to superadmin instead of full logout
       if (storage.get('superAuthToken')) {
         storage.set('authToken', storage.get('superAuthToken'));
         storage.set('role', storage.get('superRole'));
         storage.set('userName', storage.get('superUserName'));
         storage.set('userId', storage.get('superUserId'));
-        // Restore first_name and last_name from superFirstName/superLastName
         storage.set('first_name', storage.get('superFirstName') || '');
         storage.set('last_name', storage.get('superLastName') || '');
-        // Remove superadmin impersonation keys
         storage.remove('superAuthToken');
         storage.remove('superRole');
         storage.remove('superUserName');
@@ -642,12 +603,10 @@ export default {
         storage.remove('superLastName');
         this.$router.push('/user-permission');
       } else {
-        // Normal logout
         storage.clear();
         this.$router.push({ name: 'Login' });
       }
     },
-    // handleLogoutCancel and logout removed: PrimeVue confirm used instead
     checkScreen() {
       this.isVerySmallScreen = window.innerWidth <= 425;
     },
@@ -657,22 +616,16 @@ export default {
     },
     goToProfile() {
       this.dropdownOpen = false;
-      // Use router push with name 'Profile'
       this.$router.push({ name: 'Profile' });
     },
   },
-
   mounted() {
-    // mark alive so async fetches can safely write to state
     this.isNavbarAlive = true;
     document.addEventListener('mousedown', this.handleClickOutside);
     window.addEventListener('resize', this.checkScreen);
     this.checkScreen();
     this.updateNotificationCount();
     this.updateUserInfo();
-    // initial fetch of unread count: if we have an auth token (normal login
-    // or impersonation), fetch unread notifications immediately so the
-    // badge is correct after a reload/impersonation.
     try {
       const token = storage.get('authToken');
       if (token) {
@@ -681,48 +634,36 @@ export default {
     } catch (e) {
       console.warn('Failed to fetch initial unread count', e);
     }
-    // Attempt to fetch current user info from server if storage lacks it
     this.fetchCurrentUser();
-    // bind handlers so `this` is preserved when invoked by window events
     this._boundFetchUnread = this.fetchUnreadCount.bind(this);
     this._boundUpdateNotificationCount =
       this.updateNotificationCount.bind(this);
-    // When auth context changes (impersonation), refresh role and badge.
     this._boundAuthUpdated = this._debounce(() => {
       this.roleName = authMiddleware.getRole();
-      this.updateUserInfo(); // Update reactive user info for impersonation
+      this.updateUserInfo();
       this.updateNotificationCount();
       try {
         this.fetchUnreadCount();
-        // Also refresh current user info on auth updates
         this.fetchCurrentUser();
       } catch (e) {
         console.warn('Failed to fetch unread count after auth update', e);
       }
       this.$forceUpdate && this.$forceUpdate();
     }, 500);
-    // refresh when other components dispatch a notification update (mark read actions)
-    // Use a debounced wrapper to avoid multiple simultaneous network calls
     this._boundFetchUnread = this._debounce(
       this.fetchUnreadCount.bind(this),
       500
     );
     window.addEventListener('notification-updated', this._boundFetchUnread);
-    // refresh when auth context changes (impersonation/revert)
     window.addEventListener('auth-updated', this._boundAuthUpdated);
-    // storage event (cross-tab) should update local count
     window.addEventListener('storage', this._boundUpdateNotificationCount);
 
-    // no-op: logout overlay removed in favor of PrimeVue Confirm
-
-    // Listen for page title overrides from pages
     if (this.$root && this.$root.$on) {
       this.$root.$on('page-title-override', (val) => {
         this.overridePageTitle = val;
       });
     }
 
-    // If we landed directly on an AssessmentSummary route, attempt to fetch its name
     try {
       const rn = this.$route && this.$route.name;
       if (rn === 'AssessmentSummary') {
@@ -735,7 +676,6 @@ export default {
       console.warn('Navbar: failed to fetch assessment name on mount', e);
     }
 
-    // Watch route changes to trigger fetches for AssessmentSummary pages
     this.$watch(
       () => this.$route && this.$route.fullPath,
       (newVal, oldVal) => {
@@ -756,7 +696,6 @@ export default {
     );
   },
   beforeDestroy() {
-    // prevent background async callbacks from mutating state after unmount
     this.isNavbarAlive = false;
     document.removeEventListener('mousedown', this.handleClickOutside);
     window.removeEventListener('resize', this.checkScreen);
@@ -805,14 +744,17 @@ export default {
   max-width: 100vw;
   overflow-x: auto;
 }
+
 .navbar.sidebar-expanded {
   width: calc(100vw - 200px);
 }
+
 @media (max-width: 425px) {
   .navbar.sidebar-expanded {
     width: calc(100vw + 1px);
   }
 }
+
 @media (max-width: 425px) {
   .navbar {
     width: calc(100vw + 1px);
@@ -824,18 +766,21 @@ export default {
     justify-content: space-between;
   }
 }
+
 .navbar-left {
   display: flex;
   align-items: center;
   gap: 8px;
   min-width: 130px;
 }
+
 .navbar-actions {
   display: flex;
   align-items: center;
   gap: 0;
   min-width: 80px;
 }
+
 .navbar-page {
   position: static;
   font-family: 'Helvetica Neue LT Std', sans-serif;
@@ -851,12 +796,14 @@ export default {
   max-width: 60vw;
   min-width: 0;
 }
+
 @media (max-width: 675px) {
   .navbar-page {
     font-size: 24px;
     line-height: 24px;
   }
 }
+
 @media (max-width: 425px) {
   .navbar-page {
     font-size: 18px;
@@ -864,6 +811,7 @@ export default {
     max-width: 180px;
   }
 }
+
 .navbar-right {
   display: flex;
   align-items: center;
@@ -875,6 +823,7 @@ export default {
   flex-shrink: 1;
   flex-wrap: wrap;
 }
+
 .navbar-avatar {
   width: 38px;
   height: 38px;
@@ -887,10 +836,10 @@ export default {
   font-weight: 600;
   font-size: 1.2rem;
   margin-right: 6px;
-
   position: static;
   z-index: 1;
 }
+
 @media (max-width: 425px) {
   .navbar-avatar {
     width: 28px;
@@ -899,36 +848,39 @@ export default {
     margin-right: 4px;
   }
 }
+
 .navbar-username {
   font-weight: 500;
   color: #222;
   margin-right: 4px;
 }
+
 .navbar-profile-btn {
   display: flex;
   align-items: center;
-
   color: #646464;
   font-size: 1rem;
   position: relative;
   min-width: 0;
   flex-shrink: 1;
-
   cursor: pointer;
   border-radius: 24px;
   padding: 2px 8px 2px 2px;
   transition: background 0.13s;
   user-select: none;
 }
+
 @media (max-width: 425px) {
   .navbar-profile-btn {
     padding: 2px 4px 2px 2px;
   }
 }
+
 .navbar-profile-btn:focus,
 .navbar-profile-btn:hover {
   background: #f5f5f5;
 }
+
 .navbar-chevron {
   width: 18px;
   height: 18px;
@@ -936,6 +888,7 @@ export default {
   display: inline-block;
   vertical-align: middle;
 }
+
 @media (max-width: 425px) {
   .navbar-chevron {
     width: 14px;
@@ -943,6 +896,7 @@ export default {
     margin-left: 2px;
   }
 }
+
 .navbar-dropdown {
   position: fixed;
   top: 70px;
@@ -958,6 +912,7 @@ export default {
   align-items: stretch;
   animation: dropdown-fade-in 0.18s;
 }
+
 @media (max-width: 425px) {
   .navbar-dropdown {
     top: 68px;
@@ -968,6 +923,7 @@ export default {
     padding: 12px 0;
   }
 }
+
 .navbar-dropdown-item {
   padding: 12px 20px;
   font-size: 1rem;
@@ -979,10 +935,14 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  justify-content: center; /* horizontally center icon + label */
-  text-align: center; /* center text fallback */
-  width: 100%; /* make items fill dropdown width so centering is apparent */
+  justify-content: center;
+  /* horizontally center icon + label */
+  text-align: center;
+  /* center text fallback */
+  width: 100%;
+  /* make items fill dropdown width so centering is apparent */
 }
+
 .navbar-dropdown-item0 {
   padding: 0 20px;
   font-size: 1rem;
@@ -994,20 +954,26 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  justify-content: center; /* horizontally center icon + label */
-  text-align: center; /* center text fallback */
-  width: 100%; /* make items fill dropdown width so centering is apparent */
+  justify-content: center;
+  /* horizontally center icon + label */
+  text-align: center;
+  /* center text fallback */
+  width: 100%;
+  /* make items fill dropdown width so centering is apparent */
 }
+
 @media (max-width: 425px) {
   .navbar-dropdown-item {
     padding: 10px 16px;
     font-size: 0.8rem;
     text-align: center;
     gap: 8px;
-    justify-content: center; /* ensure mobile keeps centered layout */
+    justify-content: center;
+    /* ensure mobile keeps centered layout */
     width: 100%;
   }
 }
+
 .navbar-dropdown-item:first-child {
   cursor: default;
 }
@@ -1015,20 +981,24 @@ export default {
 .navbar-dropdown-item:hover {
   background: #f5f5f5;
 }
+
 @keyframes dropdown-fade-in {
   from {
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
+
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.18s;
 }
+
 .fade-enter,
 .fade-leave-to {
   opacity: 0;
@@ -1050,6 +1020,7 @@ export default {
   height: 100vh;
   pointer-events: auto;
 }
+
 .logout-confirm-dialog {
   background: #fff;
   border-radius: 16px;
@@ -1063,16 +1034,19 @@ export default {
   text-align: center;
   z-index: 9999;
 }
+
 .logout-confirm-title {
   font-size: 1.1rem;
   margin-bottom: 20px;
   color: #222;
 }
+
 .logout-confirm-actions {
   display: flex;
   justify-content: center;
   gap: 16px;
 }
+
 .btn {
   padding: 8px 20px;
   border: none;
@@ -1080,14 +1054,17 @@ export default {
   font-size: 1rem;
   cursor: pointer;
 }
+
 .btn-danger {
   background: #e53935;
   color: #fff;
 }
+
 .btn-secondary {
   background: #f5f5f5;
   color: #222;
 }
+
 .navbar-badge {
   position: absolute;
   top: 0;
@@ -1108,6 +1085,7 @@ export default {
   pointer-events: none;
   z-index: 1;
 }
+
 @media (max-width: 450px) {
   .navbar-badge {
     top: -4px;
@@ -1136,22 +1114,26 @@ export default {
   border-radius: 6px;
   outline-color: transparent;
 }
+
 .p-button:not(:disabled):hover {
   background: #ff0000;
   color: #ffffff;
   border-color: #e00f0f;
 }
+
 .p-button:disabled {
   background: #ff0000;
   opacity: 0.6;
   cursor: not-allowed;
 }
+
 .p-button.p-button-text {
   background: transparent;
   color: #e00f0f;
   border: none;
   padding: 0.75rem 1.25rem;
 }
+
 .p-button:hover {
   background: #ff0000;
   color: #ffffff;
@@ -1161,6 +1143,7 @@ export default {
 .sidebar-logo1 {
   display: none;
 }
+
 @media (max-width: 425px) {
   .sidebar-logo1 {
     width: auto;

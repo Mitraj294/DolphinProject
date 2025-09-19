@@ -29,7 +29,17 @@ trait HasRoles
      */
     public function hasAnyRole(...$roles): bool
     {
-        // Efficiently checks if the user's roles collection intersects with the provided roles
+        // Accept either: hasAnyRole('admin', 'editor') or hasAnyRole(['admin', 'editor'])
+        if (count($roles) === 1 && is_array($roles[0])) {
+            $roles = $roles[0];
+        }
+
+        // If no roles were provided, return false early
+        if (empty($roles)) {
+            return false;
+        }
+
+        // Efficiently checks if the user's roles relation contains any of the provided names
         return $this->roles()->whereIn('name', $roles)->exists();
     }
 }

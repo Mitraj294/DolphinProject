@@ -36,17 +36,10 @@ class UserDetail extends Model
     {
         return $this->belongsTo(Country::class, 'country_id');
     }
-    /**
-     * Relationship to State model.
-     */
     public function state()
     {
         return $this->belongsTo(State::class, 'state_id');
     }
-
-    /**
-     * Relationship to City model.
-     */
     public function city()
     {
         return $this->belongsTo(City::class, 'city_id');

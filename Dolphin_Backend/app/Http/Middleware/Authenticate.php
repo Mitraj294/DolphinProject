@@ -9,18 +9,18 @@ class Authenticate extends Middleware
 {
     /**
      * Get the path the user should be redirected to when they are not authenticated.
+     *
+     * For API requests, this will return null, resulting in a JSON response
+     * instead of a redirect.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return string|null
      */
-    protected function redirectTo($request)
+    protected function redirectTo($request): ?string
     {
-        // For API requests we don't want to attempt a web redirect (route('login'))
-        // because the named route may not exist. Let the exception handler
-        // return a JSON 401 instead by returning null here for API calls.
-        if ($request->expectsJson() || $request->is('api/*')) {
-            return null;
-        }
-
-        // For web requests, fall back to a simple path instead of calling route()
-        // to avoid RouteNotFoundException during early boot situations.
-        return '/login';
+        // If the request expects a JSON response, don't redirect.
+        // Laravel will automatically throw an AuthenticationException,
+        // which is rendered as a 401 JSON response by the exception handler.
+        return $request->expectsJson() ? null : route('login');
     }
 }
