@@ -23,6 +23,7 @@ class Announcement extends Model
         'body',
         'sender_id',
         'scheduled_at',
+        'dispatched_at',
         'sent_at',
     ];
 
@@ -33,6 +34,7 @@ class Announcement extends Model
      */
     protected $casts = [
         'scheduled_at' => 'datetime',
+        'dispatched_at' => 'datetime',
         'sent_at' => 'datetime',
     ];
 

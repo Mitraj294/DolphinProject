@@ -270,6 +270,7 @@ export default {
       scheduledTime: '',
       organizations: [],
       groups: [],
+      admins: [],
       notifications: [],
       announcements: [],
       // local component state
@@ -456,6 +457,19 @@ export default {
         if (this.isAlive) this.groups = [];
       }
     },
+    async fetchAdmins() {
+      try {
+        const apiUrl = process.env.VUE_APP_API_URL || '/api';
+        const token = storage.get('authToken');
+        const res = await axios.get(apiUrl + '/users', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (this.isAlive) this.admins = res.data;
+      } catch (err) {
+        console.error('Error fetching admins:', err);
+        if (this.isAlive) this.admins = [];
+      }
+    },
     async fetchNotifications() {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
@@ -502,6 +516,7 @@ export default {
         const payload = {
           organization_ids: this.selectedOrganizations.map((org) => org.id),
           group_ids: this.selectedGroups.map((group) => group.id),
+          admin_ids: this.selectedAdmins.map((admin) => admin.id),
           body: this.$el.querySelector('.modal-textarea')
             ? this.$el.querySelector('.modal-textarea').value
             : '',
@@ -512,6 +527,7 @@ export default {
         });
         if (this.isAlive) {
           this.showSendModal = false;
+          this.resetForm();
           this.$toast &&
             this.$toast.add &&
             this.$toast.add({
@@ -533,11 +549,24 @@ export default {
         }
       }
     },
+    resetForm() {
+      this.selectedOrganizations = [];
+      this.selectedAdmins = [];
+      this.selectedGroups = [];
+      this.scheduledDate = '';
+      this.scheduledTime = '';
+      // Clear the textarea
+      const textarea = this.$el.querySelector('.modal-textarea');
+      if (textarea) {
+        textarea.value = '';
+      }
+    },
   },
   mounted() {
     this.isAlive = true;
     this.fetchOrganizations();
     this.fetchGroups();
+    this.fetchAdmins();
     this.fetchNotifications();
   },
   beforeUnmount() {

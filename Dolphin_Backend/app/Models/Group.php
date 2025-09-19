@@ -17,10 +17,11 @@ class Group extends Model
         return $this->belongsTo(Organization::class, 'organization_id');
     }
 
-    // Add relationship to get all users in the group
+    // Get users through the members relationship
     public function users()
     {
-        return $this->belongsToMany(User::class, 'group_member', 'group_id', 'user_id');
+        return $this->members()->join('users', 'members.user_id', '=', 'users.id')
+                   ->select('users.*');
     }
 
     public function members()

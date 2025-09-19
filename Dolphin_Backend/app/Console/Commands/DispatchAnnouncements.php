@@ -27,7 +27,9 @@ class DispatchAnnouncements extends Command
     {
   
 
+        // Only announcements that haven't been dispatched yet
         $announcements = \App\Models\Announcement::whereNull('sent_at')
+            ->whereNull('dispatched_at')
             ->whereNotNull('scheduled_at')
             ->where('scheduled_at', '<=', now())
             ->get();
@@ -39,14 +41,27 @@ class DispatchAnnouncements extends Command
         }
 
         foreach ($announcements as $announcement) {
+            // Use atomic update to prevent race conditions
+            $affected = \App\Models\Announcement::whereNull('sent_at')
+                ->whereNull('dispatched_at')
+                ->where('id', $announcement->id)
+                ->update(['dispatched_at' => now()]);
+            
+            if ($affected === 0) {
+                // Another process already dispatched this announcement
+                $this->info('Announcement already dispatched: '.$announcement->id);
+                continue;
+            }
+            
             try {
                 dispatch(new \App\Jobs\SendScheduledAnnouncementJob($announcement));
-                // NOTE: do not mark `sent_at` here — the job itself sets `sent_at` when it completes.
-                // Marking `sent_at` before the job runs causes the job to skip sending (it checks sent_at at start).
-                // If you need to prevent duplicate dispatches, add a separate `dispatched_at` column and set it here.
+                
                 Log::info('[DispatchAnnouncements] dispatched job', ['announcement_id' => $announcement->id]);
                 $this->info('Dispatched announcement: '.$announcement->id);
             } catch (\Exception $e) {
+                // If dispatching fails, reset dispatched_at to allow retry
+                $announcement->update(['dispatched_at' => null]);
+                
                 Log::error('[DispatchAnnouncements] failed to dispatch', ['announcement_id' => $announcement->id, 'error' => $e->getMessage()]);
                 $this->error('Failed to dispatch announcement: '.$announcement->id);
             }
