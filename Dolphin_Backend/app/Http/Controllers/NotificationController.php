@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\Group;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Notification as LaravelNotification;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use App\Notifications\GeneralNotification;
 use Carbon\Carbon;
 
@@ -51,7 +53,7 @@ class NotificationController extends Controller {
                 }
             }
 
-            $notifications = \DB::table('notifications')
+            $notifications = DB::table('notifications')
                 ->where('notifiable_type', $notifiableType)
                 ->where('notifiable_id', $notifiableId)
                 ->orderByDesc('created_at')
@@ -66,7 +68,7 @@ class NotificationController extends Controller {
             });
             return response()->json(['notifications' => $notifications]);
         } catch (\Exception $e) {
-            \Log::error('Failed to fetch notifications', ['error' => $e->getMessage()]);
+            Log::error('Failed to fetch notifications', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to fetch notifications'], 500);
         }
     }
@@ -88,7 +90,7 @@ class NotificationController extends Controller {
             });
             return response()->json(['notifications' => $notifications]);
         } catch (\Exception $e) {
-            \Log::error('Failed to fetch user notifications', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            Log::error('Failed to fetch user notifications', ['user_id' => $user->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to fetch user notifications'], 500);
         }
     }
@@ -138,7 +140,7 @@ class NotificationController extends Controller {
                 ]),
             ];
 
-            $notifRows = \DB::table('notifications')
+            $notifRows = DB::table('notifications')
                 ->where('notifiable_type', 'App\\Models\\User')
                 ->whereRaw("JSON_EXTRACT(data, '$.announcement_id') = ?", [$announcement->id])
                 ->get();
@@ -166,7 +168,7 @@ class NotificationController extends Controller {
                         }
                     }
                 } catch (\Exception $e) {
-                    \Log::warning('[showAnnouncement] failed to fetch referenced organizations', ['announcement_id' => $announcement->id, 'error' => $e->getMessage()]);
+                    Log::warning('[showAnnouncement] failed to fetch referenced organizations', ['announcement_id' => $announcement->id, 'error' => $e->getMessage()]);
                 }
             }
 
@@ -175,7 +177,7 @@ class NotificationController extends Controller {
                 'notifications' => $notifRows,
             ]);
         } catch (\Exception $e) {
-            \Log::error('[showAnnouncement] error', ['id' => $id, 'error' => $e->getMessage()]);
+            Log::error('[showAnnouncement] error', ['id' => $id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Announcement not found'], 404);
         }
     }
@@ -190,7 +192,7 @@ class NotificationController extends Controller {
             'group_ids' => 'nullable|array',
             'scheduled_at' => 'nullable|date',
         ]);
-        \Log::info('[AnnouncementController@send] scheduled_at received', ['scheduled_at' => $data['scheduled_at'] ?? null]);
+        Log::info('[AnnouncementController@send] scheduled_at received', ['scheduled_at' => $data['scheduled_at'] ?? null]);
         $scheduledAtRaw = $data['scheduled_at'] ?? null;
         if ($scheduledAtRaw) {
             // Try to parse with Carbon::parse, fallback to strict format if needed
@@ -199,7 +201,7 @@ class NotificationController extends Controller {
                 $scheduledAtRaw = preg_replace('/([TZ]|)(\+\d{2}:\d{2})$/', '', $scheduledAtRaw);
                 $scheduledAtUtc = Carbon::parse(trim($scheduledAtRaw))->setTimezone('UTC');
             } catch (\Exception $e) {
-                \Log::error('Failed to parse scheduled_at', ['input' => $scheduledAtRaw, 'error' => $e->getMessage()]);
+                Log::error('Failed to parse scheduled_at', ['input' => $scheduledAtRaw, 'error' => $e->getMessage()]);
                 $scheduledAtUtc = null;
             }
         } else {
@@ -237,7 +239,7 @@ class NotificationController extends Controller {
                 $announcement->groups()->attach($data['group_ids']);
             }
         }
-        \Log::info('[AnnouncementController@send] scheduled_at saved', ['scheduled_at' => $announcement->scheduled_at]);
+        Log::info('[AnnouncementController@send] scheduled_at saved', ['scheduled_at' => $announcement->scheduled_at]);
         // If scheduled, queue it. Otherwise, send now.
         if (isset($data['scheduled_at'])) {
             // You can dispatch a job to send later
@@ -297,6 +299,7 @@ class NotificationController extends Controller {
 
     // Dispatch announcement (send email + store)
     protected function dispatchAnnouncement(Announcement $announcement)
+
     {
         // Read attachments from pivot tables
         $attachedGroups = $announcement->groups()->get();
@@ -309,7 +312,7 @@ class NotificationController extends Controller {
                 try {
                     $groupMemberEmails = array_merge($groupMemberEmails, $group->members()->pluck('email')->toArray());
                 } catch (\Exception $e) {
-                    \Log::warning('[Dispatch] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
+                    Log::warning('[Dispatch] Failed to pluck group members', ['group_id' => $group->id, 'error' => $e->getMessage()]);
                 }
             }
         }
@@ -323,7 +326,7 @@ class NotificationController extends Controller {
                 try {
                     $orgUserIds = array_merge($orgUserIds, $org->users()->pluck('users.id')->toArray());
                 } catch (\Exception $e) {
-                    \Log::warning('[Dispatch] Failed to pluck org users', ['org_id' => $org->id, 'error' => $e->getMessage()]);
+                    Log::warning('[Dispatch] Failed to pluck org users', ['org_id' => $org->id, 'error' => $e->getMessage()]);
                 }
             }
             $orgAdminEmail = $org->admin_email ?? ($org->user->email ?? null);

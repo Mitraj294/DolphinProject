@@ -11,10 +11,19 @@ use App\Models\User;
 class CheckSubscriptionStatus
 {
     /**
-     * Handle an incoming request.
+     * Roles that are exempt from subscription checks.
      *
-     * This middleware checks if the authenticated user has an active subscription.
-     * It allows users with 'superadmin' or 'dolphinadmin' roles to bypass this check.
+     * @var string[]
+     */
+    protected array $exemptRoles = [
+        'superadmin',
+        'dolphinadmin',
+        'saleperson',
+        'user',
+    ];
+
+    /**
+     * Handle an incoming request.
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure  $next
@@ -24,34 +33,88 @@ class CheckSubscriptionStatus
     {
         /** @var User|null $user */
         $user = Auth::user();
-        
-        // Assume the request will proceed unless a check fails.
-        $response = $next($request);
+        $allow = false;
 
-        // The 'auth' middleware should handle unauthenticated users.
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+        // If the request is unauthenticated, allow to proceed (assume auth middleware handles access)
+        if (! Auth::check()) {
+            $allow = true;
         }
 
-        // Admins can bypass the subscription check. If the user is an admin,
-        // the default response ($next($request)) will be returned.
-        if (!$user->hasAnyRole('superadmin', 'dolphinadmin')) {
-            $subscription = $user->activeSubscription;
+        // If user has any exempt role, allow
+        if (! $allow && $this->userHasAnyExemptRole($user)) {
+            $allow = true;
+        }
 
-            if (!$subscription) {
-                $response = response()->json([
-                    'message' => 'Your subscription has expired. Please renew to continue using the service.',
-                    'subscription_status' => 'inactive'
-                ], 403);
-            } elseif ($subscription->ends_at && now()->greaterThan($subscription->ends_at)) {
-                $response = response()->json([
-                    'message' => 'Your subscription has expired on ' . $subscription->ends_at->toDateString() . '. Please renew to continue using the service.',
-                    'subscription_status' => 'expired'
-                ], 403);
+        // If user has an active subscription, allow
+        if (! $allow && $this->userHasActiveSubscription($user)) {
+            $allow = true;
+        }
+
+        if ($allow) {
+            return $next($request);
+        }
+
+        // Otherwise, block access and provide context about the latest subscription (if any)
+        $latest = $user->subscriptions()->orderByDesc('created_at')->first();
+        $status = $latest?->status ?? 'none';
+
+        $message = $status === 'expired'
+            ? 'Your subscription has expired. Please renew your subscription to continue.'
+            : 'You do not have an active subscription. Please subscribe to access this feature.';
+
+        // API / JSON responses
+        if ($request->expectsJson() || $request->is('api/*')) {
+            return response()->json([
+                'message' => $message,
+                'status' => $status,
+                'subscription_end' => $latest?->subscription_end?->toDateTimeString(),
+                'subscription_id' => $latest?->id,
+                'redirect_url' => url('/manage-subscription'),
+            ], 403);
+        }
+
+        // Web responses: redirect to subscription management with a flash message
+        return redirect('/manage-subscription')->with('error', $message);
+    }
+
+    /**
+     * Determine if the user has any role that exempts them from subscription checks.
+     */
+    protected function userHasAnyExemptRole(?User $user): bool
+    {
+        $has = false;
+
+        if (! $user) {
+            return $has;
+        }
+
+        if (method_exists($user, 'hasAnyRole')) {
+            $has = (bool) $user->hasAnyRole(...$this->exemptRoles);
+        } elseif (method_exists($user, 'hasRole')) {
+            foreach ($this->exemptRoles as $role) {
+                if ($user->hasRole($role)) {
+                    $has = true;
+                    break;
+                }
             }
         }
 
-        return $response;
+        return $has;
+    }
+
+    /**
+     * Check whether the user has at least one active subscription record.
+     */
+    protected function userHasActiveSubscription(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if (method_exists($user, 'subscriptions')) {
+            return $user->subscriptions()->where('status', 'active')->exists();
+        }
+
+        return false;
     }
 }
-
