@@ -48,8 +48,8 @@
               />
               <tbody>
                 <tr
-                  v-for="(item, idx) in paginatedNotifications"
-                  :key="idx"
+                  v-for="item in paginatedNotifications"
+                  :key="item.id"
                 >
                   <td class="notification-body-cell">
                     <span
@@ -87,7 +87,7 @@
                 </tr>
                 <tr v-if="paginatedNotifications.length === 0">
                   <td
-                    colspan="3"
+                    colspan="4"
                     class="no-data"
                   >
                     No notifications found.
@@ -271,7 +271,7 @@ export default {
       organizations: [],
       groups: [],
       notifications: [],
-
+      announcements: [],
       // local component state
       detailData: null,
     };
@@ -464,9 +464,16 @@ export default {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (this.isAlive) {
-          this.notifications = Array.isArray(res.data)
-            ? res.data
-            : res.data.notifications || [];
+          // API may return { data: [...] } or an array directly
+          if (Array.isArray(res.data)) {
+            this.notifications = res.data;
+          } else if (res.data && Array.isArray(res.data.data)) {
+            this.notifications = res.data.data;
+          } else if (res.data && Array.isArray(res.data.notifications)) {
+            this.notifications = res.data.notifications;
+          } else {
+            this.notifications = [];
+          }
         }
       } catch (err) {
         console.error('Error fetching notifications:', err);

@@ -343,7 +343,7 @@ export default {
       this.confirm.require({
         message: `Are you sure you want to impersonate ${impersonatdisplayName}?`,
         header: 'Confirm Impersonation',
-        icon: 'pi pi-user-edit',
+        icon: 'pi pi-user',
         acceptLabel: 'Yes',
         rejectLabel: 'No',
         accept: async () => {
@@ -383,9 +383,7 @@ export default {
               storage.set(
                 'userName',
                 `${data.user.first_name || ''}${
-                  data.user.last_name
-                    ? ' ' + data.user.last_name
-                    : ''
+                  data.user.last_name ? ' ' + data.user.last_name : ''
                 }`.trim()
               );
             } else {

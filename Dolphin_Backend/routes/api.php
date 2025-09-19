@@ -112,8 +112,8 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/announcements/user', [NotificationController::class, 'userAnnouncements']);
         Route::post('/announcements/{id}/read', [NotificationController::class, 'markAsRead']);
         Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
-        Route::get('/notifications/unread', [NotificationController::class, 'unread']);
-        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
 
         /*
          2.2.1 Role-Based Routes (Active Subscription Required)
@@ -128,7 +128,7 @@ Route::middleware('auth:api')->group(function () {
             
             Route::apiResource('organizations', OrganizationController::class);
 
-            Route::get('/announcements', [NotificationController::class, 'indexAnnouncements']);
+            Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
             Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
             Route::get('/notifications', [NotificationController::class, 'allNotifications']);
         });

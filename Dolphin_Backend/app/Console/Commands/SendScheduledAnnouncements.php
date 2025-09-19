@@ -5,6 +5,7 @@ use Illuminate\Console\Command;
 use App\Models\Announcement;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Log;
 use App\Notifications\GeneralNotification;
 
 class SendScheduledAnnouncements extends Command
@@ -64,7 +65,7 @@ class SendScheduledAnnouncements extends Command
                 if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
                     Notification::route('mail', $email)->notify(new GeneralNotification($announcement));
                 } else {
-                    \Log::warning('[SendScheduledAnnouncements] skipping invalid member email', ['announcement_id' => $announcement->id, 'email' => $email]);
+                    Log::warning('[SendScheduledAnnouncements] skipping invalid member email', ['announcement_id' => $announcement->id, 'email' => $email]);
                 }
             }
 

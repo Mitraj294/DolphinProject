@@ -5,6 +5,7 @@ namespace App\Notifications;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\Messages\MailMessage;
 
 class GeneralNotification extends Notification implements ShouldQueue
@@ -109,7 +110,7 @@ class GeneralNotification extends Notification implements ShouldQueue
                     $displayName = implode(', ', array_values($route));
                 }
             } catch (\Exception $e) {
-                \Log::warning('[Notification] Failed to read AnonymousNotifiable mail route', ['error' => $e->getMessage()]);
+                Log::warning('[Notification] Failed to read AnonymousNotifiable mail route', ['error' => $e->getMessage()]);
             }
         }
 
@@ -152,17 +153,17 @@ class GeneralNotification extends Notification implements ShouldQueue
                         $recipientFound = true;
                     } else {
                         // no valid target found; log for debugging
-                        \Log::warning('[Notification] AnonymousNotifiable without valid mail route', ['route' => $route]);
+                        Log::warning('[Notification] AnonymousNotifiable without valid mail route', ['route' => $route]);
                     }
                 } catch (\Exception $e) {
-                    \Log::warning('[Notification] Failed to read AnonymousNotifiable mail route', ['error' => $e->getMessage()]);
+                    Log::warning('[Notification] Failed to read AnonymousNotifiable mail route', ['error' => $e->getMessage()]);
                 }
             }
         }
 
         if (!$recipientFound) {
             // Defensive log
-            \Log::warning('[Notification] toMail called but no recipient was found for announcement', ['announcement_id' => $this->announcement->id, 'notifiable' => is_object($notifiable) ? get_class($notifiable) : (string)$notifiable]);
+            Log::warning('[Notification] toMail called but no recipient was found for announcement', ['announcement_id' => $this->announcement->id, 'notifiable' => is_object($notifiable) ? get_class($notifiable) : (string)$notifiable]);
             // Return a Noop mailable which overrides send() to avoid invoking mail transport
             return new \App\Mail\NoopMailable($this->announcement, $displayName);
         }

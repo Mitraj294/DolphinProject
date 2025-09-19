@@ -56,7 +56,9 @@ class SendScheduledAnnouncementJob implements ShouldQueue
             // could throw an exception. Catch those and mark the announcement as
             // sent to avoid repeated failures while the system is being fixed.
             try {
-                $this->announcement->load(['users', 'organizations.users', 'groups.members']);
+                // Ensure we eager-load both group users (User models) and group members (Member models)
+                // so we can create DB notifications for User models and still email Member records.
+                $this->announcement->load(['users', 'organizations.users', 'groups.users', 'groups.members']);
             } catch (\Exception $e) {
                 Log::error("Failed to eager-load announcement relations for ID {$this->announcement->id}. Marking as sent to avoid retry loop. Error: {$e->getMessage()}");
                 // Mark as sent to prevent the scheduler from repeatedly dispatching
@@ -80,10 +82,20 @@ class SendScheduledAnnouncementJob implements ShouldQueue
 
             Log::info("Processing announcement ID: {$this->announcement->id} for {$recipients->count()} unique recipients.");
 
+            // Also collect member emails (Member model may not be a User and therefore
+            // only needs an email send).
+            $memberEmails = $this->collectMemberEmails();
+
             foreach ($recipients as $user) {
                 // 1. Create Database Notification
                 try {
-                    $user->notify(new GeneralNotification($this->announcement));
+                    // Use notifyNow to synchronously write the database notification
+                    // and avoid relying on the queue worker's environment.
+                    if (method_exists($user, 'notifyNow')) {
+                        $user->notifyNow(new GeneralNotification($this->announcement));
+                    } else {
+                        $user->notify(new GeneralNotification($this->announcement));
+                    }
                 } catch (\Exception $e) {
                     Log::warning("Failed to create DB notification for user {$user->id} on announcement {$this->announcement->id}: {$e->getMessage()}");
                 }
@@ -98,6 +110,17 @@ class SendScheduledAnnouncementJob implements ShouldQueue
                 }
 
                 Log::info("Attempted announcement {$this->announcement->id} for user {$user->email} (ID: {$user->id})");
+            }
+
+            // Send email-only to member emails collected from groups (dedupe against user emails)
+            $userEmails = $recipients->pluck('email')->filter()->unique()->values()->toArray();
+            $memberEmails = array_values(array_diff($memberEmails, $userEmails));
+            foreach ($memberEmails as $email) {
+                try {
+                    Mail::to($email)->send(new AnnouncementMail($this->announcement, $email));
+                } catch (\Exception $e) {
+                    Log::warning("Failed to send announcement email to member {$email} for announcement {$this->announcement->id}: {$e->getMessage()}");
+                }
             }
 
             // 3. Mark the announcement as sent after all notifications are attempted.
@@ -117,21 +140,50 @@ class SendScheduledAnnouncementJob implements ShouldQueue
      */
     private function collectRecipients(): Collection
     {
-        // Start with directly associated users.
+        // Start with directly associated users (User models).
         $recipients = new Collection($this->announcement->users);
 
-        // Add all users from the targeted organizations.
+        // Add all users from the targeted organizations (User models).
         foreach ($this->announcement->organizations as $organization) {
             $recipients = $recipients->merge($organization->users);
         }
 
-        // Add all members from the targeted groups.
+        // Add all users from the targeted groups (User models).
         foreach ($this->announcement->groups as $group) {
-            // Assuming 'members' on the Group model returns a collection of User models.
-            $recipients = $recipients->merge($group->members);
+            // Prefer group->users which returns User models. group->members may return Member models
+            // which are not App\Models\User and therefore won't create DB notifications.
+            if (method_exists($group, 'users')) {
+                $recipients = $recipients->merge($group->users);
+            }
         }
 
-        // Return a collection of unique users, preventing duplicate notifications.
+        // Return a collection of unique User models, preventing duplicate notifications.
         return $recipients->unique('id');
+    }
+
+    /**
+     * Collect member emails from groups for mail-only sends (Member model may not be a User)
+     *
+     * @return array<string>
+     */
+    private function collectMemberEmails(): array
+    {
+        $emails = [];
+        foreach ($this->announcement->groups as $group) {
+            if (method_exists($group, 'members')) {
+                try {
+                    $members = $group->members;
+                    foreach ($members as $m) {
+                        $email = $m->email ?? null;
+                        if ($email && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                            $emails[] = $email;
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('[Dispatch] Failed to collect group member emails', ['group_id' => $group->id, 'error' => $e->getMessage()]);
+                }
+            }
+        }
+        return array_values(array_unique($emails));
     }
 }
