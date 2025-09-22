@@ -81,7 +81,7 @@
         </div>
         <div class="NotificationDetailBodyForOrganizations">
           <div
-            v-if="allRecipients.length"
+            v-if="organizationRecipients.length"
             class="NotificationDetailBodyForOrganizations"
           >
             <div class="modal-titleTABLE">
@@ -130,7 +130,7 @@
                       ]"
                     />
                     <tbody>
-                      <tr v-if="!allRecipients.length">
+                      <tr v-if="!organizationRecipients.length">
                         <td
                           colspan="4"
                           style="text-align: center; padding: 20px"
@@ -139,7 +139,7 @@
                         </td>
                       </tr>
                       <tr
-                        v-for="r in allRecipients"
+                        v-for="r in organizationRecipients"
                         :key="r.id"
                       >
                         <td>{{ r.organization_name }}</td>
@@ -149,6 +149,70 @@
                         <td>
                           <span>{{
                             r.read_at ? formatDateTime(r.read_at) : ' - '
+                          }}</span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admins table: separate from organizations -->
+        <div class="NotificationDetailBodyForAdmins">
+          <div
+            v-if="adminRecipients.length"
+            class="NotificationDetailBodyForAdmins"
+          >
+            <div class="modal-titleTABLE">Admin Notification Details</div>
+            <div class="detail-row">
+              <div
+                class="detail-table"
+                style="
+                  width: 100% !important;
+                  max-width: 800px !important;
+                  margin: 0 !important;
+                "
+              >
+                <div
+                  class="recipient-table-wrap"
+                  style="
+                    overflow-x: auto;
+                    -webkit-overflow-scrolling: touch;
+                    width: 100%;
+                  "
+                >
+                  <table
+                    class="recipient-table compact"
+                    style="width: 100%; min-width: 500px"
+                  >
+                    <TableHeader
+                      :columns="[
+                        { label: 'User Name', key: 'name', minWidth: '200px' },
+                        { label: 'Emails', key: 'email', minWidth: '200px' },
+                        { label: 'Read At', key: 'read_at', minWidth: '200px' },
+                      ]"
+                    />
+                    <tbody>
+                      <tr v-if="!adminRecipients.length">
+                        <td
+                          colspan="3"
+                          style="text-align: center; padding: 20px"
+                        >
+                          No admins targeted.
+                        </td>
+                      </tr>
+                      <tr
+                        v-for="a in adminRecipients"
+                        :key="a.id"
+                      >
+                        <td>{{ a.name }}</td>
+                        <td>{{ a.email }}</td>
+                        <td>
+                          <span>{{
+                            a.read_at ? formatDateTime(a.read_at) : ' - '
                           }}</span>
                         </td>
                       </tr>

@@ -1,6 +1,7 @@
 <template>
   <div class="main-layout">
     <div
+      v-if="isSubscriptionActive"
       class="sidebar-circle-btn"
       @click="toggleSidebar"
       :style="{ left: sidebarBtnLeft }"
@@ -65,6 +66,15 @@ export default {
         return this.sidebarExpanded ? `calc(200px - 15px)` : '-15px';
       }
       return this.sidebarExpanded ? `calc(200px - 15px)` : `calc(65px - 15px)`;
+    },
+    isSubscriptionActive() {
+      if (!storage || typeof storage.get !== 'function') return false;
+      const role = storage.get('role') || '';
+      const status = storage.get('subscription_status');
+      if (role === 'organizationadmin') {
+        return status === 'active';
+      }
+      return true;
     },
   },
   methods: {

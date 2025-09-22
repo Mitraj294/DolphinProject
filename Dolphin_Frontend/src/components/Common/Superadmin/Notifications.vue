@@ -144,12 +144,16 @@
               :enableSelectAll="true"
             />
           </div>
+        </div>
+        <div class="modal-row">
           <div class="modal-field">
             <FormLabel>Select Group</FormLabel>
             <MultiSelectDropdown
-              :options="groups || []"
+              :options="filteredGroups || []"
               :selectedItems="selectedGroups"
               @update:selectedItems="selectedGroups = $event"
+              option-label="name"
+              option-value="id"
               placeholder="Select groups"
               :enableSelectAll="true"
             />
@@ -168,7 +172,6 @@
               :enableSelectAll="true"
             />
           </div>
-          <div class="modal-field"></div>
         </div>
         <div class="modal-row">
           <div class="schedule-demo-field schedule-demo-schedule-field">
@@ -314,6 +317,37 @@ export default {
         return pages;
       }
     },
+    // Groups filtered by selected organizations. If no organization selected, show groups for the first organization in the organizations list.
+    filteredGroups() {
+      const allGroups = Array.isArray(this.groups) ? this.groups : [];
+      const selectedOrgIds = Array.isArray(this.selectedOrganizations)
+        ? this.selectedOrganizations.map((o) => o.id)
+        : [];
+
+      if (selectedOrgIds.length === 0) {
+        // If nothing selected, default to groups for the first organization in the organizations list
+        const firstOrgId =
+          this.organizations && this.organizations.length
+            ? this.organizations[0].id
+            : null;
+        return firstOrgId
+          ? allGroups.filter((g) => g.organization_id === firstOrgId)
+          : allGroups;
+      }
+
+      return allGroups.filter((g) =>
+        selectedOrgIds.includes(g.organization_id)
+      );
+    },
+  },
+  watch: {
+    // Ensure selectedGroups only contains groups that belong to the currently selected organizations
+    selectedOrganizations(newOrgs) {
+      const allowedGroupIds = new Set(this.filteredGroups.map((g) => g.id));
+      this.selectedGroups = (this.selectedGroups || []).filter((g) =>
+        allowedGroupIds.has(g.id)
+      );
+    },
   },
   methods: {
     async openDetail(item) {
@@ -438,7 +472,21 @@ export default {
         const res = await axios.get(apiUrl + '/organizations', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (this.isAlive) this.organizations = res.data;
+        if (this.isAlive) {
+          // Normalize response shape to an array
+          let orgs = [];
+          if (Array.isArray(res.data)) orgs = res.data;
+          else if (res.data && Array.isArray(res.data.data))
+            orgs = res.data.data;
+          else if (res.data && Array.isArray(res.data.organizations))
+            orgs = res.data.organizations;
+          else orgs = [];
+
+          // Only include organizations whose related user has role 'organizationadmin'
+          this.organizations = orgs.filter(
+            (o) => String(o.user_role).toLowerCase() === 'organizationadmin'
+          );
+        }
       } catch (err) {
         console.error('Error fetching organizations:', err);
         if (this.isAlive) this.organizations = [];
@@ -451,7 +499,18 @@ export default {
         const res = await axios.get(apiUrl + '/groups', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (this.isAlive) this.groups = res.data;
+        if (this.isAlive) {
+          // Normalize different API response shapes to an array
+          if (Array.isArray(res.data)) {
+            this.groups = res.data;
+          } else if (res.data && Array.isArray(res.data.data)) {
+            this.groups = res.data.data;
+          } else if (res.data && Array.isArray(res.data.groups)) {
+            this.groups = res.data.groups;
+          } else {
+            this.groups = [];
+          }
+        }
       } catch (err) {
         console.error('Error fetching groups:', err);
         if (this.isAlive) this.groups = [];
@@ -465,19 +524,67 @@ export default {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (this.isAlive) {
-          // Normalize response: API may return { users: [...] } or { data: [...] } or an array
+          // Normalize response into an array
           const body = res.data;
+          let adminsArray = [];
           if (Array.isArray(body)) {
-            this.admins = body;
+            adminsArray = body;
           } else if (body && Array.isArray(body.users)) {
-            this.admins = body.users;
+            adminsArray = body.users;
           } else if (body && Array.isArray(body.data)) {
-            this.admins = body.data;
+            adminsArray = body.data;
           } else if (body && Array.isArray(body.admins)) {
-            this.admins = body.admins;
-          } else {
-            this.admins = [];
+            adminsArray = body.admins;
           }
+
+          // Helper to detect dolphinadmin role on a user object
+          const isDolphinAdmin = (user) => {
+            if (!user) return false;
+            // Common shapes: user.roles = [{name:'dolphinadmin'}], or user.role / user.role_name as string
+            if (Array.isArray(user.roles)) {
+              return user.roles.some(
+                (r) =>
+                  (r && (r.name || r)).toString().toLowerCase() ===
+                  'dolphinadmin'
+              );
+            }
+            if (Array.isArray(user.user_roles)) {
+              return user.user_roles.some(
+                (r) =>
+                  (r && (r.name || r)).toString().toLowerCase() ===
+                  'dolphinadmin'
+              );
+            }
+            const roleStr = (
+              user.role ||
+              user.role_name ||
+              user.user_role ||
+              ''
+            )
+              .toString()
+              .toLowerCase();
+            if (roleStr) return roleStr.includes('dolphinadmin');
+            return false;
+          };
+
+          // Normalize admin objects and filter to only dolphinadmin users
+          this.admins = adminsArray.filter(isDolphinAdmin).map((u) => {
+            const id = u.id || u.user_id || u._id || null;
+            const name =
+              u.name ||
+              (u.first_name || u.firstName || u.firstname
+                ? `${u.first_name || u.firstName || u.firstname} ${
+                    u.last_name || u.lastName || u.lastname || ''
+                  }`.trim()
+                : null) ||
+              u.email ||
+              (u.username || '').toString();
+            return {
+              ...u,
+              id,
+              name,
+            };
+          });
         }
       } catch (err) {
         console.error('Error fetching admins:', err);

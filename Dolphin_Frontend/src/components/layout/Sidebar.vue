@@ -21,8 +21,8 @@
       >
     </div>
     <ul
-      class="sidebar-menu"
-      v-if="!hideMenu"
+      class="sidebar-menu isSubscriptionActiveu"
+      v-if="isSubscriptionActive && !hideMenu"
     >
       <li
         v-for="(item, idx) in menuOptions"
@@ -185,6 +185,18 @@ export default {
       // Get role from encrypted storage for consistency
       const storage = require('@/services/storage').default;
       return storage.get('role') || '';
+    },
+    isSubscriptionActive() {
+      const storage = require('@/services/storage').default;
+      if (!storage || typeof storage.get !== 'function') return false;
+      const role = storage.get('role') || '';
+      const status = storage.get('subscription_status');
+      // Only hide UI for organization admins when subscription is not active
+      if (role === 'organizationadmin') {
+        return status === 'active';
+      }
+      // For other roles, always show the sidebar
+      return true;
     },
     menuOptions() {
       if (this.hideMenu) return [];

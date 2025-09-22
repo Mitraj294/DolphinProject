@@ -78,6 +78,45 @@
           >
             <FormLabel
               style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+              >Select Date</FormLabel
+            >
+            <FormInput
+              v-model="scheduleDate"
+              type="date"
+              required
+            />
+          </div>
+          <div
+            class="modal-form-row-div"
+            style="flex: 1; min-width: 0"
+          >
+            <FormLabel
+              style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
+              >Select Time</FormLabel
+            >
+            <FormInput
+              v-model="scheduleTime"
+              type="time"
+              required
+            />
+          </div>
+        </FormRow>
+        <FormRow
+          class="modal-form-row"
+          style="
+            margin-bottom: 0 !important;
+            display: flex;
+            gap: 18px;
+            align-items: flex-start;
+            flex-direction: row;
+          "
+        >
+          <div
+            class="modal-form-row-div"
+            style="flex: 1; min-width: 0"
+          >
+            <FormLabel
+              style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
               >Select Group</FormLabel
             >
             <MultiSelectDropdown
@@ -109,45 +148,7 @@
             />
           </div>
         </FormRow>
-        <FormRow
-          class="modal-form-row"
-          style="
-            margin-bottom: 0 !important;
-            display: flex;
-            gap: 18px;
-            align-items: flex-start;
-            flex-direction: row;
-          "
-        >
-          <div
-            class="modal-form-row-div"
-            style="flex: 1; min-width: 0"
-          >
-            <FormLabel
-              style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
-              >Select Date</FormLabel
-            >
-            <FormInput
-              v-model="scheduleDate"
-              type="date"
-              required
-            />
-          </div>
-          <div
-            class="modal-form-row-div"
-            style="flex: 1; min-width: 0"
-          >
-            <FormLabel
-              style="font-size: 1rem !important; margin: 0 0 6px 0 !important"
-              >Select Time</FormLabel
-            >
-            <FormInput
-              v-model="scheduleTime"
-              type="time"
-              required
-            />
-          </div>
-        </FormRow>
+
         <div class="modal-form-actions">
           <button
             type="submit"

@@ -334,10 +334,18 @@ const handleAuthenticatedRoutes = async (to, role, next) => {
     storage.set('subscription_status', subscriptionStatus.status);
 
     if (subscriptionStatus.status === 'expired') {
+      // Expired applies to everyone
       handleExpiredSubscription(to, next);
-    } else {
-      checkPermissionsAndNavigate(to, role, next);
+      return;
     }
+
+    // Treat 'none' like expired only for organization admins
+    if (subscriptionStatus.status === 'none' && role === ROLES.ORGANIZATIONADMIN) {
+      handleExpiredSubscription(to, next);
+      return;
+    }
+
+    checkPermissionsAndNavigate(to, role, next);
   } catch (error) {
     console.error("Error fetching subscription status:", error);
     storage.clear();

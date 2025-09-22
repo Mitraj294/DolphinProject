@@ -9,10 +9,13 @@
           <div class="subscription-plans-header-spacer"></div>
           <div class="subscription-plans-container">
             <div class="subscription-plans-title">Subscription Plans</div>
-            <div class="subscription-plans-desc">
-              Lorem Ipsum is simply dummy text of the printing and typesetting
-              industry. Lorem Ipsum has been the industry's standard dummy text
-              ever since the 1500s.
+            <div
+              class="subscription-plans-desc"
+              style="max-width: 600px"
+            >
+              Choose the plan that fits your needs. Whether you’re just starting
+              or looking for long-term value, we’ve got flexible options to help
+              you grow without limits.
             </div>
             <div class="subscription-plans-options">
               <div
@@ -65,9 +68,12 @@
                 </button>
               </div>
             </div>
-            <div class="subscription-plans-footer">
-              Lorem Ipsum is simply dummy text of the printing and typesetting
-              industry.
+            <div
+              class="subscription-plans-footer"
+              style="max-width: 600px"
+            >
+              Upgrade anytime, cancel anytime. No hidden fees – just simple,
+              transparent pricing. industry.
             </div>
           </div>
         </div>
@@ -294,7 +300,7 @@ export default {
     },
     standardBtnText() {
       if (this.userPlan === 2500) return 'Current Plan';
-      if (this.userPlan === 250) return 'Upgrade Plan';
+      if (this.userPlan === 250) return 'Update Plan';
       return 'Get Started';
     },
     standardBtnAction() {
@@ -317,8 +323,24 @@ export default {
         const res = await axios.get(`${API_BASE_URL}/api/subscription`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
-        // Assume API returns { plan_amount: 250 } or { plan_amount: 2500 }
-        this.userPlan = res.data.plan_amount || null;
+        // API may return either `amount` or `plan_amount` depending on endpoint/format.
+        // Backend returns amount as a string like "250.00" — parse to numeric value
+        const rawAmount = res.data?.amount ?? res.data?.plan_amount ?? null;
+        if (rawAmount !== null && rawAmount !== undefined) {
+          // remove commas and parse float, then round to integer (250.00 -> 250)
+          const parsed = parseFloat(String(rawAmount).replace(/,/g, ''));
+          this.userPlan = Number.isFinite(parsed) ? Math.round(parsed) : null;
+        } else {
+          this.userPlan = null;
+        }
+
+        // Set billing period (some APIs return 'Monthly' or 'Annual')
+        const period = res.data?.period || res.data?.plan_period || null;
+        if (period) {
+          const p = String(period).toLowerCase();
+          this.planPeriod = p.includes('ann') ? 'annually' : 'monthly';
+          this.isAnnually = this.planPeriod === 'annually';
+        }
 
         // After fetching plan, also refresh user role in storage (in case role changed)
         const { fetchCurrentUser } = await import('@/services/user');
@@ -356,19 +378,15 @@ export default {
         );
         if (res.data && res.data.url) {
           window.location.href = res.data.url;
+        } else if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'error',
+            summary: 'Checkout Error',
+            detail: 'Could not start Stripe Checkout.',
+            life: 4000,
+          });
         } else {
-          if (this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: 'error',
-              summary: 'Checkout Error',
-              detail: 'Could not start Stripe Checkout.',
-              life: 4000,
-            });
-          } else {
-            console.warn(
-              'Toast not available: Could not start Stripe Checkout.'
-            );
-          }
+          console.warn('Toast not available: Could not start Stripe Checkout.');
         }
       } catch (e) {
         if (this.$toast && typeof this.$toast.add === 'function') {

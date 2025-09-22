@@ -169,7 +169,16 @@ class OrganizationController extends Controller
             $salesPersonName = null;
         }
 
+        // Determine primary role for the organization's user (if any)
+        $userRole = null;
+        if ($user && $user->roles && $user->roles->count() > 0) {
+            $userRole = $user->roles->first()->name ?? null;
+        }
+
         return [
+            // related user id and role (from pivot/roles)
+            'user_id' => $org->user_id,
+            'user_role' => $userRole,
             'id' => $org->id,
             'organization_name' => $org->organization_name,
             'organization_size' => $org->organization_size,

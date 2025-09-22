@@ -3,9 +3,11 @@
     class="form-box"
     ref="dropdownRoot"
   >
-    <span class="form-input-icon">
-      <i :class="icon"></i>
-    </span>
+    <div>
+      <span class="form-input-icon">
+        <i :class="icon"></i>
+      </span>
+    </div>
     <div
       class="selected-container"
       @click="toggleDropdown"
@@ -450,19 +452,27 @@ export default {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
-  padding: 6px 36px 6px 36px;
+  flex-wrap: nowrap;
+  margin: 0 36px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 0;
+
   min-height: 44px;
+
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
 }
 .selected-chip {
   display: inline-flex;
   align-items: center;
-
-  background: #f6f6f6;
+  flex: 0 0 auto;
+  background: #0074c2;
   border-radius: 18px;
   padding: 6px 10px;
   font-size: 14px;
-  color: #444;
+  font-weight: 400;
+  color: #ffffff;
 }
 .chip-label {
   max-width: 160px;
@@ -477,6 +487,16 @@ export default {
   font-size: 18px;
   line-height: 1;
   padding: 0 4px;
+}
+.selected-container::-webkit-scrollbar {
+  height: 8px;
+}
+.selected-container::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+}
+.selected-container::-webkit-scrollbar-track {
+  background: transparent;
 }
 .selected-placeholder {
   color: #9a9a9a;
