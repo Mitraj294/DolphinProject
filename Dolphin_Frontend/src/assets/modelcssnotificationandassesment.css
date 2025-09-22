@@ -699,29 +699,3 @@ textarea {
 .recipient-table th.rounded-th-right {
     border-top-right-radius: 8px;
 }
-
-/* Button styles within table */
-.btn-view {
-    background: var(--primary);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: var(--btn-radius);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.2s ease;
-}
-
-.btn-view:hover {
-    background: var(--primary-strong);
-    transform: translateY(-1px);
-}
-
-.btn-view-icon {
-    width: 14px;
-    height: 14px;
-}

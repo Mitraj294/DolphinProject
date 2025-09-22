@@ -465,6 +465,13 @@ export default {
         });
       } else if (option === 'Send Assessment') {
         router.push({ name: 'SendAssessment', params: { id: lead.id } });
+      } else {
+        toast.add({
+          severity: 'info',
+          summary: 'Info',
+          detail: `Action "${option}" is not implemented yet.`,
+          life: 3000,
+        });
       }
     };
 

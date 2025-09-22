@@ -76,6 +76,7 @@ class SendScheduledAnnouncementJob implements ShouldQueue
             // or underlying column is missing (migration/model mismatch), loading
             // could throw an exception. Catch those and mark the announcement as
             // sent to avoid repeated failures while the system is being fixed.
+            $eagerLoadFailed = false;
             try {
                 // Eager-load users, organization users and group members' user relations.
                 // Note: do NOT eager-load `groups.users` because the pivot table in this
@@ -85,6 +86,20 @@ class SendScheduledAnnouncementJob implements ShouldQueue
                 $this->announcement->load(['users', 'organizations.users', 'groups.members.user']);
             } catch (\Exception $e) {
                 Log::error("Failed to eager-load announcement relations for ID {$this->announcement->id}. Marking as sent to avoid retry loop. Error: {$e->getMessage()}");
+                $eagerLoadFailed = true;
+            }
+
+            // Separate collection for different recipient types
+            $orgAndAdminUsers = $this->collectOrganizationAndAdminUsers();
+            $groupUsers = $this->collectGroupUsers();
+            $memberEmails = $this->collectMemberEmails();
+
+            $totalRecipients = $orgAndAdminUsers->count() + $groupUsers->count() + count($memberEmails);
+
+            if ($eagerLoadFailed || $totalRecipients === 0) {
+                if ($totalRecipients === 0) {
+                    Log::info("No recipients found for announcement ID: {$this->announcement->id}. Marking as sent.");
+                }
                 // Mark as sent to prevent the scheduler from repeatedly dispatching
                 // the same failing announcement. An operator can re-open or re-send
                 // manually after fixing data/model migrations if needed.
@@ -96,45 +111,28 @@ class SendScheduledAnnouncementJob implements ShouldQueue
                 return;
             }
 
-            // Separate collection for different recipient types
-            $orgAndAdminUsers = $this->collectOrganizationAndAdminUsers();
-            $groupUsers = $this->collectGroupUsers();
-            $memberEmails = $this->collectMemberEmails();
-
-            $totalRecipients = $orgAndAdminUsers->count() + $groupUsers->count() + count($memberEmails);
-
-            if ($totalRecipients === 0) {
-                Log::info("No recipients found for announcement ID: {$this->announcement->id}. Marking as sent.");
-                $this->announcement->update(['sent_at' => now()]);
-                return;
-            }
-
             Log::info("Processing announcement ID: {$this->announcement->id} for {$totalRecipients} total recipients (org/admin: {$orgAndAdminUsers->count()}, group: {$groupUsers->count()}, member emails: " . count($memberEmails) . ")");
 
-            // Step 1: Create database notifications ONLY for organization/admin users
+            // Step 1: Process organization/admin users (DB notification + email via GeneralNotification)
+            $orgAdminUserIds = $orgAndAdminUsers->pluck('id')->toArray();
             foreach ($orgAndAdminUsers as $user) {
                 try {
+                    // GeneralNotification handles BOTH database notification AND email sending
                     LaravelNotification::sendNow($user, new GeneralNotification($this->announcement));
-                    Log::debug("Sent DB notification for org/admin user {$user->id} and announcement {$this->announcement->id}");
+                    Log::info("Sent DB notification + email to org/admin user {$user->email} (ID: {$user->id}) for announcement {$this->announcement->id}");
                 } catch (\Exception $e) {
-                    Log::warning("Failed to create DB notification for org/admin user {$user->id} on announcement {$this->announcement->id}: {$e->getMessage()}");
+                    Log::warning("Failed to send notification to org/admin user {$user->id} on announcement {$this->announcement->id}: {$e->getMessage()}");
                 }
             }
 
-            // Step 2: Send exactly ONE email to each unique user (deduplicated by ID, not object)
-            $allUsers = $orgAndAdminUsers->merge($groupUsers);
-            $orgAdminUserIds = $orgAndAdminUsers->pluck('id')->toArray();
-            // Track which user IDs we've already processed
-            $processedUserIds = [];
-            
-            foreach ($allUsers as $user) {
-                // Skip if we've already processed this user ID
-                if (in_array($user->id, $processedUserIds)) {
-                    Log::info("SKIPPING DUPLICATE: User {$user->id} already processed for announcement {$this->announcement->id}");
+            // Step 2: Process group users (email ONLY, exclude users already processed as org/admin)
+            foreach ($groupUsers as $user) {
+                // Skip if this user was already processed as org/admin user
+                if (in_array($user->id, $orgAdminUserIds)) {
+                    Log::debug("Skipping group user {$user->id} - already processed as org/admin user for announcement {$this->announcement->id}");
                     continue;
                 }
-                $processedUserIds[] = $user->id;
-                Log::info("PROCESSING USER: User {$user->id} ({$user->email}) for announcement {$this->announcement->id}");
+                
                 try {
                     if (!empty($user->email)) {
                         // Format user display name properly
@@ -143,23 +141,16 @@ class SendScheduledAnnouncementJob implements ShouldQueue
                             $displayName = $user->email;
                         }
                         
-                        Log::info("ABOUT TO SEND EMAIL: User {$user->id} ({$user->email}) for announcement {$this->announcement->id}");
                         Mail::to($user->email)->send(new AnnouncementMail($this->announcement, $displayName));
-                        Log::info("EMAIL SENT SUCCESSFULLY: User {$user->id} ({$user->email}) for announcement {$this->announcement->id}");
-                        
-                        // Log based on user type for clarity (prioritize org/admin status)
-                        if (in_array($user->id, $orgAdminUserIds)) {
-                            Log::info("Sent email to org/admin user {$user->email} (ID: {$user->id}) for announcement {$this->announcement->id}");
-                        } else {
-                            Log::info("Sent email to group-only user {$user->email} (ID: {$user->id}) for announcement {$this->announcement->id}");
-                        }
+                        Log::info("Sent email to group-only user {$user->email} (ID: {$user->id}) for announcement {$this->announcement->id}");
                     }
                 } catch (\Exception $e) {
-                    Log::warning("Failed to send email for user {$user->id} on announcement {$this->announcement->id}: {$e->getMessage()}");
+                    Log::warning("Failed to send email for group user {$user->id} on announcement {$this->announcement->id}: {$e->getMessage()}");
                 }
             }
 
             // Step 3: Send emails to member emails that don't belong to any User (deduplicated)
+            $allUsers = $orgAndAdminUsers->merge($groupUsers);
             $allUserEmails = $allUsers->pluck('email')->filter()->unique()->values()->toArray();
             $uniqueMemberEmails = array_values(array_diff($memberEmails, $allUserEmails));
             

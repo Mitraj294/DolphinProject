@@ -377,7 +377,7 @@ export default {
       // If ISO with timezone or 'Z', let Date parse it
       let d = null;
       try {
-        if (/[T].*Z$/.test(dateStr) || /[T].*[+-]\d{2}:?\d{2}$/.test(dateStr)) {
+        if (/T.*Z$/.test(dateStr) || /T.*[+-]\d{2}:?\d{2}$/.test(dateStr)) {
           d = new Date(dateStr);
         } else {
           // Try to parse 'YYYY-MM-DD HH:MM:SS' (assume it's UTC from DB)
@@ -390,7 +390,7 @@ export default {
             const day = parseInt(m[3], 10);
             const hour = parseInt(m[4], 10);
             const minute = parseInt(m[5], 10);
-            const second = m[6] ? parseInt(m[6], 10) : 0;
+            const second = parseInt(m[6], 10) || 0;
             // create Date from UTC components, then use local getters for display
             const utcMillis = Date.UTC(year, month, day, hour, minute, second);
             d = new Date(utcMillis);
@@ -405,7 +405,7 @@ export default {
       if (!d || isNaN(d.getTime())) return dateStr || '';
 
       // Use local date/time getters so the shown value is in user's local timezone
-      const day = String(d.getDate()).padStart(2, '0');
+      const dayOfMonth = String(d.getDate()).padStart(2, '0');
       const months = [
         'JAN',
         'FEB',
@@ -427,9 +427,9 @@ export default {
       const min = String(d.getMinutes()).padStart(2, '0');
       const ampm = hr >= 12 ? 'PM' : 'AM';
       hr = hr % 12;
-      hr = hr ? hr : 12; // convert 0 -> 12
+
       const strTime = `${hr}:${min} ${ampm}`;
-      return `${day} ${mon},${yr} ${strTime}`;
+      return `${dayOfMonth} ${mon},${yr} ${strTime}`;
     },
     async fetchOrganizations() {
       try {

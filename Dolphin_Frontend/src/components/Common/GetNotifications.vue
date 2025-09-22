@@ -103,7 +103,7 @@
                 <button
                   v-if="tab === 'unread' && !item.read_at"
                   class="mark-all"
-                  @click="markAsRead(id)"
+                  @click="markAsRead(item.id)"
                   style="
                     margin-top: 10px;
                     background: #fff;
@@ -223,200 +223,159 @@ export default {
     },
     async fetchNotifications() {
       try {
-        let endpoint =
-          this.tab === 'unread'
-            ? '/api/notifications/unread'
-            : '/api/notifications';
-        let token = storage.get('authToken');
-        if (token && typeof token === 'object' && token.token) {
-          token = token.token;
-        }
-        if (typeof token !== 'string') {
-          token = '';
-        }
-        const config = token
-          ? { headers: { Authorization: `Bearer ${token}` } }
-          : {};
+        const config = this._getAuthHeaders();
+        const endpoint = this._getNotificationEndpoint();
+        const response = await this._fetchDataWithFallback(endpoint, config);
+        const notificationsArr = this._extractNotifications(response);
 
-        if (this.tab === 'all') {
-          const role = authMiddleware.getRole();
-          if (role === 'superadmin') {
-            const storedUserIdParam =
-              storage.get('userId') ||
-              storage.get('user_id') ||
-              storage.get('userId');
-            const uid = storedUserIdParam ? parseInt(storedUserIdParam, 10) : 0;
-            if (uid) {
-              endpoint = `/api/notifications?notifiable_type=${encodeURIComponent(
-                'App\\Models\\User'
-              )}&notifiable_id=${uid}`;
-            } else {
-              endpoint = '/api/notifications';
-            }
-          } else {
-            endpoint = '/api/notifications/user';
-          }
-        }
-
-        let response;
-        try {
-          response = await axios.get(endpoint, config);
-        } catch (err) {
-          if (
-            err.response &&
-            err.response.status === 403 &&
-            this.tab === 'all'
-          ) {
-            try {
-              response = await axios.get('/api/notifications/user', config);
-            } catch (err2) {
-              console.error('Error fetching user notifications:', err2);
-            }
-          } else {
-            throw err;
-          }
-        }
-        let notificationsArr = [];
-        if (Array.isArray(response.data)) {
-          notificationsArr = response.data;
-        } else if (
-          response.data &&
-          Array.isArray(response.data.notifications)
-        ) {
-          notificationsArr = response.data.notifications;
-        } else if (response.data && Array.isArray(response.data.unread)) {
-          notificationsArr = response.data.unread;
-        } else {
-          console.warn(
-            'Unexpected notifications response format:',
-            response.data
-          );
-        }
-        // only show notifications related to the logged-in user
-        const storedUserId =
-          storage.get('userId') ||
-          storage.get('user_id') ||
-          storage.get('userId');
+        const storedUserId = storage.get('userId') || storage.get('user_id');
         const currentUserId = storedUserId ? parseInt(storedUserId, 10) : 0;
 
-        const isForUser = (n) => {
-          // If server already returned only user's notifications, allow.
-          if (!currentUserId) return true;
-          // check standard Laravel notifications table field
-          if (
-            n.notifiable_id &&
-            parseInt(n.notifiable_id, 10) === currentUserId
-          )
-            return true;
-          // check common payload shapes
-          if (n.data) {
-            try {
-              const d =
-                typeof n.data === 'string' ? JSON.parse(n.data) : n.data;
-              if (d.user_id && parseInt(d.user_id, 10) === currentUserId)
-                return true;
-              if (d.userId && parseInt(d.userId, 10) === currentUserId)
-                return true;
-              if (
-                d.recipient_id &&
-                parseInt(d.recipient_id, 10) === currentUserId
-              )
-                return true;
-            } catch (e) {
-              console.error('Error parsing notification data:', e);
-            }
-          }
-          return false;
-        };
+        const mapped = notificationsArr
+          .filter((n) => this._isNotificationForUser(n, currentUserId))
+          .map((n) => this._normalizeNotification(n));
 
-        const filtered = notificationsArr.filter(isForUser);
-
-        const mapped = filtered.map((n) => {
-          // normalize data payload
-          let d = n.data;
-          if (typeof d === 'string') {
-            try {
-              d = JSON.parse(d);
-            } catch (e) {
-              console.error('Error parsing notification data:', e);
-            }
-          }
-
-          // helper to pick the first non-empty string from common fields
-          const pickString = (obj, keys) => {
-            if (!obj) return '';
-            for (const k of keys) {
-              if (Object.hasOwn(obj, k)) {
-                const v = obj[k];
-                if (typeof v === 'string' && v.trim()) return v.trim();
-                if (typeof v === 'number') return String(v);
-                if (v && typeof v === 'object' && v.message)
-                  return String(v.message);
-              }
-            }
-            return '';
-          };
-
-          const bodyFromData = pickString(d, [
-            'body',
-            'message',
-            'text',
-            'details',
-            'description',
-            'content',
-            'msg',
-          ]);
-
-          const fallbackBody = n.body || '';
-          const finalBody = bodyFromData || fallbackBody;
-
-          // If still empty and data is an object, stringify a helpful subset
-          let bodyDisplay = finalBody;
-          if (!bodyDisplay && d && typeof d === 'object') {
-            // try common nested shapes
-            bodyDisplay =
-              pickString(d, ['user_message', 'notification', 'payload']) ||
-              (Object.keys(d).length ? JSON.stringify(d) : '');
-          }
-
-          return {
-            id: n.id,
-            // keep the original created_at for reliable filtering
-            created_at: n.created_at,
-            date: n.created_at ? this.formatDate(n.created_at) : '',
-            body: bodyDisplay,
-            read_at: n.read_at,
-            _rawData: d,
-          };
-        });
-
-        // split into unread (notifications) and read (readNotifications) so tabs and
-        // date filtering work consistently. Keep original order from server.
         this.notifications = mapped.filter((m) => !m.read_at);
         this.readNotifications = mapped.filter((m) => !!m.read_at);
-        // Notifications have been updated; watchers will synchronize the
-        // stored count and emit domain events (avoid duplicate emits here).
       } catch (error) {
-        this.notifications = [];
-        // Provide more detailed error info for debugging (403 body etc.)
-        console.error(
-          'Failed to fetch notifications:',
-          error,
-          error && error.response && error.response.data
-        );
-        const serverMsg =
-          (error &&
-            error.response &&
-            (error.response.data.message || error.response.data.error)) ||
-          null;
-        this.$nextTick(() => {
-          this.$notify &&
-            this.$notify({
-              type: 'error',
-              message: serverMsg || 'Failed to fetch notifications.',
-            });
-        });
+        this._handleFetchError(error);
       }
+    },
+
+    _getAuthHeaders() {
+      let token = storage.get('authToken');
+      if (token && typeof token === 'object' && token.token) {
+        token = token.token;
+      }
+      if (typeof token !== 'string') {
+        return {};
+      }
+      return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    },
+
+    _getNotificationEndpoint() {
+      if (this.tab === 'unread') {
+        return '/api/notifications/unread';
+      }
+      const role = authMiddleware.getRole();
+      if (role === 'superadmin') {
+        const storedUserIdParam =
+          storage.get('userId') || storage.get('user_id');
+        const uid = storedUserIdParam ? parseInt(storedUserIdParam, 10) : 0;
+        if (uid) {
+          return `/api/notifications?notifiable_type=${encodeURIComponent(
+            'App\\Models\\User'
+          )}&notifiable_id=${uid}`;
+        }
+        return '/api/notifications';
+      }
+      return '/api/notifications/user';
+    },
+
+    async _fetchDataWithFallback(endpoint, config) {
+      try {
+        return await axios.get(endpoint, config);
+      } catch (err) {
+        if (err.response && err.response.status === 403 && this.tab === 'all') {
+          return axios.get('/api/notifications/user', config);
+        }
+        throw err;
+      }
+    },
+
+    _extractNotifications(response) {
+      if (!response || !response.data) return [];
+      if (Array.isArray(response.data)) return response.data;
+      if (Array.isArray(response.data.notifications))
+        return response.data.notifications;
+      if (Array.isArray(response.data.unread)) return response.data.unread;
+      console.warn('Unexpected notifications response format:', response.data);
+      return [];
+    },
+
+    _isNotificationForUser(n, currentUserId) {
+      if (!currentUserId) return true;
+      if (parseInt(n.notifiable_id, 10) === currentUserId) return true;
+      if (!n.data) return false;
+      try {
+        const d = typeof n.data === 'string' ? JSON.parse(n.data) : n.data;
+        return (
+          (d.user_id && parseInt(d.user_id, 10) === currentUserId) ||
+          (d.userId && parseInt(d.userId, 10) === currentUserId) ||
+          (d.recipient_id && parseInt(d.recipient_id, 10) === currentUserId)
+        );
+      } catch (e) {
+        console.error('Error parsing notification data:', e);
+        return false;
+      }
+    },
+
+    _normalizeNotification(n) {
+      let d = n.data;
+      if (typeof d === 'string') {
+        try {
+          d = JSON.parse(d);
+        } catch (e) {
+          console.error('Error parsing notification data:', e);
+        }
+      }
+
+      const bodyKeys = [
+        'body',
+        'message',
+        'text',
+        'details',
+        'description',
+        'content',
+        'msg',
+      ];
+      let bodyDisplay = this._pickString(d, bodyKeys) || n.body || '';
+
+      if (!bodyDisplay && d && typeof d === 'object') {
+        bodyDisplay =
+          this._pickString(d, ['user_message', 'notification', 'payload']) ||
+          (Object.keys(d).length ? JSON.stringify(d) : '');
+      }
+
+      return {
+        id: n.id,
+        created_at: n.created_at,
+        date: n.created_at ? this.formatDate(n.created_at) : '',
+        body: bodyDisplay,
+        read_at: n.read_at,
+        _rawData: d,
+      };
+    },
+
+    _pickString(obj, keys) {
+      if (!obj) return '';
+      for (const k of keys) {
+        if (Object.hasOwn(obj, k)) {
+          const v = obj[k];
+          if (typeof v === 'string' && v.trim()) return v.trim();
+          if (typeof v === 'number') return String(v);
+          if (v && typeof v === 'object' && v.message) return String(v.message);
+        }
+      }
+      return '';
+    },
+
+    _handleFetchError(error) {
+      this.notifications = [];
+      this.readNotifications = [];
+      console.error(
+        'Failed to fetch notifications:',
+        error,
+        error?.response?.data
+      );
+      const serverMsg =
+        error?.response?.data?.message || error?.response?.data?.error || null;
+      this.$nextTick(() => {
+        this.$notify?.({
+          type: 'error',
+          message: serverMsg || 'Failed to fetch notifications.',
+        });
+      });
     },
     onDateChange() {
       // reset to first page when date filter changes
