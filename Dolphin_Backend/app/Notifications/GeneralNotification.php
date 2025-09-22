@@ -19,6 +19,11 @@ class GeneralNotification extends Notification implements ShouldQueue
         $this->announcement = $announcement;
     }
 
+    public function getAnnouncement()
+    {
+        return $this->announcement;
+    }
+
     /**
      * Notification channels
      */
@@ -101,13 +106,14 @@ class GeneralNotification extends Notification implements ShouldQueue
 
         $subject = $this->announcement->subject ?? 'New Announcement';
         
-        $mailMessage = (new MailMessage)->subject($subject);
+        $mailMessage = (new MailMessage)
+            ->subject($subject);
         
         if ($displayName) {
             $mailMessage->greeting('Hello ' . $displayName . ',');
         }
         
-        $mailMessage->markdown('mail.announcement', ['content' => $this->announcement->body]);
+        $mailMessage->line($this->announcement->body);
 
         return $mailMessage;
     }

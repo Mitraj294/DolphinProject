@@ -1,0 +1,113 @@
+/* Base ------------------------------ */
+*:not(br):not(tr):not(html) {
+    font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+    box-sizing: border-box;
+}
+body {
+    width: 100% !important;
+    height: 100%;
+    margin: 0;
+    line-height: 1.4;
+    background-color: #F2F4F6;
+    color: #74787E;
+    -webkit-text-size-adjust: none;
+}
+a {
+    color: #3869D4;
+}
+/* Layout ------------------------------ */
+.email-wrapper {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: #F2F4F6;
+}
+.email-content {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+/* Masthead ----------------------- */
+.email-masthead {
+    padding: 25px 0;
+    text-align: center;
+}
+.email-masthead_logo {
+    max-width: 400px;
+    border: 0;
+}
+.email-masthead_name {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2F3133;
+    text-decoration: none;
+    text-shadow: 0 1px 0 white;
+}
+/* Body ------------------------------ */
+.email-body {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid #EDEFF2;
+    border-bottom: 1px solid #EDEFF2;
+    background-color: #FFF;
+}
+.email-body_inner {
+    width: 570px;
+    margin: 0 auto;
+    padding: 0;
+}
+.email-footer {
+    width: 570px;
+    margin: 0 auto;
+    padding: 0;
+    text-align: center;
+}
+.email-footer p {
+    color: #AEAEAE;
+    font-size: 12px;
+    text-align: center;
+}
+.content-cell {
+    padding: 35px;
+}
+.content-cell h1 {
+    margin-top: 0;
+    color: #2F3133;
+    font-size: 19px;
+    font-weight: bold;
+}
+.content-cell p {
+    margin-top: 0;
+    color: #74787E;
+    font-size: 16px;
+    line-height: 1.5em;
+}
+.button {
+    display: inline-block;
+    background-color: #3869D4;
+    color: #FFF !important;
+    text-decoration: none;
+    border-radius: 3px;
+    box-shadow: 0 2px 3px rgba(0, 0, 0, 0.16);
+    padding: 10px 25px;
+    border: none;
+    font-size: 16px;
+}
+
+.button-primary {
+    background-color: #3869D4;
+    color: #FFF !important;
+}
+
+@media only screen and (max-width: 600px) {
+    .email-body_inner,
+    .email-footer {
+        width: 100% !important;
+    }
+}
+@media only screen and (max-width: 500px) {
+    .button {
+        width: 100% !important;
+    }
+}
