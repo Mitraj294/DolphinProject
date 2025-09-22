@@ -13,11 +13,6 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
  
-        $schedule->command('assessment:send-scheduled-emails')->everyMinute();
-
-        // Use the artisan command to dispatch pending announcements
-        $schedule->command('announcements:dispatch-pending')->everyMinute()->description('Dispatch pending scheduled announcements');
-
         // Clean up expired tokens daily at 2 AM
         $schedule->command('tokens:cleanup --force')->dailyAt('02:00')->description('Clean up expired OAuth tokens');
 

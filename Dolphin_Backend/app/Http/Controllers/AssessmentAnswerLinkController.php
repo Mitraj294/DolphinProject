@@ -4,19 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SendAssessmentLinkRequest;
 use App\Http\Requests\SubmitAssessmentAnswersRequest;
-use App\Mail\AssessmentAnswerLinkMail;
 use App\Models\Assessment;
 use App\Models\AssessmentAnswerToken;
 use App\Models\AssessmentQuestion;
 use App\Models\Group;
 use App\Models\Member;
+use App\Notifications\AssessmentInvitation;
+use App\Services\AssessmentLinkService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Str;
 
 class AssessmentAnswerLinkController extends Controller
 {
@@ -24,19 +23,20 @@ class AssessmentAnswerLinkController extends Controller
      * Generate and send an assessment link to a member.
      *
      * @param  SendAssessmentLinkRequest  $request
+     * @param  AssessmentLinkService  $linkService
      * @return JsonResponse
      */
-    public function sendLink(SendAssessmentLinkRequest $request): JsonResponse
+    public function sendLink(SendAssessmentLinkRequest $request, AssessmentLinkService $linkService): JsonResponse
     {
         try {
             $validated = $request->validated();
             $assessment = Assessment::findOrFail($validated['assessment_id']);
+            $member = Member::findOrFail($validated['member_id']);
 
-            $token = $this->createAnswerToken($assessment->id, $validated['member_id'], $validated['group_id'] ?? null);
+            $token = $linkService->createAnswerToken($assessment->id, $member->id, $validated['group_id'] ?? null);
+            $link = $linkService->generateFrontendLink($token, $member->id, $validated['group_id'] ?? null);
 
-            $link = $this->generateFrontendLink($token, $validated['member_id'], $validated['group_id'] ?? null);
-
-            Mail::to($validated['email'])->send(new AssessmentAnswerLinkMail($link, $assessment));
+            $member->notify(new AssessmentInvitation($link, $assessment->name));
 
             return response()->json(['message' => 'Link sent successfully.']);
         } catch (\Exception $e) {
@@ -135,27 +135,6 @@ class AssessmentAnswerLinkController extends Controller
     }
 
     // Private Helper Methods
-
-    private function createAnswerToken(int $assessmentId, int $memberId, ?int $groupId): string
-    {
-        $token = Str::random(40);
-        AssessmentAnswerToken::create([
-            'assessment_id' => $assessmentId,
-            'member_id' => $memberId,
-            'group_id' => $groupId,
-            'token' => $token,
-            'expires_at' => Carbon::now()->addDays(7),
-        ]);
-        return $token;
-    }
-
-    private function generateFrontendLink(string $token, int $memberId, ?int $groupId): string
-    {
-        $frontendBase = rtrim(env('FRONTEND_URL', 'http://localhost:8080'), '/');
-        $queryParams = http_build_query(array_filter(['group_id' => $groupId, 'member_id' => $memberId]));
-
-        return "{$frontendBase}/assessment/answer/{$token}?{$queryParams}";
-    }
 
     private function buildAssessmentResponse(Assessment $assessment, AssessmentAnswerToken $tokenRow): array
     {

@@ -559,77 +559,64 @@ export default {
 
         const res = await axios.get(
           `${API_BASE_URL}/api/organizations/${orgId}`,
-          {
-            headers: getAuthHeaders(),
-          }
+          { headers: getAuthHeaders() }
         );
 
-        if (res.data) {
-          this.orgId = res.data.id;
-          this.form = mapOrganizationToForm(res.data);
+        if (!res.data) return;
 
-          // If backend returned names instead of IDs for country/state/city,
-          // attempt to resolve them to IDs using the loaded lists.
-          // country
-          if (
-            !this.form.country_id &&
-            (res.data.country || res.data.country_name)
-          ) {
-            const cName = (res.data.country || res.data.country_name)
-              .toString()
-              .trim();
-            const found = this.countries.find(
-              (c) =>
-                c.name.toString().trim().toLowerCase() === cName.toLowerCase()
+        this.orgId = res.data.id;
+        this.form = mapOrganizationToForm(res.data);
+
+        // Resolve location names to IDs
+        if (!this.form.country_id) {
+          this.form.country_id = this._findIdByName(
+            this.countries,
+            res.data.country || res.data.country_name
+          );
+        }
+
+        if (this.form.country_id) {
+          await this.fetchStates();
+          if (!this.form.state_id) {
+            this.form.state_id = this._findIdByName(
+              this.states,
+              res.data.state || res.data.state_name
             );
-            if (found) this.form.country_id = found.id;
           }
+        }
 
-          // If we now have a country id, load states
-          if (this.form.country_id) await this.fetchStates();
-
-          // state
-          if (!this.form.state_id && (res.data.state || res.data.state_name)) {
-            const sName = (res.data.state || res.data.state_name)
-              .toString()
-              .trim();
-            const foundS = this.states.find(
-              (s) =>
-                s.name.toString().trim().toLowerCase() === sName.toLowerCase()
+        if (this.form.state_id) {
+          await this.fetchCities();
+          if (!this.form.city_id) {
+            this.form.city_id = this._findIdByName(
+              this.cities,
+              res.data.city || res.data.city_name
             );
-            if (foundS) this.form.state_id = foundS.id;
           }
+        }
 
-          // If we now have a state id, load cities
-          if (this.form.state_id) await this.fetchCities();
-
-          // city
-          if (!this.form.city_id && (res.data.city || res.data.city_name)) {
-            const cityName = (res.data.city || res.data.city_name)
-              .toString()
-              .trim();
-            const foundCity = this.cities.find(
-              (c) =>
-                c.name.toString().trim().toLowerCase() ===
-                cityName.toLowerCase()
-            );
-            if (foundCity) this.form.city_id = foundCity.id;
-          }
-
-          if (res.data.sales_person) {
-            this.salesPersons = [
-              {
-                id: res.data.sales_person_id || null,
-                name: res.data.sales_person,
-              },
-            ];
-          } else {
-            await this.fetchSalesPersons();
-          }
+        if (res.data.sales_person) {
+          this.salesPersons = [
+            {
+              id: res.data.sales_person_id || null,
+              name: res.data.sales_person,
+            },
+          ];
+        } else {
+          await this.fetchSalesPersons();
         }
       } catch (e) {
         console.error('Failed to fetch organization details', e);
       }
+    },
+
+    _findIdByName(items, name) {
+      if (!name || !items || !items.length) return null;
+      const normalizedName = name.toString().trim().toLowerCase();
+      const found = items.find(
+        (item) => item.name.toString().trim().toLowerCase() === normalizedName
+      );
+      return found ? found.id : null;
     },
 
     async updateDetails() {
