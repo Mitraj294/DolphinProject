@@ -217,7 +217,7 @@ class NotificationController extends Controller {
         }
 
         $recipients = $this->getRecipientsForAnnouncement($announcement);
-        $notification = new NewAnnouncement($announcement);
+        $notification = new GeneralNotification($announcement);
 
         if ($announcement->scheduled_at) {
             $notification->delay($announcement->scheduled_at);

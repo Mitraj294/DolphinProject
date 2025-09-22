@@ -4,6 +4,7 @@ namespace App\Mail;
 use Illuminate\Bus\Queueable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Mail\Mailable;
+use Illuminate\Support\Facades\Log;
 
 /**
  * A No-op mailable used as a safe fallback when no recipient is available.
@@ -33,7 +34,7 @@ class NoopMailable extends Mailable
     // Override send to be a no-op and avoid invoking the mail transport
     public function send($mailer)
     {
-        \Log::warning('[NoopMailable] send() called - skipping actual mail send', ['announcement_id' => $this->announcement->id ?? null, 'displayName' => $this->displayName]);
-        return;
+        Log::warning('[NoopMailable] send() called - skipping actual mail send', ['announcement_id' => $this->announcement->id ?? null, 'displayName' => $this->displayName]);
+  
     }
 }
