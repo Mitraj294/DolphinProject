@@ -212,6 +212,13 @@ class AuthController extends Controller
                 'organization_size' => $data['organization_size'],
             ]);
 
+            // Set the organization_id on the user to reference the created organization
+            $org = Organization::where('user_id', $user->id)->first();
+            if ($org) {
+                $user->organization_id = $org->id;
+                $user->save();
+            }
+
             $user->roles()->attach(Role::where('name', 'user')->first());
 
             return $user;

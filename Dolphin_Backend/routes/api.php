@@ -45,6 +45,8 @@ Route::post('/assessment/answer/{token}', [AssessmentAnswerLinkController::class
 
 Route::get('/leads/find-us-options', [LeadController::class, 'findUsOptions']);
 Route::get('/email-template/lead-registration', [LeadController::class, 'leadRegistration']);
+// Public endpoint used by frontend register page to fetch lead data for form prefill
+Route::get('/leads/prefill', [LeadController::class, 'prefill']);
 Route::post('/leads/send-assessment', [SendAssessmentController::class, 'send']);
 Route::post('/schedule-email', [ScheduledEmailController::class, 'store']);
 Route::get('/scheduled-email/show', [ScheduledEmailController::class, 'show']);
@@ -124,12 +126,11 @@ Route::middleware('auth:api')->group(function () {
         // Superadmin Only
         Route::middleware('auth.role:superadmin')->group(function () {
             Route::apiResource('users', UserController::class);
-            Route::patch('/users/{id}/role', [UserController::class, 'updateRole']);
-            Route::patch('/users/{id}/soft-delete', [UserController::class, 'softDelete']);
-            Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
-            
-            Route::apiResource('organizations', OrganizationController::class);
 
+            Route::patch('/users/{user}/role', [UserController::class, 'updateRole']);
+            Route::patch('/users/{user}/soft-delete', [UserController::class, 'softDelete']);
+            Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
+            Route::apiResource('organizations', OrganizationController::class);
             Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
             Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
             Route::get('/notifications', [NotificationController::class, 'allNotifications']);

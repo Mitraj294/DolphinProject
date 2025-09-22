@@ -6,7 +6,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Password reset route for email link 
+// Password reset route for email link
 Route::get('password/reset/{token}', function ($token) {
     $email = request('email');
     // Redirect to frontend reset page with token and email as query params

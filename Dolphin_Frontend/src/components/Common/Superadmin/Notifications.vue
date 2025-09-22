@@ -464,7 +464,21 @@ export default {
         const res = await axios.get(apiUrl + '/users', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (this.isAlive) this.admins = res.data;
+        if (this.isAlive) {
+          // Normalize response: API may return { users: [...] } or { data: [...] } or an array
+          const body = res.data;
+          if (Array.isArray(body)) {
+            this.admins = body;
+          } else if (body && Array.isArray(body.users)) {
+            this.admins = body.users;
+          } else if (body && Array.isArray(body.data)) {
+            this.admins = body.data;
+          } else if (body && Array.isArray(body.admins)) {
+            this.admins = body.admins;
+          } else {
+            this.admins = [];
+          }
+        }
       } catch (err) {
         console.error('Error fetching admins:', err);
         if (this.isAlive) this.admins = [];

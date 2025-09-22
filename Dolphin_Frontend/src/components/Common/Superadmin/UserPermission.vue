@@ -238,6 +238,9 @@ export default {
     return {
       users: [],
       loading: false,
+      // Track async UI state for save/delete operations
+      isSaving: false,
+      isDeleting: false,
       currentPage: 1,
       pageSize: 10,
       pageSizes: [10, 25, 100],
@@ -332,12 +335,7 @@ export default {
 
     async impersonateUser(user) {
       // Build a clear display name for confirmation
-      const impersonatdisplayName =
-        user.first_name || user.last_name
-          ? `${user.first_name || ''}${
-              user.last_name ? ' ' + user.last_name : ''
-            }`.trim()
-          : user.name || user.email || 'this user';
+      const impersonatdisplayName = this.displayNameFor(user);
 
       // Use PrimeVue confirmation dialog instead of native confirm()
       this.confirm.require({
@@ -380,12 +378,7 @@ export default {
             storage.set('last_name', data.user.last_name || '');
             storage.set('email', data.user.email || '');
             if (data.user.first_name || data.user.last_name) {
-              storage.set(
-                'userName',
-                `${data.user.first_name || ''}${
-                  data.user.last_name ? ' ' + data.user.last_name : ''
-                }`.trim()
-              );
+              storage.set('userName', this.displayNameFor(data.user));
             } else {
               storage.set('userName', data.user.name || data.user.email || '');
             }
@@ -455,10 +448,7 @@ export default {
           last_name: u.last_name || '',
           email: u.email || '',
           role: (u.role || 'user').toString().toLowerCase(),
-          name:
-            u.first_name || u.last_name
-              ? `${u.first_name || ''}${u.last_name ? ' ' + u.last_name : ''}`
-              : u.name || u.full_name || '',
+          name: this.displayNameFor(u),
         }));
       } catch (e) {
         this.toast.add({
@@ -470,6 +460,16 @@ export default {
       } finally {
         this.loading = false;
       }
+    },
+
+    // Helper to compute a display name without nested ternaries
+    displayNameFor(user) {
+      if (!user) return '';
+      const first = user.first_name || '';
+      const last = user.last_name || '';
+      const combined = `${first}${last ? ' ' + last : ''}`.trim();
+      if (combined) return combined;
+      return user.name || user.full_name || user.email || '';
     },
 
     async deleteUser(user) {

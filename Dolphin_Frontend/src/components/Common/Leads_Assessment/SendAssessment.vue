@@ -98,6 +98,7 @@ export default {
   components: { MainLayout, Editor, FormInput, FormRow, FormLabel },
   data() {
     return {
+      leadId: null,
       to: '',
       recipientName: '',
       subject: 'Complete Your Registration',
@@ -177,6 +178,8 @@ export default {
   mounted() {
     console.log('=== TINYMCE COMPONENT MOUNTED ===');
     const leadId = this.$route.params.id || this.$route.query.lead_id || null;
+    // store leadId so generated registration links can include it and enable full prefill
+    this.leadId = leadId;
     console.log('Lead ID from route:', leadId);
 
     if (leadId) {
@@ -214,6 +217,8 @@ export default {
         console.log('Default template exists:', !!leadDefaultTemplate);
 
         if (leadObj && leadDefaultTemplate) {
+          // keep lead id for registration link prefill
+          this.leadId = leadObj.id || this.leadId;
           this.to = leadObj.email || '';
           this.recipientName = `${leadObj.first_name || ''} ${
             leadObj.last_name || ''
@@ -230,9 +235,12 @@ export default {
 
     updateRegistrationLink() {
       if (this.to) {
-        this.registrationLink = `${
-          window.location.origin
-        }/register?email=${encodeURIComponent(this.to)}`;
+        // include lead_id when available so frontend register page can fetch full lead data
+        const base = `${window.location.origin}/register`;
+        const params = new URLSearchParams();
+        params.set('email', this.to);
+        if (this.leadId) params.set('lead_id', String(this.leadId));
+        this.registrationLink = `${base}?${params.toString()}`;
       } else {
         this.registrationLink = '';
       }
