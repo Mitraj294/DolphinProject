@@ -1,17 +1,20 @@
 <?php
-require __DIR__ . '/../vendor/autoload.php';
-$app = require_once __DIR__ . '/../bootstrap/app.php';
+use Illuminate\Support\Facades\DB;
+
+require_once __DIR__ . '/../vendor/autoload.php';
+use Dolphin_backend\Bootstrap\App;
+use App\Models\Announcement;
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
-$announcements = App\Models\Announcement::with(['groups','organizations'])->get();
+$announcements = Announcement::with(['groups','organizations'])->get();
 $out = [];
 foreach ($announcements as $a) {
     $hasGroups = $a->groups()->exists();
     $hasOrgs = $a->organizations()->exists();
     if ($hasGroups && !$hasOrgs) {
         // check notifications that reference this announcement_id in JSON payload
-        $rows = \DB::table('notifications')->whereRaw("JSON_EXTRACT(data,'$.announcement_id') = ?", [(string)$a->id])->get();
+        $rows = DB::table('notifications')->whereRaw("JSON_EXTRACT(data,'$.announcement_id') = ?", [(string)$a->id])->get();
         $out[] = [
             'announcement_id' => $a->id,
             'body' => $a->body,

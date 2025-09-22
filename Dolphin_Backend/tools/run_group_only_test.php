@@ -1,4 +1,5 @@
 <?php
+
 require __DIR__ . '/../vendor/autoload.php';
 $app = require_once __DIR__ . '/../bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
@@ -17,6 +18,6 @@ $job = new App\Jobs\SendScheduledAnnouncementJob($a);
 $job->handle();
 
 // Check notifications for this announcement
-$rows = \DB::table('notifications')->whereRaw("JSON_EXTRACT(data,'$.announcement_id') = ?", [ (string)$a->id ])->get();
+$rows = DB::table('notifications')->whereRaw("JSON_EXTRACT(data,'$.announcement_id') = ?", [ (string)$a->id ])->get();
 echo "Notifications rows for announcement {$a->id}:\n";
 echo json_encode($rows->toArray(), JSON_PRETTY_PRINT) . "\n";

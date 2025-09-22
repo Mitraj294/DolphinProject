@@ -434,7 +434,9 @@ export default {
       this.$router.go(0);
       try {
         window.dispatchEvent(new Event('auth-updated'));
-      } catch (e) {}
+      } catch (e) {
+        console.error('Error dispatching auth-updated event', e);
+      }
     },
 
     async fetchUsers() {
