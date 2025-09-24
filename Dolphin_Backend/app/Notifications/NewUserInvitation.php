@@ -13,7 +13,7 @@ class NewUserInvitation extends Notification
     protected $plainPassword;
     protected $resetTokenUrl;
 
-    public function __construct(string $plainPassword, string $resetTokenUrl = null)
+    public function __construct(string $plainPassword, ?string $resetTokenUrl = null)
     {
         $this->plainPassword = $plainPassword;
         $this->resetTokenUrl = $resetTokenUrl;

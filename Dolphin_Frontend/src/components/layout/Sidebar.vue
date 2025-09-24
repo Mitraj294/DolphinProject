@@ -1,9 +1,8 @@
 <template>
-  <aside
+  <nav
     :class="['sidebar', { expanded, 'sidebar-disabled': sidebarDisabled }]"
     :aria-hidden="sidebarDisabled ? 'true' : null"
     :tabindex="sidebarDisabled ? -1 : null"
-    role="navigation"
     aria-label="Sidebar"
   >
     <div
@@ -157,9 +156,8 @@
         </router-link>
       </li>
     </ul>
-  </aside>
+  </nav>
 </template>
-
 <script>
 import '@/assets/global.css';
 import { canAccess } from '@/permissions.js';

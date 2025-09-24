@@ -535,6 +535,8 @@ export default {
             adminsArray = body.data;
           } else if (body && Array.isArray(body.admins)) {
             adminsArray = body.admins;
+          } else {
+            adminsArray = [];
           }
 
           // Helper to detect dolphinadmin role on a user object

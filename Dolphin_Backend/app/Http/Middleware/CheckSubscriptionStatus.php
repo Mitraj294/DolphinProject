@@ -35,7 +35,14 @@ class CheckSubscriptionStatus
     {
         /** @var User|null $user */
         $user = Auth::user();
-        $allow = false;
+    $allow = false;
+    // when true, an organization-admin without an active org subscription must be blocked
+    $forceBlock = false;
+        $blockContext = [
+            'latest' => null,
+            'status' => 'none',
+            'message' => 'You have not selected any plans yet.',
+        ];
 
         // If the user is an organization admin, first check the organization's
         // subscription status. Organization admins should be allowed only when
@@ -55,28 +62,17 @@ class CheckSubscriptionStatus
                 // activeSubscription is a hasOne constrained to status='active'
                 $active = $organization->activeSubscription()->first();
                 if ($active) {
-                    return $next($request);
+                    $allow = true;
+                } else {
+                    // No active subscription — we must block this organization admin (do not fall through to other exemptions)
+                    $forceBlock = true;
+                    $latest = Subscription::where('user_id', $organization->user_id)->orderByDesc('created_at')->first();
+                    $blockContext['latest'] = $latest;
+                    $blockContext['status'] = $latest?->status ?? 'none';
+                    $blockContext['message'] = $blockContext['status'] === 'expired'
+                        ? 'Your subscription has expired. Please renew your subscription to continue.'
+                        : 'You have not selected any plans yet.';
                 }
-
-                // No active subscription — inspect latest subscription to craft the message
-                $latest = Subscription::where('user_id', $organization->user_id)->orderByDesc('created_at')->first();
-                $status = $latest?->status ?? 'none';
-
-                $message = $status === 'expired'
-                    ? 'Your subscription has expired. Please renew your subscription to continue.'
-                    : 'You have not selected any plans yet.';
-
-                if ($request->expectsJson() || $request->is('api/*')) {
-                    return response()->json([
-                        'message' => $message,
-                        'status' => $status,
-                        'subscription_end' => $latest?->subscription_end?->toDateTimeString(),
-                        'subscription_id' => $latest?->id,
-                        'redirect_url' => url('/manage-subscription'),
-                    ], 403);
-                }
-
-                return redirect('/manage-subscription')->with('error', $message);
             }
             // If there is no organization resolved, fall through to normal checks.
         }
@@ -86,30 +82,39 @@ class CheckSubscriptionStatus
             $allow = true;
         }
 
-        // If user has any exempt role, allow
-        if (! $allow && $this->userHasAnyExemptRole($user)) {
-            $allow = true;
+        // If a forceBlock condition was set (organization admin with no active org subscription),
+        // skip further exemptions and prepare to block below.
+        if (! $forceBlock) {
+            // If user has any exempt role, allow
+            if (! $allow && $this->userHasAnyExemptRole($user)) {
+                $allow = true;
+            }
+
+            // If user has an active subscription, allow
+            if (! $allow && $this->userHasActiveSubscription($user)) {
+                $allow = true;
+            }
         }
 
-        // If user has an active subscription, allow
-        if (! $allow && $this->userHasActiveSubscription($user)) {
-            $allow = true;
-        }
-
+        // If allowed, pass the request onward (single return for allowed path)
         if ($allow) {
             return $next($request);
         }
 
-        // Otherwise, block access and provide context about the latest subscription (if any)
-        $latest = $user->subscriptions()->orderByDesc('created_at')->first();
-        $status = $latest?->status ?? 'none';
+        // Prepare block payload: prefer organization-level context if forceBlock, otherwise use user-level latest
+        if ($forceBlock) {
+            $latest = $blockContext['latest'];
+            $status = $blockContext['status'];
+            $message = $blockContext['message'];
+        } else {
+            $latest = $user?->subscriptions()->orderByDesc('created_at')->first();
+            $status = $latest?->status ?? 'none';
+            $message = $status === 'expired'
+                ? 'Your subscription has expired. Please renew your subscription to continue.'
+                : 'You have not selected any plans yet.';
+        }
 
-        // Treat 'none' (no subscription) the same as blocked/expired for feature access.
-        $message = $status === 'expired'
-            ? 'Your subscription has expired. Please renew your subscription to continue.'
-            : 'You have not selected any plans yet.';
-
-        // API / JSON responses
+        // API / JSON responses (single return for blocked path)
         if ($request->expectsJson() || $request->is('api/*')) {
             return response()->json([
                 'message' => $message,
@@ -123,6 +128,7 @@ class CheckSubscriptionStatus
         // Web responses: redirect to subscription management with a flash message
         return redirect('/manage-subscription')->with('error', $message);
     }
+    
 
     /**
      * Determine if the user has any role that exempts them from subscription checks.

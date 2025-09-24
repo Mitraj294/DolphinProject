@@ -137,127 +137,8 @@ export default {
       if (!Array.isArray(this.selectedItems) || this.selectedItems.length === 0)
         return '';
 
-      const safeStringify = (obj) => {
-        try {
-          const seen = new WeakSet();
-          return JSON.stringify(
-            obj,
-            (k, v) => {
-              if (v && typeof v === 'object') {
-                if (seen.has(v)) return '[Circular]';
-                seen.add(v);
-              }
-              return v;
-            },
-            2
-          );
-        } catch (e) {
-          console.error('Error stringifying object', e);
-          try {
-            if (obj && typeof obj === 'object') {
-              const parts = Object.keys(obj)
-                .slice(0, 4)
-                .map((k) => `${k}:${String(obj[k])}`);
-              return parts.join(' ');
-            }
-          } catch (e2) {
-            console.error('Error in fallback stringify', e2);
-          }
-          return String(obj);
-        }
-      };
-
-      const commonLabelKeys = [
-        this.optionLabel,
-        'name',
-        'label',
-        'title',
-        'role',
-        'display_name',
-        'text',
-      ];
-
       const labels = this.selectedItems
-        .map((s) => {
-          if (s === null || s === undefined) return '';
-          // primitive selected (id or label)
-          if (typeof s === 'string' || typeof s === 'number') {
-            // try to resolve to option label by id
-            const opt = this.options.find((o) => o[this.optionValue] === s);
-            if (
-              opt &&
-              (typeof opt[this.optionLabel] === 'string' ||
-                typeof opt[this.optionLabel] === 'number')
-            )
-              return opt[this.optionLabel];
-            return String(s);
-          }
-
-          // object selected: try common label keys and nested shapes
-          if (typeof s === 'object') {
-            for (const key of commonLabelKeys) {
-              if (s && Object.hasOwn(s, key)) {
-                const v = s[key];
-                if (typeof v === 'string' && v.trim()) return v.trim();
-                if (typeof v === 'number') return String(v);
-              }
-            }
-
-            // check nested common shapes (e.g., s.role.name)
-            for (const key of ['role', 'user', 'data']) {
-              if (s[key] && typeof s[key] === 'object') {
-                const nested = s[key];
-                const nestedVal = nested[this.optionLabel];
-                if (nestedVal !== undefined) {
-                  if (
-                    typeof nestedVal === 'string' ||
-                    typeof nestedVal === 'number'
-                  ) {
-                    return String(nestedVal);
-                  }
-                  return safeStringify(nestedVal);
-                }
-                if (nested.name !== undefined) {
-                  if (
-                    typeof nested.name === 'string' ||
-                    typeof nested.name === 'number'
-                  ) {
-                    return String(nested.name);
-                  }
-                  return safeStringify(nested.name);
-                }
-              }
-            }
-
-            // resolve via id lookup against options
-            if (s[this.optionValue] !== undefined) {
-              const opt = this.options.find(
-                (o) => o[this.optionValue] === s[this.optionValue]
-              );
-              if (
-                opt &&
-                (typeof opt[this.optionLabel] === 'string' ||
-                  typeof opt[this.optionLabel] === 'number')
-              )
-                return opt[this.optionLabel];
-            }
-
-            // Try to find any string value on the object
-            try {
-              const vals = Object.values(s || {});
-              const strVal = vals.find(
-                (v) => typeof v === 'string' && v.trim()
-              );
-              if (strVal) return strVal.trim();
-            } catch (e) {
-              console.error('Error extracting string from object', e);
-            }
-
-            // Fallback to safe stringification
-            return safeStringify(s);
-          }
-          return String(s);
-        })
+        .map((s) => this.labelForSelected(s))
         .filter((x) => x !== '');
 
       return labels.join(', ');
@@ -325,6 +206,135 @@ export default {
       } catch {
         return String(lbl);
       }
+    },
+    // --- helper methods extracted to reduce complexity ---
+    safeStringify(obj) {
+      try {
+        const seen = new WeakSet();
+        return JSON.stringify(
+          obj,
+          (k, v) => {
+            if (v && typeof v === 'object') {
+              if (seen.has(v)) return '[Circular]';
+              seen.add(v);
+            }
+            return v;
+          },
+          2
+        );
+      } catch (e) {
+        console.error('Error stringifying object', e);
+        try {
+          if (obj && typeof obj === 'object') {
+            const parts = Object.keys(obj)
+              .slice(0, 4)
+              .map((k) => `${k}:${String(obj[k])}`);
+            return parts.join(' ');
+          }
+        } catch (e2) {
+          console.error('Error in fallback stringify', e2);
+        }
+        return String(obj);
+      }
+    },
+
+    getOptionLabelByValue(val) {
+      if (val === undefined || val === null) return null;
+      const opt = this.options.find((o) => o[this.optionValue] === val);
+      if (
+        opt &&
+        (typeof opt[this.optionLabel] === 'string' ||
+          typeof opt[this.optionLabel] === 'number')
+      )
+        return String(opt[this.optionLabel]);
+      return null;
+    },
+
+    extractCommonLabel(item, commonLabelKeys) {
+      for (const key of commonLabelKeys) {
+        if (item && Object.hasOwn(item, key)) {
+          const v = item[key];
+          if (typeof v === 'string' && v.trim()) return v.trim();
+          if (typeof v === 'number') return String(v);
+        }
+      }
+      return null;
+    },
+
+    extractNestedLabel(item) {
+      // keep this loop minimal; delegate branching to getLabelFromNested
+      const nestedKeys = ['role', 'user', 'data'];
+      for (const key of nestedKeys) {
+        const nested = item && item[key];
+        if (nested && typeof nested === 'object') {
+          const lbl = this.getLabelFromNested(nested);
+          if (lbl) return lbl;
+        }
+      }
+      return null;
+    },
+
+    getLabelFromNested(nested) {
+      if (!nested || typeof nested !== 'object') return null;
+      const tryKeys = [this.optionLabel, 'name'];
+      for (const k of tryKeys) {
+        if (Object.hasOwn(nested, k)) {
+          const v = nested[k];
+          if (typeof v === 'string' && v.trim()) return v.trim();
+          if (typeof v === 'number') return String(v);
+          return this.safeStringify(v);
+        }
+      }
+      return null;
+    },
+
+    extractAnyStringValue(item) {
+      try {
+        const vals = Object.values(item || {});
+        const strVal = vals.find((v) => typeof v === 'string' && v.trim());
+        if (strVal) return strVal.trim();
+      } catch (e) {
+        console.error('Error extracting string from object', e);
+      }
+      return null;
+    },
+
+    labelForSelected(s) {
+      const commonLabelKeys = [
+        this.optionLabel,
+        'name',
+        'label',
+        'title',
+        'role',
+        'display_name',
+        'text',
+      ];
+
+      if (s === null || s === undefined) return '';
+
+      // primitive selected (id or label)
+      if (typeof s === 'string' || typeof s === 'number') {
+        const optLabel = this.getOptionLabelByValue(s);
+        return optLabel !== null ? optLabel : String(s);
+      }
+
+      if (typeof s === 'object') {
+        const common = this.extractCommonLabel(s, commonLabelKeys);
+        if (common) return common;
+
+        const nested = this.extractNestedLabel(s);
+        if (nested) return nested;
+
+        const optLabel = this.getOptionLabelByValue(s[this.optionValue]);
+        if (optLabel) return optLabel;
+
+        const anyStr = this.extractAnyStringValue(s);
+        if (anyStr) return anyStr;
+
+        return this.safeStringify(s);
+      }
+
+      return String(s);
     },
     removeSelected(item) {
       const newSelected = this.selectedItems.filter((i) => {
@@ -459,8 +469,6 @@ export default {
   padding: 6px 0;
 
   min-height: 44px;
-
-  -webkit-overflow-scrolling: touch;
   white-space: nowrap;
 }
 .selected-chip {
@@ -489,7 +497,7 @@ export default {
   padding: 0 4px;
 }
 .selected-container::-webkit-scrollbar {
-  height: 8px;
+  height: 4px;
 }
 .selected-container::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.12);

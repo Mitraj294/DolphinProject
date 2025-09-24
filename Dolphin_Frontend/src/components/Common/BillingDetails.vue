@@ -244,7 +244,7 @@ export default {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 0;
+
   box-sizing: border-box;
   margin: 24px 16px 0 16px;
 }

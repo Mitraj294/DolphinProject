@@ -12,6 +12,7 @@ export async function fetchCurrentUser() {
     const response = await axios.get(`${API_BASE_URL}/api/user`, { headers });
     return response.data;
   } catch (e) {
+    console.error('Error fetching current user:', e);
     return null;
   }
 }
