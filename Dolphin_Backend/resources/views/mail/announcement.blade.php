@@ -4,5 +4,5 @@
 {{ $content }}
 
 Thanks,<br>
-{{ config('app.name') }}
+Dolphin Admin
 </x-mail::message>

@@ -40,7 +40,7 @@
 {{ $salutation }}
 @else
 @lang('Regards,')<br>
-{{ config('app.name') }}
+Dolphin Admin
 @endif
 
 {{-- Subcopy --}}
