@@ -56,7 +56,7 @@ DB_USERNAME=your_db_user
 DB_PASSWORD=your_db_password
 
 # Set the frontend URL for CORS and email links
-FRONTEND_URL=http://localhost:8080
+FRONTEND_URL=http://127.0.0.1:8080
 ```
 
 ### 4. Database and Authentication

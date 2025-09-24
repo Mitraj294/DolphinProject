@@ -407,8 +407,7 @@ export default {
     async loadRoles() {
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const res = await axios.get(`${API_BASE_URL}/api/member-roles`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
@@ -430,8 +429,7 @@ export default {
       // Fetch groups for this organization
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const res = await axios.get(`${API_BASE_URL}/api/groups`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
@@ -450,8 +448,7 @@ export default {
       // Fetch members for this organization
       this.availableMembers = [];
       const authToken = storage.get('authToken');
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       axios
         .get(`${API_BASE_URL}/api/members`, {
           headers: { Authorization: `Bearer ${authToken}` },
@@ -512,8 +509,7 @@ export default {
         const headers = {};
         if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
         await axios.post(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/members',
+          process.env.VUE_APP_API_BASE_URL + '/api/members',
           payload,
           { headers }
         );
@@ -602,8 +598,7 @@ export default {
         const headers = {};
         if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
         await axios.post(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/groups',
+          process.env.VUE_APP_API_BASE_URL + '/api/groups',
           payload,
           { headers }
         );

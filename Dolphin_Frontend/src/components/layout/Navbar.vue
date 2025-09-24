@@ -453,8 +453,7 @@ export default {
           ? { headers: { Authorization: `Bearer ${token}` } }
           : {};
 
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const res = await axios.get(`${API_BASE_URL}/api/user`, config);
         const user = res?.data || null;
         if (!user) return;
@@ -487,8 +486,7 @@ export default {
       if (this.leadNameFetching[leadId]) return;
       this.leadNameFetching[leadId] = true;
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         let token = storage.get('authToken');
         if (token && typeof token === 'object' && token.token)
           token = token.token;
@@ -530,8 +528,7 @@ export default {
       this.orgNameFetching[orgId] = true;
       let name = null;
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const config = this._getAuthConfig();
         const res = await axios.get(
           `${API_BASE_URL}/api/organizations/${orgId}`,
@@ -552,8 +549,7 @@ export default {
     async fetchSummary() {
       if (!this.assessmentId) return;
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const res = await axios.get(
           `${API_BASE_URL}/api/assessment/${this.assessmentId}/summary`
         );
@@ -601,8 +597,7 @@ export default {
       return token ? { headers: { Authorization: `Bearer ${token}` } } : {};
     },
     async _fetchAssessmentSummary(assessmentId, config) {
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       const res = await axios.get(
         `${API_BASE_URL}/api/assessment/${assessmentId}/summary`,
         config

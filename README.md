@@ -90,10 +90,7 @@ From the root directory of the project:
 ./start-dev.sh
 ```
 
-Once running, the application will be accessible at the following URLs:
 
--   **Frontend (Vue.js)**: `http://localhost:8080`
--   **Backend (Laravel)**: `http://localhost:8000`
 
 ## Key Features
 

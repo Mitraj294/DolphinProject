@@ -255,8 +255,7 @@ export default {
       // Fetch schedule details from backend
       try {
         const res = await axios.get(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/scheduled-email/show',
+          process.env.VUE_APP_API_BASE_URL + '/api/scheduled-email/show',
           { params: { assessment_id: item.id } }
         );
         this.scheduleDetails = res.data;
@@ -402,8 +401,7 @@ export default {
       // Always check backend for schedule status
       try {
         const res = await axios.get(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/scheduled-email/show',
+          process.env.VUE_APP_API_BASE_URL + '/api/scheduled-email/show',
           { params: { assessment_id: item.id } }
         );
         // Debug log for backend response
@@ -451,8 +449,7 @@ export default {
       // Before navigating, verify the assessment has a schedule entry
       try {
         const res = await axios.get(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/scheduled-email/show',
+          process.env.VUE_APP_API_BASE_URL + '/api/scheduled-email/show',
           { params: { assessment_id: item.id } }
         );
         // If backend returns scheduled=true (or 1), allow navigation
@@ -539,8 +536,7 @@ export default {
       try {
         const authToken = storage.get('authToken');
         await axios.post(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/assessment-schedules',
+          process.env.VUE_APP_API_BASE_URL + '/api/assessment-schedules',
           {
             assessment_id: this.selectedAssessment.id,
             date,
@@ -574,8 +570,7 @@ export default {
               console.warn('No group_id found for member', member);
             }
             await axios.post(
-              (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-                '/api/schedule-email',
+              process.env.VUE_APP_API_BASE_URL + '/api/schedule-email',
               {
                 recipient_email: member.email,
                 subject,
@@ -635,7 +630,7 @@ export default {
       }
 
       // Base API URL
-      const base = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const base = process.env.VUE_APP_API_BASE_URL;
 
       // If we don't have params, try to get organization_id from authenticated profile
       if (Object.keys(params).length === 0 && authToken) {
@@ -711,7 +706,7 @@ export default {
       }
       // Fetch questions
       const qres = await axios.get(
-        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
+        process.env.VUE_APP_API_BASE_URL +
           '/api/organization-assessment-questions',
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
@@ -724,8 +719,7 @@ export default {
       }
       // Fetch all groups
       const groupsRes = await axios.get(
-        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-          '/api/groups',
+        process.env.VUE_APP_API_BASE_URL + '/api/groups',
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
       if (Array.isArray(groupsRes.data.groups)) {
@@ -737,8 +731,7 @@ export default {
       }
       // Fetch all members
       const membersRes = await axios.get(
-        (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-          '/api/members',
+        process.env.VUE_APP_API_BASE_URL + '/api/members',
         { headers: { Authorization: `Bearer ${authToken}` } }
       );
       if (Array.isArray(membersRes.data.members)) {

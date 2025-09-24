@@ -23,7 +23,7 @@ class AssessmentLinkService
 
     public function generateFrontendLink(string $token, int $memberId, ?int $groupId): string
     {
-        $frontendBase = rtrim(env('FRONTEND_URL', 'http://localhost:8080'), '/');
+        $frontendBase = rtrim(env('FRONTEND_URL'), '/');
         $queryParams = http_build_query(array_filter(['group_id' => $groupId, 'member_id' => $memberId]));
 
         return "{$frontendBase}/assessment/answer/{$token}?{$queryParams}";

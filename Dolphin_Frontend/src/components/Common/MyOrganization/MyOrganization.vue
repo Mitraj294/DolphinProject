@@ -91,8 +91,7 @@ export default {
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       try {
         const response = await axios.get(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/groups',
+          process.env.VUE_APP_API_BASE_URL + '/api/groups',
           { headers }
         );
         this.groups = response.data;
@@ -107,8 +106,7 @@ export default {
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
       try {
         const response = await axios.get(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/members',
+          process.env.VUE_APP_API_BASE_URL + '/api/members',
           { headers }
         );
         this.members = response.data;

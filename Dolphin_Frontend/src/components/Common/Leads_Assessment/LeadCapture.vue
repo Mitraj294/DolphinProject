@@ -306,8 +306,7 @@ export default {
       this.showPassword = !this.showPassword;
     },
     async fetchCountries() {
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       console.log('[LeadCapture] [FRONTEND] Fetching countries...');
       const res = await axios.get(`${API_BASE_URL}/api/countries`);
       this.countries = res.data;
@@ -324,8 +323,7 @@ export default {
         );
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       console.log(
         `[LeadCapture] [FRONTEND] Fetching states for country_id: ${this.form.country_id}`
       );
@@ -343,8 +341,7 @@ export default {
         );
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       console.log(
         `[LeadCapture] [FRONTEND] Fetching cities for state_id: ${this.form.state_id}`
       );
@@ -426,8 +423,7 @@ export default {
           return;
         }
 
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.post(
           `${API_BASE_URL}/api/leads`,
           {

@@ -2,7 +2,7 @@
 import axios from 'axios';
 import storage from './storage';
 
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL  ;
 
 export async function fetchCurrentUser() {
   try {

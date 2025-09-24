@@ -111,7 +111,7 @@ class LeadController extends Controller
         
                                 // Build a registration link that points to the frontend app so users land on the registration page.
                                 // Prefer FRONTEND_URL (set in .env), fallback to a sensible local dev port.
-                                $frontendBase = env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080'));
+                                $frontendBase = env('FRONTEND_URL', env('APP_URL', 'FRONTEND_URL'));
 
                                 // Prepare query params to prefill the registration form on the frontend.
                                 $queryParams = [
@@ -217,7 +217,7 @@ class LeadController extends Controller
    
     public function leadRegistration(Request $request)
     {
-                $registration_link = $request->query('registration_link', rtrim(env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080')), '/') . '/register');
+                $registration_link = $request->query('registration_link', rtrim(env('FRONTEND_URL', env('APP_URL', 'FRONTEND_URL')), '/') . '/register');
                 $name = $request->query('name', '');
 
                 $safeLink = htmlspecialchars($registration_link, ENT_QUOTES, 'UTF-8');

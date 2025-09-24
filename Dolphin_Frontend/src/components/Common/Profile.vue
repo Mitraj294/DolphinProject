@@ -357,8 +357,7 @@ const formattedRole = computed(() => {
 
 // --- API & BUSINESS LOGIC ---
 
-const API_BASE_URL =
-  process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 const authToken = storage.get('authToken');
 
 const fetchProfile = async () => {

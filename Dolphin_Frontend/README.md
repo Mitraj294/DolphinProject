@@ -49,7 +49,7 @@ VUE_APP_API_BASE_URL=http://127.0.0.1:8000
 npm run serve
 ```
 
-The frontend application will be available at `http://localhost:8080`.
+The frontend application will be available at `http://127.0.0.1:8080`.
 
 ## Building for Production
 
@@ -123,7 +123,7 @@ To run the application in development mode:
 ```
 npm run serve
 ```
-Visit `http://localhost:8080` in your browser.
+Visit `http://127.0.0.1:8080` in your browser.
 
 ## Contributing
 Contributions are welcome! Please open an issue or submit a pull request for suggestions or improvements.

@@ -346,8 +346,7 @@ export default {
         rejectLabel: 'No',
         accept: async () => {
           try {
-            const baseUrl =
-              process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+            const baseUrl = process.env.VUE_APP_API_BASE_URL;
             const res = await fetch(
               `${baseUrl}/api/users/${user.id}/impersonate`,
               {
@@ -435,8 +434,7 @@ export default {
     async fetchUsers() {
       this.loading = true;
       try {
-        const baseUrl =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const res = await fetch(`${baseUrl}/api/users`, {
           headers: this.getAuthHeaders(),
         });
@@ -486,8 +484,7 @@ export default {
         accept: async () => {
           this.isDeleting = true;
           try {
-            const baseUrl =
-              process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+            const baseUrl = process.env.VUE_APP_API_BASE_URL;
             const res = await fetch(
               `${baseUrl}/api/users/${user.id}/soft-delete`,
               {
@@ -523,8 +520,7 @@ export default {
     async changeRole(user, newRole) {
       if (user.role === newRole) return;
       try {
-        const baseUrl =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const res = await fetch(`${baseUrl}/api/users/${user.id}/role`, {
           method: 'PUT',
           headers: {
@@ -582,8 +578,7 @@ export default {
         return;
       }
       try {
-        const baseUrl =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const res = await fetch(
           `${baseUrl}/api/users/${this.editUser.id}/role`,
           {

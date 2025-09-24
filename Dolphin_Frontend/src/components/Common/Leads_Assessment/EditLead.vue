@@ -296,8 +296,7 @@ export default {
 
     async loadLeadFromApi(leadId) {
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
 
@@ -384,8 +383,7 @@ export default {
       });
     },
     async fetchCountries() {
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       const res = await axios.get(`${API_BASE_URL}/api/countries`);
       this.countries = res.data;
     },
@@ -394,8 +392,7 @@ export default {
         this.states = [];
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       const res = await axios.get(
         `${API_BASE_URL}/api/states?country_id=${this.form.country_id}`
       );
@@ -406,8 +403,7 @@ export default {
         this.cities = [];
         return;
       }
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       const res = await axios.get(
         `${API_BASE_URL}/api/cities?state_id=${this.form.state_id}`
       );
@@ -494,8 +490,7 @@ export default {
       this.loading = false;
     },
     async updateLeadApi(leadId, token, payload) {
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       return axios.patch(`${API_BASE_URL}/api/leads/${leadId}`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });

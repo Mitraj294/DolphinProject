@@ -201,8 +201,7 @@ export default {
     // The main logic for loading the initial lead from the URL.
     async loadInitialLeadData(leadId) {
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
         const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
@@ -252,8 +251,7 @@ export default {
       this.updateRegistrationLink();
 
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const params = {
           registration_link: this.registrationLink,
           name: this.recipientName,
@@ -287,9 +285,7 @@ export default {
         const payload = this.buildPayload(name);
 
         await axios.post(
-          `${
-            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
-          }/api/leads/send-assessment`,
+          `${process.env.VUE_APP_API_BASE_URL}/api/leads/send-assessment`,
           payload
         );
 

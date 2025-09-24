@@ -19,13 +19,15 @@ class StripeSubscriptionController extends Controller
 
     public function createCheckoutSession(Request $request)
     {
+
         $user = Auth::user();
-        $priceId = $request->input('price_id'); // Stripe Price ID from frontend
+        $priceId = $request->input('price_id');
         if (!$priceId) {
             return response()->json(['error' => 'Missing price_id'], 400);
         }
         Stripe::setApiKey(config('services.stripe.secret'));
-        $session = StripeSession::create([
+    $frontend = env('FRONTEND_URL', 'http://localhost:8080');
+    $session = StripeSession::create([
             'payment_method_types' => ['card'],
             'mode' => 'subscription',
             'customer_email' => $user->email,
@@ -33,8 +35,8 @@ class StripeSubscriptionController extends Controller
                 'price' => $priceId,
                 'quantity' => 1,
             ]],
-            'success_url' => 'http://127.0.0.1:8080/subscriptions/plans',
-            'cancel_url' => 'http://127.0.0.1:8080/subscriptions/plans',
+            'success_url' => $frontend . '/subscriptions/plans',
+            'cancel_url' => $frontend . '/subscriptions/plans',
         ]);
         return response()->json(['id' => $session->id, 'url' => $session->url]);
     }
@@ -60,9 +62,13 @@ class StripeSubscriptionController extends Controller
     {
         $payload = $request->getContent();
         $sig_header = $request->header('Stripe-Signature');
-        $endpoint_secret = config('services.stripe.webhook_secret'); // Add this to your .env and config/services.php
+    $endpoint_secret = config('services.stripe.webhook_secret');
 
-        try {
+    // Response control variables to avoid multiple early returns
+    $responseCode = 200;
+    $responseMessage = 'Webhook handled';
+
+    try {
             $event = \Stripe\Webhook::constructEvent(
                 $payload, $sig_header, $endpoint_secret
             );
@@ -70,11 +76,11 @@ class StripeSubscriptionController extends Controller
             Log::info('Stripe Webhook Event Received:', ['type' => $event->type, 'id' => $event->id]);
         } catch (\UnexpectedValueException $e) {
         
-            \Log::error('Stripe Webhook Invalid Payload: ' . $e->getMessage(), ['payload' => $payload]);
+            Log::error('Stripe Webhook Invalid Payload: ' . $e->getMessage(), ['payload' => $payload]);
             return response('Invalid payload', 400);
         } catch (\Stripe\Exception\SignatureVerificationException $e) {
          
-            \Log::error('Stripe Webhook Invalid Signature: ' . $e->getMessage(), ['signature' => $sig_header, 'payload' => $payload]);
+            Log::error('Stripe Webhook Invalid Signature: ' . $e->getMessage(), ['signature' => $sig_header, 'payload' => $payload]);
             return response('Invalid signature', 400);
         }
 
@@ -117,7 +123,7 @@ class StripeSubscriptionController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for checkout.session.completed: ' . $e->getMessage(), ['session_id' => $session->id]);
+                    Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for checkout.session.completed: ' . $e->getMessage(), ['session_id' => $session->id]);
                 }
             }
             Log::info('Payment method for checkout.session.completed (before DB save): ' . ($paymentMethodReadable ?? 'NULL'));
@@ -159,7 +165,7 @@ class StripeSubscriptionController extends Controller
                         
                         Log::info('Payment method extracted from subscription default: ' . ($paymentMethodReadable ?? 'NULL'));
                     } catch (\Exception $e) {
-                        \Log::error('Stripe API error retrieving subscription default payment method for checkout.session.completed: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
+                        Log::error('Stripe API error retrieving subscription default payment method for checkout.session.completed: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
                     }
                 }
             }
@@ -206,12 +212,12 @@ class StripeSubscriptionController extends Controller
                         'certified_staff' => null,
                         'user_id' => $user->id,
                     ];
-                    \Log::info('Creating organization for user subscription', [
+                    Log::info('Creating organization for user subscription', [
                         'user_id' => $user->id,
                         'org_data' => $orgData
                     ]);
                     $org = \App\Models\Organization::create($orgData);
-                    \Log::info('Organization created', [
+                    Log::info('Organization created', [
                         'organization_id' => $org->id,
                         'organization_name' => $org->organization_name,
                         'user_id' => $org->user_id
@@ -284,15 +290,23 @@ class StripeSubscriptionController extends Controller
                     }
                 }
             } catch (\Throwable $e) {
-                Log::error('Error processing invoice.paid event: ' . $e->getMessage(), ['exception' => $e]); // Using imported Log facade
-                return response('Error processing invoice.paid event', 500);
+                Log::error('Error processing invoice.paid event: ' . $e->getMessage(), ['exception' => $e]);
+                // Mark failure but don't return immediately so we have a single return at the end
+                $responseCode = 500;
+                $responseMessage = 'Error processing invoice.paid event';
             }
 
             $stripeCustomerId = $invoice->customer;
             $amount = $invoice->amount_paid ? $invoice->amount_paid / 100 : null;
             $receiptUrl = $invoice->hosted_invoice_url ?? null;
             $invoiceNumber = $invoice->number ?? null;
-            $paymentDate = isset($invoice->status_transitions->paid_at) ? date('Y-m-d H:i:s', $invoice->status_transitions->paid_at) : (isset($invoice->created) ? date('Y-m-d H:i:s', $invoice->created) : null);
+            if (isset($invoice->status_transitions->paid_at)) {
+                $paymentDate = date('Y-m-d H:i:s', $invoice->status_transitions->paid_at);
+            } elseif (isset($invoice->created)) {
+                $paymentDate = date('Y-m-d H:i:s', $invoice->created);
+            } else {
+                $paymentDate = null;
+            }
             $description = isset($invoice->lines->data[0]->description) ? $invoice->lines->data[0]->description : null;
             $subscriptionStart = null;
             $subscriptionEnd = null;
@@ -346,7 +360,7 @@ class StripeSubscriptionController extends Controller
                         }
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for invoice.paid: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
+                    Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for invoice.paid: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
                 }
                 Log::info('Payment method after payment_intent attempt: ' . ($paymentMethod ?? 'NULL'));
             }
@@ -379,7 +393,7 @@ class StripeSubscriptionController extends Controller
                         Log::warning('Customer has no default_payment_method set in invoice_settings for customer ID: ' . $invoice->customer);
                     }
                 } catch (\Stripe\Exception\ApiErrorException $e) {
-                    \Log::error('Stripe API error retrieving Customer default payment method for invoice.paid: ' . $e->getMessage(), ['customer_id' => $invoice->customer]);
+                    Log::error('Stripe API error retrieving Customer default payment method for invoice.paid: ' . $e->getMessage(), ['customer_id' => $invoice->customer]);
                 }
             }
 
@@ -421,7 +435,7 @@ class StripeSubscriptionController extends Controller
                         
                         Log::info('Payment method extracted from subscription default for invoice.paid: ' . ($paymentMethod ?? 'NULL'));
                     } catch (\Exception $e) {
-                        \Log::error('Stripe API error retrieving subscription default payment method for invoice.paid: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
+                        Log::error('Stripe API error retrieving subscription default payment method for invoice.paid: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
                     }
                 }
             }
@@ -487,6 +501,7 @@ class StripeSubscriptionController extends Controller
         }
 
         
-  return response('Webhook handled', 200);
+    // Return the response message and code collected during processing
+    return response($responseMessage, $responseCode);
     }
 }

@@ -95,9 +95,10 @@ export default {
   },
   methods: {
     async submit() {
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       this.loading = true;
       try {
-        await axios.post('http://127.0.0.1:8000/api/password/reset', {
+        await axios.post(`${API_BASE_URL}/api/password/reset`, {
           email: this.email,
           password: this.password,
           password_confirmation: this.password_confirmation,

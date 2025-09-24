@@ -501,8 +501,7 @@ export default {
     async fetchMemberById(memberId) {
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(
           `${API_BASE_URL}/api/members/${memberId}`,
           {
@@ -598,8 +597,7 @@ export default {
 
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(
           `${API_BASE_URL}/api/members/${memberId}`,
           {
@@ -641,8 +639,7 @@ export default {
     async onEditSave() {
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 
         // Build payload with only fields that might have changed
         const payload = {};
@@ -756,8 +753,7 @@ export default {
         accept: async () => {
           try {
             const authToken = storage.get('authToken');
-            const API_BASE_URL =
-              process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+            const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
             await axios.delete(`${API_BASE_URL}/api/members/${member.id}`, {
               headers: { Authorization: `Bearer ${authToken}` },
             });
@@ -823,8 +819,7 @@ export default {
       this.loading = true;
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 
         const [membersRes, rolesRes, groupsRes] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/members`, {

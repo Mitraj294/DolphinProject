@@ -268,7 +268,7 @@ export default {
       return `${day} ${mon} ,${yr}`;
     },
     async lookupLocationNames() {
-      const API_BASE_URL = 'http://127.0.0.1:8000';
+      const API_BASE_URL = 'process.env.VUE_APP_API_BASE_URL';
       if (this.leadData.country_id) {
         try {
           const res = await axios.get(
@@ -333,8 +333,7 @@ export default {
         return;
       }
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
@@ -382,8 +381,7 @@ export default {
     const id = this.$route.params.id || this.$route.query.id || this.lead.id;
     if (id) {
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
         const res = await axios.get(`${API_BASE_URL}/api/leads/${id}`, {

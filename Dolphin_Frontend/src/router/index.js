@@ -364,7 +364,7 @@ router.beforeEach(async (to, from, next) => {
   if (authToken) {
     await handleAuthenticatedRoutes(to, role, next);
   } else {
-    // This handles unauthenticated users trying to access protected routes
+    // This handles unauthenticated users trying to access protected routes And will Return them to login page
     next('/');
   }
 });

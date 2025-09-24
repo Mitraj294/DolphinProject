@@ -120,8 +120,7 @@ import { useToast } from 'primevue/usetoast';
 import storage from '@/services/storage';
 import { fetchCurrentUser } from '@/services/user';
 import { FormLabel } from '@/components/Common/Common_UI/Form';
-const API_BASE_URL =
-  process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 
 export default {
   name: 'Login',

@@ -366,8 +366,8 @@ export default {
 
       combined.forEach((r) => {
         const rid = Number(r.id);
-        const notification = this.notificationsMap.get(rid);
-        r.read_at = notification ? notification.read_at : null;
+        const notifications = this.notificationsMap.get(rid);
+        r.read_at = notifications ? notifications.read_at : null;
       });
 
       return combined;
@@ -383,6 +383,9 @@ export default {
         const email = org.contact_email ?? org.admin_email ?? null;
         const first = org.user_first_name ?? org.user?.first_name ?? '';
         const last = org.user_last_name ?? org.user?.last_name ?? '';
+        // prefer read_at from notifications payload (if available), fall back to org.read_at
+        const notif = this.notificationsMap.get(Number(userId));
+        const read_at = notif ? notif.read_at : org.read_at ?? null;
 
         if (userId && !recipients.has(Number(userId))) {
           recipients.set(Number(userId), {
@@ -390,6 +393,7 @@ export default {
             organization_name: orgName,
             name: `${first || ''} ${last || ''}`.trim(),
             email: email,
+            read_at: read_at,
           });
         }
       });
@@ -403,12 +407,15 @@ export default {
 
       (announcement.admins || []).forEach((admin) => {
         if (admin && admin.id && !recipients.has(admin.id)) {
+          // prefer read_at from notifications payload for admins too
+          const notif = this.notificationsMap.get(Number(admin.id));
           recipients.set(admin.id, {
             id: admin.id,
             name:
               admin.name ||
               `${admin.first_name || ''} ${admin.last_name || ''}`.trim(),
             email: admin.email,
+            read_at: notif ? notif.read_at : null,
           });
         }
       });

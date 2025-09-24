@@ -364,9 +364,7 @@ export default {
       try {
         const authToken = storage.get('authToken');
         const res = await axios.get(
-          `${
-            process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000'
-          }/api/announcements/${item.id}`,
+          `${process.env.VUE_APP_API_BASE_URL}/api/announcements/${item.id}`,
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
         if (res.data) {

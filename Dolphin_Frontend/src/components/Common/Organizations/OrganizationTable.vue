@@ -168,6 +168,7 @@ export default {
     // Add the fetchOrganizations method here
     async fetchOrganizations() {
       try {
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const storage = (await import('@/services/storage.js')).default;
         const authToken = storage.get('authToken');
 
@@ -185,7 +186,7 @@ export default {
 
         const headers = { Authorization: `Bearer ${authToken}` };
         const axios = (await import('axios')).default;
-        const res = await axios.get('http://127.0.0.1:8000/api/organizations', {
+        const res = await axios.get(`${API_BASE_URL}/api/organizations`, {
           headers,
         });
         this.organizations = res.data.map((org) => ({

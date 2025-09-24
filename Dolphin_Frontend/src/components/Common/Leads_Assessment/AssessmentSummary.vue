@@ -215,8 +215,7 @@ export default {
     async fetchSummary() {
       if (!this.assessmentId) return;
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const res = await axios.get(
           `${API_BASE_URL}/api/assessment/${this.assessmentId}/summary`
         );

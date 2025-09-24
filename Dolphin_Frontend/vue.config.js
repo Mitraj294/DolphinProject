@@ -1,5 +1,5 @@
 const webpack = require('webpack');
-
+const API_BASE_URL = process.env.VUE_APP_API_BASE_URL 
 module.exports = {
   configureWebpack: {
     plugins: [
@@ -14,7 +14,7 @@ module.exports = {
   devServer: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: API_BASE_URL,
         changeOrigin: true,
         pathRewrite: { '^/api': '/api' },
       }

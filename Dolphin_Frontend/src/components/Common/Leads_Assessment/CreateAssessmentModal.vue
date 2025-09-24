@@ -231,8 +231,7 @@ export default {
       try {
         const authToken = storage.get('authToken');
         const res = await axios.post(
-          (process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000') +
-            '/api/assessments',
+          process.env.VUE_APP_API_BASE_URL + '/api/assessments',
           {
             name: this.assessment.name,
             question_ids: this.assessment.selectedQuestionIds,

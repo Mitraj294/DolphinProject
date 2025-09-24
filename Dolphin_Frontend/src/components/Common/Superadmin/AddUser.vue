@@ -241,8 +241,7 @@ export default {
   methods: {
     async fetchCountries() {
       try {
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const res = await axios.get(`${API_BASE_URL}/api/countries`);
         this.countries = res.data || [];
       } catch (e) {
@@ -261,8 +260,7 @@ export default {
       try {
         const storage = require('@/services/storage').default;
         const token = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 
         const payload = {
           first_name: this.form.firstName,

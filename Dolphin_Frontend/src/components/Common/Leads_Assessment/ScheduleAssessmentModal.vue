@@ -235,8 +235,7 @@ export default {
       this.isSubmitting = true;
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
 
         const payload = {
           assessment_id: this.assessment_id,
@@ -282,8 +281,7 @@ export default {
       this.scheduledLoading = true;
       try {
         const authToken = storage.get('authToken');
-        const API_BASE_URL =
-          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const url = `${API_BASE_URL}/api/scheduled-email/show?assessment_id=${encodeURIComponent(
           this.assessment_id
         )}`;
@@ -308,8 +306,7 @@ export default {
 
     async fetchGroups() {
       const authToken = storage.get('authToken');
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       const response = await axios.get(`${API_BASE_URL}/api/groups`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -319,8 +316,7 @@ export default {
 
     async fetchMembers() {
       const authToken = storage.get('authToken');
-      const API_BASE_URL =
-        process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
       const response = await axios.get(`${API_BASE_URL}/api/members`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
