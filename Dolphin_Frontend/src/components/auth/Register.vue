@@ -160,13 +160,14 @@
                   ...orgSizeOptions.map((o) => ({ value: o, text: o })),
                 ]"
                 required
-              /><div>
+              />
+              <div>
               <FormLabel
                 v-if="errors.organization_size"
-                class="error-message1
-                "
-                >{{ errors.organization_size[0] }}</FormLabel
-              >  </div>
+                class="error-message1">
+                {{ errors.organization_size[0] }}
+              </FormLabel> 
+            </div>
             </div>
           </div>
 

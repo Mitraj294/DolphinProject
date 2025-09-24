@@ -523,8 +523,7 @@ export default {
   pointer-events: auto;
   cursor: pointer;
   height: 100%;
-  background: none;
-  border: none;
+
   padding: 0;
 }
 .modal-icon {
