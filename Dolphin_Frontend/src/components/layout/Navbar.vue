@@ -227,8 +227,6 @@ export default {
         UserPermission: 'Users + Permission',
         AddUser: 'Add User',
         ScheduleClassTraining: 'Schedule Classes/Training',
-        OrganizationDetail: 'Organization Details',
-        OrganizationEdit: 'Organization Details',
         SendAssessment: 'Send Assessment',
         ScheduleDemo: 'Schedule Demo',
         Assessments: 'Assessments',
@@ -249,6 +247,10 @@ export default {
 
       if (simpleMap[routeName]) return simpleMap[routeName];
 
+      if (routeName === 'OrganizationDetail')
+        return this.handleOrganizationDetailTitle();
+      if (routeName === 'OrganizationEdit')
+        return this.handleOrganizationEditTitle();
       if (routeName === 'LeadDetail') return this.handleLeadDetailTitle();
       if (routeName === 'EditLead') return this.handleEditLeadTitle();
       if (routeName === 'BillingDetails')
@@ -260,10 +262,60 @@ export default {
 
       return this.$route && this.$route.name ? this.$route.name : '';
     },
+    handleOrganizationDetailTitle() {
+      const organization_name =
+        (this.$route && this.$route.query && this.$route.query.orgName) || '';
+      if (organization_name)
+        return `Organization Details : ${organization_name} `;
+
+      // try to resolve from route params/query orgId and cache
+      const orgId =
+        (this.$route &&
+          ((this.$route.params && this.$route.params.id) ||
+            (this.$route.query && this.$route.query.orgId))) ||
+        null;
+
+      if (orgId) {
+        const cached = this.orgNameCache[orgId];
+        if (cached) return ` Organization Details : ${cached}`;
+        if (this.orgNameFetching[orgId]) return 'Organization Details';
+        if (this.isNavbarAlive) this.fetchOrgName(orgId);
+      }
+
+      return 'Organization Details';
+    },
+    handleOrganizationEditTitle() {
+      const organization_name =
+        (this.$route && this.$route.query && this.$route.query.orgName) || '';
+      if (organization_name) return `Edit Organization : ${organization_name}`;
+
+      const orgId =
+        (this.$route &&
+          ((this.$route.params && this.$route.params.id) ||
+            (this.$route.query && this.$route.query.orgId))) ||
+        null;
+
+      if (orgId) {
+        const cached = this.orgNameCache[orgId];
+        if (cached) return `Edit Organization : ${cached}`;
+        if (this.orgNameFetching[orgId]) return 'Edit Organization';
+        if (this.isNavbarAlive) this.fetchOrgName(orgId);
+      }
+
+      return 'Edit Organization';
+    },
     handleLeadDetailTitle() {
-      const contact =
-        (this.$route && this.$route.query && this.$route.query.contact) || '';
-      return contact ? `${contact} Details` : 'Lead Details';
+      const leadId =
+        (this.$route &&
+          ((this.$route.params && this.$route.params.id) ||
+            (this.$route.query && this.$route.query.id))) ||
+        null;
+      if (!leadId) return 'Lead Detail';
+      const cached = this.leadNameCache[leadId];
+      if (cached) return `Lead Detail : ${cached}`;
+      if (this.leadNameFetching[leadId]) return 'Lead Detail';
+      if (this.isNavbarAlive) this.fetchLeadName(leadId);
+      return 'Lead Detail';
     },
     handleEditLeadTitle() {
       const leadId =
@@ -282,9 +334,22 @@ export default {
     handleBillingDetailsTitle() {
       const orgName =
         (this.$route && this.$route.query && this.$route.query.orgName) || '';
-      return orgName
-        ? `${orgName} Organization Details`
-        : 'Organization Details';
+      if (orgName) return ` Organization Details :${orgName}`;
+
+      const orgId =
+        (this.$route &&
+          ((this.$route.params && this.$route.params.id) ||
+            (this.$route.query && this.$route.query.orgId))) ||
+        null;
+
+      if (orgId) {
+        const cached = this.orgNameCache[orgId];
+        if (cached) return `Organization Details : ${cached}`;
+        if (this.orgNameFetching[orgId]) return 'Organization Details';
+        if (this.isNavbarAlive) this.fetchOrgName(orgId);
+      }
+
+      return 'Organization Details';
     },
     handleAssessmentSummaryTitle() {
       const assessmentParam =
@@ -337,6 +402,14 @@ export default {
     },
     async fetchUnreadCount() {
       try {
+        // Only fetch unread notifications when the subscription is active (or unknown)
+        const subStatus = storage.get('subscription_status');
+        if (subStatus && subStatus !== 'active') {
+          // subscription not active: do not call notifications endpoint
+          this.notificationCount = 0;
+          storage.set('notificationCount', String(0));
+          return;
+        }
         let token = storage.get('authToken');
         if (token && typeof token === 'object' && token.token)
           token = token.token;
@@ -373,18 +446,6 @@ export default {
     },
     async fetchCurrentUser() {
       try {
-        const firstLocal = storage.get('first_name') || '';
-        const lastLocal = storage.get('last_name') || '';
-        const userLocal = storage.get('userName') || '';
-        const emailLocal = storage.get('email') || '';
-        if (
-          firstLocal.trim() ||
-          lastLocal.trim() ||
-          userLocal.trim() ||
-          emailLocal.trim()
-        )
-          return;
-
         let token = storage.get('authToken');
         if (token && typeof token === 'object' && token.token)
           token = token.token;
@@ -398,15 +459,20 @@ export default {
         const user = res?.data || null;
         if (!user) return;
 
-        const first = user.first_name || user.firstName || '';
-        const last = user.last_name || user.lastName || '';
-        const uname = user.userName || user.username || user.name || '';
-        const email = user.email || '';
+        // persist organization id/name if present on the user object so titles can use it
+        if (user.organization_id) {
+          const orgIdStr = String(user.organization_id);
+          storage.set('organization_id', orgIdStr);
+        }
 
-        storage.set('first_name', first || '');
-        storage.set('last_name', last || '');
-        storage.set('userName', uname || '');
-        storage.set('email', email || '');
+        // if API returned an organization name, persist it (single source of truth)
+        if (user.organization_name || user.organization) {
+          const orgName = user.organization_name || user.organization;
+          storage.set('organization_name', orgName);
+          // prime simple in-memory cache for current org id if available
+          if (user.organization_id)
+            this.orgNameCache[String(user.organization_id)] = orgName;
+        }
 
         if (this.isNavbarAlive) this.updateUserInfo();
       } catch (e) {
@@ -457,6 +523,31 @@ export default {
         }
       }
       return null;
+    },
+    async fetchOrgName(orgId) {
+      if (!orgId) return null;
+      if (this.orgNameFetching[orgId]) return null;
+      this.orgNameFetching[orgId] = true;
+      let name = null;
+      try {
+        const API_BASE_URL =
+          process.env.VUE_APP_API_BASE_URL || 'http://127.0.0.1:8000';
+        const config = this._getAuthConfig();
+        const res = await axios.get(
+          `${API_BASE_URL}/api/organizations/${orgId}`,
+          config
+        );
+        const data = res && res.data ? res.data : null;
+        name =
+          (data && (data.organization_name || data.name || data.orgName)) ||
+          null;
+        if (name && this.isNavbarAlive) this.orgNameCache[orgId] = name;
+      } catch (e) {
+        console.debug(`Navbar: fetchOrgName failed for id=${orgId}`, e);
+      } finally {
+        if (this.isNavbarAlive) delete this.orgNameFetching[orgId];
+      }
+      return name;
     },
     async fetchSummary() {
       if (!this.assessmentId) return;
