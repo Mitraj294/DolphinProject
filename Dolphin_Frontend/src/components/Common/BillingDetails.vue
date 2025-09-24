@@ -7,72 +7,126 @@
             Billing Details (Current Subscription)
           </div>
           <div class="billing-plan-box">
-            <div>
-              <div class="plan-name">
-                <span
-                  v-if="
-                    currentPlan &&
-                    (Number(currentPlan.price) === 2500 ||
-                      Number(currentPlan.amount) === 2500)
-                  "
-                  >Standard</span
-                >
-                <span
-                  v-else-if="
-                    currentPlan &&
-                    (Number(currentPlan.price) === 250 ||
-                      Number(currentPlan.amount) === 250)
-                  "
-                  >Basic</span
-                >
-                <span v-else>{{ currentPlan?.name || '' }}</span>
+            <!-- If there is a current plan, show its details -->
+            <template v-if="currentPlan && Object.keys(currentPlan).length">
+              <div>
+                <div class="plan-name">
+                  <span
+                    v-if="
+                      currentPlan &&
+                      (Number(currentPlan.price) === 2500 ||
+                        Number(currentPlan.amount) === 2500)
+                    "
+                    >Standard</span
+                  >
+                  <span
+                    v-else-if="
+                      currentPlan &&
+                      (Number(currentPlan.price) === 250 ||
+                        Number(currentPlan.amount) === 250)
+                    "
+                    >Basic</span
+                  >
+                  <span v-else>{{ currentPlan?.name || 'Plan' }}</span>
+                </div>
+                <div class="plan-price">
+                  <span
+                    v-if="
+                      currentPlan &&
+                      (Number(currentPlan.price) === 2500 ||
+                        Number(currentPlan.amount) === 2500)
+                    "
+                    >$2500/Annual</span
+                  >
+                  <span
+                    v-else-if="
+                      currentPlan &&
+                      (Number(currentPlan.price) === 250 ||
+                        Number(currentPlan.amount) === 250)
+                    "
+                    >$250/Month</span
+                  >
+                  <span v-else>
+                    {{
+                      currentPlan?.price
+                        ? `$${currentPlan.price}`
+                        : currentPlan?.amount
+                        ? `$${currentPlan.amount}`
+                        : ''
+                    }}
+                  </span>
+                </div>
               </div>
-              <div class="plan-price">
-                <span
-                  v-if="
-                    currentPlan &&
-                    (Number(currentPlan.price) === 2500 ||
-                      Number(currentPlan.amount) === 2500)
-                  "
-                  >$2500/Annual</span
-                >
-                <span
-                  v-else-if="
-                    currentPlan &&
-                    (Number(currentPlan.price) === 250 ||
-                      Number(currentPlan.amount) === 250)
-                  "
-                  >$250/Month</span
-                >
-                <span v-else>
+              <div class="plan-meta">
+                <div>
+                  Subscription Start :
+                  <b>{{
+                    currentPlan?.start ? formatDate(currentPlan.start) : 'N/A'
+                  }}</b>
+                </div>
+                <div>
+                  Subscription End :
+                  <b>{{
+                    currentPlan?.end ? formatDate(currentPlan.end) : 'N/A'
+                  }}</b>
+                </div>
+                <div class="plan-next">
+                  (Next bill on
                   {{
-                    currentPlan?.price
-                      ? `$${currentPlan.price}`
-                      : currentPlan?.amount
-                      ? `$${currentPlan.amount}`
-                      : ''
-                  }}
-                </span>
+                    currentPlan?.nextBill
+                      ? formatDate(currentPlan.nextBill)
+                      : 'N/A'
+                  }})
+                </div>
               </div>
-            </div>
-            <div class="plan-meta">
-              <div>
-                Subscription Start :
-                <b>{{
-                  currentPlan?.start ? formatDate(currentPlan.start) : ''
-                }}</b>
-              </div>
-              <div>
-                Subscription End :
-                <b>{{ currentPlan?.end ? formatDate(currentPlan.end) : '' }}</b>
-              </div>
-              <div class="plan-next">
-                (Next bill on
-                {{
-                  currentPlan?.nextBill ? formatDate(currentPlan.nextBill) : ''
-                }})
-              </div>
-            </div>
+            </template>
+
+            <!-- If no current plan but billing history exists, show last billing info -->
+            <template
+              v-else-if="!currentPlan || !Object.keys(currentPlan).length"
+            >
+              <template v-if="billingHistory && billingHistory.length">
+                <div>
+                  <div class="plan-name">No active plan</div>
+                  <div class="plan-price">-</div>
+                </div>
+                <div class="plan-meta">
+                  <div>
+                    Last Subscription End :
+                    <b>{{
+                      lastBillingItem && lastBillingItem.subscriptionEnd
+                        ? formatDate(lastBillingItem.subscriptionEnd)
+                        : 'Unknown'
+                    }}</b>
+                  </div>
+                  <div>
+                    Last Payment :
+                    <b>{{
+                      lastBillingItem && lastBillingItem.paymentDate
+                        ? formatDate(lastBillingItem.paymentDate)
+                        : 'Unknown'
+                    }}</b>
+                  </div>
+                  <div class="plan-next">
+                    This plan expired — please renew to reactivate billing.
+                  </div>
+                </div>
+              </template>
+
+              <!-- Neither current plan nor history -->
+              <template v-else>
+                <div>
+                  <div class="plan-name">No plan selected</div>
+                  <div class="plan-price">—</div>
+                </div>
+                <div class="plan-meta">
+                  <div>
+                    Please select a subscription plan to enable features and
+                    billing.
+                  </div>
+                </div>
+              </template>
+            </template>
           </div>
           <div class="billing-title">Billing History</div>
           <div class="table-container">
@@ -185,6 +239,18 @@ export default {
       billingHistory: [],
     };
   },
+  computed: {
+    lastBillingItem() {
+      if (!this.billingHistory || !this.billingHistory.length) return null;
+      // Prefer items with subscriptionEnd or paymentDate; pick the most recent by subscriptionEnd then paymentDate
+      const sorted = [...this.billingHistory].sort((a, b) => {
+        const ta = a.subscriptionEnd || a.paymentDate || '';
+        const tb = b.subscriptionEnd || b.paymentDate || '';
+        return new Date(tb) - new Date(ta);
+      });
+      return sorted[0] || null;
+    },
+  },
   methods: {
     async fetchBillingDetails() {
       try {
@@ -270,9 +336,11 @@ export default {
   font-weight: 500;
 }
 .plan-next {
-  font-size: 15px;
-  color: #bdbdbd;
+  font-size: 18px;
+  color: #888;
   margin-top: 4px;
+
+  font-weight: 600;
 }
 
 .receipt-link {
@@ -294,7 +362,7 @@ export default {
   .billing-plan-box {
     padding: 16px 8px;
     flex-direction: column;
-    gap: 54px;
+    gap: 14px;
     align-items: center;
     justify-content: center;
     text-align: center;

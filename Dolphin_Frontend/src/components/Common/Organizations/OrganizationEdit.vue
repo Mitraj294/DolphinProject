@@ -37,27 +37,18 @@
               <div>
                 <FormLabel>Organization Size</FormLabel>
                 <FormDropdown
-                  v-model="form.organization_size"
+                  v-model="organization_size"
                   icon="fas fa-users"
+                  ref="orgSizeSelect"
                   :options="[
                     {
                       value: '',
-                      text: 'Select ',
+                      text: 'Select Organization Size',
                       disabled: true,
                     },
-                    {
-                      value: '250+ Employees (Large)',
-                      text: '250+ Employees (Large)',
-                    },
-                    {
-                      value: '100-249 Employees (Medium)',
-                      text: '100-249 Employees (Medium)',
-                    },
-                    {
-                      value: '1-99 Employees (Small)',
-                      text: '1-99 Employees (Small)',
-                    },
+                    ...orgSizeOptions.map((o) => ({ value: o, text: o })),
                   ]"
+                  required
                 />
                 <FormLabel
                   v-if="errors.organization_size"
@@ -69,15 +60,14 @@
               <div>
                 <FormLabel>Source</FormLabel>
                 <FormDropdown
-                  v-model="form.source"
-                  icon="fas fa-bullhorn"
+                  v-model="find_us"
+                  icon="fas fa-search"
+                  ref="findUsSelect"
                   :options="[
-                    { value: '', text: 'Select', disabled: true },
-                    { value: 'Google', text: 'Google' },
-                    { value: 'Friend', text: 'Friend' },
-                    { value: 'Colleague', text: 'Colleague' },
-                    { value: 'Other', text: 'Other' },
+                    { value: null, text: 'Select', disabled: true },
+                    ...findUsOptions.map((o) => ({ value: o, text: o })),
                   ]"
+                  required
                 />
                 <FormLabel
                   v-if="errors.source"
@@ -351,6 +341,7 @@ import {
   FormInput,
   FormDropdown,
 } from '@/components/Common/Common_UI/Form';
+import { orgSizeOptions, findUsOptions } from '@/utils/formUtils';
 import axios from 'axios';
 import storage from '@/services/storage.js';
 
@@ -526,6 +517,10 @@ export default {
       errors: {},
       orgId: null,
       countries: [],
+      organization_size: '',
+      orgSizeOptions: orgSizeOptions,
+      find_us: '',
+      findUsOptions: findUsOptions,
       states: [],
       cities: [],
       salesPersons: [],
@@ -566,6 +561,11 @@ export default {
 
         this.orgId = res.data.id;
         this.form = mapOrganizationToForm(res.data);
+
+        // Ensure top-level v-models (organization_size, find_us) used by the template
+        // are populated from the mapped form so the dropdowns show the current values.
+        this.organization_size = this.form.organization_size || '';
+        this.find_us = this.form.source || '';
 
         // Resolve location names to IDs
         if (!this.form.country_id) {
@@ -632,6 +632,12 @@ export default {
           });
           return;
         }
+
+        // Ensure values controlled by separate v-models are copied into the form
+        // so the payload contains the user's selections.
+        this.form.organization_size =
+          this.organization_size || this.form.organization_size;
+        this.form.source = this.find_us || this.form.source;
 
         const payload = mapFormToPayload(this.form);
 

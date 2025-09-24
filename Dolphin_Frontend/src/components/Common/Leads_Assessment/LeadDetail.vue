@@ -30,9 +30,7 @@
                   <div class="lead-detail-list-row">
                     <span>Sales Person</span
                     ><b>{{
-                      leadData.sales_person ??
-                      organization.sales_person_id ??
-                      'N/A'
+                      leadData.sales_person ?? organization.sales_person_id
                     }}</b>
                   </div>
                   <div class="lead-detail-list-row">
@@ -498,6 +496,7 @@ export default {
       await this.fetchOrganizationIfExists();
     }
   },
+
   watch: {
     '$route.query': {
       handler(newQuery) {

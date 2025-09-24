@@ -172,6 +172,39 @@ class LeadController extends Controller
                 $resp = ['lead' => $lead];
                 $resp['defaultTemplate'] = $defaultTemplate;
 
+                // Resolve sales person (if any) from lead or organization and include their name/id in the response.
+                try {
+                    $salesPersonId = null;
+                    // Prefer explicit sales_person_id on the lead, fall back to organization.sales_person_id if present
+                    if (isset($lead->sales_person_id) && $lead->sales_person_id) {
+                        $salesPersonId = $lead->sales_person_id;
+                    } elseif (isset($org) && isset($org->sales_person_id) && $org->sales_person_id) {
+                        $salesPersonId = $org->sales_person_id;
+                    }
+
+                    if ($salesPersonId) {
+                        $userModel = '\\App\\Models\\User';
+                        if (class_exists($userModel)) {
+                            $salesUser = $userModel::find($salesPersonId);
+                            if ($salesUser) {
+                                // add a gentle, compact representation
+                                $resp['sales_person'] = [
+                                    'id' => $salesUser->id,
+                                    'first_name' => $salesUser->first_name ?? null,
+                                    'last_name' => $salesUser->last_name ?? null,
+                                    'full_name' => trim(($salesUser->first_name ?? '') . ' ' . ($salesUser->last_name ?? '')),
+                                    'email' => $salesUser->email ?? null,
+                                ];
+                                // also set a convenient property on the lead object for backward compatibility
+                                $lead->sales_person = $resp['sales_person']['full_name'];
+                                $lead->sales_person_id = $salesUser->id;
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('LeadController::show sales person lookup failed: ' . $e->getMessage());
+                }
+
             if ($org) {
                 $resp['organization'] = $org;
                 $resp['orgUser'] = $orgUser;

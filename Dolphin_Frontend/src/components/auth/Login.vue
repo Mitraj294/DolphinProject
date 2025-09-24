@@ -267,6 +267,15 @@ export default {
               });
               redirectTo = '/manage-subscription';
             }
+            if (subStatus.status === 'none') {
+              this.toast.add({
+                severity: 'warn',
+                summary: 'No Active Subscription',
+                detail: 'Please choose a subscription plan to continue.',
+                life: 6000,
+              });
+              redirectTo = '/manage-subscription';
+            }
           }
         } catch (e) {
           console.error('Failed to fetch subscription status on login:', e);

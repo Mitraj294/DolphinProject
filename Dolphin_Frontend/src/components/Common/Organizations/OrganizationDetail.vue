@@ -142,7 +142,7 @@
                 <div class="org-detail-box-info">
                   <div class="org-detail-box-label">Billing Status</div>
                   <div class="org-detail-box-value">
-                    <template v-if="billingPlan">
+                    <template v-if="hasBillingPlan">
                       <div
                         style="
                           text-align: left;
@@ -155,8 +155,36 @@
                       <div style="font-weight: 500; font-size: 16px">
                         ${{ billingPlan.amount }}/{{ billingPlan.period }}
                       </div>
+                      <div
+                        v-if="isExpired"
+                        style="
+                          color: #d32f2f;
+                          margin-top: 6px;
+                          font-weight: 500;
+                        "
+                      >
+                        Expired on
+                        {{
+                          formatDate(
+                            billingPlan.end ||
+                              billingPlan.contract_end ||
+                              billingPlan.subscription_end
+                          )
+                        }}
+                      </div>
                     </template>
-                    <template v-else>No Active Plan</template>
+                    <template v-else>
+                      <template v-if="hasHistory">
+                        <div>
+                          <div style="font-weight: 500">No active plan</div>
+                          <div style="margin-top: 6px">
+                            Last subscription ended:
+                            <b>{{ lastBillingEndDisplay }}</b>
+                          </div>
+                        </div>
+                      </template>
+                      <template v-else> No Active Plan </template>
+                    </template>
                   </div>
                 </div>
                 <div class="org-detail-box-action">
@@ -168,7 +196,11 @@
                         query: { orgId: organization.id },
                       })
                     "
-                    v-if="organization && organization.id"
+                    v-if="
+                      organization &&
+                      organization.id &&
+                      (hasBillingPlan || hasHistory)
+                    "
                   >
                     <img
                       src="@/assets/images/Billing Status view details.svg"
@@ -215,14 +247,15 @@ import { format, parseISO } from 'date-fns';
 import MainLayout from '@/components/layout/MainLayout.vue';
 import storage from '@/services/storage.js';
 
-// --- STATE ---
+// STATE
 const route = useRoute();
 const organization = ref(null);
 const billingPlan = ref(null);
+const billingHistory = ref([]);
 const isLoading = ref(true);
 const error = ref(null);
 
-// --- COMPUTED PROPERTIES ---
+// COMPUTED PROPERTIES
 const formattedAddress = computed(() => {
   if (!organization.value) return 'N/A';
   const { address, city, state, zip, country } = organization.value;
@@ -232,7 +265,7 @@ const formattedAddress = computed(() => {
   );
 });
 
-// --- METHODS ---
+// METHODS
 const formatDate = (dateString) => {
   if (!dateString) return 'N/A';
   try {
@@ -241,6 +274,55 @@ const formatDate = (dateString) => {
     return dateString; // Fallback for invalid date formats
   }
 };
+
+// COMPUTED: billing flags
+const hasBillingPlan = computed(() => {
+  return billingPlan.value && Object.keys(billingPlan.value || {}).length > 0;
+});
+
+const hasHistory = computed(() => {
+  return Array.isArray(billingHistory.value) && billingHistory.value.length > 0;
+});
+
+const isExpired = computed(() => {
+  if (!hasBillingPlan.value) return false;
+  const end =
+    billingPlan.value?.end ||
+    billingPlan.value?.contract_end ||
+    billingPlan.value?.subscription_end;
+  if (!end) return false;
+  const parsed = new Date(end);
+  if (isNaN(parsed.getTime())) return false;
+  return parsed < new Date();
+});
+
+const lastBillingEndDisplay = computed(() => {
+  if (!hasHistory.value) return 'N/A';
+  // pick the most recent entry by subscriptionEnd or paymentDate
+  const sorted = [...billingHistory.value].sort((a, b) => {
+    const ta =
+      a.subscriptionEnd ||
+      a.subscription_end ||
+      a.paymentDate ||
+      a.payment_date ||
+      '';
+    const tb =
+      b.subscriptionEnd ||
+      b.subscription_end ||
+      b.paymentDate ||
+      b.payment_date ||
+      '';
+    return new Date(tb) - new Date(ta);
+  });
+  const item = sorted[0] || {};
+  const dateStr =
+    item.subscriptionEnd ||
+    item.subscription_end ||
+    item.paymentDate ||
+    item.payment_date ||
+    null;
+  return dateStr ? formatDate(dateStr) : 'Unknown';
+});
 
 const fetchAllData = async () => {
   const orgId = route.params.id;
@@ -260,15 +342,21 @@ const fetchAllData = async () => {
 
   try {
     // Perform API calls in parallel for better performance
-    const [orgResponse, billingResponse] = await Promise.all([
+    const [orgResponse, billingResponse, historyResponse] = await Promise.all([
       axios.get(`${API_BASE_URL}/api/organizations/${orgId}`, { headers }),
       axios.get(`${API_BASE_URL}/api/billing/current?org_id=${orgId}`, {
+        headers,
+      }),
+      axios.get(`${API_BASE_URL}/api/billing/history?org_id=${orgId}`, {
         headers,
       }),
     ]);
 
     organization.value = orgResponse.data;
     billingPlan.value = billingResponse.data;
+    billingHistory.value = Array.isArray(historyResponse.data)
+      ? historyResponse.data
+      : [];
   } catch (err) {
     console.error('Failed to fetch organization data:', err);
     error.value = 'Could not load organization details. Please try again.';
@@ -277,7 +365,7 @@ const fetchAllData = async () => {
   }
 };
 
-// --- LIFECYCLE HOOK ---
+// LIFECYCLE HOOK
 onMounted(fetchAllData);
 </script>
 

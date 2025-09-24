@@ -36,17 +36,29 @@
                   You have not selected any plans yet.
                 </div>
               </div>
-              <button
-                class="btn btn-primary manage-subscription-btn"
-                @click="handleButton"
-                :disabled="loading"
-              >
-                <template v-if="loading">Checking...</template>
-                <template v-else-if="isSubscribed"
-                  >Manage Subscription</template
+              <div>
+                <button
+                  class="btn btn-primary manage-subscription-btn"
+                  @click="handleButton"
+                  :disabled="loading"
                 >
-                <template v-else>Explore Subscriptions</template>
-              </button>
+                  <template v-if="loading">Checking...</template>
+                  <template v-else-if="isSubscribed"
+                    >Manage Subscription</template
+                  >
+                  <template v-else>Explore Subscriptions</template>
+                </button>
+                <!-- Show Billing Details only when billing history exists -->
+                <button
+                  v-if="hasBillingHistory"
+                  class="btn btn-primary manage-subscription-btn"
+                  @click="goToBillingDetails"
+                >
+                  <template v-if="loading">Checking...</template>
+
+                  <template v-else>Billing Details</template>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -68,6 +80,7 @@ export default {
       plan_name: null,
       subscriptionEnd: null,
       loading: true,
+      hasBillingHistory: false,
     };
   },
   async mounted() {
@@ -84,10 +97,36 @@ export default {
     } finally {
       this.loading = false;
     }
+
+    // fetch billing history to determine whether Billing Details button should be shown
+    try {
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
+      const orgId = this.$route.query.orgId || null;
+      const url = orgId
+        ? `${API_BASE_URL}/api/billing/history?org_id=${orgId}`
+        : `${API_BASE_URL}/api/billing/history`;
+      const axios = require('axios');
+      const storage = require('@/services/storage').default;
+      const token = storage.get('authToken');
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const histRes = await axios.get(url, { headers });
+      const historyData = Array.isArray(histRes.data) ? histRes.data : [];
+      this.hasBillingHistory = historyData.length > 0;
+    } catch (e) {
+      console.warn('Failed to fetch billing history:', e);
+      this.hasBillingHistory = false;
+    }
   },
   methods: {
     handleButton() {
       this.$router.push({ name: 'SubscriptionPlans' });
+    },
+    goToBillingDetails() {
+      const orgId = this.$route.query.orgId || null;
+      this.$router.push({
+        name: 'BillingDetails',
+        query: orgId ? { orgId } : {},
+      });
     },
   },
 };
@@ -197,11 +236,10 @@ export default {
 }
 
 .manage-subscription-btn {
-  margin-top: 8px;
-  min-width: 180px;
   font-size: 1.1rem;
   font-weight: 500;
   padding: 10px 36px;
+  margin: 8px 18px;
   border-radius: 22px;
 }
 
@@ -237,6 +275,7 @@ export default {
     min-width: 120px;
     font-size: 1rem;
     padding: 8px 18px;
+    margin: 8px 18px;
     border-radius: 16px;
   }
 }
@@ -263,6 +302,7 @@ export default {
     min-width: 100px;
     font-size: 0.9rem;
     padding: 7px 14px;
+    margin: 7px 14px;
     border-radius: 14px;
   }
 }

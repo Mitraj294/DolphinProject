@@ -654,38 +654,65 @@ export default {
         find_us: this.find_us,
       };
     },
-    processRegistrationError(error) {
+      processRegistrationError(error) {
       console.error('Registration failed:', error);
+
+      // default message
       let errorMessage = 'Registration failed. Please try again.';
+
       const data = error?.response?.data;
+
       if (data) {
         console.error('Registration error response data:', data);
+
+        // normalize validation errors
         const rawErrors = data.errors || (typeof data === 'object' ? data : null);
-        const normalized = this.normalizeValidationErrors(rawErrors);
-        if (normalized && Object.keys(normalized).length) {
-          this.errors = normalized;
-          this.navigateToFirstError(this.errors);
-        }
-        if (data.message) {
-          errorMessage = data.message;
-        } else if (data.errors) {
-          errorMessage = Object.values(data.errors).flat().join(' ');
-        } else if (typeof data === 'object') {
-          const flat = Object.values(data).flat();
-          if (flat.length) errorMessage = flat.join(' ');
-        } else if (typeof data === 'string') {
-          errorMessage = data;
-        }else {
-          this.errors = {};
-        }
-       
+        this.handleValidationErrors(rawErrors);
+
+        // extract message
+        errorMessage = this.extractErrorMessage(data, errorMessage);
+
       } else if (error?.message) {
         errorMessage = error.message;
-      }else {
+      } else {
         this.errors = {};
       }
+
       return errorMessage;
     },
+
+    handleValidationErrors(rawErrors) {
+      const normalized = this.normalizeValidationErrors(rawErrors);
+      if (normalized && Object.keys(normalized).length) {
+        this.errors = normalized;
+        this.navigateToFirstError(this.errors);
+      } else {
+        this.errors = {};
+      }
+    },
+
+    extractErrorMessage(data, defaultMessage) {
+      if (data.message) {
+        return data.message;
+      }
+
+      if (data.errors) {
+        return Object.values(data.errors).flat().join(' ');
+      }
+
+      if (typeof data === 'object') {
+        const flat = Object.values(data).flat();
+        return flat.length ? flat.join(' ') : defaultMessage;
+      }
+
+      if (typeof data === 'string') {
+        return data;
+      }
+
+      return defaultMessage;
+    },
+
+    
     async prefillFromLead() {
       // Try to get lead data from query params or API
       const params = this.$route.query;

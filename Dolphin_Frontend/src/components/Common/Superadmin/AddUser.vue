@@ -131,27 +131,18 @@
                 <div>
                   <FormLabel>Organization Size</FormLabel>
                   <FormDropdown
-                    v-model="form.organization_size"
+                    v-model="organization_size"
                     icon="fas fa-users"
+                    ref="orgSizeSelect"
                     :options="[
                       {
                         value: '',
-                        text: 'Select ',
+                        text: 'Select Organization Size',
                         disabled: true,
                       },
-                      {
-                        value: '250+ Employees (Large)',
-                        text: '250+ Employees (Large)',
-                      },
-                      {
-                        value: '100-249 Employees (Medium)',
-                        text: '100-249 Employees (Medium)',
-                      },
-                      {
-                        value: '1-99 Employees (Small)',
-                        text: '1-99 Employees (Small)',
-                      },
+                      ...orgSizeOptions.map((o) => ({ value: o, text: o })),
                     ]"
+                    required
                   />
                   <FormLabel
                     v-if="errors.organization_size"
@@ -199,6 +190,7 @@ import {
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 import axios from 'axios';
+import { orgSizeOptions } from '@/utils/formUtils';
 export default {
   name: 'AddUser',
   components: {
@@ -235,6 +227,8 @@ export default {
         { value: 'user', text: 'User' },
       ],
       countries: [],
+      organization_size: '',
+      orgSizeOptions: orgSizeOptions,
 
       successMessage: '',
       errorMessage: '',

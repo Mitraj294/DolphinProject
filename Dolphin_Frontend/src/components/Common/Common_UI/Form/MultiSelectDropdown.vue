@@ -454,7 +454,7 @@ export default {
   color: #222;
   background: transparent;
   font-family: inherit;
-  padding: 0 36px 0 36px; /* left for icon, right for chevron */
+  padding: 0 36px 0 36px;
   box-sizing: border-box;
 }
 
@@ -523,8 +523,20 @@ export default {
   pointer-events: auto;
   cursor: pointer;
   height: 100%;
-
+  background: none;
+  border: none;
   padding: 0;
+  outline: none;
+  box-shadow: none;
+}
+/* Prevent visible focus rings from showing a blue border on keyboard or programmatic focus */
+.form-dropdown-chevron:focus,
+.form-dropdown-chevron:focus-visible,
+.form-dropdown-chevron:active {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  border-color: transparent !important;
 }
 .modal-icon {
   margin-right: 10px;
