@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
@@ -12,22 +11,34 @@ use Stripe\Customer;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Models\Organization;
+use App\Models\Role;
 use Illuminate\Support\Facades\Log;
+use Stripe\Event;
+use Stripe\Invoice;
+use Stripe\PaymentIntent;
+use Stripe\PaymentMethod;
+use Stripe\Exception\SignatureVerificationException;
+use UnexpectedValueException;
+use Throwable;
+use Carbon\Carbon;
 
 class StripeSubscriptionController extends Controller
 {
 
     public function createCheckoutSession(Request $request)
     {
-
         $user = Auth::user();
         $priceId = $request->input('price_id');
         if (!$priceId) {
             return response()->json(['error' => 'Missing price_id'], 400);
         }
         Stripe::setApiKey(config('services.stripe.secret'));
-    $frontend = env('FRONTEND_URL', 'http://localhost:8080');
-    $session = StripeSession::create([
+        $frontend = env('FRONTEND_URL', 'http://localhost:8080');
+        // include the Checkout session id in the success URL so the frontend
+        // can pick it up and poll subscription status immediately after redirect
+        // Stripe replaces the placeholder {CHECKOUT_SESSION_ID} with the actual id
+        // when redirecting back to the success_url.
+        $session = StripeSession::create([
             'payment_method_types' => ['card'],
             'mode' => 'subscription',
             'customer_email' => $user->email,
@@ -35,7 +46,7 @@ class StripeSubscriptionController extends Controller
                 'price' => $priceId,
                 'quantity' => 1,
             ]],
-            'success_url' => $frontend . '/subscriptions/plans',
+            'success_url' => $frontend . '/subscriptions/plans?checkout_session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $frontend . '/subscriptions/plans',
         ]);
         return response()->json(['id' => $session->id, 'url' => $session->url]);
@@ -45,7 +56,6 @@ class StripeSubscriptionController extends Controller
     {
         $user = Auth::user();
         Stripe::setApiKey(config('services.stripe.secret'));
-        // You should store Stripe customer ID in your DB, here we fetch by email for demo
         $customers = Customer::all(['email' => $user->email, 'limit' => 1]);
         if (count($customers->data) === 0) {
             return response()->json(['error' => 'No Stripe customer found'], 404);
@@ -58,450 +68,351 @@ class StripeSubscriptionController extends Controller
         return response()->json(['url' => $session->url]);
     }
 
-    public function handleWebhook(Request $request)
-    {
-        $payload = $request->getContent();
-        $sig_header = $request->header('Stripe-Signature');
-    $endpoint_secret = config('services.stripe.webhook_secret');
-
-    // Response control variables to avoid multiple early returns
-    $responseCode = 200;
+    /**
+     * Handles incoming Stripe webhooks with robust error handling and delegation.
+     */
+ public function handleWebhook(Request $request)
+{
     $responseMessage = 'Webhook handled';
+    $responseCode = 200;
+    $event = null;
 
     try {
-            $event = \Stripe\Webhook::constructEvent(
-                $payload, $sig_header, $endpoint_secret
-            );
-       
-            Log::info('Stripe Webhook Event Received:', ['type' => $event->type, 'id' => $event->id]);
-        } catch (\UnexpectedValueException $e) {
-        
-            Log::error('Stripe Webhook Invalid Payload: ' . $e->getMessage(), ['payload' => $payload]);
-            return response('Invalid payload', 400);
-        } catch (\Stripe\Exception\SignatureVerificationException $e) {
-         
-            Log::error('Stripe Webhook Invalid Signature: ' . $e->getMessage(), ['signature' => $sig_header, 'payload' => $payload]);
-            return response('Invalid signature', 400);
+        $event = $this->verifyAndConstructEvent($request);
+        Log::info('Stripe Webhook Event Received:', [
+            'type' => $event->type,
+            'id' => $event->id
+        ]);
+    } catch (UnexpectedValueException $e) {
+        Log::error('Stripe Webhook Invalid Payload', [
+            'error' => $e->getMessage(),
+            'payload' => $request->getContent()
+        ]);
+        $responseMessage = 'Invalid payload';
+        $responseCode = 400;
+    } catch (SignatureVerificationException $e) {
+        Log::error('Stripe Webhook Invalid Signature', [
+            'error' => $e->getMessage(),
+            'signature' => $request->header('Stripe-Signature')
+        ]);
+        $responseMessage = 'Invalid signature';
+        $responseCode = 400;
+    }
+
+    if ($event) {
+        try {
+            match ($event->type) {
+                'checkout.session.completed' => $this->handleCheckoutSessionCompleted($event->data->object),
+                'invoice.paid' => $this->handleInvoicePaid($event->data->object),
+                default => Log::info('Unhandled event type', ['type' => $event->type]),
+            };
+        } catch (Throwable $e) {
+            Log::error('Error processing webhook event', [
+                'event_id' => $event->id,
+                'event_type' => $event->type,
+                'exception' => $e
+            ]);
+            $responseMessage = 'Webhook handled with internal error';
         }
+    }
 
-         // Handle the event
-        if ($event->type === 'checkout.session.completed') {
-            $session = $event->data->object;
-            // ADDED: Log full session payload
-            Log::info('Checkout Session Completed Payload:', (array) $session);
-
-            // Retrieve subscription and customer details from Stripe
-            \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
-            $stripeSubscriptionId = $session->subscription;
-            $stripeCustomerId = $session->customer;
-            $plan = $session->display_items[0]->plan->id ?? null;
-            $status = 'active';
-            $paymentMethod = $session->payment_method_types[0] ?? null;
-            $paymentMethodReadable = $paymentMethod;
-            $defaultPaymentMethodId = null;
-            $paymentMethodType = null;
-            $paymentMethodBrand = null;
-            $paymentMethodLast4 = null;
-            
-            // Try to get more details from payment_intent if available
-            if (!empty($session->payment_intent)) {
-                try {
-                    $intent = \Stripe\PaymentIntent::retrieve($session->payment_intent);
-                    if (!empty($intent->payment_method)) {
-                        $pm = \Stripe\PaymentMethod::retrieve($intent->payment_method);
-                        $defaultPaymentMethodId = $pm->id;
-                        $paymentMethodType = $pm->type;
-                        
-                        if ($pm->type === 'card' && $pm->card) {
-                            $brand = $pm->card->brand ?? '';
-                            $last4 = $pm->card->last4 ?? '';
-                            $paymentMethodBrand = $brand;
-                            $paymentMethodLast4 = $last4;
-                            $paymentMethodReadable = ucfirst($brand) . ' ****' . $last4;
-                        } else {
-                            $paymentMethodReadable = $pm->type;
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for checkout.session.completed: ' . $e->getMessage(), ['session_id' => $session->id]);
-                }
-            }
-            Log::info('Payment method for checkout.session.completed (before DB save): ' . ($paymentMethodReadable ?? 'NULL'));
-            $paymentDate = now();
-            $subscriptionStart = null;
-            $subscriptionEnd = null;
-            $amount = $session->amount_total ? $session->amount_total / 100 : null;
-            $receiptUrl = $session->payment_intent ? (\Stripe\PaymentIntent::retrieve($session->payment_intent)->charges->data[0]->receipt_url ?? null) : null;
-            $invoiceNumber = null;
-            $description = null;
-            $customerName = null;
-            $customerEmail = $session->customer_email ?? null;
-            $customerCountry = null;
-
-            // Try to get subscription period start/end from Stripe Subscription object
-            if ($stripeSubscriptionId) {
-                $stripeSub = \Stripe\Subscription::retrieve($stripeSubscriptionId);
-                $subscriptionStart = $stripeSub->current_period_start ? date('Y-m-d H:i:s', $stripeSub->current_period_start) : null;
-                $subscriptionEnd = $stripeSub->current_period_end ? date('Y-m-d H:i:s', $stripeSub->current_period_end) : null;
-                $plan = $stripeSub->items->data[0]->plan->id ?? $plan;
-                $status = $stripeSub->status ?? $status;
-                
-                // If payment method details are still missing, try subscription's default payment method
-                if (!$defaultPaymentMethodId && $stripeSub->default_payment_method) {
-                    try {
-                        $pm = \Stripe\PaymentMethod::retrieve($stripeSub->default_payment_method);
-                        $defaultPaymentMethodId = $pm->id;
-                        $paymentMethodType = $pm->type;
-                        
-                        if ($pm->type === 'card' && $pm->card) {
-                            $brand = $pm->card->brand ?? '';
-                            $last4 = $pm->card->last4 ?? '';
-                            $paymentMethodBrand = $brand;
-                            $paymentMethodLast4 = $last4;
-                            $paymentMethodReadable = ucfirst($brand) . ' ****' . $last4;
-                        } else {
-                            $paymentMethodReadable = ucfirst($pm->type);
-                        }
-                        
-                        Log::info('Payment method extracted from subscription default: ' . ($paymentMethodReadable ?? 'NULL'));
-                    } catch (\Exception $e) {
-                        Log::error('Stripe API error retrieving subscription default payment method for checkout.session.completed: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
-                    }
-                }
-            }
-
-            // Get customer details
-            // If start/end are still null, set manually based on amount (monthly/annual)
-            if (!$subscriptionStart) {
-                $subscriptionStart = now();
-            }
-            if (!$subscriptionEnd) {
-                if ($amount == 250) {
-                    $subscriptionEnd = now()->addMonth();
-                } elseif ($amount == 2500) {
-                    $subscriptionEnd = now()->addYear();
-                } else {
-                    $subscriptionEnd = null;
-                }
-            }
-            if ($stripeCustomerId) {
-                $customer = \Stripe\Customer::retrieve($stripeCustomerId);
-                $customerName = $customer->name ?? null;
-                $customerEmail = $customer->email ?? $customerEmail;
-                $customerCountry = $customer->address->country ?? null;
-            }
-
-            // Find user by email
-            $user = User::where('email', $customerEmail)->first();
-            if ($user) {
-                // Always set only one role: organizationadmin
-                $orgAdminRole = \App\Models\Role::where('name', 'organizationadmin')->first();
-                if ($orgAdminRole) {
-                    $user->roles()->sync([$orgAdminRole->id]);
-                }
-
-                // Create organization if not exists for this user
-                $orgExists = \App\Models\Organization::where('user_id', $user->id)->first();
-                if (!$orgExists) {
-                
-                    $orgData = [
-                        'contract_start' => null,
-                        'contract_end' => null,
-                        'sales_person_id' => null,
-                        'last_contacted' => null,
-                        'certified_staff' => null,
-                        'user_id' => $user->id,
-                    ];
-                    Log::info('Creating organization for user subscription', [
-                        'user_id' => $user->id,
-                        'org_data' => $orgData
-                    ]);
-                    $org = \App\Models\Organization::create($orgData);
-                    Log::info('Organization created', [
-                        'organization_id' => $org->id,
-                        'organization_name' => $org->organization_name,
-                        'user_id' => $org->user_id
-                    ]);
-                }
-
-                // Update or create subscription record (try by subscription_id, then by customer_id+user_id)
-                $sub = null;
-                if ($stripeSubscriptionId) {
-                    $sub = Subscription::where('stripe_subscription_id', $stripeSubscriptionId)->first();
-                }
-                if (!$sub && $stripeCustomerId) {
-                    $sub = Subscription::where('stripe_customer_id', $stripeCustomerId)
-                        ->where('user_id', $user->id)
-                        ->first();
-                }
-                $subscriptionData = [
-                    'user_id' => $user->id,
-                    'stripe_subscription_id' => $stripeSubscriptionId,
-                    'stripe_customer_id' => $stripeCustomerId,
-                    'plan' => $plan,
-                    'status' => $status,
-                    'payment_method' => $paymentMethodReadable,
-                    'default_payment_method_id' => $defaultPaymentMethodId,
-                    'payment_method_type' => $paymentMethodType,
-                    'payment_method_brand' => $paymentMethodBrand,
-                    'payment_method_last4' => $paymentMethodLast4,
-                    'payment_date' => $paymentDate,
-                    'subscription_start' => $subscriptionStart,
-                    'subscription_end' => $subscriptionEnd,
-                    'amount' => $amount,
-                    'receipt_url' => $receiptUrl,
-                    'invoice_number' => $invoiceNumber,
-                    'description' => $description,
-                    'customer_name' => $customerName,
-                    'customer_email' => $customerEmail,
-                    'customer_country' => $customerCountry,
-                ];
-                if ($sub) {
-                    $sub->update($subscriptionData);
-                } else {
-                    Subscription::create($subscriptionData);
-                }
-            }
-        }
-
-        // Handle invoice.paid event for more complete subscription/payment info
-           elseif ($event->type === 'invoice.paid') {
-            $invoice = $event->data->object;
-            
-    
-            Log::info('Invoice Paid Payload:', (array) $invoice);
-
-            try {
-                  \Stripe\Stripe::setApiKey(config('services.stripe.secret'));
-                $stripeSubscriptionId = $invoice->subscription;
-                // Fallback: try to get subscription ID from invoice lines if missing
-                if (empty($stripeSubscriptionId) && isset($invoice->lines->data) && is_array($invoice->lines->data)) {
-                    foreach ($invoice->lines->data as $line) {
-                        // Check for direct subscription field
-                        if (isset($line->subscription) && !empty($line->subscription)) {
-                            $stripeSubscriptionId = $line->subscription;
-                            break;
-                        }
-                        // Check for nested parent->subscription_item_details->subscription
-                        if (isset($line->parent->subscription_item_details->subscription) && !empty($line->parent->subscription_item_details->subscription)) {
-                            $stripeSubscriptionId = $line->parent->subscription_item_details->subscription;
-                            break;
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                Log::error('Error processing invoice.paid event: ' . $e->getMessage(), ['exception' => $e]);
-                // Mark failure but don't return immediately so we have a single return at the end
-                $responseCode = 500;
-                $responseMessage = 'Error processing invoice.paid event';
-            }
-
-            $stripeCustomerId = $invoice->customer;
-            $amount = $invoice->amount_paid ? $invoice->amount_paid / 100 : null;
-            $receiptUrl = $invoice->hosted_invoice_url ?? null;
-            $invoiceNumber = $invoice->number ?? null;
-            if (isset($invoice->status_transitions->paid_at)) {
-                $paymentDate = date('Y-m-d H:i:s', $invoice->status_transitions->paid_at);
-            } elseif (isset($invoice->created)) {
-                $paymentDate = date('Y-m-d H:i:s', $invoice->created);
-            } else {
-                $paymentDate = null;
-            }
-            $description = isset($invoice->lines->data[0]->description) ? $invoice->lines->data[0]->description : null;
-            $subscriptionStart = null;
-            $subscriptionEnd = null;
-            $plan = null;
-            $status = null;
-            $customerName = null;
-            $customerEmail = null;
-            $customerCountry = null;
-            $paymentMethod = null;
-            $defaultPaymentMethodId = null;
-            $paymentMethodType = null;
-            $paymentMethodBrand = null;
-            $paymentMethodLast4 = null;
-
-              // First attempt: Try to get payment method details from payment intent
-            if ($invoice->payment_intent) {
-                Log::info('Invoice has payment_intent: ' . $invoice->payment_intent);
-                try {
-                    $paymentIntent = \Stripe\PaymentIntent::retrieve($invoice->payment_intent);
-                    if ($paymentIntent->charges && $paymentIntent->charges->data && count($paymentIntent->charges->data) > 0) {
-                        $charge = $paymentIntent->charges->data[0];
-                        if ($charge->payment_method_details) {
-                            $type = $charge->payment_method_details->type;
-                            $paymentMethodType = $type;
-                            
-                            if ($type === 'card' && $charge->payment_method_details->card) {
-                                $brand = $charge->payment_method_details->card->brand ?? '';
-                                $last4 = $charge->payment_method_details->card->last4 ?? '';
-                                $paymentMethodBrand = $brand;
-                                $paymentMethodLast4 = $last4;
-                                $paymentMethod = ucfirst($brand) . ' *****' . $last4;
-                            } else {
-                                $paymentMethod = $type;
-                            }
-                        }
-                    }
-                    // Fallback: If not found, try PaymentIntent->payment_method
-                    if (empty($paymentMethod) && !empty($paymentIntent->payment_method)) {
-                        $pm = \Stripe\PaymentMethod::retrieve($paymentIntent->payment_method);
-                        $defaultPaymentMethodId = $pm->id;
-                        $paymentMethodType = $pm->type;
-                        
-                        if ($pm->type === 'card' && $pm->card) {
-                            $brand = $pm->card->brand ?? '';
-                            $last4 = $pm->card->last4 ?? '';
-                            $paymentMethodBrand = $brand;
-                            $paymentMethodLast4 = $last4;
-                            $paymentMethod = ucfirst($brand) . ' ****' . $last4;
-                        } else {
-                            $paymentMethod = $pm->type;
-                        }
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Stripe API error retrieving PaymentIntent/PaymentMethod for invoice.paid: ' . $e->getMessage(), ['invoice_id' => $invoice->id]);
-                }
-                Log::info('Payment method after payment_intent attempt: ' . ($paymentMethod ?? 'NULL'));
-            }
-
-
-            // Fallback: If payment_intent not found or didn't provide method, try customer's default payment method
-                if (empty($paymentMethod) && $invoice->customer) {
-                // ADDED: Log fallback attempt
-                Log::info('Attempting fallback for payment method via customer default. Customer ID: ' . $invoice->customer);
-                try {
-                    $customer = \Stripe\Customer::retrieve($invoice->customer);
-                    if ($customer->invoice_settings && $customer->invoice_settings->default_payment_method) {
-                        $defaultPaymentMethodId = $customer->invoice_settings->default_payment_method;
-                        // ADDED: Log default payment method ID
-                        Log::info('Customer default_payment_method ID: ' . $defaultPaymentMethodId);
-                        $pm = \Stripe\PaymentMethod::retrieve($defaultPaymentMethodId);
-                        $paymentMethodType = $pm->type;
-                        
-                        if ($pm->type === 'card' && $pm->card) {
-                            $paymentMethodBrand = $pm->card->brand;
-                            $paymentMethodLast4 = $pm->card->last4;
-                            $paymentMethod = $pm->card->brand . ' ****' . $pm->card->last4;
-                        } else {
-                            $paymentMethod = $pm->type;
-                        }
-                        // ADDED: Log final fallback payment method
-                        Log::info('Payment method from customer default (before DB save): ' . ($paymentMethod ?? 'NULL'));
-                    } else {
-                   
-                        Log::warning('Customer has no default_payment_method set in invoice_settings for customer ID: ' . $invoice->customer);
-                    }
-                } catch (\Stripe\Exception\ApiErrorException $e) {
-                    Log::error('Stripe API error retrieving Customer default payment method for invoice.paid: ' . $e->getMessage(), ['customer_id' => $invoice->customer]);
-                }
-            }
-
-       
-            if ($stripeSubscriptionId) {
-                $stripeSub = \Stripe\Subscription::retrieve($stripeSubscriptionId);
-                $subscriptionStart = $stripeSub->current_period_start ? date('Y-m-d H:i:s', $stripeSub->current_period_start) : null;
-                $subscriptionEnd = $stripeSub->current_period_end ? date('Y-m-d H:i:s', $stripeSub->current_period_end) : null;
-                // If start/end are still null, set manually based on amount (monthly/annual)
-                if (!$subscriptionStart) {
-                    $subscriptionStart = now();
-                }
-                if (!$subscriptionEnd) {
-                    if ($amount == 250) {
-                        $subscriptionEnd = now()->addMonth();
-                    } elseif ($amount == 2500) {
-                        $subscriptionEnd = now()->addYear();
-                    } else {
-                        $subscriptionEnd = null;
-                    }
-                }
-                $plan = $stripeSub->items->data[0]->plan->id ?? null;
-                $status = $stripeSub->status ?? null;
-                
-                // If payment method details are still missing, try subscription's default payment method
-                if (!$defaultPaymentMethodId && $stripeSub->default_payment_method) {
-                    try {
-                        $pm = \Stripe\PaymentMethod::retrieve($stripeSub->default_payment_method);
-                        $defaultPaymentMethodId = $pm->id;
-                        $paymentMethodType = $pm->type;
-                        
-                        if ($pm->type === 'card' && $pm->card) {
-                            $paymentMethodBrand = $pm->card->brand;
-                            $paymentMethodLast4 = $pm->card->last4;
-                            $paymentMethod = ucfirst($pm->card->brand) . ' ****' . $pm->card->last4;
-                        } else {
-                            $paymentMethod = ucfirst($pm->type);
-                        }
-                        
-                        Log::info('Payment method extracted from subscription default for invoice.paid: ' . ($paymentMethod ?? 'NULL'));
-                    } catch (\Exception $e) {
-                        Log::error('Stripe API error retrieving subscription default payment method for invoice.paid: ' . $e->getMessage(), ['subscription_id' => $stripeSubscriptionId]);
-                    }
-                }
-            }
-            // Get customer details
-            if ($stripeCustomerId) {
-                $customer = \Stripe\Customer::retrieve($stripeCustomerId);
-                $customerName = $customer->name ?? null;
-                $customerEmail = $customer->email ?? null;
-                $customerCountry = $customer->address->country ?? null;
-            }
-            // Find user by email (from subscription record)
-            $user = null;
-            if ($customerEmail) {
-                $user = User::where('email', $customerEmail)->first();
-            }
-            if ($user) {
-                // Set role to organizationadmin if not already (using roles table)
-                if (!$user->roles()->where('name', 'organizationadmin')->exists()) {
-                    $orgAdminRole = \App\Models\Role::where('name', 'organizationadmin')->first();
-                    if ($orgAdminRole) {
-                        $user->roles()->attach($orgAdminRole->id);
-                    }
-                }
-                // Update or create subscription record (try by subscription_id, then by customer_id+user_id)
-                $sub = null;
-                if ($stripeSubscriptionId) {
-                    $sub = Subscription::where('stripe_subscription_id', $stripeSubscriptionId)->first();
-                }
-                if (!$sub && $stripeCustomerId) {
-                    $sub = Subscription::where('stripe_customer_id', $stripeCustomerId)
-                        ->where('user_id', $user->id)
-                        ->first();
-                }
-                $subscriptionData = [
-                    'user_id' => $user->id,
-                    'stripe_subscription_id' => $stripeSubscriptionId,
-                    'stripe_customer_id' => $stripeCustomerId,
-                    'plan' => $plan,
-                    'status' => $status,
-                    'payment_method' => $paymentMethod,
-                    'default_payment_method_id' => $defaultPaymentMethodId,
-                    'payment_method_type' => $paymentMethodType,
-                    'payment_method_brand' => $paymentMethodBrand,
-                    'payment_method_last4' => $paymentMethodLast4,
-                    'payment_date' => $paymentDate,
-                    'subscription_start' => $subscriptionStart,
-                    'subscription_end' => $subscriptionEnd,
-                    'amount' => $amount,
-                    'receipt_url' => $receiptUrl,
-                    'invoice_number' => $invoiceNumber,
-                    'description' => $description,
-                    'customer_name' => $customerName,
-                    'customer_email' => $customerEmail,
-                    'customer_country' => $customerCountry,
-                ];
-                if ($sub) {
-                    $sub->update($subscriptionData);
-                } else {
-                    Subscription::create($subscriptionData);
-                }
-         
-            }
-        }
-
-        
-    // Return the response message and code collected during processing
     return response($responseMessage, $responseCode);
+}
+
+
+    /**
+     * Verifies webhook signature and constructs the Stripe Event object.
+     */
+    private function verifyAndConstructEvent(Request $request): Event
+    {
+        return \Stripe\Webhook::constructEvent(
+            $request->getContent(),
+            $request->header('Stripe-Signature'),
+            config('services.stripe.webhook_secret')
+        );
+    }
+
+    /**
+     * Processes the 'checkout.session.completed' event.
+     */
+    private function handleCheckoutSessionCompleted(StripeSession $session): void
+    {
+        Log::info('Checkout Session Completed Payload:', (array) $session);
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        $user = User::where('email', $session->customer_email)->first();
+        if (!$user) {
+            Log::warning('User not found for checkout session', ['email' => $session->customer_email]);
+            return;
+        }
+
+        $stripeSub = \Stripe\Subscription::retrieve($session->subscription);
+        $customer = Customer::retrieve($session->customer);
+
+        // Try to fetch the latest invoice for this subscription (if available)
+        $latestInvoice = null;
+        try {
+            if (!empty($stripeSub->latest_invoice)) {
+                $latestInvoice = \Stripe\Invoice::retrieve($stripeSub->latest_invoice);
+            }
+        } catch (Throwable $e) {
+            Log::warning('Unable to retrieve latest invoice for subscription: ' . $e->getMessage(), ['sub_id' => $stripeSub->id]);
+            $latestInvoice = null;
+        }
+
+        // Normalize start/end using Carbon. If Stripe provides equal/missing values,
+        // compute end based on the payment amount (monthly/yearly heuristic).
+        $start = $stripeSub->current_period_start ? Carbon::createFromTimestamp($stripeSub->current_period_start) : Carbon::now();
+        $end = $stripeSub->current_period_end ? Carbon::createFromTimestamp($stripeSub->current_period_end) : null;
+
+        $amount = $session->amount_total ? $session->amount_total / 100 : null;
+        if (is_null($end) || $start->equalTo($end)) {
+            if ($amount == 2500) {
+                $end = $start->copy()->addYear();
+            } else {
+                $end = $start->copy()->addMonth();
+            }
+        }
+
+        $subscriptionData = [
+            'user_id' => $user->id,
+            'stripe_subscription_id' => $session->subscription,
+            'stripe_customer_id' => $session->customer,
+            'plan' => $stripeSub->items->data[0]->plan->id ?? null,
+            'status' => $stripeSub->status ?? 'active',
+            'payment_date' => now(),
+            'subscription_start' => $start instanceof Carbon ? $start->toDateTimeString() : (string)$start,
+            'subscription_end' => $end instanceof Carbon ? $end->toDateTimeString() : (string)$end,
+            'amount' => $amount,
+            'customer_name' => $customer->name,
+            'customer_email' => $customer->email,
+            'customer_country' => $customer->address->country ?? null,
+            // Invoice-related fields may not be present on the session; populate from latest invoice when possible
+            'receipt_url' => $latestInvoice->hosted_invoice_url ?? null,
+            'invoice_number' => $latestInvoice->number ?? null,
+            'description' => $latestInvoice->lines->data[0]->description ?? null,
+        ];
+
+        $paymentMethodDetails = $this->getPaymentMethodDetailsFromSession($session, $stripeSub);
+        $this->updateOrCreateSubscription(array_merge($subscriptionData, $paymentMethodDetails));
+    }
+
+    /**
+     * Processes the 'invoice.paid' event with fallback logic.
+     */
+    private function handleInvoicePaid(Invoice $invoice): void
+    {
+        Log::info('Invoice Paid Payload:', (array) $invoice);
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        $stripeSubscriptionId = $this->getSubscriptionIdFromInvoice($invoice);
+        if (!$stripeSubscriptionId) {
+            Log::info('Invoice.paid event without a subscription ID, skipping.', ['invoice_id' => $invoice->id]);
+            return;
+        }
+
+        $customer = Customer::retrieve($invoice->customer);
+        $user = User::where('email', $customer->email)->first();
+        if (!$user) {
+            Log::warning('User not found for invoice', ['email' => $customer->email]);
+            return;
+        }
+
+        $stripeSub = \Stripe\Subscription::retrieve($stripeSubscriptionId);
+        $amount = $invoice->amount_paid / 100;
+        
+        // Fallback for subscription period if not available on the subscription object
+        // Use Carbon to compute start/end consistently. If Stripe didn't provide
+        // a period end (or start and end are equal), compute end based on plan.
+        $start = $stripeSub->current_period_start ? Carbon::createFromTimestamp($stripeSub->current_period_start) : Carbon::now();
+        $end = $stripeSub->current_period_end ? Carbon::createFromTimestamp($stripeSub->current_period_end) : null;
+
+        if (is_null($end) || $start->equalTo($end)) {
+            // Determine period from amount: 250 -> monthly, 2500 -> yearly. Fallback to monthly.
+            if ($amount == 2500) {
+                $end = $start->copy()->addYear();
+            } else {
+                $end = $start->copy()->addMonth();
+            }
+        }
+
+        $subscriptionData = [
+            'user_id' => $user->id,
+            'stripe_subscription_id' => $stripeSubscriptionId,
+            'stripe_customer_id' => $invoice->customer,
+            'plan' => $stripeSub->items->data[0]->plan->id ?? null,
+            'status' => $stripeSub->status ?? null,
+            'payment_date' => date('Y-m-d H:i:s', $invoice->status_transitions->paid_at),
+            'subscription_start' => $start instanceof Carbon ? $start->toDateTimeString() : (string)$start,
+            'subscription_end' => $end instanceof Carbon ? $end->toDateTimeString() : (string)$end,
+            'amount' => $amount,
+            'receipt_url' => $invoice->hosted_invoice_url,
+            'invoice_number' => $invoice->number,
+            'description' => $invoice->lines->data[0]->description ?? null,
+            'customer_name' => $customer->name,
+            'customer_email' => $customer->email,
+            'customer_country' => $customer->address->country ?? null,
+        ];
+
+        $paymentMethodDetails = $this->getPaymentMethodDetailsFromInvoice($invoice, $customer, $stripeSub);
+        $this->updateOrCreateSubscription(array_merge($subscriptionData, $paymentMethodDetails));
+    }
+
+    /**
+     * Finds subscription ID from invoice, checking lines as a fallback.
+     */
+    private function getSubscriptionIdFromInvoice(Invoice $invoice): ?string
+    {
+        if (!empty($invoice->subscription)) {
+            return $invoice->subscription;
+        }
+
+        Log::info('Subscription ID missing from invoice top-level, checking line items.', ['invoice_id' => $invoice->id]);
+        if (isset($invoice->lines->data) && is_array($invoice->lines->data)) {
+            foreach ($invoice->lines->data as $line) {
+                if (isset($line->subscription) && !empty($line->subscription)) {
+                    return $line->subscription;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Retrieves payment method details from a checkout session or its related subscription.
+     */
+    private function getPaymentMethodDetailsFromSession(StripeSession $session, \Stripe\Subscription $stripeSub): array
+    {
+        try {
+            if ($session->payment_intent) {
+                $intent = PaymentIntent::retrieve($session->payment_intent);
+                if ($intent->payment_method) {
+                    $pm = PaymentMethod::retrieve($intent->payment_method);
+                    return $this->formatPaymentMethodDetails($pm);
+                }
+            }
+    
+            if ($stripeSub->default_payment_method) {
+                Log::info('Payment method extracted from subscription default.', ['sub_id' => $stripeSub->id]);
+                $pm = PaymentMethod::retrieve($stripeSub->default_payment_method);
+                return $this->formatPaymentMethodDetails($pm);
+            }
+        } catch (Throwable $e) {
+            Log::error('Stripe API error retrieving payment method for checkout session: ' . $e->getMessage(), ['session_id' => $session->id]);
+        }
+        return [];
+    }
+
+    /**
+     * Retrieves payment method details from an invoice, customer, or subscription.
+     */
+  private function getPaymentMethodDetailsFromInvoice(
+    Invoice $invoice,
+    Customer $customer,
+    \Stripe\Subscription $stripeSub
+): array {
+    $pm = null;
+
+    try {
+        if ($invoice->payment_intent) {
+            $intent = PaymentIntent::retrieve($invoice->payment_intent);
+            if ($intent->payment_method) {
+                $pm = PaymentMethod::retrieve($intent->payment_method);
+            }
+        }
+
+        if (!$pm && $customer->invoice_settings->default_payment_method) {
+            Log::info('Attempting fallback for payment method via customer default.', [
+                'customer_id' => $customer->id
+            ]);
+            $pm = PaymentMethod::retrieve($customer->invoice_settings->default_payment_method);
+        }
+
+        if (!$pm && $stripeSub->default_payment_method) {
+            Log::info('Attempting fallback for payment method via subscription default.', [
+                'sub_id' => $stripeSub->id
+            ]);
+            $pm = PaymentMethod::retrieve($stripeSub->default_payment_method);
+        }
+
+    } catch (Throwable $e) {
+        Log::error('Stripe API error retrieving payment method for invoice: ' . $e->getMessage(), [
+            'invoice_id' => $invoice->id
+        ]);
+    }
+
+    return $pm ? $this->formatPaymentMethodDetails($pm) : [];
+}
+
+
+    /**
+     * Formats a PaymentMethod object into a structured array for the database.
+     */
+    private function formatPaymentMethodDetails(PaymentMethod $pm): array
+    {
+        $details = [
+            'default_payment_method_id' => $pm->id,
+            'payment_method_type' => $pm->type,
+            'payment_method_brand' => null,
+            'payment_method_last4' => null,
+            'payment_method' => ucfirst($pm->type),
+        ];
+
+        if ($pm->type === 'card' && $pm->card) {
+            $details['payment_method_brand'] = $pm->card->brand;
+            $details['payment_method_last4'] = $pm->card->last4;
+            $details['payment_method'] = ucfirst($pm->card->brand) . ' ****' . $pm->card->last4;
+        }
+
+        Log::info('Formatted payment method details', ['payment_method' => $details['payment_method']]);
+        return $details;
+    }
+
+    /**
+     * Creates/updates a subscription, assigns roles safely, and ensures an organization exists.
+     */
+    private function updateOrCreateSubscription(array $data): void
+    {
+        $user = User::find($data['user_id']);
+        if (!$user) {
+            return;
+        }
+
+        // Safely ensure user has the 'organizationadmin' role without removing others
+        $orgAdminRole = Role::firstOrCreate(['name' => 'organizationadmin']);
+        $user->roles()->syncWithoutDetaching([$orgAdminRole->id]);
+
+        // If this is the currently authenticated user, reload their roles into the session
+        try {
+            if (Auth::check() && Auth::id() === $user->id) {
+                // Reload fresh user instance from DB and replace the authenticated user
+                $fresh = User::with('roles')->find($user->id);
+                if ($fresh) {
+                    // For Laravel's default auth guard, set the user instance on the guard
+                    Auth::guard()->setUser($fresh);
+                    // Regenerate session to ensure updated auth payload (optional but helps some setups)
+                    request()->session()?->regenerate();
+                    Log::info('Refreshed authenticated user after role update', ['user_id' => $user->id]);
+                }
+            }
+        } catch (Throwable $e) {
+            Log::warning('Failed to refresh auth user after role update: ' . $e->getMessage(), ['user_id' => $user->id]);
+        }
+
+        // Create an organization for the user if one doesn't exist
+        $organization = Organization::where('user_id', $user->id)->first();
+        if (!$organization) {
+            Log::info('Creating organization for user subscription', ['user_id' => $user->id]);
+            $organization = Organization::create(['user_id' => $user->id]);
+            Log::info('Organization created', ['organization_id' => $organization->id, 'user_id' => $user->id]);
+        }
+        
+        // Update or create the subscription
+        Subscription::updateOrCreate(
+            ['stripe_subscription_id' => $data['stripe_subscription_id']],
+            $data
+        );
+
+        Log::info('Subscription record updated/created successfully.', ['subscription_id' => $data['stripe_subscription_id']]);
     }
 }

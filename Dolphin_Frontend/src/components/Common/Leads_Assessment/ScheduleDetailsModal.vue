@@ -191,89 +191,91 @@
                   width: 100%;
                 "
               >
-                <table
-                  v-if="filteredEmails && filteredEmails.length"
-                  class="recipient-table compact"
-                  style="width: 100%; min-width: 500px"
-                >
-                  <TableHeader
-                    :columns="[
-                      {
-                        label: 'Group',
-                        key: 'group',
-                        minWidth: '200px',
-                      },
-                      {
-                        label: 'Members',
-                        key: 'members',
-                        minWidth: '200px',
-                      },
-                      {
-                        label: 'Email',
-                        key: 'email',
-                        minWidth: '200px',
-                      },
-                      {
-                        label: 'Member Roles',
-                        key: 'member_roles',
-                        minWidth: '200px',
-                      },
-                    ]"
-                  />
-                  <tbody>
-                    <template
-                      v-for="(g, gi) in groupedEmails"
-                      :key="'group-' + gi"
-                    >
-                      <tr
-                        v-for="(e, ei) in g.items"
-                        :key="'email-' + gi + '-' + ei"
+                <div class="table-scroll">
+                  <table
+                    v-if="filteredEmails && filteredEmails.length"
+                    class="recipient-table compact"
+                    style="width: 100%; min-width: 500px"
+                  >
+                    <TableHeader
+                      :columns="[
+                        {
+                          label: 'Group',
+                          key: 'group',
+                          minWidth: '200px',
+                        },
+                        {
+                          label: 'Members',
+                          key: 'members',
+                          minWidth: '200px',
+                        },
+                        {
+                          label: 'Email',
+                          key: 'email',
+                          minWidth: '200px',
+                        },
+                        {
+                          label: 'Member Roles',
+                          key: 'member_roles',
+                          minWidth: '200px',
+                        },
+                      ]"
+                    />
+                    <tbody>
+                      <template
+                        v-for="(g, gi) in groupedEmails"
+                        :key="'group-' + gi"
                       >
-                        <td
-                          v-if="ei === 0"
-                          :rowspan="g.items.length"
-                          class="group-cell"
+                        <tr
+                          v-for="(e, ei) in g.items"
+                          :key="'email-' + gi + '-' + ei"
                         >
-                          {{ g.name || 'Ungrouped' }}
-                        </td>
-                        <td style="padding: 0px 8px !important">
-                          {{
-                            e.member_id && memberDetailMap[e.member_id]
-                              ? memberDetailMap[e.member_id].name
-                              : e.recipient_email ||
-                                e.email ||
-                                e.to ||
-                                'Unknown'
-                          }}
-                        </td>
-                        <td>
-                          {{
-                            e.member_id && memberDetailMap[e.member_id]
-                              ? memberDetailMap[e.member_id].email
-                              : e.recipient_email || e.email || e.to || ''
-                          }}
-                        </td>
-                        <td>
-                          {{
-                            e.member_id && memberDetailMap[e.member_id]
-                              ? memberDetailMap[e.member_id].rolesDisplay
-                              : Array.isArray(e.memberRoles) &&
-                                e.memberRoles.length
-                              ? e.memberRoles
-                                  .map((r) => (r && (r.name || r)) || r)
-                                  .join(', ')
-                              : Array.isArray(e.member_role_ids) &&
-                                e.member_role_ids.length
-                              ? e.member_role_ids
-                                  .map((r) => (r && (r.name || r)) || r)
-                                  .join(', ')
-                              : e.member_role || ''
-                          }}
-                        </td>
-                      </tr>
-                    </template>
-                  </tbody>
-                </table>
+                          <td
+                            v-if="ei === 0"
+                            :rowspan="g.items.length"
+                            class="group-cell"
+                          >
+                            {{ g.name || 'Ungrouped' }}
+                          </td>
+                          <td style="padding: 0px 8px !important">
+                            {{
+                              e.member_id && memberDetailMap[e.member_id]
+                                ? memberDetailMap[e.member_id].name
+                                : e.recipient_email ||
+                                  e.email ||
+                                  e.to ||
+                                  'Unknown'
+                            }}
+                          </td>
+                          <td>
+                            {{
+                              e.member_id && memberDetailMap[e.member_id]
+                                ? memberDetailMap[e.member_id].email
+                                : e.recipient_email || e.email || e.to || ''
+                            }}
+                          </td>
+                          <td>
+                            {{
+                              e.member_id && memberDetailMap[e.member_id]
+                                ? memberDetailMap[e.member_id].rolesDisplay
+                                : Array.isArray(e.memberRoles) &&
+                                  e.memberRoles.length
+                                ? e.memberRoles
+                                    .map((r) => (r && (r.name || r)) || r)
+                                    .join(', ')
+                                : Array.isArray(e.member_role_ids) &&
+                                  e.member_role_ids.length
+                                ? e.member_role_ids
+                                    .map((r) => (r && (r.name || r)) || r)
+                                    .join(', ')
+                                : e.member_role || ''
+                            }}
+                          </td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -430,56 +432,58 @@
                 width: 100%;
               "
             >
-              <table
-                v-if="memberWiseRows && memberWiseRows.length"
-                class="recipient-table compact"
-                style="width: 100%; min-width: 500px"
-              >
-                <TableHeader
-                  :columns="[
-                    {
-                      label: 'Member Name',
-                      key: 'name',
-                      minWidth: '200px',
-                    },
-                    {
-                      label: 'Email',
-                      key: 'email',
-                      minWidth: '200px',
-                    },
-                    {
-                      label: 'Groups',
-                      key: 'groups',
-                      minWidth: '200px',
-                    },
-                    {
-                      label: 'Member Roles',
-                      key: 'rolesDisplay',
-                      minWidth: '200px',
-                    },
-                  ]"
-                />
-                <tbody>
-                  <tr
-                    v-for="m in memberWiseRows"
-                    :key="'memberwise-' + m.id"
-                  >
-                    <td>{{ m.name }}</td>
-                    <td>{{ m.email }}</td>
-                    <td>
-                      {{
-                        m.groups && m.groups.length ? m.groups.join(', ') : ''
-                      }}
-                    </td>
-                    <td>{{ m.rolesDisplay || '' }}</td>
-                  </tr>
-                </tbody>
-              </table>
-              <div
-                v-else
-                class="no-data"
-              >
-                <em>No members found for Member Wise view.</em>
+              <div class="table-scroll">
+                <table
+                  v-if="memberWiseRows && memberWiseRows.length"
+                  class="recipient-table compact"
+                  style="width: 100%; min-width: 500px"
+                >
+                  <TableHeader
+                    :columns="[
+                      {
+                        label: 'Member Name',
+                        key: 'name',
+                        minWidth: '200px',
+                      },
+                      {
+                        label: 'Email',
+                        key: 'email',
+                        minWidth: '200px',
+                      },
+                      {
+                        label: 'Groups',
+                        key: 'groups',
+                        minWidth: '200px',
+                      },
+                      {
+                        label: 'Member Roles',
+                        key: 'rolesDisplay',
+                        minWidth: '200px',
+                      },
+                    ]"
+                  />
+                  <tbody>
+                    <tr
+                      v-for="m in memberWiseRows"
+                      :key="'memberwise-' + m.id"
+                    >
+                      <td>{{ m.name }}</td>
+                      <td>{{ m.email }}</td>
+                      <td>
+                        {{
+                          m.groups && m.groups.length ? m.groups.join(', ') : ''
+                        }}
+                      </td>
+                      <td>{{ m.rolesDisplay || '' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div
+                  v-else
+                  class="no-data"
+                >
+                  <em>No members found for Member Wise view.</em>
+                </div>
               </div>
             </div>
           </div>

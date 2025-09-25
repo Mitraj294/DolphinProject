@@ -258,7 +258,7 @@ export default {
         label: 'Organization',
         key: 'organization',
         sortable: true,
-        width: '150px',
+        width: '175px',
       },
       { label: 'Size', width: '250px' },
       { label: 'Source', width: '120px' },
@@ -775,11 +775,7 @@ export default {
   height: 16px;
 }
 
-.table-scroll {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-}
+
 
 .status-badge {
   display: inline-flex;

@@ -113,46 +113,56 @@
                     width: 100%;
                   "
                 >
-                  <table
-                    class="recipient-table compact"
-                    style="width: 100%; min-width: 500px"
-                  >
-                    <TableHeader
-                      :columns="[
-                        {
-                          label: 'Organization Name',
-                          key: 'organization_name',
-                          minWidth: '200px',
-                        },
-                        { label: 'User Name', key: 'name', minWidth: '200px' },
-                        { label: 'Emails', key: 'email', minWidth: '200px' },
-                        { label: 'Read At', key: 'read_at', minWidth: '200px' },
-                      ]"
-                    />
-                    <tbody>
-                      <tr v-if="!organizationRecipients.length">
-                        <td
-                          colspan="4"
-                          style="text-align: center; padding: 20px"
+                  <div class="table-scroll">
+                    <table
+                      class="recipient-table compact"
+                      style="width: 100%; min-width: 500px"
+                    >
+                      <TableHeader
+                        :columns="[
+                          {
+                            label: 'Organization Name',
+                            key: 'organization_name',
+                            minWidth: '200px',
+                          },
+                          {
+                            label: 'User Name',
+                            key: 'name',
+                            minWidth: '200px',
+                          },
+                          { label: 'Emails', key: 'email', minWidth: '200px' },
+                          {
+                            label: 'Read At',
+                            key: 'read_at',
+                            minWidth: '200px',
+                          },
+                        ]"
+                      />
+                      <tbody>
+                        <tr v-if="!organizationRecipients.length">
+                          <td
+                            colspan="4"
+                            style="text-align: center; padding: 20px"
+                          >
+                            No recipients found.
+                          </td>
+                        </tr>
+                        <tr
+                          v-for="r in organizationRecipients"
+                          :key="r.id"
                         >
-                          No recipients found.
-                        </td>
-                      </tr>
-                      <tr
-                        v-for="r in organizationRecipients"
-                        :key="r.id"
-                      >
-                        <td>{{ r.organization_name }}</td>
-                        <td>{{ r.name }}</td>
-                        <td>{{ r.email }}</td>
-                        <td>
-                          <span>{{
-                            r.read_at ? formatDateTime(r.read_at) : ' - '
-                          }}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          <td>{{ r.organization_name }}</td>
+                          <td>{{ r.name }}</td>
+                          <td>{{ r.email }}</td>
+                          <td>
+                            <span>{{
+                              r.read_at ? formatDateTime(r.read_at) : ' - '
+                            }}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -183,40 +193,50 @@
                     width: 100%;
                   "
                 >
-                  <table
-                    class="recipient-table compact"
-                    style="width: 100%; min-width: 500px"
-                  >
-                    <TableHeader
-                      :columns="[
-                        { label: 'User Name', key: 'name', minWidth: '200px' },
-                        { label: 'Emails', key: 'email', minWidth: '200px' },
-                        { label: 'Read At', key: 'read_at', minWidth: '200px' },
-                      ]"
-                    />
-                    <tbody>
-                      <tr v-if="!adminRecipients.length">
-                        <td
-                          colspan="3"
-                          style="text-align: center; padding: 20px"
+                  <div class="table-scroll">
+                    <table
+                      class="recipient-table compact"
+                      style="width: 100%; min-width: 500px"
+                    >
+                      <TableHeader
+                        :columns="[
+                          {
+                            label: 'User Name',
+                            key: 'name',
+                            minWidth: '200px',
+                          },
+                          { label: 'Emails', key: 'email', minWidth: '200px' },
+                          {
+                            label: 'Read At',
+                            key: 'read_at',
+                            minWidth: '200px',
+                          },
+                        ]"
+                      />
+                      <tbody>
+                        <tr v-if="!adminRecipients.length">
+                          <td
+                            colspan="3"
+                            style="text-align: center; padding: 20px"
+                          >
+                            No admins targeted.
+                          </td>
+                        </tr>
+                        <tr
+                          v-for="a in adminRecipients"
+                          :key="a.id"
                         >
-                          No admins targeted.
-                        </td>
-                      </tr>
-                      <tr
-                        v-for="a in adminRecipients"
-                        :key="a.id"
-                      >
-                        <td>{{ a.name }}</td>
-                        <td>{{ a.email }}</td>
-                        <td>
-                          <span>{{
-                            a.read_at ? formatDateTime(a.read_at) : ' - '
-                          }}</span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          <td>{{ a.name }}</td>
+                          <td>{{ a.email }}</td>
+                          <td>
+                            <span>{{
+                              a.read_at ? formatDateTime(a.read_at) : ' - '
+                            }}</span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -247,44 +267,50 @@
                     width: 100%;
                   "
                 >
-                  <table
-                    class="recipient-table compact"
-                    style="width: 100%; min-width: 500px"
-                  >
-                    <TableHeader
-                      :columns="[
-                        { label: 'Group Name', key: 'name', minWidth: '200px' },
-                        {
-                          label: 'Organization Name',
-                          key: 'organization_name',
-                          minWidth: '200px',
-                        },
-                        {
-                          label: 'Org Contact Email',
-                          key: 'org_contact_email',
-                          minWidth: '200px',
-                        },
-                      ]"
-                    />
-                    <tbody>
-                      <tr v-if="!groupRows.length">
-                        <td
-                          colspan="3"
-                          style="text-align: center; padding: 20px"
+                  <div class="table-scroll">
+                    <table
+                      class="recipient-table compact"
+                      style="width: 100%; min-width: 500px"
+                    >
+                      <TableHeader
+                        :columns="[
+                          {
+                            label: 'Group Name',
+                            key: 'name',
+                            minWidth: '200px',
+                          },
+                          {
+                            label: 'Organization Name',
+                            key: 'organization_name',
+                            minWidth: '200px',
+                          },
+                          {
+                            label: 'Org Contact Email',
+                            key: 'org_contact_email',
+                            minWidth: '200px',
+                          },
+                        ]"
+                      />
+                      <tbody>
+                        <tr v-if="!groupRows.length">
+                          <td
+                            colspan="3"
+                            style="text-align: center; padding: 20px"
+                          >
+                            No groups targeted.
+                          </td>
+                        </tr>
+                        <tr
+                          v-for="g in groupRows"
+                          :key="g.id"
                         >
-                          No groups targeted.
-                        </td>
-                      </tr>
-                      <tr
-                        v-for="g in groupRows"
-                        :key="g.id"
-                      >
-                        <td>{{ g.name }}</td>
-                        <td>{{ g.organization_name }}</td>
-                        <td>{{ g.org_contact_email }}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                          <td>{{ g.name }}</td>
+                          <td>{{ g.organization_name }}</td>
+                          <td>{{ g.org_contact_email }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

@@ -107,7 +107,11 @@ class UserController extends Controller
             }
         }
 
-        $validatedData = $request->validate($rules);
+    $validatedData = $request->validate($rules);
+
+    // Capture the user's current primary role (if any) so we can detect
+    // transitions (e.g. organizationadmin -> user) and react accordingly.
+    $oldRoleName = $user->roles()->first()->name ?? null;
 
         try {
             DB::transaction(function () use ($user, $validatedData, $request) {
@@ -123,6 +127,20 @@ class UserController extends Controller
                     );
                 }
             });
+
+            // After the DB transaction completes, if the user USED to be an
+            // organizationadmin but is no longer one, mark their organization
+            // with a last_contacted timestamp so we have a record of the
+            // moment the admin relationship changed.
+            try {
+                $newRole = $validatedData['role'] ?? null;
+                if ($oldRoleName === 'organizationadmin' && $newRole !== 'organizationadmin') {
+                    Organization::where('user_id', $user->id)->update(['last_contacted' => now()]);
+                }
+            } catch (\Exception $e) {
+                // Log but don't fail the API call
+                Log::warning('Failed to update organization last_contacted after role change', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+            }
 
             return response()->json($this->formatUserPayload($user->fresh()));
         } catch (\Exception $e) {

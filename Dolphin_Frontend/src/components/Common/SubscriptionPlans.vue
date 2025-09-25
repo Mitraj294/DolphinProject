@@ -115,7 +115,7 @@ export default {
     },
     standardBtnText() {
       if (this.userPlan === 2500) return 'Current Plan';
-      if (this.userPlan === 250) return 'Update Plan';
+      if (this.userPlan === 250) return 'Upgrade Plan';
       return 'Get Started';
     },
     standardBtnAction() {
@@ -225,6 +225,42 @@ export default {
   },
   mounted() {
     this.fetchUserPlan();
+
+    // If redirected from Stripe Checkout, the URL will contain checkout_session_id
+    // Poll subscription status until webhook processed and DB shows active subscription.
+    const qs = new URLSearchParams(window.location.search);
+    const checkoutSessionId = qs.get('checkout_session_id');
+    if (checkoutSessionId) {
+      // poll every 2s for up to 30s
+      const maxAttempts = 15;
+      let attempts = 0;
+      const poll = async () => {
+        attempts++;
+        try {
+          const { fetchSubscriptionStatus } = await import(
+            '@/services/subscription'
+          );
+          const res = await fetchSubscriptionStatus();
+          if (res && res.status === 'active') {
+            // update local state and refresh user data to pick up roles
+            storage.set('subscriptionStatus', res);
+            const { fetchCurrentUser } = await import('@/services/user');
+            await fetchCurrentUser();
+            // Remove checkout param to avoid re-polling on further reloads
+            const url = new URL(window.location.href);
+            url.searchParams.delete('checkout_session_id');
+            window.history.replaceState({}, document.title, url.toString());
+            return; // stop polling
+          }
+        } catch (e) {
+          console.warn('Polling subscription status failed', e);
+        }
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 2000);
+        }
+      };
+      poll();
+    }
   },
 };
 </script>

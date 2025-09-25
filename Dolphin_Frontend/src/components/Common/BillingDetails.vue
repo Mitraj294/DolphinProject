@@ -130,91 +130,93 @@
           </div>
           <div class="billing-title">Billing History</div>
           <div class="table-container">
-            <table class="table">
-              <TableHeader
-                :columns="[
-                  {
-                    label: 'Payment Method',
-                    key: 'paymentMethodType',
-                    minWidth: '200px',
-                  },
-                  {
-                    label: 'Payment Date',
-                    key: 'paymentDate',
-                    minWidth: '200px',
-                  },
-                  {
-                    label: 'Subscription End',
-                    key: 'subscriptionEnd',
-                    minWidth: '200px',
-                  },
-                  { label: 'Amount', key: 'amount', minWidth: '200px' },
-                  { label: 'Download', key: 'invoice', minWidth: '200px' },
-                  {
-                    label: 'Description',
-                    key: 'description',
-                    minWidth: '200px',
-                  },
-                ]"
-              />
-              <tbody>
-                <tr
-                  v-for="(item, idx) in billingHistory"
-                  :key="idx"
-                >
-                  <td>
-                    {{ item.payment_method }}
-                  </td>
+            <div class="table-scroll">
+              <table class="table">
+                <TableHeader
+                  :columns="[
+                    {
+                      label: 'Payment Method',
+                      key: 'paymentMethodType',
+                      minWidth: '200px',
+                    },
+                    {
+                      label: 'Payment Date',
+                      key: 'paymentDate',
+                      minWidth: '200px',
+                    },
+                    {
+                      label: 'Subscription End',
+                      key: 'subscriptionEnd',
+                      minWidth: '200px',
+                    },
+                    { label: 'Amount', key: 'amount', minWidth: '200px' },
+                    { label: 'Download', key: 'invoice', minWidth: '200px' },
+                    {
+                      label: 'Description',
+                      key: 'description',
+                      minWidth: '200px',
+                    },
+                  ]"
+                />
+                <tbody>
+                  <tr
+                    v-for="(item, idx) in billingHistory"
+                    :key="idx"
+                  >
+                    <td>
+                      {{ item.payment_method }}
+                    </td>
 
-                  <td>
-                    {{ item.paymentDate ? formatDate(item.paymentDate) : '' }}
-                  </td>
-                  <td>
-                    {{
-                      item.subscriptionEnd
-                        ? formatDate(item.subscriptionEnd)
-                        : ''
-                    }}
-                  </td>
-                  <td>{{ item.amount ? `$${item.amount}` : '' }}</td>
-                  <td>
-                    <a
-                      v-if="item.pdfUrl"
-                      :href="item.pdfUrl"
-                      class="receipt-link"
-                      target="_blank"
-                      rel="noopener"
-                      style="margin-left: 8px"
-                    >
-                      <svg
-                        width="16"
-                        height="16"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        style="vertical-align: middle; margin-right: 4px"
+                    <td>
+                      {{ item.paymentDate ? formatDate(item.paymentDate) : '' }}
+                    </td>
+                    <td>
+                      {{
+                        item.subscriptionEnd
+                          ? formatDate(item.subscriptionEnd)
+                          : ''
+                      }}
+                    </td>
+                    <td>{{ item.amount ? `$${item.amount}` : '' }}</td>
+                    <td>
+                      <a
+                        v-if="item.pdfUrl"
+                        :href="item.pdfUrl"
+                        class="receipt-link"
+                        target="_blank"
+                        rel="noopener"
+                        style="margin-left: 8px"
                       >
-                        <rect
-                          x="3"
-                          y="3"
-                          width="18"
-                          height="18"
-                          rx="2"
-                          stroke="#0074c2"
-                          stroke-width="2"
-                        />
-                        <path
-                          d="M7 7h10M7 11h10M7 15h6"
-                          stroke="#0074c2"
-                          stroke-width="2"
-                        />
-                      </svg>
-                      View Receipt
-                    </a>
-                  </td>
-                  <td>{{ item.description }}</td>
-                </tr>
-              </tbody>
-            </table>
+                        <svg
+                          width="16"
+                          height="16"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          style="vertical-align: middle; margin-right: 4px"
+                        >
+                          <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="2"
+                            stroke="#0074c2"
+                            stroke-width="2"
+                          />
+                          <path
+                            d="M7 7h10M7 11h10M7 15h6"
+                            stroke="#0074c2"
+                            stroke-width="2"
+                          />
+                        </svg>
+                        View Receipt
+                      </a>
+                    </td>
+                    <td>{{ item.description }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

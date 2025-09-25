@@ -18,85 +18,87 @@
             </button>
           </div>
           <div class="table-container">
-            <table class="table">
-              <TableHeader
-                :columns="[
-                  { label: 'Name', key: 'name', minWidth: '180px' },
-                  { label: 'Email', key: 'email', minWidth: '260px' },
-                  { label: 'Roles', key: 'role', minWidth: '180px' },
-                  { label: 'Actions', key: 'actions', minWidth: '260px' },
-                ]"
-                @sort="sortBy"
-              />
-              <tbody>
-                <tr
-                  v-for="user in paginatedUsers"
-                  :key="user.id"
-                >
-                  <td>
-                    <span v-if="user.first_name || user.last_name">
-                      {{ user.first_name || ''
-                      }}{{ user.last_name ? ' ' + user.last_name : '' }}
-                    </span>
-                    <span v-else>
-                      {{ user.name }}
-                    </span>
-                  </td>
-                  <td>{{ user.email }}</td>
-                  <td>
-                    {{ formatRoleLabel(user.role) }}
-                  </td>
-                  <td>
-                    <div class="actions-row">
-                      <button
-                        class="icon-btn"
-                        title="Edit"
-                        @click="openEditModal(user)"
-                      >
-                        <img
-                          src="@/assets/images/EditBlack.svg"
-                          alt="Edit"
-                        />
-                      </button>
-                      <button
-                        class="icon-btn"
-                        title="Delete"
-                        @click="deleteUser(user)"
-                      >
-                        <img
-                          src="@/assets/images/Delete icon.svg"
-                          alt="Delete"
-                        />
-                      </button>
-                      <button
-                        v-if="canImpersonate(user)"
-                        class="btn-view impersonate-btn"
-                        @click="impersonateUser(user)"
-                      >
-                        <img
-                          src="@/assets/images/Impersonate.svg"
-                          alt="Impersonate"
-                          class="btn-view-icon impersonate-icon"
-                        />
-                        Impersonate
-                      </button>
-                      <button
-                        v-else
-                        class="btn-view"
-                        disabled
-                      >
-                        <img
-                          src="@/assets/images/Impersonate.svg"
-                          alt="Impersonate"
-                          class="btn-view-icon"
-                        />
-                        Impersonate
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="table-scroll">
+              <table class="table">
+                <TableHeader
+                  :columns="[
+                    { label: 'Name', key: 'name', minWidth: '180px' },
+                    { label: 'Email', key: 'email', minWidth: '260px' },
+                    { label: 'Roles', key: 'role', minWidth: '180px' },
+                    { label: 'Actions', key: 'actions', minWidth: '260px' },
+                  ]"
+                  @sort="sortBy"
+                />
+                <tbody>
+                  <tr
+                    v-for="user in paginatedUsers"
+                    :key="user.id"
+                  >
+                    <td>
+                      <span v-if="user.first_name || user.last_name">
+                        {{ user.first_name || ''
+                        }}{{ user.last_name ? ' ' + user.last_name : '' }}
+                      </span>
+                      <span v-else>
+                        {{ user.name }}
+                      </span>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                      {{ formatRoleLabel(user.role) }}
+                    </td>
+                    <td>
+                      <div class="actions-row">
+                        <button
+                          class="icon-btn"
+                          title="Edit"
+                          @click="openEditModal(user)"
+                        >
+                          <img
+                            src="@/assets/images/EditBlack.svg"
+                            alt="Edit"
+                          />
+                        </button>
+                        <button
+                          class="icon-btn"
+                          title="Delete"
+                          @click="deleteUser(user)"
+                        >
+                          <img
+                            src="@/assets/images/Delete icon.svg"
+                            alt="Delete"
+                          />
+                        </button>
+                        <button
+                          v-if="canImpersonate(user)"
+                          class="btn-view impersonate-btn"
+                          @click="impersonateUser(user)"
+                        >
+                          <img
+                            src="@/assets/images/Impersonate.svg"
+                            alt="Impersonate"
+                            class="btn-view-icon impersonate-icon"
+                          />
+                          Impersonate
+                        </button>
+                        <button
+                          v-else
+                          class="btn-view"
+                          disabled
+                        >
+                          <img
+                            src="@/assets/images/Impersonate.svg"
+                            alt="Impersonate"
+                            class="btn-view-icon"
+                          />
+                          Impersonate
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
         <Pagination

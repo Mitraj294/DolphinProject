@@ -22,61 +22,63 @@
       </div>
     </div>
     <div class="table-container">
-      <table class="table">
-        <colgroup>
-          <col style="width: 25%" />
-          <col style="width: 75%" />
-        </colgroup>
-        <TableHeader
-          :columns="[
-            { label: 'Assessment Name', key: 'name', style: 'width: 30%' },
-            { label: 'Actions', key: 'actions', style: 'width: 70%' },
-          ]"
-        />
-        <tbody>
-          <tr
-            v-for="item in paginatedAssessments"
-            :key="item.id"
-          >
-            <td>
-              <button
-                class="assessment-link"
-                @click="goToSummary(item)"
-              >
-                {{ item.name }}
-              </button>
-            </td>
-            <td>
-              <div
-                v-if="item.schedule"
-                class="scheduled-details"
-              ></div>
+      <div class="table-scroll">
+        <table class="table">
+          <colgroup>
+            <col style="width: 25%" />
+            <col style="width: 75%" />
+          </colgroup>
+          <TableHeader
+            :columns="[
+              { label: 'Assessment Name', key: 'name', style: 'width: 30%' },
+              { label: 'Actions', key: 'actions', style: 'width: 70%' },
+            ]"
+          />
+          <tbody>
+            <tr
+              v-for="item in paginatedAssessments"
+              :key="item.id"
+            >
+              <td>
+                <button
+                  class="assessment-link"
+                  @click="goToSummary(item)"
+                >
+                  {{ item.name }}
+                </button>
+              </td>
+              <td>
+                <div
+                  v-if="item.schedule"
+                  class="scheduled-details"
+                ></div>
 
-              <button
-                class="schedule-btn"
-                :id="'schedule-btn-' + item.id"
-                :data-assessment-id="item.id"
-                :ref="'scheduleBtn-' + item.id"
-                @click="onScheduleButtonClick(item)"
-                style="min-width: 135px; max-width: 135px"
-              >
-                <img
-                  src="@/assets/images/Schedule.svg"
-                  :alt="item.schedule ? 'Details' : 'Schedule'"
-                  style="
-                    margin-right: 6px;
-                    width: 18px;
-                    height: 18px;
-                    vertical-align: middle;
-                    display: inline-block;
-                  "
-                />
-                {{ item.schedule ? 'Details' : 'Schedule' }}
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+                <button
+                  class="schedule-btn"
+                  :id="'schedule-btn-' + item.id"
+                  :data-assessment-id="item.id"
+                  :ref="'scheduleBtn-' + item.id"
+                  @click="onScheduleButtonClick(item)"
+                  style="min-width: 135px; max-width: 135px"
+                >
+                  <img
+                    src="@/assets/images/Schedule.svg"
+                    :alt="item.schedule ? 'Details' : 'Schedule'"
+                    style="
+                      margin-right: 6px;
+                      width: 18px;
+                      height: 18px;
+                      vertical-align: middle;
+                      display: inline-block;
+                    "
+                  />
+                  {{ item.schedule ? 'Details' : 'Schedule' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
     <!-- Create Assessment Modal -->
     <CreateAssessmentModal

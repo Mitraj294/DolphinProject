@@ -52,7 +52,18 @@ class AuthController extends Controller
         }
 
         $tokenData = json_decode($tokenResponse->getContent(), true);
-        $userPayload = $this->buildUserPayload($user);
+        // Update organization's last_contacted when an organization admin logs in
+        try {
+            $isOrgAdmin = $user->roles()->where('name', 'organizationadmin')->exists();
+            if ($isOrgAdmin) {
+                Organization::where('user_id', $user->id)->update(['last_contacted' => now()]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to update organization last_contacted on login', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
+
+        // Rebuild user payload after potential org update
+        $userPayload = $this->buildUserPayload($user->fresh());
 
         return response()->json([
             'message'       => 'Login successful',

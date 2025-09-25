@@ -140,11 +140,15 @@ Route::middleware('auth:api')->group(function () {
             Route::get('/notifications', [NotificationController::class, 'allNotifications']);
         });
 
-        // Dolphin Admin & Superadmin
+        // Dolphin Admin & Superadmin (manage all lead actions)
         Route::middleware('auth.role:dolphinadmin,superadmin')->group(function () {
-            Route::apiResource('leads', LeadController::class);
+            // Admins can perform all lead actions except index which is handled
+            // separately to allow non-admins (e.g. salesperson) to list their own leads.
+            Route::apiResource('leads', LeadController::class)->except(['index']);
             Route::post('/notifications/send', [NotificationController::class, 'send']);
         });
+
+        Route::get('/leads', [LeadController::class, 'index'])->middleware('auth.role:dolphinadmin,superadmin,salesperson');
 
         // Organization Admin & Superadmin (allowed to view/list organizations and view groups via controller checks)
         Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {

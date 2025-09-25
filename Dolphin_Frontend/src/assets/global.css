@@ -365,6 +365,23 @@
     color: red;
     font-size: 0.8em;
     margin-top: 8px;
+
+
+}
+
+
+
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #e0e0e0;
 }
 
 /* Login and Registration Page Styles Reset Password and Thanks page also */

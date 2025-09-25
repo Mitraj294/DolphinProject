@@ -30,7 +30,8 @@
                   <div class="lead-detail-list-row">
                     <span>Sales Person</span
                     ><b>{{
-                      leadData.sales_person ?? organization.sales_person_id
+                      leadData.sales_person ??
+                      (orgData?.sales_person || orgData?.sales_person_id)
                     }}</b>
                   </div>
                   <div class="lead-detail-list-row">
@@ -162,6 +163,14 @@
 <script>
 import MainLayout from '@/components/layout/MainLayout.vue';
 import axios from 'axios';
+import storage from '@/services/storage';
+/*
+  Refactor notes:
+  - Extracted complex logic from the `created()` lifecycle hook into small helpers:
+    `loadLeadById`, `normalizeLeadObj`, `initFromPayload`, `initFromQuery`.
+  - This reduces cognitive complexity and makes the initialization flow easier to test.
+  - Behavior preserved; API calls and fallbacks remain the same.
+*/
 export default {
   name: 'LeadDetail',
   components: { MainLayout },
@@ -333,8 +342,7 @@ export default {
         return;
       }
       try {
-        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-        const storage = require('@/services/storage').default;
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
         const token = storage.get('authToken');
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
         // fetch organization
@@ -375,124 +383,131 @@ export default {
         this.organizationChecked = true;
       }
     },
-  },
-  async created() {
-    // If id is present, fetch lead details from backend
-    const id = this.$route.params.id || this.$route.query.id || this.lead.id;
-    if (id) {
+    // Normalize a lead object coming from backend into the localLead shape
+    normalizeLeadObj(leadObj) {
+      return {
+        contact:
+          (leadObj.first_name || '') +
+          (leadObj.last_name ? ' ' + leadObj.last_name : ''),
+        email: leadObj.email || '',
+        phone: leadObj.phone || '',
+        source: leadObj.find_us || '',
+        sales_person: leadObj.sales_person || '',
+        sales_person_id: leadObj.sales_person_id || null,
+        status: leadObj.status || '',
+        organization: leadObj.organization_name || '',
+        size: leadObj.organization_size || '',
+        address: leadObj.address !== undefined ? leadObj.address : '',
+        city: leadObj.city !== undefined ? leadObj.city : '',
+        state: leadObj.state !== undefined ? leadObj.state : '',
+        zip: leadObj.zip !== undefined ? leadObj.zip : '',
+        country: leadObj.country !== undefined ? leadObj.country : '',
+        country_id: leadObj.country_id || null,
+        state_id: leadObj.state_id || null,
+        city_id: leadObj.city_id || null,
+        id: leadObj.id || null,
+        first_name: leadObj.first_name || '',
+        last_name: leadObj.last_name || '',
+      };
+    },
+
+    // Load lead payload from API by id. Returns payload or null on failure.
+    async loadLeadById(id) {
+      if (!id) return null;
       try {
-        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-        const storage = require('@/services/storage').default;
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
         const token = storage.get('authToken');
         const res = await axios.get(`${API_BASE_URL}/api/leads/${id}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-        const payload = res.data || null;
-        if (payload) {
-          // support new response shape { lead, organization, orgUser, orgUserDetails }
-          const leadObj = payload.lead ? payload.lead : payload;
-          this.localLead = {
-            contact:
-              (leadObj.first_name || '') +
-              (leadObj.last_name ? ' ' + leadObj.last_name : ''),
-            email: leadObj.email || '',
-            phone: leadObj.phone || '',
-            source: leadObj.find_us || '',
-            sales_person: leadObj.sales_person || '',
-            sales_person_id: leadObj.sales_person_id || null,
-            status: leadObj.status || '',
-            organization: leadObj.organization_name || '',
-            size: leadObj.organization_size || '',
-            address: leadObj.address !== undefined ? leadObj.address : '',
-            city: leadObj.city !== undefined ? leadObj.city : '',
-            state: leadObj.state !== undefined ? leadObj.state : '',
-            zip: leadObj.zip !== undefined ? leadObj.zip : '',
-            country: leadObj.country !== undefined ? leadObj.country : '',
-            country_id: leadObj.country_id || null,
-            state_id: leadObj.state_id || null,
-            city_id: leadObj.city_id || null,
-            id: leadObj.id || null,
-            first_name: leadObj.first_name || '',
-            last_name: leadObj.last_name || '',
-          };
-          // If backend included organization/user info, use it
-          if (payload.organization) {
-            this.orgData = payload.organization;
-            this.orgUser = payload.orgUser || null;
-            this.orgUserDetails = payload.orgUserDetails || null;
-            this.isOrganizationCreated = true;
-            this.organizationChecked = true;
-          }
-          ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
-            if (this.localLead[f] === undefined) this.localLead[f] = '';
-          });
-          await this.lookupLocationNames();
-          // only call fetchOrganizationIfExists if backend did not return org info
-          if (!this.isOrganizationCreated)
-            await this.fetchOrganizationIfExists();
-          // If the page was opened with extra query params (contact/email/etc),
-          // replace the URL to the canonical /leads/:id to remove them.
-          try {
-            if (
-              this.$route &&
-              this.$route.query &&
-              Object.keys(this.$route.query).length
-            ) {
-              this.$router.replace({ name: 'LeadDetail', params: { id } });
-            }
-          } catch (e) {
-            console.warn('Failed to replace route', e);
-          }
-          return;
-        }
+        return res.data || null;
       } catch (e) {
         console.error('Error fetching lead details', e);
-        // fallback to query params if fetch failed
-        this.localLead = { ...this.lead };
-        await this.lookupLocationNames();
-        await this.fetchOrganizationIfExists();
-        return;
+        return null;
       }
-    }
-    // fallback to query params if no id or fetch failed
-    if (
-      this.$route &&
-      this.$route.query &&
-      Object.keys(this.$route.query).length
-    ) {
+    },
+
+    // Initialize component state from API payload
+    async initFromPayload(payload, id) {
+      const leadObj = payload.lead ? payload.lead : payload;
+      this.localLead = this.normalizeLeadObj(leadObj);
+      if (payload.organization) {
+        this.orgData = payload.organization;
+        this.orgUser = payload.orgUser || null;
+        this.orgUserDetails = payload.orgUserDetails || null;
+        this.isOrganizationCreated = true;
+        this.organizationChecked = true;
+      }
+      ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
+        if (this.localLead[f] === undefined) this.localLead[f] = '';
+      });
+      await this.lookupLocationNames();
+      if (!this.isOrganizationCreated) await this.fetchOrganizationIfExists();
+      // If there were extra query params, replace URL to canonical route
+      try {
+        if (
+          this.$route &&
+          this.$route.query &&
+          Object.keys(this.$route.query).length
+        ) {
+          this.$router.replace({ name: 'LeadDetail', params: { id } });
+        }
+      } catch (e) {
+        console.warn('Failed to replace route', e);
+      }
+    },
+
+    // Initialize component state from route query params
+    async initFromQuery() {
+      if (
+        !this.$route ||
+        !this.$route.query ||
+        !Object.keys(this.$route.query).length
+      )
+        return;
+      const q = this.$route.query;
       this.localLead = {
-        contact: this.$route.query.contact || '',
-        email: this.$route.query.email || '',
-        phone: this.$route.query.phone || '',
-        source: this.$route.query.source || '',
-        sales_person: this.$route.query.sales_person || '',
-        sales_person_id: this.$route.query.sales_person_id || null,
-        status: this.$route.query.status || '',
-        organization: this.$route.query.organization || '',
-        size: this.$route.query.size || '',
-        address:
-          this.$route.query.address !== undefined
-            ? this.$route.query.address
-            : '',
-        city:
-          this.$route.query.city !== undefined ? this.$route.query.city : '',
-        state:
-          this.$route.query.state !== undefined ? this.$route.query.state : '',
-        zip: this.$route.query.zip !== undefined ? this.$route.query.zip : '',
-        country:
-          this.$route.query.country !== undefined
-            ? this.$route.query.country
-            : '',
-        country_id: this.$route.query.country_id || null,
-        state_id: this.$route.query.state_id || null,
-        city_id: this.$route.query.city_id || null,
+        contact: q.contact || '',
+        email: q.email || '',
+        phone: q.phone || '',
+        source: q.source || '',
+        sales_person: q.sales_person || '',
+        sales_person_id: q.sales_person_id || null,
+        status: q.status || '',
+        organization: q.organization || '',
+        size: q.size || '',
+        address: q.address !== undefined ? q.address : '',
+        city: q.city !== undefined ? q.city : '',
+        state: q.state !== undefined ? q.state : '',
+        zip: q.zip !== undefined ? q.zip : '',
+        country: q.country !== undefined ? q.country : '',
+        country_id: q.country_id || null,
+        state_id: q.state_id || null,
+        city_id: q.city_id || null,
       };
       ['address', 'city', 'state', 'zip', 'country'].forEach((f) => {
         if (this.localLead[f] === undefined) this.localLead[f] = '';
       });
       await this.lookupLocationNames();
       await this.fetchOrganizationIfExists();
+    },
+  },
+  async created() {
+    const id = this.$route.params.id || this.$route.query.id || this.lead.id;
+    if (id) {
+      const payload = await this.loadLeadById(id);
+      if (payload) {
+        await this.initFromPayload(payload, id);
+        return;
+      }
+      // if fetch failed, fallthrough to use fallback lead data
+      this.localLead = { ...this.lead };
+      await this.lookupLocationNames();
+      await this.fetchOrganizationIfExists();
+      return;
     }
+    // no id: try to initialize from query params
+    await this.initFromQuery();
   },
 
   watch: {

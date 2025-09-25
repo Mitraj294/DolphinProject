@@ -71,6 +71,7 @@
             margin: 0 !important;
           ">
             <div class="recipient-table-wrap">
+                   <div class="table-scroll">
               <table class="recipient-table compact">
            
                  <TableHeader
@@ -138,6 +139,7 @@
                   </tr>
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         </div>

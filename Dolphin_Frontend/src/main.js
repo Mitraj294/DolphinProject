@@ -6,6 +6,7 @@ import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
 import { fetchCurrentUser } from './services/user';
+import { fetchSubscriptionStatus } from './services/subscription';
 
 import storage from './services/storage';
 import tokenMonitor from './services/tokenMonitor';
@@ -51,6 +52,14 @@ app.component('Button', Button); // Register PrimeVue Button globally
 const authToken = storage.get('authToken');
 if (authToken) {
   fetchCurrentUser().then(user => {
+    // Also fetch subscription status so refreshing the page reflects current state immediately
+    fetchSubscriptionStatus().then(status => {
+      if (status) {
+        storage.set('subscriptionStatus', status);
+      }
+    }).catch(err => {
+      console.warn('Could not fetch subscription status on startup', err);
+    });
     if (user?.role) {
       const localRole = storage.get('role');
       if (user.role !== localRole) {

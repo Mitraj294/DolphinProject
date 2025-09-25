@@ -19,6 +19,7 @@
           </div>
           <div class="assessment-table-header-spacer"></div>
           <div class="assessment-table-container">
+            <div class="table-scroll">
             <table class="assessment-table">
               <TableHeader
                 :columns="tableColumns"
@@ -127,6 +128,7 @@
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
         </div>
         <Pagination

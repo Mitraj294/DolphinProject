@@ -10,69 +10,71 @@
         />
       </div>
       <div class="table-container">
-        <table class="table">
-          <TableHeader
-            :columns="[
-              {
-                label: 'Organizations Name',
-                key: 'name',
-                sortable: true,
-                minWidth: '200px',
-              },
-              { label: 'Size', key: 'size', minWidth: '100px' },
-              { label: 'Admin Name', key: 'main_contact', minWidth: '150px' },
-              {
-                label: 'Contract Start',
-                key: 'contractStart',
-                sortable: true,
-                minWidth: '150px',
-              },
-              {
-                label: 'Contract End',
-                key: 'contractEnd',
-                sortable: true,
-                minWidth: '150px',
-              },
-              {
-                label: 'Last Contacted',
-                key: 'last_contacted',
-                sortable: true,
-              },
+        <div class="table-scroll">
+          <table class="table">
+            <TableHeader
+              :columns="[
+                {
+                  label: 'Organizations Name',
+                  key: 'name',
+                  sortable: true,
+                  minWidth: '200px',
+                },
+                { label: 'Size', key: 'size', minWidth: '100px' },
+                { label: 'Admin Name', key: 'main_contact', minWidth: '150px' },
+                {
+                  label: 'Contract Start',
+                  key: 'contractStart',
+                  sortable: true,
+                  minWidth: '150px',
+                },
+                {
+                  label: 'Contract End',
+                  key: 'contractEnd',
+                  sortable: true,
+                  minWidth: '150px',
+                },
+                {
+                  label: 'Last Contacted',
+                  key: 'last_contacted',
+                  sortable: true,
+                },
 
-              { label: 'Action', key: 'action' },
-            ]"
-            :activeSortKey="sortKey"
-            :sortAsc="sortAsc"
-            @sort="sortBy"
-          />
-          <tbody>
-            <tr
-              v-for="org in paginatedOrganizations"
-              :key="org.id"
-            >
-              <td>{{ org.name }}</td>
-              <td>{{ org.size }}</td>
-              <td>{{ org.main_contact }}</td>
-              <td>{{ formatDate(org.contractStart) || '-' }}</td>
-              <td>{{ formatDate(org.contractEnd) || '-' }}</td>
-              <td>{{ formatDateTime(org.last_contacted) || '-' }}</td>
+                { label: 'Action', key: 'action' },
+              ]"
+              :activeSortKey="sortKey"
+              :sortAsc="sortAsc"
+              @sort="sortBy"
+            />
+            <tbody>
+              <tr
+                v-for="org in paginatedOrganizations"
+                :key="org.id"
+              >
+                <td>{{ org.name }}</td>
+                <td>{{ org.size }}</td>
+                <td>{{ org.main_contact }}</td>
+                <td>{{ formatDate(org.contractStart) || '-' }}</td>
+                <td>{{ formatDate(org.contractEnd) || '-' }}</td>
+                <td>{{ formatDateTime(org.last_contacted) || '-' }}</td>
 
-              <td>
-                <button
-                  class="btn-view"
-                  @click="goToDetail(org)"
-                >
-                  <img
-                    src="@/assets/images/Detail.svg"
-                    alt="View"
-                    class="btn-view-icon"
-                  />
-                  View Detail
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                <td>
+                  <button
+                    class="btn-view"
+                    @click="goToDetail(org)"
+                  >
+                    <img
+                      src="@/assets/images/Detail.svg"
+                      alt="View"
+                      class="btn-view-icon"
+                    />
+                    View Detail
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
     <Pagination
@@ -397,15 +399,6 @@ export default {
     max-width: 320px;
     border-radius: 12px;
   }
-}
-
-@media (max-width: 1200px) {
-}
-
-@media (max-width: 900px) {
-}
-
-@media (max-width: 600px) {
 }
 
 /* --- Sort button and icon --- */

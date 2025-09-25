@@ -15,75 +15,77 @@
               />
             </div>
             <div class="table-container">
-              <table class="table">
-                <TableHeader
-                  :columns="[
-                    { label: 'Name', key: 'name', minWidth: '200px' },
-                    {
-                      label: 'Email',
-                      key: 'email',
-                      minWidth: '200px',
-                    },
-                    {
-                      label: 'Phone Number',
-                      key: 'phone',
-                      minWidth: '150px',
-                    },
-                    { label: 'Role', key: 'role', minWidth: '150px' },
-                    {
-                      label: 'Actions',
-                      key: 'actions',
-                      minWidth: '100px',
-                    },
-                  ]"
-                  @sort="sortBy"
-                />
-                <tbody>
-                  <tr v-if="loading">
-                    <td
-                      colspan="5"
-                      class="no-data"
-                    >
-                      Loading members...
-                    </td>
-                  </tr>
-                  <tr v-else-if="paginatedMembers.length === 0">
-                    <td
-                      colspan="5"
-                      class="no-data"
-                    >
-                      No members found.
-                    </td>
-                  </tr>
-                  <tr
-                    v-else
-                    v-for="member in paginatedMembers"
-                    :key="member.id"
-                  >
-                    <td>{{ member.first_name }} {{ member.last_name }}</td>
-                    <td>{{ member.email }}</td>
-                    <td>{{ member.phone }}</td>
-                    <td>
-                      <span>
-                        {{ formatMemberRoles(member) }}
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        class="btn-view"
-                        @click="openMemberModal(member)"
+              <div class="table-scroll">
+                <table class="table">
+                  <TableHeader
+                    :columns="[
+                      { label: 'Name', key: 'name', minWidth: '200px' },
+                      {
+                        label: 'Email',
+                        key: 'email',
+                        minWidth: '200px',
+                      },
+                      {
+                        label: 'Phone Number',
+                        key: 'phone',
+                        minWidth: '150px',
+                      },
+                      { label: 'Role', key: 'role', minWidth: '150px' },
+                      {
+                        label: 'Actions',
+                        key: 'actions',
+                        minWidth: '100px',
+                      },
+                    ]"
+                    @sort="sortBy"
+                  />
+                  <tbody>
+                    <tr v-if="loading">
+                      <td
+                        colspan="5"
+                        class="no-data"
                       >
-                        <img
-                          src="@/assets/images/Notes.svg"
-                          alt="View"
-                          class="btn-view-icon"
-                        />
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                        Loading members...
+                      </td>
+                    </tr>
+                    <tr v-else-if="paginatedMembers.length === 0">
+                      <td
+                        colspan="5"
+                        class="no-data"
+                      >
+                        No members found.
+                      </td>
+                    </tr>
+                    <tr
+                      v-else
+                      v-for="member in paginatedMembers"
+                      :key="member.id"
+                    >
+                      <td>{{ member.first_name }} {{ member.last_name }}</td>
+                      <td>{{ member.email }}</td>
+                      <td>{{ member.phone }}</td>
+                      <td>
+                        <span>
+                          {{ formatMemberRoles(member) }}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          class="btn-view"
+                          @click="openMemberModal(member)"
+                        >
+                          <img
+                            src="@/assets/images/Notes.svg"
+                            alt="View"
+                            class="btn-view-icon"
+                          />
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
           <Pagination

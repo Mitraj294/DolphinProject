@@ -93,7 +93,27 @@ class LeadController extends Controller
 
     public function index()
     {
-        return response()->json(Lead::all());
+        // Return only leads created by the currently authenticated user.
+        // If no authenticated user is present, return a 401 Unauthorized response.
+        $user = request()->user();
+        if (!$user) {
+            return response()->json(['message' => 'Unauthenticated.'], 401);
+        }
+
+        // Superadmin may view all leads
+        if (isset($user->role) && $user->role === 'superadmin') {
+            $leads = Lead::all();
+            try {
+                $ids = $leads->pluck('id')->values()->all();
+                Log::info('LeadController@index superadmin fetch', ['user_id' => $user->id, 'count' => $leads->count(), 'ids' => $ids]);
+            } catch (\Exception $e) {
+                Log::warning('LeadController@index logging failed: ' . $e->getMessage());
+            }
+            return response()->json($leads);
+        }
+
+        $leads = Lead::where('created_by', $user->id)->get();
+        return response()->json($leads);
     }
 
     public function show($id)

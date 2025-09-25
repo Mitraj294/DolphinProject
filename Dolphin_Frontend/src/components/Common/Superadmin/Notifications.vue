@@ -20,57 +20,61 @@
 
           <!-- Notifications table -->
           <div class="table-container">
-            <table class="table">
-              <TableHeader
-                :columns="tableColumns"
-                :activeSortKey="sortKey"
-                :sortAsc="sortAsc"
-                @sort="sortBy"
-              />
+            <div class="table-scroll">
+              <table class="table">
+                <TableHeader
+                  :columns="tableColumns"
+                  :activeSortKey="sortKey"
+                  :sortAsc="sortAsc"
+                  @sort="sortBy"
+                />
 
-              <tbody>
-                <tr
-                  v-for="item in paginatedNotifications"
-                  :key="item.id"
-                >
-                  <td class="notification-body-cell">
-                    <span
-                      class="notification-body-truncate"
-                      :title="item.body"
-                    >
-                      {{ item.body }}
-                    </span>
-                  </td>
-                  <td>{{ formatLocalDateTime(item.scheduled_at) }}</td>
-                  <td>
-                    {{ item.sent_at ? formatLocalDateTime(item.sent_at) : '-' }}
-                  </td>
-                  <td>
-                    <button
-                      class="btn-view"
-                      @click="openDetail(item)"
-                    >
-                      <img
-                        src="@/assets/images/Detail.svg"
-                        alt="View"
-                        class="btn-view-icon"
-                      />
-                      View Detail
-                    </button>
-                  </td>
-                </tr>
-
-                <!-- Empty state -->
-                <tr v-if="paginatedNotifications.length === 0">
-                  <td
-                    colspan="4"
-                    class="no-data"
+                <tbody>
+                  <tr
+                    v-for="item in paginatedNotifications"
+                    :key="item.id"
                   >
-                    No notifications found.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    <td class="notification-body-cell">
+                      <span
+                        class="notification-body-truncate"
+                        :title="item.body"
+                      >
+                        {{ item.body }}
+                      </span>
+                    </td>
+                    <td>{{ formatLocalDateTime(item.scheduled_at) || '-' }}</td>
+                    <td>
+                      {{
+                        item.sent_at ? formatLocalDateTime(item.sent_at) : '-'
+                      }}
+                    </td>
+                    <td>
+                      <button
+                        class="btn-view"
+                        @click="openDetail(item)"
+                      >
+                        <img
+                          src="@/assets/images/Detail.svg"
+                          alt="View"
+                          class="btn-view-icon"
+                        />
+                        View Detail
+                      </button>
+                    </td>
+                  </tr>
+
+                  <!-- Empty state -->
+                  <tr v-if="paginatedNotifications.length === 0">
+                    <td
+                      colspan="4"
+                      class="no-data"
+                    >
+                      No notifications found.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
