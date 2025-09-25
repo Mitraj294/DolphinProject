@@ -19,7 +19,16 @@ class AnswerController extends Controller
     public function getQuestions(): JsonResponse
     {
         try {
-            $questions = Question::all(['id', 'question', 'options']);
+            // The questions table stores the question text in the 'text' column.
+            $questions = Question::all(['id', 'text', 'options'])->map(function ($q) {
+                return [
+                    'id' => $q->id,
+                    // Return 'question' key to match frontend expectations.
+                    'question' => $q->text,
+                    'options' => $q->options,
+                ];
+            });
+
             return response()->json($questions);
         } catch (\Exception $e) {
             Log::error('Failed to retrieve questions.', ['error' => $e->getMessage()]);
@@ -41,10 +50,29 @@ class AnswerController extends Controller
             // Use a database transaction to ensure all answers are saved together.
             DB::transaction(function () use ($answers, $userId) {
                 foreach ($answers as $answerData) {
+                    // The answers table stores the question as a string column named 'question'.
+                    // The incoming payload validates 'answers.*.question_id' (exists on questions.id),
+                    // so load the question text from the questions table and save by question text.
+                    $question = null;
+                    if (isset($answerData['question_id'])) {
+                        $q = \App\Models\Question::find($answerData['question_id']);
+                        $question = $q ? $q->text : null;
+                    }
+
+                    // If we couldn't resolve question text, fall back to any provided 'question' string in payload.
+                    if (!$question && isset($answerData['question'])) {
+                        $question = $answerData['question'];
+                    }
+
+                    if (!$question) {
+                        // Skip saving malformed entry instead of causing DB errors.
+                        continue;
+                    }
+
                     Answer::updateOrCreate(
                         [
                             'user_id' => $userId,
-                            'question_id' => $answerData['question_id'],
+                            'question' => $question,
                         ],
                         [
                             'answer' => json_encode($answerData['answer']),
@@ -73,10 +101,17 @@ class AnswerController extends Controller
             $userId = Auth::id();
             $answers = Answer::where('user_id', $userId)->get();
 
-            // Transform the data for a consistent API response.
+            // Transform the data for a consistent API response. The answers table stores the
+            // question as text in the 'question' column. Resolve the question's id when possible
+            // so the frontend can correlate by question_id.
             $formattedAnswers = $answers->map(function ($answer) {
+                $questionId = null;
+                if (!empty($answer->question)) {
+                    $questionId = Question::where('text', $answer->question)->value('id');
+                }
+
                 return [
-                    'question_id' => $answer->question_id,
+                    'question_id' => $questionId,
                     'answer' => json_decode($answer->answer, true),
                 ];
             });

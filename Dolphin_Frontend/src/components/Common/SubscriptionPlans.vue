@@ -244,6 +244,18 @@ export default {
           if (res && res.status === 'active') {
             // update local state and refresh user data to pick up roles
             storage.set('subscriptionStatus', res);
+            // Ask backend to refresh the authenticated user's roles (useful when webhook ran)
+            try {
+              const authToken = storage.get('authToken');
+              await axios.post(
+                `${process.env.VUE_APP_API_BASE_URL}/api/subscription/refresh-role`,
+                {},
+                { headers: { Authorization: `Bearer ${authToken}` } }
+              );
+            } catch (e) {
+              console.warn('Could not refresh roles via API', e);
+            }
+
             const { fetchCurrentUser } = await import('@/services/user');
             await fetchCurrentUser();
             // Remove checkout param to avoid re-polling on further reloads

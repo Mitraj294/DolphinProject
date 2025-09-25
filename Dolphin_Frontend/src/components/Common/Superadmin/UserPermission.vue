@@ -22,9 +22,19 @@
               <table class="table">
                 <TableHeader
                   :columns="[
-                    { label: 'Name', key: 'name', minWidth: '180px' },
+                    {
+                      label: 'Name',
+                      key: 'name',
+                      minWidth: '180px',
+                      sortable: true,
+                    },
                     { label: 'Email', key: 'email', minWidth: '260px' },
-                    { label: 'Roles', key: 'role', minWidth: '180px' },
+                    {
+                      label: 'Roles',
+                      key: 'role',
+                      minWidth: '180px',
+                      sortable: true,
+                    },
                     { label: 'Actions', key: 'actions', minWidth: '260px' },
                   ]"
                   @sort="sortBy"
@@ -579,8 +589,6 @@ export default {
         this.isSaving = false;
         return;
       }
-      // remember previous role for notification
-      const oldRole = this.users[idx].role;
 
       try {
         const baseUrl = process.env.VUE_APP_API_BASE_URL;
@@ -620,30 +628,6 @@ export default {
           detail: 'User updated successfully!',
           life: 3000,
         });
-        // Notify the affected user about their role change (fire-and-forget)
-        try {
-          const newRole = this.editUser.role;
-          const message = `Your role has been changed from ${this.formatRole(
-            oldRole
-          )} to ${this.formatRole(newRole)}.`;
-          // Use the same notifications/send endpoint used elsewhere in the app
-          await fetch(`${baseUrl}/api/notifications/send`, {
-            method: 'POST',
-            headers: {
-              ...this.getAuthHeaders(),
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              admin_ids: [this.editUser.id],
-              body: message,
-            }),
-          }).catch((e) => {
-            // don't break the user update flow if notification fails
-            console.warn('Failed to send role-change notification:', e);
-          });
-        } catch (e) {
-          console.warn('Role-change notification error:', e);
-        }
       } catch (e) {
         this.toast.add({
           severity: 'error',

@@ -91,6 +91,9 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/customer-portal', [StripeSubscriptionController::class, 'createCustomerPortal']);
     });
 
+    // Endpoint to refresh current authenticated user's roles (useful after subscription / webhook)
+    Route::post('/subscription/refresh-role', [StripeSubscriptionController::class, 'refreshRole']);
+
     Route::get('/subscription', [SubscriptionController::class, 'getCurrentPlan']);
     Route::get('/subscription/status', [SubscriptionController::class, 'subscriptionStatus']);
     Route::get('/billing/current', [SubscriptionController::class, 'getCurrentPlan']);

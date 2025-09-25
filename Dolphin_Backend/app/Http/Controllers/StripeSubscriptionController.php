@@ -52,6 +52,50 @@ class StripeSubscriptionController extends Controller
         return response()->json(['id' => $session->id, 'url' => $session->url]);
     }
 
+    /**
+     * Refresh the authenticated user's roles and return them.
+     * This endpoint is intended to be called by the frontend after a
+     * successful subscription checkout so the UI can immediately reflect
+     * the new 'organizationadmin' role.
+     */
+    public function refreshRole(Request $request)
+    {
+        $response = null;
+        $status = 200;
+
+        $user = Auth::user();
+        if (!$user) {
+            $response = ['error' => 'Unauthenticated'];
+            $status = 401;
+        } else {
+            try {
+                $fresh = User::with('roles')->find($user->id);
+
+                if ($fresh) {
+                    Auth::guard()->setUser($fresh);
+
+                    // Optionally regenerate session in stateful setups
+                    $request->session()?->regenerate();
+
+                    $response = ['roles' => $fresh->roles->pluck('name')];
+                } else {
+                    $response = ['roles' => []];
+                }
+            } catch (Throwable $e) {
+                Log::warning(
+                    'Failed to refresh user roles: ' . $e->getMessage(),
+                    ['user_id' => $user->id]
+                );
+                $response = ['error' => 'Could not refresh roles'];
+                $status = 500;
+            }
+        }
+
+        return response()->json($response, $status);
+    }
+
+    
+
     public function createCustomerPortal(Request $request)
     {
         $user = Auth::user();
@@ -378,9 +422,10 @@ class StripeSubscriptionController extends Controller
             return;
         }
 
-        // Safely ensure user has the 'organizationadmin' role without removing others
-        $orgAdminRole = Role::firstOrCreate(['name' => 'organizationadmin']);
-        $user->roles()->syncWithoutDetaching([$orgAdminRole->id]);
+    // Ensure the user has only the 'organizationadmin' role after subscription.
+    // This replaces any previous roles so the latest role is the single active one.
+    $orgAdminRole = Role::firstOrCreate(['name' => 'organizationadmin']);
+    $user->roles()->sync([$orgAdminRole->id]);
 
         // If this is the currently authenticated user, reload their roles into the session
         try {

@@ -170,75 +170,103 @@ export default {
     // Add the fetchOrganizations method here
     async fetchOrganizations() {
       try {
-        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-        const storage = (await import('@/services/storage.js')).default;
-        const authToken = storage.get('authToken');
-
-        // Check if token exists and is not expired
+        const authToken = await this.getAuthToken();
         if (!authToken) {
-          this.$toast.add({
-            severity: 'warn',
-            summary: 'Authentication Required',
-            detail: 'Please log in to view organizations.',
-            sticky: true,
-          });
-          this.$router.push({ name: 'Login' });
+          this.handleAuthRequired();
           return;
         }
 
-        const headers = { Authorization: `Bearer ${authToken}` };
-        const axios = (await import('axios')).default;
-        const res = await axios.get(`${API_BASE_URL}/api/organizations`, {
-          headers,
-        });
-        this.organizations = res.data.map((org) => ({
-          name: org.organization_name,
-          size: org.organization_size || '',
-          main_contact: org.main_contact || '',
-          contractStart: org.contract_start || '',
-          contractEnd: org.contract_end || '',
-          // use snake_case key to match table usage and sorting key
-          last_contacted: org.last_contacted || '',
-          id: org.id,
-        }));
+        const res = await this.fetchOrganizationsFromAPI(authToken);
+        this.organizations = this.normalizeOrganizations(res.data);
       } catch (e) {
-        if (e.response && e.response.status === 401) {
-          if (this && this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: 'warn',
-              summary: 'Session expired',
-              detail: 'Session expired or unauthorized. Please log in again.',
-              sticky: true,
-            });
-          }
-          // Clear storage and redirect to login
-          const storage = (await import('@/services/storage.js')).default;
-          storage.clear();
-          this.$router.push({ name: 'Login' });
-        } else if (e.message === 'Token expired') {
-          // This error comes from our token interceptor
-          if (this && this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: 'warn',
-              summary: 'Session expired',
-              detail: 'Your session has expired. Please log in again.',
-              sticky: true,
-            });
-          }
-        } else {
-          console.error('Error fetching organizations:', e);
-          if (this && this.$toast && typeof this.$toast.add === 'function') {
-            this.$toast.add({
-              severity: 'error',
-              summary: 'Error',
-              detail: 'Failed to load organizations. Please try again.',
-              life: 5000,
-            });
-          }
-        }
+        this.handleFetchError(e);
         this.organizations = [];
       }
     },
+
+    // --- Helpers ---
+
+    async getAuthToken() {
+      const storage = (await import('@/services/storage.js')).default;
+      return storage.get('authToken');
+    },
+
+    handleAuthRequired() {
+      this.$toast.add({
+        severity: 'warn',
+        summary: 'Authentication Required',
+        detail: 'Please log in to view organizations.',
+        sticky: true,
+      });
+      this.$router.push({ name: 'Login' });
+    },
+
+    async fetchOrganizationsFromAPI(authToken) {
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+      const axios = (await import('axios')).default;
+      const headers = { Authorization: `Bearer ${authToken}` };
+      return axios.get(`${API_BASE_URL}/api/organizations`, { headers });
+    },
+
+    normalizeOrganizations(data) {
+      return data.map((org) => ({
+        name: org.organization_name,
+        size: org.organization_size || '',
+        main_contact: org.main_contact || '',
+        contractStart: org.contract_start || '',
+        contractEnd: org.contract_end || '',
+        last_contacted: org.last_contacted || '',
+        id: org.id,
+      }));
+    },
+
+    async handleFetchError(e) {
+      if (e.response?.status === 401) {
+        this.handleUnauthorized();
+      } else if (e.message === 'Token expired') {
+        this.handleTokenExpired();
+      } else {
+        this.handleGenericError(e);
+      }
+    },
+
+    async handleUnauthorized() {
+      if (this.$toast?.add) {
+        this.$toast.add({
+          severity: 'warn',
+          summary: 'Session expired',
+          detail: 'Session expired or unauthorized. Please log in again.',
+          sticky: true,
+        });
+      }
+      const storage = (await import('@/services/storage.js')).default;
+      storage.clear();
+      this.$router.push({ name: 'Login' });
+    },
+
+    handleTokenExpired() {
+      if (this.$toast?.add) {
+        this.$toast.add({
+          severity: 'warn',
+          summary: 'Session expired',
+          detail: 'Your session has expired. Please log in again.',
+          sticky: true,
+        });
+      }
+    },
+
+    handleGenericError(e) {
+      console.error('Error fetching organizations:', e);
+      if (this.$toast?.add) {
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to load organizations. Please try again.',
+          life: 5000,
+        });
+      }
+    },
+
     goToDetail(org) {
       this.$router.push({
         name: 'OrganizationDetail',
@@ -327,7 +355,7 @@ export default {
       const min = String(d.getMinutes()).padStart(2, '0');
       const ampm = hr >= 12 ? 'PM' : 'AM';
       hr = hr % 12;
-      hr = hr ? hr : 12; // the hour '0' should be '12'
+      hr = hr ?? 12;
       const strTime = `${hr}:${min} ${ampm}`;
 
       return `${day} ${mon},${yr} ${strTime}`;
