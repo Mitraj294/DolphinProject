@@ -111,9 +111,9 @@
                       <div class="actions-row">
                         <button
                           class="leads-menu-btn"
-                          @click.stop="toggleMenu(lead.id || idx)"
+                          @click.stop="toggleMenu(lead, $event)"
                           aria-haspopup="true"
-                          :aria-expanded="menuOpen === (lead.id || idx)"
+                          :aria-expanded="menuOpen === lead"
                         >
                           <img
                             src="@/assets/images/Actions.svg"
@@ -123,21 +123,7 @@
                             class="leads-menu-icon"
                           />
                         </button>
-                        <div
-                          v-if="menuOpen === (lead.id || idx)"
-                          class="leads-menu custom-leads-menu"
-                          ref="menuDropdown"
-                          @click.stop
-                        >
-                          <div
-                            class="leads-menu-item"
-                            v-for="option in customMenuOptions"
-                            :key="option"
-                            @click="selectCustomAction(lead, option)"
-                          >
-                            {{ option }}
-                          </div>
-                        </div>
+                        <!-- menu is rendered globally via teleport (see below) -->
                       </div>
                     </td>
                   </tr>
@@ -186,6 +172,30 @@
             </div>
           </div>
         </div>
+        <!-- Teleported menu rendered at body to avoid table clipping -->
+        <teleport to="body">
+          <div
+            v-if="menuOpen"
+            class="leads-menu custom-leads-menu teleported-leads-menu"
+            :style="{
+              top: `${menuPosition.top}px`,
+              right: '33px',
+            }"
+            role="menu"
+            @click.stop
+          >
+            <div
+              class="leads-menu-item"
+              v-for="option in customMenuOptions"
+              :key="option"
+              @click="selectCustomAction(menuOpen, option)"
+              role="menuitem"
+              tabindex="0"
+            >
+              {{ option }}
+            </div>
+          </div>
+        </teleport>
       </div>
     </div>
   </MainLayout>
@@ -221,6 +231,7 @@ export default {
 
     const leads = ref([]);
     const menuOpen = ref(null);
+    const menuPosition = ref({ top: 0, left: 0 });
     const pageSize = ref(10);
     const currentPage = ref(1);
     const showPageDropdown = ref(false);
@@ -249,7 +260,7 @@ export default {
         sortable: true,
         width: '150px',
       },
-      { label: 'Size', width: '100px' },
+      { label: 'Size', width: '250px' },
       { label: 'Source', width: '120px' },
       { label: 'Status', key: 'status', sortable: true, width: '150px' },
       { label: 'Notes', key: 'notesAction', width: '100px' },
@@ -391,14 +402,47 @@ export default {
       showPageDropdown.value = false;
     };
 
-    const toggleMenu = (leadId) => {
-      menuOpen.value = menuOpen.value === leadId ? null : leadId;
+    const toggleMenu = (lead, event) => {
+      // if closing the same menu
+      if (menuOpen.value && menuOpen.value === lead) {
+        menuOpen.value = null;
+        return;
+      }
+      // compute a safe position for the teleported menu
+      try {
+        const btn = event.currentTarget || event.target;
+        const rect = btn.getBoundingClientRect();
+        const menuWidth = 220; // approximate
+        const padding = 8;
+        // prefer aligning right edge with button right edge
+        let left = rect.right + window.scrollX - menuWidth;
+        if (left < padding) left = rect.left + window.scrollX;
+        if (left + menuWidth > window.innerWidth - padding) {
+          left = Math.max(padding, window.innerWidth - menuWidth - padding);
+        }
+        const top = rect.bottom + window.scrollY + 6;
+        menuPosition.value = { top, left };
+      } catch (e) {
+        console.warn(
+          'Failed to position teleported menu, defaulting to 0,0',
+          e
+        );
+        menuPosition.value = { top: 0, left: 0 };
+      }
+      menuOpen.value = lead;
     };
 
     const handleClickOutside = (event) => {
-      if (menuOpen.value && !event.target.closest('.actions-row')) {
+      if (!menuOpen.value) return;
+      const clickedInActions = event.target.closest('.actions-row');
+      const clickedInMenu = event.target.closest('.teleported-leads-menu');
+      if (!clickedInActions && !clickedInMenu) {
         menuOpen.value = null;
       }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape' && menuOpen.value) menuOpen.value = null;
     };
 
     const openNotesModal = (lead) => {
@@ -476,15 +520,18 @@ export default {
     onMounted(() => {
       fetchLeads();
       document.addEventListener('click', handleClickOutside);
+      document.addEventListener('keydown', onKeyDown);
     });
 
     onBeforeUnmount(() => {
       document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', onKeyDown);
     });
 
     return {
       leads,
       menuOpen,
+      menuPosition,
       pageSize,
       currentPage,
       showPageDropdown,
@@ -631,7 +678,7 @@ export default {
   border-radius: 10px;
   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
   min-width: 180px;
-  z-index: 100;
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   padding: 4px 0;
@@ -730,6 +777,7 @@ export default {
 
 .table-scroll {
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -737,7 +785,7 @@ export default {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 110px;
+  min-width: 135px;
   height: 30px;
   border-radius: 999px;
   font-size: 13px;

@@ -17,35 +17,17 @@
               Send Notification
             </button>
           </div>
+
+          <!-- Notifications table -->
           <div class="table-container">
             <table class="table">
               <TableHeader
-                :columns="[
-                  {
-                    label: 'Notification Title',
-                    key: 'body',
-                    minWidth: '225px',
-                    sortable: true,
-                  },
-                  {
-                    label: 'Scheduled Date & Time',
-                    key: 'scheduled_at',
-                    minWidth: '225px',
-                    sortable: true,
-                  },
-
-                  {
-                    label: 'Sent Date & Time',
-                    key: 'sent_at',
-                    minWidth: '225px',
-                    sortable: true,
-                  },
-                  { label: 'Action', key: 'action', minWidth: '200px' },
-                ]"
+                :columns="tableColumns"
                 :activeSortKey="sortKey"
                 :sortAsc="sortAsc"
                 @sort="sortBy"
               />
+
               <tbody>
                 <tr
                   v-for="item in paginatedNotifications"
@@ -55,14 +37,6 @@
                     <span
                       class="notification-body-truncate"
                       :title="item.body"
-                      style="
-                        max-width: 200px;
-                        transition: max-width 0.18s ease, white-space 0.18s ease;
-                        overflow: hidden;
-                        white-space: nowrap;
-                        text-overflow: ellipsis;
-                        display: inline-block;
-                      "
                     >
                       {{ item.body }}
                     </span>
@@ -85,6 +59,8 @@
                     </button>
                   </td>
                 </tr>
+
+                <!-- Empty state -->
                 <tr v-if="paginatedNotifications.length === 0">
                   <td
                     colspan="4"
@@ -99,6 +75,8 @@
         </div>
       </div>
     </div>
+
+    <!-- Pagination component -->
     <Pagination
       :pageSize="pageSize"
       :pageSizes="[10, 25, 100]"
@@ -110,6 +88,8 @@
       @selectPageSize="selectPageSize"
       @togglePageDropdown="showPageDropdown = !showPageDropdown"
     />
+
+    <!-- Send Notification Modal -->
     <div
       v-if="showSendModal"
       class="modal-overlay"
@@ -122,15 +102,20 @@
         >
           &times;
         </button>
+
         <div class="modal-title">Send Notifications</div>
         <div class="modal-desc">
           Send a notification to selected organizations, admins, or groups. You
           can also schedule it for later.
         </div>
+
+        <!-- Message input -->
         <textarea
           class="modal-textarea"
           placeholder="Type your notification here..."
-        ></textarea>
+        />
+
+        <!-- Organization selector -->
         <div class="modal-row">
           <div class="modal-field">
             <FormLabel>Select Organizations</FormLabel>
@@ -145,6 +130,8 @@
             />
           </div>
         </div>
+
+        <!-- Group selector (filtered by selected organizations) -->
         <div class="modal-row">
           <div class="modal-field">
             <FormLabel>Select Group</FormLabel>
@@ -159,6 +146,8 @@
             />
           </div>
         </div>
+
+        <!-- Admin selector -->
         <div class="modal-row">
           <div class="modal-field">
             <FormLabel>Select Admin</FormLabel>
@@ -173,6 +162,8 @@
             />
           </div>
         </div>
+
+        <!-- Schedule inputs -->
         <div class="modal-row">
           <div class="schedule-demo-field schedule-demo-schedule-field">
             <FormLabel>Schedule</FormLabel>
@@ -199,6 +190,7 @@
             </div>
           </div>
         </div>
+
         <button
           class="btn btn-primary"
           @click="sendNotification"
@@ -221,12 +213,15 @@
 </template>
 
 <script>
-import MainLayout from '../../layout/MainLayout.vue';
+// Organized imports: external libraries first, then services, then local components
 import axios from 'axios';
 import storage from '@/services/storage';
+
+import MainLayout from '../../layout/MainLayout.vue';
 import Pagination from '../../layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import NotificationDetail from './NotificationDetail.vue';
+
 import {
   FormDropdown,
   FormRow,
@@ -239,6 +234,8 @@ import Toast from 'primevue/toast';
 
 export default {
   name: 'Notifications',
+
+  // Register components used in the template
   components: {
     MainLayout,
     Pagination,
@@ -255,39 +252,79 @@ export default {
 
   data() {
     return {
-      // lifecycle guard to prevent state updates after unmount
+      // Lifecycle guard to avoid state updates after component unmount
       isAlive: false,
+
+      // UI state
       showPageDropdown: false,
       showSendModal: false,
       showDetailModal: false,
-      selectedNotification: null,
+
+      // Table state
       pageSize: 10,
       currentPage: 1,
       sortKey: '',
       sortAsc: true,
+
+      // Form selections
       selectedOrganizations: [],
       selectedAdmin: '',
       selectedAdmins: [],
       selectedGroups: [],
+
+      // Scheduling
       scheduledDate: '',
       scheduledTime: '',
+
+      // Data collections from API
       organizations: [],
       groups: [],
       admins: [],
+      // Users that have organizationadmin role (used to determine which groups are allowed)
+      organizationAdmins: [],
       notifications: [],
-      announcements: [],
-      // local component state
+
+      // Detail modal payload
       detailData: null,
     };
   },
+
   computed: {
+    // Column definitions for the table header (kept as a computed so it's easy to modify)
+    tableColumns() {
+      return [
+        {
+          label: 'Notification Title',
+          key: 'body',
+          minWidth: '225px',
+          sortable: true,
+        },
+        {
+          label: 'Scheduled Date & Time',
+          key: 'scheduled_at',
+          minWidth: '225px',
+          sortable: true,
+        },
+        {
+          label: 'Sent Date & Time',
+          key: 'sent_at',
+          minWidth: '225px',
+          sortable: true,
+        },
+        { label: 'Action', key: 'action', minWidth: '200px' },
+      ];
+    },
+
+    // Total pages computed from notifications length
     totalPages() {
       return Math.ceil(this.notifications.length / this.pageSize) || 1;
     },
+
+    // Returns the notifications for the current page respecting sorting
     paginatedNotifications() {
-      let notifications = [...this.notifications];
+      const list = [...this.notifications];
       if (this.sortKey) {
-        notifications.sort((a, b) => {
+        list.sort((a, b) => {
           const aVal = a[this.sortKey] || '';
           const bVal = b[this.sortKey] || '';
           if (aVal < bVal) return this.sortAsc ? -1 : 1;
@@ -296,123 +333,123 @@ export default {
         });
       }
       const start = (this.currentPage - 1) * this.pageSize;
-      return notifications.slice(start, start + this.pageSize);
+      return list.slice(start, start + this.pageSize);
     },
+
+    // Pagination control pages (compact when many pages)
     paginationPages() {
       const total = this.totalPages;
-      if (total <= 7) {
-        return Array.from({ length: total }, (_, i) => i + 1);
-      } else {
-        const pages = [1];
-        if (this.currentPage > 4) pages.push('...');
-        for (
-          let i = Math.max(2, this.currentPage - 1);
-          i <= Math.min(total - 1, this.currentPage + 1);
-          i++
-        ) {
-          pages.push(i);
-        }
-        if (this.currentPage < total - 3) pages.push('...');
-        pages.push(total);
-        return pages;
+      if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+      const pages = [1];
+      if (this.currentPage > 4) pages.push('...');
+      for (
+        let i = Math.max(2, this.currentPage - 1);
+        i <= Math.min(total - 1, this.currentPage + 1);
+        i++
+      ) {
+        pages.push(i);
       }
+      if (this.currentPage < total - 3) pages.push('...');
+      pages.push(total);
+      return pages;
     },
-    // Groups filtered by selected organizations. If no organization selected, show groups for the first organization in the organizations list.
+
+    // Return groups to show in the dropdown.
+    // New behavior: show ALL groups, but only include groups where the group's
+    // organization OR an associated user/admin has the `organizationadmin` role.
     filteredGroups() {
       const allGroups = Array.isArray(this.groups) ? this.groups : [];
-      const selectedOrgIds = Array.isArray(this.selectedOrganizations)
-        ? this.selectedOrganizations.map((o) => o.id)
-        : [];
 
-      if (selectedOrgIds.length === 0) {
-        // If nothing selected, default to groups for the first organization in the organizations list
-        const firstOrgId =
-          this.organizations && this.organizations.length
-            ? this.organizations[0].id
-            : null;
-        return firstOrgId
-          ? allGroups.filter((g) => g.organization_id === firstOrgId)
-          : allGroups;
-      }
-
-      return allGroups.filter((g) =>
-        selectedOrgIds.includes(g.organization_id)
+      // Quick lookup of organization ids that are organization-admins (from organizations list)
+      const orgAdminOrgIds = new Set(
+        (this.organizations || []).map((o) => o.id)
       );
+
+      // Quick lookup of user ids that have organizationadmin role
+      const orgAdminUserIds = new Set(
+        (this.organizationAdmins || []).map((u) => u.id)
+      );
+
+      // small helper to safely check role-like properties
+      const hasOrganizationAdminRoleProp = (obj) => {
+        const roleProps = [obj.user_role, obj.role, obj.role_name];
+        for (const rp of roleProps) {
+          if (!rp) return false;
+          try {
+            if (rp.toString().toLowerCase().includes('organizationadmin'))
+              return true;
+          } catch (e) {
+            console.warn('filteredGroups: unable to parse role prop', e, rp);
+          }
+        }
+        return false;
+      };
+
+      return allGroups.filter((g) => {
+        if (!g) return false;
+
+        // 1) Organization match
+        if (g.organization_id && orgAdminOrgIds.has(g.organization_id))
+          return true;
+
+        // 2) Associated user/admin ids
+        const possibleUserIds = [g.admin_id, g.user_id, g.owner_id, g.userId];
+        for (const id of possibleUserIds) {
+          if (id && orgAdminUserIds.has(id)) return true;
+        }
+
+        // 3) Role props on group
+        if (hasOrganizationAdminRoleProp(g)) return true;
+
+        return false;
+      });
     },
   },
+
   watch: {
-    // Ensure selectedGroups only contains groups that belong to the currently selected organizations
-    selectedOrganizations(newOrgs) {
+    // When organizations selection changes, ensure selected groups remain valid
+    selectedOrganizations() {
       const allowedGroupIds = new Set(this.filteredGroups.map((g) => g.id));
       this.selectedGroups = (this.selectedGroups || []).filter((g) =>
         allowedGroupIds.has(g.id)
       );
     },
   },
+
   methods: {
-    async openDetail(item) {
-      if (!item || !item.id) {
-        console.error('Invalid item for detail view:', item);
-        this.$toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Cannot load details for invalid item.',
-          life: 3000,
-        });
-        return;
-      }
-      try {
-        const authToken = storage.get('authToken');
-        const res = await axios.get(
-          `${process.env.VUE_APP_API_BASE_URL}/api/announcements/${item.id}`,
-          { headers: { Authorization: `Bearer ${authToken}` } }
-        );
-        if (res.data) {
-          this.detailData = res.data;
-          this.selectedNotification = res.data.announcement;
-          this.showDetailModal = true;
-        }
-      } catch (error) {
-        console.error('Failed to fetch notification details', error);
-        this.$toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to fetch notification details. Please try again.',
-          life: 3000,
-        });
-      }
-    },
-    closeDetail() {
-      this.showDetailModal = false;
-      this.selectedNotification = null;
-      this.detailData = null;
-    },
+    // --------------------
+    // UI helpers
+    // --------------------
     goToPage(page) {
       if (page === '...' || page < 1 || page > this.totalPages) return;
       this.currentPage = page;
     },
+
     selectPageSize(size) {
       this.pageSize = size;
       this.currentPage = 1;
       this.showPageDropdown = false;
     },
+
     sortBy(key) {
-      if (this.sortKey === key) {
-        this.sortAsc = !this.sortAsc;
-      } else {
+      if (this.sortKey === key) this.sortAsc = !this.sortAsc;
+      else {
         this.sortKey = key;
         this.sortAsc = true;
       }
     },
+
+    // Nicely format various date string shapes into a human readable, local-time string.
     formatLocalDateTime(dateStr) {
       if (!dateStr) return '';
-      // If ISO with timezone or 'Z', let Date parse it
       let d = null;
       try {
+        // If ISO with timezone, use Date parser
         if (/T.*Z$/.test(dateStr) || /T.*[+-]\d{2}:?\d{2}$/.test(dateStr)) {
           d = new Date(dateStr);
         } else {
-          // Try to parse 'YYYY-MM-DD HH:MM:SS' (assume it's UTC from DB)
+          // Try to parse common 'YYYY-MM-DD HH:MM:SS' format as UTC
           const m = (dateStr || '').match(
             /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
           );
@@ -423,12 +460,9 @@ export default {
             const hour = parseInt(m[4], 10);
             const minute = parseInt(m[5], 10);
             const second = parseInt(m[6], 10) || 0;
-            // create Date from UTC components, then use local getters for display
             const utcMillis = Date.UTC(year, month, day, hour, minute, second);
             d = new Date(utcMillis);
-          } else {
-            d = new Date(dateStr);
-          }
+          } else d = new Date(dateStr);
         }
       } catch (e) {
         console.warn('Date parse error:', e);
@@ -436,7 +470,6 @@ export default {
       }
       if (!d || isNaN(d.getTime())) return dateStr || '';
 
-      // Use local date/time getters so the shown value is in user's local timezone
       const dayOfMonth = String(d.getDate()).padStart(2, '0');
       const months = [
         'JAN',
@@ -459,10 +492,16 @@ export default {
       const min = String(d.getMinutes()).padStart(2, '0');
       const ampm = hr >= 12 ? 'PM' : 'AM';
       hr = hr % 12;
+      if (hr === 0) hr = 12; // display 12 instead of 0
 
       const strTime = `${hr}:${min} ${ampm}`;
       return `${dayOfMonth} ${mon},${yr} ${strTime}`;
     },
+
+    // --------------------
+    // API calls
+    // All API calls are guarded by isAlive to avoid updating state after unmount
+    // --------------------
     async fetchOrganizations() {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
@@ -470,26 +509,29 @@ export default {
         const res = await axios.get(apiUrl + '/organizations', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (this.isAlive) {
-          // Normalize response shape to an array
-          let orgs = [];
-          if (Array.isArray(res.data)) orgs = res.data;
-          else if (res.data && Array.isArray(res.data.data))
-            orgs = res.data.data;
-          else if (res.data && Array.isArray(res.data.organizations))
-            orgs = res.data.organizations;
-          else orgs = [];
-
-          // Only include organizations whose related user has role 'organizationadmin'
-          this.organizations = orgs.filter(
-            (o) => String(o.user_role).toLowerCase() === 'organizationadmin'
-          );
+        if (!this.isAlive) return;
+        // Normalize various API response shapes to an array safely
+        let orgs = [];
+        if (Array.isArray(res.data)) {
+          orgs = res.data;
+        } else if (res.data && Array.isArray(res.data.data)) {
+          orgs = res.data.data;
+        } else if (res.data && Array.isArray(res.data.organizations)) {
+          orgs = res.data.organizations;
+        } else {
+          orgs = [];
         }
+
+        // Assign organizations directly so the selector shows returned orgs.
+        // If you need to treat only organizationadmin entries specially, use
+        // `organizationAdmins` (populated by fetchAdmins) for that purpose.
+        this.organizations = orgs;
       } catch (err) {
         console.error('Error fetching organizations:', err);
         if (this.isAlive) this.organizations = [];
       }
     },
+
     async fetchGroups() {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
@@ -497,23 +539,20 @@ export default {
         const res = await axios.get(apiUrl + '/groups', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (this.isAlive) {
-          // Normalize different API response shapes to an array
-          if (Array.isArray(res.data)) {
-            this.groups = res.data;
-          } else if (res.data && Array.isArray(res.data.data)) {
-            this.groups = res.data.data;
-          } else if (res.data && Array.isArray(res.data.groups)) {
-            this.groups = res.data.groups;
-          } else {
-            this.groups = [];
-          }
-        }
+        if (!this.isAlive) return;
+
+        if (Array.isArray(res.data)) this.groups = res.data;
+        else if (res.data && Array.isArray(res.data.data))
+          this.groups = res.data.data;
+        else if (res.data && Array.isArray(res.data.groups))
+          this.groups = res.data.groups;
+        else this.groups = [];
       } catch (err) {
         console.error('Error fetching groups:', err);
         if (this.isAlive) this.groups = [];
       }
     },
+
     async fetchAdmins() {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
@@ -521,76 +560,90 @@ export default {
         const res = await axios.get(apiUrl + '/users', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (this.isAlive) {
-          // Normalize response into an array
-          const body = res.data;
-          let adminsArray = [];
-          if (Array.isArray(body)) {
-            adminsArray = body;
-          } else if (body && Array.isArray(body.users)) {
-            adminsArray = body.users;
-          } else if (body && Array.isArray(body.data)) {
-            adminsArray = body.data;
-          } else if (body && Array.isArray(body.admins)) {
-            adminsArray = body.admins;
-          } else {
-            adminsArray = [];
+        if (!this.isAlive) return;
+
+        const body = res.data;
+        let adminsArray = [];
+        if (Array.isArray(body)) adminsArray = body;
+        else if (body && Array.isArray(body.users)) adminsArray = body.users;
+        else if (body && Array.isArray(body.data)) adminsArray = body.data;
+        else if (body && Array.isArray(body.admins)) adminsArray = body.admins;
+        else adminsArray = [];
+
+        // Helper detects dolphinadmin role from many possible shapes
+        const isDolphinAdmin = (user) => {
+          if (!user) return false;
+          if (Array.isArray(user.roles)) {
+            return user.roles.some(
+              (r) =>
+                (r && (r.name || r)).toString().toLowerCase() === 'dolphinadmin'
+            );
           }
+          if (Array.isArray(user.user_roles)) {
+            return user.user_roles.some(
+              (r) =>
+                (r && (r.name || r)).toString().toLowerCase() === 'dolphinadmin'
+            );
+          }
+          const roleStr = (user.role || user.role_name || user.user_role || '')
+            .toString()
+            .toLowerCase();
+          if (roleStr) return roleStr.includes('dolphinadmin');
+          return false;
+        };
 
-          // Helper to detect dolphinadmin role on a user object
-          const isDolphinAdmin = (user) => {
-            if (!user) return false;
-            // Common shapes: user.roles = [{name:'dolphinadmin'}], or user.role / user.role_name as string
-            if (Array.isArray(user.roles)) {
-              return user.roles.some(
-                (r) =>
-                  (r && (r.name || r)).toString().toLowerCase() ===
-                  'dolphinadmin'
-              );
-            }
-            if (Array.isArray(user.user_roles)) {
-              return user.user_roles.some(
-                (r) =>
-                  (r && (r.name || r)).toString().toLowerCase() ===
-                  'dolphinadmin'
-              );
-            }
-            const roleStr = (
-              user.role ||
-              user.role_name ||
-              user.user_role ||
-              ''
-            )
-              .toString()
-              .toLowerCase();
-            if (roleStr) return roleStr.includes('dolphinadmin');
-            return false;
-          };
+        // Users with 'organizationadmin' role - used to permit groups
+        const isOrganizationAdmin = (user) => {
+          if (!user) return false;
+          if (Array.isArray(user.roles)) {
+            return user.roles.some(
+              (r) =>
+                (r && (r.name || r)).toString().toLowerCase() ===
+                'organizationadmin'
+            );
+          }
+          if (Array.isArray(user.user_roles)) {
+            return user.user_roles.some(
+              (r) =>
+                (r && (r.name || r)).toString().toLowerCase() ===
+                'organizationadmin'
+            );
+          }
+          const roleStr = (user.role || user.role_name || user.user_role || '')
+            .toString()
+            .toLowerCase();
+          if (roleStr) return roleStr.includes('organizationadmin');
+          return false;
+        };
 
-          // Normalize admin objects and filter to only dolphinadmin users
-          this.admins = adminsArray.filter(isDolphinAdmin).map((u) => {
+        // Populate organizationAdmins lookup used by filteredGroups
+        this.organizationAdmins = adminsArray
+          .filter(isOrganizationAdmin)
+          .map((u) => {
             const id = u.id || u.user_id || u._id || null;
-            const name =
-              u.name ||
-              (u.first_name || u.firstName || u.firstname
-                ? `${u.first_name || u.firstName || u.firstname} ${
-                    u.last_name || u.lastName || u.lastname || ''
-                  }`.trim()
-                : null) ||
-              u.email ||
-              (u.username || '').toString();
-            return {
-              ...u,
-              id,
-              name,
-            };
+            return { ...u, id };
           });
-        }
+
+        // Keep existing dolphinadmin transformation for the admin selector
+        this.admins = adminsArray.filter(isDolphinAdmin).map((u) => {
+          const id = u.id || u.user_id || u._id || null;
+          const name =
+            u.name ||
+            (u.first_name || u.firstName || u.firstname
+              ? `${u.first_name || u.firstName || u.firstname} ${
+                  u.last_name || u.lastName || u.lastname || ''
+                }`.trim()
+              : null) ||
+            u.email ||
+            (u.username || '').toString();
+          return { ...u, id, name };
+        });
       } catch (err) {
         console.error('Error fetching admins:', err);
         if (this.isAlive) this.admins = [];
       }
     },
+
     async fetchNotifications() {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
@@ -598,28 +651,67 @@ export default {
         const res = await axios.get(apiUrl + '/announcements', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        if (this.isAlive) {
-          // API may return { data: [...] } or an array directly
-          if (Array.isArray(res.data)) {
-            this.notifications = res.data;
-          } else if (res.data && Array.isArray(res.data.data)) {
-            this.notifications = res.data.data;
-          } else if (res.data && Array.isArray(res.data.notifications)) {
-            this.notifications = res.data.notifications;
-          } else {
-            this.notifications = [];
-          }
-        }
+        if (!this.isAlive) return;
+
+        if (Array.isArray(res.data)) this.notifications = res.data;
+        else if (res.data && Array.isArray(res.data.data))
+          this.notifications = res.data.data;
+        else if (res.data && Array.isArray(res.data.notifications))
+          this.notifications = res.data.notifications;
+        else this.notifications = [];
       } catch (err) {
         console.error('Error fetching notifications:', err);
         if (this.isAlive) this.notifications = [];
       }
     },
+
+    // Fetch detail for a single notification and open detail modal
+    async openDetail(item) {
+      if (!item || !item.id) {
+        console.error('Invalid item for detail view:', item);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Cannot load details for invalid item.',
+          life: 3000,
+        });
+        return;
+      }
+      try {
+        const token = storage.get('authToken');
+        const res = await axios.get(
+          `${process.env.VUE_APP_API_BASE_URL}/api/announcements/${item.id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (res.data) {
+          this.detailData = res.data;
+          this.selectedNotification = res.data.announcement;
+          this.showDetailModal = true;
+        }
+      } catch (error) {
+        console.error('Failed to fetch notification details', error);
+        this.$toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to fetch notification details. Please try again.',
+          life: 3000,
+        });
+      }
+    },
+
+    closeDetail() {
+      this.showDetailModal = false;
+      this.selectedNotification = null;
+      this.detailData = null;
+    },
+
+    // Build payload and send notification(s) to backend
     async sendNotification() {
       try {
         const apiUrl = process.env.VUE_APP_API_URL || '/api';
         const token = storage.get('authToken');
-        // Collect data from modal
+
+        // Build scheduled_at in UTC from selected local date/time
         let scheduled_at;
         if (this.scheduledDate && this.scheduledTime) {
           let time = this.scheduledTime;
@@ -634,18 +726,20 @@ export default {
           const ss = pad(local.getUTCSeconds());
           scheduled_at = `${YYYY}-${MM}-${DD} ${hh}:${mm}:${ss}`;
         }
+
+        const bodyEl = this.$el.querySelector('.modal-textarea');
         const payload = {
           organization_ids: this.selectedOrganizations.map((org) => org.id),
           group_ids: this.selectedGroups.map((group) => group.id),
           admin_ids: this.selectedAdmins.map((admin) => admin.id),
-          body: this.$el.querySelector('.modal-textarea')
-            ? this.$el.querySelector('.modal-textarea').value
-            : '',
+          body: bodyEl ? bodyEl.value : '',
         };
         if (scheduled_at) payload.scheduled_at = scheduled_at;
+
         await axios.post(apiUrl + '/notifications/send', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         if (this.isAlive) {
           this.showSendModal = false;
           this.resetForm();
@@ -670,19 +764,20 @@ export default {
         }
       }
     },
+
+    // Reset modal form fields to default
     resetForm() {
       this.selectedOrganizations = [];
       this.selectedAdmins = [];
       this.selectedGroups = [];
       this.scheduledDate = '';
       this.scheduledTime = '';
-      // Clear the textarea
       const textarea = this.$el.querySelector('.modal-textarea');
-      if (textarea) {
-        textarea.value = '';
-      }
+      if (textarea) textarea.value = '';
     },
   },
+
+  // Lifecycle hooks: fetch data on mount and use isAlive guard
   mounted() {
     this.isAlive = true;
     this.fetchOrganizations();
@@ -690,6 +785,7 @@ export default {
     this.fetchAdmins();
     this.fetchNotifications();
   },
+
   beforeUnmount() {
     this.isAlive = false;
   },
@@ -896,18 +992,15 @@ export default {
     padding: 16px;
   }
 }
-
 @media (max-width: 900px) {
   .page {
     padding: 4px;
   }
-
   .modal-row {
     flex-direction: column;
     gap: 12px;
   }
 }
-
 @media (max-width: 700px) {
   .modal-card {
     min-width: 0;
@@ -918,7 +1011,6 @@ export default {
     margin: 16px;
   }
 }
-
 @media (max-width: 500px) {
   .modal-card {
     min-width: 0;
@@ -928,35 +1020,29 @@ export default {
     border-radius: 12px;
     margin: 12px;
   }
-
   .modal-title {
     font-size: 20px;
     margin-bottom: 18px;
   }
-
   .modal-form {
     gap: 10px;
     padding: 0;
   }
-
   .modal-form-row {
     flex-direction: column;
     gap: 10px;
     width: 100%;
   }
-
   .modal-save-btn {
     padding: 8px 18px;
     font-size: 15px;
     border-radius: 14px;
   }
-
   .modal-close-btn {
     top: 10px;
     right: 12px;
     font-size: 26px;
   }
-
   .modal-form-actions {
     margin-top: 10px;
   }

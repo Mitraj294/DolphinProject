@@ -268,7 +268,7 @@ export default {
       return `${day} ${mon} ,${yr}`;
     },
     async lookupLocationNames() {
-      const API_BASE_URL = 'process.env.VUE_APP_API_BASE_URL';
+      const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
       if (this.leadData.country_id) {
         try {
           const res = await axios.get(

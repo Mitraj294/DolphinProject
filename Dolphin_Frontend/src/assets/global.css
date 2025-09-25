@@ -366,3 +366,358 @@
     font-size: 0.8em;
     margin-top: 8px;
 }
+
+/* Login and Registration Page Styles Reset Password and Thanks page also */
+.login-bg {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: #f8f9fb;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.bg-lines {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 250px;
+    height: auto;
+    z-index: 0;
+}
+
+.bg-illustration {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 300px;
+    height: auto;
+    z-index: 0;
+}
+
+.login-card {
+    position: relative;
+    background: #fff;
+    border-radius: 24px;
+    border: 1px solid #ebebeb;
+    box-shadow: 0 2px 16px 0 rgba(33, 150, 243, 0.04);
+    padding: 48px 48px 32px 48px;
+    text-align: center;
+    z-index: 1;
+    max-width: 480px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.login-title {
+    font-size: 2rem;
+    font-weight: 600;
+    color: #234056;
+    margin-bottom: 8px;
+    font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
+}
+
+.login-subtitle {
+    font-size: 1rem;
+    color: #787878;
+    margin-bottom: 32px;
+    font-family: 'Inter', Arial, sans-serif;
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 24px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 12px 12px 48px;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #222;
+    box-sizing: border-box;
+    outline: none;
+    transition: border-color 0.18s;
+}
+
+.input-group input:focus {
+    border-color: #0074c2;
+}
+
+.input-group .icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #787878;
+    font-size: 1rem;
+}
+
+.input-group .icon.right {
+    left: auto;
+    right: 16px;
+    cursor: pointer;
+}
+
+.options-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    font-size: 0.9rem;
+    color: #787878;
+    font-family: 'Inter', Arial, sans-serif;
+}
+
+.remember-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.remember-label input[type='checkbox'] {
+    margin: 0;
+    accent-color: #0074c2;
+}
+
+.forgot-password {
+    color: #0164a5;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.forgot-password:hover {
+    color: #1690d1;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 14px;
+    background: #0074c2;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 32px;
+    margin-top: 8px;
+    transition: background 0.2s;
+}
+
+.login-btn:hover {
+    background: #1690d1;
+}
+
+.switch-auth {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+    font-size: 1rem;
+    color: #787878;
+    font-family: 'Helvetica Neue LT Std', Arial, sans-serif;
+}
+
+.switch-link {
+    color: #0164a5;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.switch-link:hover {
+    color: #1690d1;
+}
+
+.footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.footer-logo {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.copyright {
+    color: #787878;
+    font-size: 14px;
+    font-family: 'Inter', Arial, sans-serif;
+    text-align: center;
+    margin-top: 4px;
+}
+
+.error {
+    color: #d32f2f;
+    margin-top: 1rem;
+}
+
+.success {
+    color: #388e3c;
+    margin-top: 1rem;
+}
+
+.thanks-page {
+    min-height: 100vh;
+    width: 100vw;
+    position: relative;
+    background: #f6faff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.thanks-card {
+    position: relative;
+    z-index: 1;
+    background: #fff;
+    padding: 2.5rem 2rem 2rem 2rem;
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    max-width: 540px;
+    width: 100%;
+    text-align: center;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.check-circle {
+    margin-bottom: 1.5rem;
+}
+
+.thanks-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    color: #1a237e;
+    letter-spacing: 1px;
+}
+
+.thanks-desc {
+    font-size: 1.2rem;
+    color: #333;
+    margin-bottom: 2rem;
+    line-height: 1.5;
+}
+
+.thanks-footer {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 1200px) {
+    .bg-lines {
+        width: 180px;
+        left: 1vw;
+        top: 8vh;
+    }
+
+    .bg-illustration {
+        width: 220px;
+        right: 1vw;
+        bottom: 8vh;
+    }
+
+    .login-card {
+        padding: 32px;
+        max-width: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .bg-lines {
+        width: 120px;
+        left: -20px;
+        top: -20px;
+    }
+
+    .bg-illustration {
+        width: 150px;
+        right: -20px;
+        bottom: -20px;
+    }
+
+    .login-card {
+        padding: 24px;
+        margin: 0 16px;
+    }
+
+    .login-title {
+        font-size: 1.8rem;
+    }
+
+    .login-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .input-group input {
+        font-size: 0.9rem;
+    }
+
+    .login-btn {
+        font-size: 1rem;
+        padding: 12px;
+    }
+}
+
+@media (max-height: 900px) {
+    .login-card {
+        padding-top: 16px;
+        padding-bottom: 16px;
+        /* constrain card height and allow internal scrolling when vertical space is limited */
+        max-height: calc(100vh - 32px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .login-card::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .login-card::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .login-card::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.12);
+        border-radius: 8px;
+
+    }
+
+    .bg-lines {
+        width: 120px;
+        left: -20px;
+        top: -20px;
+    }
+
+    .bg-illustration {
+        width: 150px;
+        right: -20px;
+        bottom: -20px;
+    }
+
+    .thanks-card {
+        max-width: 98vw;
+        padding: 1.5rem 0.5rem 1.5rem 0.5rem;
+    }
+}

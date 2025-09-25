@@ -79,7 +79,7 @@
                   required
                 />
                 <FormLabel
-                  v-if="errors.findUs"
+                  v-if="errors.find_us"
                   class="error-message"
                   >{{ errors.find_us[0] }}</FormLabel
                 >

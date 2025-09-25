@@ -215,14 +215,7 @@ export default {
   height: auto;
   z-index: 0;
 }
-.bg-illustration {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 300px;
-  height: auto;
-  z-index: 0;
-}
+
 .assessment-card {
   position: relative;
   background: #fff;
@@ -291,73 +284,5 @@ export default {
 .submit-btn:disabled {
   background: #b0bec5;
   cursor: not-allowed;
-}
-
-@media (max-width: 1200px) {
-  .bg-lines {
-    width: 180px;
-    left: 1vw;
-    top: 8vh;
-  }
-  .bg-illustration {
-    width: 220px;
-    right: 1vw;
-    bottom: 8vh;
-  }
-  .assessment-card {
-    padding: 32px;
-    max-width: 400px;
-  }
-}
-@media (max-width: 768px) {
-  .bg-lines {
-    width: 120px;
-    left: -20px;
-    top: -20px;
-  }
-  .bg-illustration {
-    width: 150px;
-    right: -20px;
-    bottom: -20px;
-  }
-  .assessment-card {
-    padding: 24px;
-    margin: 0 16px;
-  }
-  .assessment-title {
-    font-size: 1.8rem;
-  }
-  .question-input {
-    font-size: 0.9rem;
-  }
-  .submit-btn {
-    font-size: 1rem;
-    padding: 12px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .bg-lines {
-    width: 180px;
-    left: 1vw;
-    top: 8vh;
-  }
-  .bg-illustration {
-    width: 220px;
-    right: 1vw;
-    bottom: 8vh;
-  }
-}
-@media (max-width: 768px) {
-  .bg-lines {
-    width: 120px;
-    left: -20px;
-    top: -20px;
-  }
-  .bg-illustration {
-    width: 150px;
-    right: -20px;
-    bottom: -20px;
-  }
 }
 </style>

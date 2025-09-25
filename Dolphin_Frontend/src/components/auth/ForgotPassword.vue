@@ -179,15 +179,6 @@ export default {
   z-index: 0;
 }
 
-.bg-illustration {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 300px;
-  height: auto;
-  z-index: 0;
-}
-
 .login-card {
   position: relative;
   background: #fff;
@@ -311,52 +302,6 @@ export default {
   margin-top: 4px;
 }
 
-@media (max-width: 1200px) {
-  .bg-lines {
-    width: 180px;
-    left: 1vw;
-    top: 8vh;
-  }
-  .bg-illustration {
-    width: 220px;
-    right: 1vw;
-    bottom: 8vh;
-  }
-  .login-card {
-    padding: 32px;
-    max-width: 400px;
-  }
-}
-
-@media (max-width: 768px) {
-  .bg-lines {
-    width: 120px;
-    left: -20px;
-    top: -20px;
-  }
-  .bg-illustration {
-    width: 150px;
-    right: -20px;
-    bottom: -20px;
-  }
-  .login-card {
-    padding: 24px;
-    margin: 0 16px;
-  }
-  .login-title {
-    font-size: 1.8rem;
-  }
-  .login-subtitle {
-    font-size: 0.9rem;
-  }
-  .input-group input {
-    font-size: 0.9rem;
-  }
-  .login-btn {
-    font-size: 1rem;
-    padding: 12px;
-  }
-}
 @media (max-height: 900px) {
   .login-card {
     padding-top: 16px;

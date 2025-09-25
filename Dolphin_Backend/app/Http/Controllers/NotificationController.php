@@ -198,10 +198,12 @@ class NotificationController extends Controller {
 
         $senderId = $request->user() ? $request->user()->id : null;
 
+        // Use request input accessor for optional scheduled_at to avoid undefined index
+        $scheduledAt = $request->input('scheduled_at');
         $announcement = Announcement::create([
             'body' => $data['body'],
             'sender_id' => $senderId,
-            'scheduled_at' => $data['scheduled_at'] ? Carbon::parse($data['scheduled_at']) : null,
+            'scheduled_at' => $scheduledAt ? Carbon::parse($scheduledAt) : null,
             'sent_at' => null,
             'dispatched_at' => now(),
         ]);
