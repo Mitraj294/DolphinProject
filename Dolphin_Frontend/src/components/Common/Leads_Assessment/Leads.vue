@@ -206,6 +206,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
 // Component Imports
 import MainLayout from '@/components/layout/MainLayout.vue';
@@ -275,6 +276,55 @@ export default {
       organization_size: null,
       find_us: null,
     });
+
+    // Confirm service (styled confirm dialog)
+    const confirm = useConfirm();
+
+    // Delete (soft-delete) a lead after confirmation using styled confirm dialog
+    const deleteLead = async (lead) => {
+      if (!lead || !lead.id) return;
+
+      confirm.require({
+        message: `Are you sure you want to delete lead "${lead.contact}"? This will archive the lead.`,
+        header: 'Confirm Delete',
+        icon: 'pi pi-trash',
+        acceptLabel: 'OK',
+        rejectLabel: 'Cancel',
+        acceptProps: {
+          style: 'background-color: #e53935; color: white; font-weight: bold;',
+        },
+        rejectProps: { style: 'background-color: gray;' },
+        accept: async () => {
+          try {
+            const token = storage.get('authToken');
+            const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+            await axios.delete(`${API_BASE_URL}/api/leads/${lead.id}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            // Remove from local leads array source so computed lists update
+            const idx = leads.value.findIndex((l) => l.id === lead.id);
+            if (idx !== -1) {
+              leads.value.splice(idx, 1);
+            }
+            toast.add({
+              severity: 'success',
+              summary: 'Lead deleted',
+              detail: 'Lead archived successfully',
+              life: 3000,
+            });
+          } catch (error) {
+            console.error('Failed to delete lead:', error);
+            toast.add({
+              severity: 'error',
+              summary: 'Delete failed',
+              detail: 'Failed to delete lead',
+              life: 4000,
+            });
+          }
+        },
+        reject: () => {},
+      });
+    };
 
     const filteredLeads = computed(() => {
       let filtered = leads.value;
@@ -511,6 +561,9 @@ export default {
         });
       } else if (option === 'Send Assessment') {
         router.push({ name: 'SendAssessment', params: { id: lead.id } });
+      } else if (option === 'Delete Lead') {
+        // soft-delete
+        deleteLead(lead);
       } else {
         toast.add({
           severity: 'info',
@@ -560,6 +613,7 @@ export default {
       updateLeadNotes,
       goToLeadDetail,
       selectCustomAction,
+      deleteLead,
       findUsOptions,
       orgSizeOptions,
       form,

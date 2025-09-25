@@ -100,12 +100,26 @@ class LeadController extends Controller
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        // Superadmin may view all leads
-        if (isset($user->role) && $user->role === 'superadmin') {
+    // Superadmin may view all leads (use model helper which checks many-to-many roles)
+    if (method_exists($user, 'isSuperAdmin') && $user->isSuperAdmin()) {
             $leads = Lead::all();
             try {
                 $ids = $leads->pluck('id')->values()->all();
                 Log::info('LeadController@index superadmin fetch', ['user_id' => $user->id, 'count' => $leads->count(), 'ids' => $ids]);
+                // Also write a lightweight debug file in case main logging is not capturing info-level logs in this environment.
+                try {
+                    $debugPath = storage_path('logs/leads_debug.log');
+                    $payload = [
+                        'time' => now()->toDateTimeString(),
+                        'user_id' => $user->id,
+                        'count' => $leads->count(),
+                        'ids' => $ids,
+                    ];
+                    file_put_contents($debugPath, json_encode($payload, JSON_PRETTY_PRINT) . PHP_EOL, FILE_APPEND | LOCK_EX);
+                } catch (\Exception $e) {
+                    // Avoid breaking the request flow for debugging failures
+                    Log::warning('LeadController@index file debug write failed: ' . $e->getMessage());
+                }
             } catch (\Exception $e) {
                 Log::warning('LeadController@index logging failed: ' . $e->getMessage());
             }
@@ -232,6 +246,28 @@ class LeadController extends Controller
             }
 
             return response()->json($resp);
+    }
+
+    /**
+     * Soft-delete a lead by id.
+     * Route: DELETE /api/leads/{id}
+     */
+    public function destroy(Request $request, $id)
+    {
+        $lead = Lead::find($id);
+        if (!$lead) {
+            return response()->json(['message' => Message::MESSAGE], 404);
+        }
+
+        try {
+            // uses SoftDeletes on the model
+            $lead->delete();
+            Log::info('LeadController@destroy soft-deleted lead', ['lead_id' => $id, 'deleted_by' => $request->user()->id ?? null]);
+            return response()->json(['message' => 'Lead soft-deleted', 'id' => $id]);
+        } catch (\Exception $e) {
+            Log::error('LeadController@destroy failed to delete lead: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to delete lead'], 500);
+        }
     }
 
    
