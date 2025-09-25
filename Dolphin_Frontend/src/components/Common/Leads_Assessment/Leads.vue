@@ -245,9 +245,13 @@ export default {
     const search = ref('');
 
     const customMenuOptions = [
+      'Schedule Follow up',
       'Schedule Demo',
       'Schedule Class/Training',
       'Send Assessment',
+      'Send Agreement/Payment Link',
+      'Convert to Client',
+      'Delete Lead',
     ];
 
     const tableColumns = [
@@ -774,8 +778,6 @@ export default {
   width: 16px;
   height: 16px;
 }
-
-
 
 .status-badge {
   display: inline-flex;
