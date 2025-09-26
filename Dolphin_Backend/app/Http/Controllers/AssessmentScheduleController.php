@@ -88,7 +88,7 @@ class AssessmentScheduleController extends Controller
 
                 // Dispatch delayed notification (AssessmentInvitation handles link)
                 try {
-                    $recipient->notify((new AssessmentInvitation($link, $assessment->name))->delay($sendAt));
+                    $recipient->notify((new AssessmentInvitation($link, $assessment->name, $assessment->id))->delay($sendAt));
                 } catch (\Exception $e) {
                     Log::error('Failed to queue notification for recipient', ['recipient_id' => $recipient->id, 'error' => $e->getMessage()]);
                 }

@@ -36,7 +36,7 @@ class AssessmentAnswerLinkController extends Controller
             $token = $linkService->createAnswerToken($assessment->id, $member->id, $validated['group_id'] ?? null);
             $link = $linkService->generateFrontendLink($token, $member->id, $validated['group_id'] ?? null);
 
-            $member->notify(new AssessmentInvitation($link, $assessment->name));
+            $member->notify(new AssessmentInvitation($link, $assessment->name, $assessment->id));
 
             return response()->json(['message' => 'Link sent successfully.']);
         } catch (\Exception $e) {

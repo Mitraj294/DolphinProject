@@ -59,10 +59,8 @@ Route::prefix('email-template')->group(function () {
         Route::get('/lead-registration', [LeadController::class, 'leadRegistration']);
 });
 
-Route::prefix('schedule-email')->group(function () {
-        Route::post('/', [ScheduledEmailController::class, 'store']);
-        Route::get('/show', [ScheduledEmailController::class, 'show']);
-});
+Route::post('/schedule-email', [ScheduledEmailController::class, 'store']);
+Route::get('/scheduled-email/show', [ScheduledEmailController::class, 'show']);
 
 
 // Public Location Data
@@ -197,10 +195,8 @@ Route::middleware('auth:api')->group(function () {
                 Route::get('/{group}', [GroupController::class, 'show']);
             });
 
-            Route::prefix('members')->group(function () {
-                Route::apiResource('members', MemberController::class);
-                Route::get('/member-roles', [MemberRoleController::class, 'index']);
-            });
+            Route::apiResource('members', MemberController::class);
+            Route::get('/member-roles', [MemberRoleController::class, 'index']);
         });
 
         // Organization Admin only for managing groups (create/update/delete)

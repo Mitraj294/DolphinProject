@@ -129,6 +129,42 @@ class ScheduledEmailController extends Controller
                     Log::warning('scheduled_emails table missing when fetching schedule', ['assessment_id' => $assessmentId]);
                 }
 
+                // Also include any in-app notifications that appear to be AssessmentInvitation for this assessment
+                // We use a defensive LIKE search on the JSON `data` payload for the assessment name because
+                // the notification payload stores the assessment name in the message text.
+                if (Schema::hasTable('notifications') && $assessment) {
+                    try {
+                        // Prefer matching by structured assessment_id in the notification data (JSON field)
+                        // MySQL: JSON_EXTRACT(data, '$.assessment_id') returns a JSON value; compare after extracting
+                        $driver = DB::getDriverName();
+                        if ($driver === 'mysql') {
+                            // Use JSON_EXTRACT for MySQL
+                            $notifications = DB::table('notifications')
+                                ->where('type', 'App\\Notifications\\AssessmentInvitation')
+                                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.assessment_id')) = ?", [(string)$assessmentId])
+                                ->orderBy('created_at', 'desc')
+                                ->get();
+                        } else {
+                            // For other drivers, fall back to LIKE on the serialized data
+                            $notifications = DB::table('notifications')
+                                ->where('type', 'App\\Notifications\\AssessmentInvitation')
+                                ->where('data', 'like', '%' . $assessmentId . '%')
+                                ->orderBy('created_at', 'desc')
+                                ->get();
+                        }
+
+                        // NOTE: strict id-based matching only. Do not fallback to name-based matching
+                        // as multiple assessments can share the same name which causes false positives.
+
+                        $result['notifications'] = $notifications;
+                    } catch (\Exception $e) {
+                        Log::warning('Failed to query notifications for assessment schedule show', ['assessment_id' => $assessmentId, 'error' => $e->getMessage()]);
+                        $result['notifications'] = [];
+                    }
+                } else {
+                    $result['notifications'] = [];
+                }
+
                 // Parse group_ids and member_ids from JSON strings
                 $groupIds = json_decode($schedule->group_ids, true) ?: [];
                 $memberIds = json_decode($schedule->member_ids, true) ?: [];

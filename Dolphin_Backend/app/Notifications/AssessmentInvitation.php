@@ -13,11 +13,13 @@ class AssessmentInvitation extends Notification implements ShouldQueue
 
     protected $assessmentLink;
     protected $assessmentName;
+    protected $assessmentId;
 
-    public function __construct(string $assessmentLink, string $assessmentName)
+    public function __construct(string $assessmentLink, string $assessmentName, ?int $assessmentId = null)
     {
         $this->assessmentLink = $assessmentLink;
         $this->assessmentName = $assessmentName;
+        $this->assessmentId = $assessmentId;
     }
 
     public function via($notifiable)
@@ -40,7 +42,10 @@ class AssessmentInvitation extends Notification implements ShouldQueue
         // This will be stored in the 'notifications' table for in-app display.
         return [
             'message' => 'You have a new assessment to complete: ' . $this->assessmentName,
-            'link' => '/assessments'
+            'link' => '/assessments',
+            'assessment_id' => $this->assessmentId,
+            // keep assessment_name for backwards compatibility
+            'assessment_name' => $this->assessmentName,
         ];
     }
 }

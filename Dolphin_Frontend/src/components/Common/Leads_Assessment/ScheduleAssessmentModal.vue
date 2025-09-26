@@ -163,7 +163,7 @@
               :selectedItems="
                 Array.isArray(selectedMemberIds) ? selectedMemberIds : []
               "
-              @update:selectedItems="selectedMemberIds = $event"
+              @update:selectedItems="onMemberSelection"
               placeholder="Select one or more members"
               :enableSelectAll="true"
             />
@@ -236,20 +236,109 @@ export default {
     };
   },
   computed: {
+    // Always show the full members list in the dropdown. When groups are
+    // selected we still display all members, but group-members will be
+    // auto-selected via onGroupSelection(). This keeps the UI consistent
+    // with the user's request to "show all members" while pre-selecting
+    // members that belong to the selected groups.
     filteredMembers() {
-      if (this.selectedGroupIds.length === 0) {
-        return this.members;
-      }
-      const selectedIds = this.selectedGroupIds.map((g) => g.id);
-      return this.members.filter((member) =>
-        member.group_ids.some((groupId) => selectedIds.includes(groupId))
-      );
+      return this.members;
     },
   },
   methods: {
+    // --- Helpers ---------------------------------------------------------
+    // Return an array of member objects who belong to the supplied group id
+    groupMembersFor(groupId) {
+      return this.members.filter(
+        (member) =>
+          Array.isArray(member.group_ids) && member.group_ids.includes(groupId)
+      );
+    },
+
+    // Merge two arrays of member objects (existing + toAdd) deduped by id.
+    // The resulting array preserves the ordering of `this.members`.
+    mergeMembersById(existing = [], toAdd = []) {
+      const mergedById = {};
+      existing.forEach((m) => {
+        if (m && m.id !== undefined) mergedById[m.id] = m;
+      });
+      toAdd.forEach((m) => {
+        if (m && m.id !== undefined) mergedById[m.id] = m;
+      });
+      return this.members.filter((m) => mergedById[m.id]);
+    },
+
+    // Return true if all members of a group are present in the selectedIdSet
+    allGroupMembersSelected(group, selectedIdSet) {
+      const groupMembers = this.groupMembersFor(group.id);
+      if (!groupMembers.length) return false;
+      return groupMembers.every((gm) => selectedIdSet.has(Number(gm.id)));
+    },
+
+    // --- Event handlers -------------------------------------------------
+    // Called when the groups multi-select changes.
+    // Behavior: preserve manual member selections and add members that belong
+    // to the selected groups (no removals).
     onGroupSelection(selectedGroups) {
       this.selectedGroupIds = selectedGroups;
-      this.selectedMemberIds = []; // Reset member selection when groups change
+
+      // If no groups selected, keep manual member selections unchanged.
+      if (!Array.isArray(selectedGroups) || selectedGroups.length === 0) {
+        return;
+      }
+
+      const selectedGroupIds = selectedGroups.map((g) => g.id);
+
+      // Collect members who belong to any selected group
+      const groupMembers = this.members.filter(
+        (member) =>
+          Array.isArray(member.group_ids) &&
+          member.group_ids.some((gid) => selectedGroupIds.includes(gid))
+      );
+
+      // Merge manual selections with group members (deduped)
+      const existing = Array.isArray(this.selectedMemberIds)
+        ? this.selectedMemberIds
+        : [];
+      this.selectedMemberIds = this.mergeMembersById(existing, groupMembers);
+    },
+
+    onMemberSelection(selectedMembers) {
+      // selectedMembers is an array of member objects from MultiSelectDropdown
+      this.selectedMemberIds = Array.isArray(selectedMembers)
+        ? selectedMembers
+        : [];
+
+      // Build a set of selected member ids for quick lookup
+      const selectedIds = new Set(
+        this.selectedMemberIds.map((m) => Number(m.id))
+      );
+
+      // Determine which groups should be auto-selected: those where ALL members
+      // of the group are present in selectedMemberIds
+      const autoSelectedGroups = [];
+      for (const group of this.groups) {
+        // find members belonging to this group
+        const groupMembers = this.members.filter(
+          (member) =>
+            Array.isArray(member.group_ids) &&
+            member.group_ids.includes(group.id)
+        );
+
+        if (groupMembers.length === 0) {
+          // no members in this group, skip
+        } else {
+          const allSelected = groupMembers.every((gm) =>
+            selectedIds.has(Number(gm.id))
+          );
+
+          if (allSelected) {
+            autoSelectedGroups.push(group);
+          }
+        }
+      }
+
+      this.selectedGroupIds = autoSelectedGroups;
     },
 
     async schedule() {
@@ -264,12 +353,11 @@ export default {
           group_ids: this.selectedGroupIds.map((g) => g.id),
           member_ids: this.selectedMemberIds.map((m) => m.id),
           // include selectedMembers with email and ids so parent can call /api/schedule-email
-          selectedMembers: (this.selectedMemberIds || []).map((mid) => {
-            const mem = (this.members || []).find(
-              (m) => Number(m.id) === Number(mid)
-            );
-            return mem || { id: mid };
-          }),
+          selectedMembers: (this.selectedMemberIds || []).map((m) => ({
+            id: m.id,
+            email: m.email,
+            name: m.name,
+          })),
         };
 
         this.$emit('schedule', payload);

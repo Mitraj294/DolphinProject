@@ -502,6 +502,13 @@ export default {
         typeof scheduleTimestamp === 'number' && scheduleTimestamp >= nowUtc;
 
       const emails = (this.filteredEmails || []).filter(Boolean);
+      // If backend returned matching in-app notifications for this assessment, treat as sent
+      const notifications =
+        (this.scheduleDetails && this.scheduleDetails.notifications) || [];
+      if (notifications.length) {
+        // There are in-app AssessmentInvitation notifications recorded — treat as sent
+        return 'sent';
+      }
       if (emails.length) {
         const allSent = emails.every((email) => !!email.sent);
         if (allSent) {
