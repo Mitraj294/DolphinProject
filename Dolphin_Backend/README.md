@@ -111,7 +111,3 @@ php artisan test
 -   `database/migrations`: Stores the database schema migrations.
 -   `routes/`: Contains all route definitions.
 -   `tests/`: Home for all feature and unit tests.
-
-![alt text](image.png)
-![alt text](Gemini_Generated_Image_6l7pw36l7pw36l7p.png)
-![alt text](Gemini_Generated_Image_kdujgjkdujgjkduj.png)

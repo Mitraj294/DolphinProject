@@ -101,3 +101,8 @@ From the root directory of the project:
 -   Notification System (Scheduled and Immediate)
 -   Role-based Permissions
 -   Stripe Integration for Payments
+
+
+![alt text](image.png)
+![alt text](Gemini_Generated_Image_6l7pw36l7pw36l7p.png)
+![alt text](Gemini_Generated_Image_kdujgjkdujgjkduj.png)
