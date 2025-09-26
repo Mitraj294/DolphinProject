@@ -1180,7 +1180,7 @@ export default {
   gap: 8px;
   padding: 10px 16px;
   border: none;
-  border-radius: 4px;
+  border-radius: 24px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

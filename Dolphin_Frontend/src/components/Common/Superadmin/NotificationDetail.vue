@@ -134,7 +134,7 @@
                           {
                             label: 'Read At',
                             key: 'read_at',
-                            minWidth: '200px',
+                            minWidth: '150px',
                           },
                         ]"
                       />

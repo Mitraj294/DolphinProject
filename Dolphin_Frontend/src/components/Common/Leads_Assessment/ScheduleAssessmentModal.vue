@@ -38,13 +38,34 @@
         <p>This assessment is scheduled to be sent on:</p>
         <p>
           <strong>Date:</strong>
-          {{ new Date(scheduledDetails.send_at).toLocaleDateString() }}
+          {{
+            scheduledDetails?.schedule
+              ? new Date(
+                  `${scheduledDetails.schedule.date}T${scheduledDetails.schedule.time}`
+                ).toLocaleDateString()
+              : ''
+          }}
         </p>
         <p>
           <strong>Time:</strong>
-          {{ new Date(scheduledDetails.send_at).toLocaleTimeString() }}
+          {{
+            scheduledDetails?.schedule
+              ? new Date(
+                  `${scheduledDetails.schedule.date}T${scheduledDetails.schedule.time}`
+                ).toLocaleTimeString()
+              : ''
+          }}
         </p>
-        <p><strong>To:</strong> {{ scheduledDetails.recipient_email }}</p>
+        <p>
+          <strong>To:</strong>
+          {{
+            (scheduledDetails.emails &&
+              scheduledDetails.emails[0] &&
+              (scheduledDetails.emails[0].recipient_email ||
+                scheduledDetails.emails[0].email)) ||
+            'Selected members/groups'
+          }}
+        </p>
         <div class="modal-form-actions">
           <button
             type="button"
@@ -234,25 +255,28 @@ export default {
     async schedule() {
       this.isSubmitting = true;
       try {
-        const authToken = storage.get('authToken');
-        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-
+        // Emit schedule payload to parent so parent can perform both
+        // assessment schedule creation and scheduling individual emails.
         const payload = {
           assessment_id: this.assessment_id,
           date: this.scheduleDate,
           time: this.scheduleTime,
           group_ids: this.selectedGroupIds.map((g) => g.id),
           member_ids: this.selectedMemberIds.map((m) => m.id),
+          // include selectedMembers with email and ids so parent can call /api/schedule-email
+          selectedMembers: (this.selectedMemberIds || []).map((mid) => {
+            const mem = (this.members || []).find(
+              (m) => Number(m.id) === Number(mid)
+            );
+            return mem || { id: mid };
+          }),
         };
 
-        await axios.post(`${API_BASE_URL}/api/assessment-schedules`, payload, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
-
+        this.$emit('schedule', payload);
         this.toast.add({
           severity: 'success',
           summary: 'Success',
-          detail: 'Assessment scheduled successfully!',
+          detail: 'Assessment scheduled (sending)...',
           life: 3000,
         });
         this.$emit('close');
@@ -290,11 +314,14 @@ export default {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
-        if (response.data?.scheduled && response.data?.data) {
+        // The backend returns { scheduled: bool, schedule: ..., emails: ..., ... }
+        if (response.data?.scheduled) {
           this.scheduledStatus = 'scheduled';
-          this.scheduledDetails = response.data.data;
+          // store the whole response so callers can access schedule/emails/groups_with_members etc.
+          this.scheduledDetails = response.data;
         } else {
           this.scheduledStatus = null;
+          this.scheduledDetails = null;
         }
       } catch (error) {
         this.scheduledStatus = null;

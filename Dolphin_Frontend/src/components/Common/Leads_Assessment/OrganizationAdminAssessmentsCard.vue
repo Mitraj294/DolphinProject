@@ -357,13 +357,14 @@ export default {
     handleError(errorData) {
       this._showToast(errorData.type, errorData.title, errorData.message);
     },
-    async handleScheduleAssessment({
-      date,
-      time,
-      groupIds,
-      memberIds,
-      selectedMembers,
-    }) {
+    async handleScheduleAssessment(payload) {
+      // payload expected: { assessment_id, date, time, group_ids, member_ids, selectedMembers }
+      const date = payload?.date;
+      const time = payload?.time;
+      const groupIds = payload?.group_ids || payload?.groupIds || [];
+      const memberIds = payload?.member_ids || payload?.memberIds || [];
+      const selectedMembers = payload?.selectedMembers || [];
+
       if (!this.selectedAssessment || !date || !time) {
         return this._showToast(
           'warn',
@@ -371,30 +372,33 @@ export default {
           'Please select assessment, date, and time.'
         );
       }
+
       this.loading = true;
       try {
         const authToken = storage.get('authToken');
         const base = process.env.VUE_APP_API_BASE_URL;
 
-        // Schedule the assessment
+        // Compute sendAt (interpret date/time as frontend local time) and convert to UTC ISO
+        const localDateTime = new Date(`${date}T${time}:00`);
+        const sendAt = localDateTime.toISOString();
+
+        // 1) Create the assessment schedule record and include send_at so backend can schedule correctly in UTC
         await axios.post(
           `${base}/api/assessment-schedules`,
           {
             assessment_id: this.selectedAssessment.id,
             date,
             time,
+            send_at: sendAt,
             group_ids: groupIds,
             member_ids: memberIds,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           },
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
 
-        // Schedule emails for each member
-        const localDateTime = new Date(`${date}T${time}:00`);
-        const sendAt = localDateTime.toISOString();
-
         const emailPromises = (selectedMembers || []).map((member) => {
-          if (member.email) {
+          if (member && member.email) {
             let group_id =
               member.group_id ||
               (Array.isArray(member.group_ids) && member.group_ids[0]) ||
@@ -406,7 +410,7 @@ export default {
               {
                 recipient_email: member.email,
                 subject: 'Assessment Scheduled',
-                body: 'You have an assessment scheduled.',
+                body: `You have an assessment scheduled: ${this.selectedAssessment.name}`,
                 send_at: sendAt,
                 assessment_id: this.selectedAssessment.id,
                 member_id: member.id,
@@ -426,10 +430,13 @@ export default {
           'Assessment scheduled and emails queued!'
         );
         this.closeScheduleModal();
-        await this.initializeComponent(); // Refresh all data
+        // Refresh all data to include new schedule status
+        await this.initializeComponent();
       } catch (e) {
         console.error('Failed to schedule assessment', e);
-        this._showToast('error', 'Error', 'Failed to schedule assessment.');
+        const msg =
+          e?.response?.data?.message || 'Failed to schedule assessment.';
+        this._showToast('error', 'Error', msg);
       } finally {
         this.loading = false;
       }

@@ -10,6 +10,8 @@ use App\Models\Member;
 use App\Models\Group;
 use Illuminate\Support\Facades\Notification;
 use App\Notifications\AssessmentAnswerLinkNotification;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class ScheduledEmailValidationRules
 {
@@ -58,9 +60,20 @@ class ScheduledEmailController extends Controller
             'member_id' => $memberId,
         ]);
 
+        // Log the scheduled email for audit
+        Log::info('Scheduled email created', [
+            'scheduled_email_id' => $scheduledEmail->id,
+            'recipient_email' => $scheduledEmail->recipient_email,
+            'assessment_id' => $scheduledEmail->assessment_id,
+            'group_id' => $scheduledEmail->group_id,
+            'member_id' => $scheduledEmail->member_id,
+            'send_at_utc' => $scheduledEmail->send_at,
+        ]);
+
         // Queue the assessment email to be sent at the scheduled time
         try {
-            \App\Jobs\SendScheduledAssessmentEmail::dispatch($scheduledEmail->id)->delay($sendAtUtc);
+            // Dispatch job instance and delay to send_at
+            dispatch(new \App\Jobs\SendScheduledAssessmentEmail($scheduledEmail->id))->delay($sendAtUtc);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Failed to schedule email: ' . $e->getMessage()], 500);
         }
@@ -78,7 +91,23 @@ class ScheduledEmailController extends Controller
     public function show(Request $request)
     {
         $assessmentId = $request->query('assessment_id');
+        $result = [
+            'scheduled' => false,
+            'schedule' => null,
+            'assessment' => null,
+            'emails' => [],
+            'groups_with_members' => [],
+            'members_with_details' => [],
+        ];
+
         if ($assessmentId) {
+            // If scheduling tables have been removed (refactor/migration), avoid throwing SQL errors
+            if (!Schema::hasTable('assessment_schedules')) {
+                Log::warning('Attempted to fetch schedule but table assessment_schedules does not exist', ['assessment_id' => $assessmentId]);
+                $result['assessment'] = DB::table('assessments')->where('id', $assessmentId)->first();
+                return response()->json($result);
+            }
+
             $schedule = DB::table('assessment_schedules')->where('assessment_id', $assessmentId)->first();
             $assessment = DB::table('assessments')->where('id', $assessmentId)->first();
             $emails = [];
@@ -86,10 +115,19 @@ class ScheduledEmailController extends Controller
             $membersWithDetails = [];
             
             if ($schedule) {
-                // Get scheduled emails
-                $emails = DB::table('scheduled_emails')
-                    ->where('assessment_id', $assessmentId)
-                    ->get();
+                $result['scheduled'] = true;
+                $result['schedule'] = $schedule;
+                $result['assessment'] = $assessment;
+
+                // Get scheduled emails if table exists
+                if (Schema::hasTable('scheduled_emails')) {
+                    $emails = DB::table('scheduled_emails')
+                        ->where('assessment_id', $assessmentId)
+                        ->get();
+                    $result['emails'] = $emails;
+                } else {
+                    Log::warning('scheduled_emails table missing when fetching schedule', ['assessment_id' => $assessmentId]);
+                }
 
                 // Parse group_ids and member_ids from JSON strings
                 $groupIds = json_decode($schedule->group_ids, true) ?: [];
@@ -122,6 +160,7 @@ class ScheduledEmailController extends Controller
                             })
                         ];
                     }
+                    $result['groups_with_members'] = $groupsWithMembers;
                 }
 
                 // Get individual members with their details
@@ -149,17 +188,9 @@ class ScheduledEmailController extends Controller
                             })
                         ];
                     }
+                    $result['members_with_details'] = $membersWithDetails;
                 }
             }
-            
-            return response()->json([
-                'scheduled' => (bool)$schedule,
-                'schedule' => $schedule,
-                'assessment' => $assessment,
-                'emails' => $emails,
-                'groups_with_members' => $groupsWithMembers,
-                'members_with_details' => $membersWithDetails,
-            ]);
         }
         // Fallback: check ScheduledEmail by recipient_email if provided
         $recipientEmail = $request->query('recipient_email');
@@ -170,7 +201,6 @@ class ScheduledEmailController extends Controller
             }
         }
 
-        // If neither param is provided, return not scheduled
-        return response()->json(['scheduled' => false]);
+        return response()->json($result);
     }
 }

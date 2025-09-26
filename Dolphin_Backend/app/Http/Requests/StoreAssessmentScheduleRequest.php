@@ -27,6 +27,8 @@ class StoreAssessmentScheduleRequest extends FormRequest
             'assessment_id' => 'required|exists:assessments,id',
             'date' => 'required|date',
             'time' => 'required',
+            'send_at' => 'sometimes|date',
+            'timezone' => 'sometimes|string',
             'group_ids' => 'sometimes|array',
             'group_ids.*' => 'exists:groups,id',
             'member_ids' => 'sometimes|array',
