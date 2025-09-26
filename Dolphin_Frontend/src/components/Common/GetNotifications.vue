@@ -169,6 +169,7 @@ export default {
       readNotifications: [],
       selectedDate: '',
       markAllLoading: false,
+      notificationsReady: false,
     };
   },
   computed: {
@@ -235,6 +236,7 @@ export default {
           .filter((n) => this._isNotificationForUser(n, currentUserId))
           .map((n) => this._normalizeNotification(n));
 
+        this.notificationsReady = true;
         this.notifications = mapped.filter((m) => !m.read_at);
         this.readNotifications = mapped.filter((m) => !!m.read_at);
       } catch (error) {
@@ -276,7 +278,11 @@ export default {
       try {
         return await axios.get(endpoint, config);
       } catch (err) {
-        if (err.response && err.response.status === 403 && this.tab === 'all') {
+        if (
+          err.response &&
+          err.response.status === 403 &&
+          endpoint !== '/api/notifications/user'
+        ) {
           return axios.get('/api/notifications/user', config);
         }
         throw err;
@@ -490,11 +496,23 @@ export default {
     },
     // single authoritative method for updating stored notification count
     updateNotificationCount() {
-      storage.set('notificationCount', this.notifications.length);
+      if (!this.notificationsReady) {
+        return;
+      }
+      const unreadCount = Array.isArray(this.notifications)
+        ? this.notifications.length
+        : 0;
+      storage.set('notificationCount', String(unreadCount));
       // Broadcast a storage event for cross-tab listeners
       window.dispatchEvent(new Event('storage'));
       // Broadcast a domain event for in-window subscribers (Navbar)
       window.dispatchEvent(new Event('notification-updated'));
+      // Provide direct count payload for listeners to avoid refetch flicker
+      window.dispatchEvent(
+        new CustomEvent('notification-count-sync', {
+          detail: { count: unreadCount },
+        })
+      );
     },
     markAllRead() {
       this.readNotifications = [
@@ -511,7 +529,6 @@ export default {
         this.updateNotificationCount();
       },
       deep: true,
-      immediate: true,
     },
     readNotifications: {
       handler() {

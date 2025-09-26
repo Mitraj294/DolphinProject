@@ -19,6 +19,7 @@ use App\Http\Controllers\StripeSubscriptionController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SendAssessmentController;
+use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 
 /*
  1. Public API Routes
@@ -30,35 +31,55 @@ use App\Http\Controllers\SendAssessmentController;
 // Authentication & Password Reset
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::post('/password/email', [AuthController::class, 'sendResetLinkEmail']);
-Route::post('/password/reset', [AuthController::class, 'resetPassword']);
+Route::prefix('password')->group(function () {
+    Route::post('/forgot', [AuthController::class, 'forgotPassword']);
+    Route::post('/email', [AuthController::class, 'sendResetLinkEmail']);
+    Route::post('/reset', [AuthController::class, 'resetPassword']);
+});
 
 // Stripe Webhook
 Route::post('/stripe/webhook', [StripeSubscriptionController::class, 'handleWebhook']);
 
 // Public Assessments & Leads
-Route::get('/assessment/{id}/summary', [AssessmentController::class, 'summary']);
-Route::post('/assessment/send-link', [AssessmentAnswerLinkController::class, 'sendLink']);
-Route::get('/assessment/answer/{token}', [AssessmentAnswerLinkController::class, 'getAssessmentByToken']);
-Route::post('/assessment/answer/{token}', [AssessmentAnswerLinkController::class, 'submitAnswers'])
-    ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]);
+Route::prefix('assessments')->group(function () {
+        Route::get('/{id}/summary', [AssessmentController::class, 'summary']);
+        Route::post('/send-link', [AssessmentAnswerLinkController::class, 'sendLink']);
+        Route::get('/answer/{token}', [AssessmentAnswerLinkController::class, 'getAssessmentByToken']);
+        Route::post('/answer/{token}', [AssessmentAnswerLinkController::class, 'submitAnswers'])
+            ->withoutMiddleware([\Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class]);
+});
 
-Route::get('/leads/find-us-options', [LeadController::class, 'findUsOptions']);
-Route::get('/email-template/lead-registration', [LeadController::class, 'leadRegistration']);
-// Public endpoint used by frontend register page to fetch lead data for form prefill
-Route::get('/leads/prefill', [LeadController::class, 'prefill']);
-Route::post('/leads/send-assessment', [SendAssessmentController::class, 'send']);
-Route::post('/schedule-email', [ScheduledEmailController::class, 'store']);
-Route::get('/scheduled-email/show', [ScheduledEmailController::class, 'show']);
+Route::prefix('leads')->group(function () {
+        Route::get('/find-us-options', [LeadController::class, 'findUsOptions']);
+        Route::get('/prefill', [LeadController::class, 'prefill']);
+        Route::post('/send-assessment', [SendAssessmentController::class, 'send']);
+});
+
+Route::prefix('email-template')->group(function () {
+        Route::get('/lead-registration', [LeadController::class, 'leadRegistration']);
+});
+
+Route::prefix('schedule-email')->group(function () {
+        Route::post('/', [ScheduledEmailController::class, 'store']);
+        Route::get('/show', [ScheduledEmailController::class, 'show']);
+});
+
 
 // Public Location Data
-Route::get('/countries', [LocationController::class, 'countries']);
-Route::get('/states', [LocationController::class, 'states']);
-Route::get('/cities', [LocationController::class, 'cities']);
-Route::get('/countries/{id}', [LocationController::class, 'getCountryById']);
-Route::get('/states/{id}', [LocationController::class, 'getStateById']);
-Route::get('/cities/{id}', [LocationController::class, 'getCityById']);
+Route::prefix('countries')->group(function () {
+    Route::get('/', [LocationController::class, 'countries']);
+    Route::get('/{id}', [LocationController::class, 'getCountryById']);
+});
 
+Route::prefix('states')->group(function () {
+    Route::get('/', [LocationController::class, 'states']);
+    Route::get('/{id}', [LocationController::class, 'getStateById']);
+});
+
+Route::prefix('cities')->group(function () {
+    Route::get('/', [LocationController::class, 'cities']);
+    Route::get('/{id}', [LocationController::class, 'getCityById']);
+});
 
 /*
  2. Authenticated API Routes
@@ -92,14 +113,15 @@ Route::middleware('auth:api')->group(function () {
     });
 
     // Endpoint to refresh current authenticated user's roles (useful after subscription / webhook)
-    Route::post('/subscription/refresh-role', [StripeSubscriptionController::class, 'refreshRole']);
-
-    Route::get('/subscription', [SubscriptionController::class, 'getCurrentPlan']);
-    Route::get('/subscription/status', [SubscriptionController::class, 'subscriptionStatus']);
-    Route::get('/billing/current', [SubscriptionController::class, 'getCurrentPlan']);
-    Route::get('/billing/history', [SubscriptionController::class, 'getBillingHistory']);
-
-
+    Route::prefix('subscription')->group(function () {
+        Route::post('/refresh-role', [StripeSubscriptionController::class, 'refreshRole']);
+        Route::get('/', [SubscriptionController::class, 'getCurrentPlan']);
+        Route::get('/status', [SubscriptionController::class, 'subscriptionStatus']);
+    });
+    Route::prefix('billing')->group(function () {
+            Route::get('/current', [SubscriptionController::class, 'getCurrentPlan']);
+            Route::get('/history', [SubscriptionController::class, 'getBillingHistory']);
+        });
     /*
       2.2 Routes Requiring an ACTIVE Subscription
       This entire group is protected by the `subscription.check` middleware.
@@ -114,13 +136,16 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
 
         // Notifications
-        Route::get('/announcements/user', [NotificationController::class, 'userAnnouncements']);
-        Route::post('/announcements/{id}/read', [NotificationController::class, 'markAsRead']);
-        Route::get('/notifications/user', [NotificationController::class, 'userNotifications']);
-    Route::get('/notifications/unread', [NotificationController::class, 'unreadAnnouncements']);
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead']);
-    // Manual create notification (useful for testing/debug)
-    Route::post('/notifications/create', [NotificationController::class, 'createNotification']);
+        Route::prefix('announcements')->group(function () {
+            Route::get('/user', [NotificationController::class, 'userAnnouncements']);
+            Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+        });
+        Route::prefix('notifications')->group(function () {
+            Route::get('/user', [NotificationController::class, 'userNotifications']);
+            Route::get('/unread', [NotificationController::class, 'unreadAnnouncements']);
+            Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+            Route::post('/create', [NotificationController::class, 'createNotification']);
+        });
 
         /*
          2.2.1 Role-Based Routes (Active Subscription Required)
@@ -130,17 +155,23 @@ Route::middleware('auth:api')->group(function () {
         Route::middleware('auth.role:superadmin')->group(function () {
             Route::apiResource('users', UserController::class);
 
-            Route::patch('/users/{user}/role', [UserController::class, 'updateRole']);
-            Route::patch('/users/{user}/soft-delete', [UserController::class, 'softDelete']);
-            Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate']);
+            Route::prefix('users')->group(function () {
+                Route::patch('/{user}/role', [UserController::class, 'updateRole']);
+                Route::patch('/{user}/soft-delete', [UserController::class, 'softDelete']);
+                Route::post('/{user}/impersonate', [UserController::class, 'impersonate']);
+            });
+            Route::prefix('organizations')->group(function () {
             // Superadmin-only endpoints for creating/updating/deleting organizations
-            Route::post('/organizations', [OrganizationController::class, 'store']);
-            Route::patch('/organizations/{organization}', [OrganizationController::class, 'update']);
-            Route::delete('/organizations/{organization}', [OrganizationController::class, 'destroy']);
-
-            Route::get('/announcements', [NotificationController::class, 'allAnnouncements']);
-            Route::get('/announcements/{id}', [NotificationController::class, 'showAnnouncement']);
+                Route::post('/', [OrganizationController::class, 'store']);
+                Route::patch('/{organization}', [OrganizationController::class, 'update']);
+                Route::delete('/{organization}', [OrganizationController::class, 'destroy']);
+            });
+            Route::prefix('announcements')->group(function () {
+                Route::get('/', [NotificationController::class, 'allAnnouncements']);
+                Route::get('/{id}', [NotificationController::class, 'showAnnouncement']);
+            });
             Route::get('/notifications', [NotificationController::class, 'allNotifications']);
+            
         });
 
         // Dolphin Admin & Superadmin (manage all lead actions)
@@ -155,22 +186,30 @@ Route::middleware('auth:api')->group(function () {
 
         // Organization Admin & Superadmin (allowed to view/list organizations and view groups via controller checks)
         Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {
-            Route::get('/organizations', [OrganizationController::class, 'index']);
-            Route::get('/organizations/{organization}', [OrganizationController::class, 'show']);
+            Route::prefix('organizations')->group(function () {
+                Route::get('/', [OrganizationController::class, 'index']);
+                Route::get('/{organization}', [OrganizationController::class, 'show']);
+            });
 
             // Allow organization admins and superadmins to list and view groups
-            Route::get('/groups', [GroupController::class, 'index']);
-            Route::get('/groups/{group}', [GroupController::class, 'show']);
+            Route::prefix('groups')->group(function () {
+                Route::get('/', [GroupController::class, 'index']);
+                Route::get('/{group}', [GroupController::class, 'show']);
+            });
 
-            Route::apiResource('members', MemberController::class);
-            Route::get('/member-roles', [MemberRoleController::class, 'index']);
+            Route::prefix('members')->group(function () {
+                Route::apiResource('members', MemberController::class);
+                Route::get('/member-roles', [MemberRoleController::class, 'index']);
+            });
         });
 
         // Organization Admin only for managing groups (create/update/delete)
         Route::middleware('auth.role:organizationadmin')->group(function () {
-            Route::post('/groups', [GroupController::class, 'store']);
-            Route::patch('/groups/{group}', [GroupController::class, 'update']);
-            Route::delete('/groups/{group}', [GroupController::class, 'destroy']);
+            Route::prefix('groups')->group(function () {
+                Route::post('/', [GroupController::class, 'store']);
+                Route::patch('/{group}', [GroupController::class, 'update']);
+                Route::delete('/{group}', [GroupController::class, 'destroy']);
+            });
         });
         
         // Multiple Admin Roles

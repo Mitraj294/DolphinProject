@@ -16,9 +16,9 @@
       <span class="navbar-page">{{ pageTitle }}</span>
     </div>
     <div class="navbar-actions">
-      <!-- Show bell only if not superadmin -->
+      <!-- Show bell for every role except superadmin -->
       <router-link
-        v-if="!['superadmin', 'salesperson'].includes(roleName)"
+        v-if="roleName !== 'superadmin'"
         to="/get-notification"
         style="display: flex; align-items: center; position: relative"
       >
@@ -186,6 +186,7 @@ export default {
       _boundFetchUnread: null,
       _boundUpdateNotificationCount: null,
       _boundAuthUpdated: null,
+      _boundCountSync: null,
     };
   },
   setup() {
@@ -404,8 +405,14 @@ export default {
       try {
         // Only fetch unread notifications when the subscription is active (or unknown)
         const subStatus = storage.get('subscription_status');
-        if (subStatus && subStatus !== 'active') {
-          // subscription not active: do not call notifications endpoint
+        const currentRole = this.roleName || authMiddleware.getRole();
+        const bypassRoles = ['dolphinadmin', 'superadmin', 'salesperson'];
+        if (
+          subStatus &&
+          subStatus !== 'active' &&
+          !bypassRoles.includes(currentRole)
+        ) {
+          // subscription not active: do not call notifications endpoint for billable roles
           this.notificationCount = 0;
           storage.set('notificationCount', String(0));
           return;
@@ -743,6 +750,13 @@ export default {
     window.addEventListener('notification-updated', this._boundFetchUnread);
     window.addEventListener('auth-updated', this._boundAuthUpdated);
     window.addEventListener('storage', this._boundUpdateNotificationCount);
+    this._boundCountSync = (event) => {
+      const incoming = event?.detail?.count;
+      if (typeof incoming !== 'number' || Number.isNaN(incoming)) return;
+      this.notificationCount = incoming;
+      storage.set('notificationCount', String(incoming));
+    };
+    window.addEventListener('notification-count-sync', this._boundCountSync);
 
     if (this.$root && this.$root.$on) {
       this.$root.$on('page-title-override', (val) => {
@@ -796,6 +810,12 @@ export default {
     }
     if (this._boundAuthUpdated) {
       window.removeEventListener('auth-updated', this._boundAuthUpdated);
+    }
+    if (this._boundCountSync) {
+      window.removeEventListener(
+        'notification-count-sync',
+        this._boundCountSync
+      );
     }
     document.body.classList.remove('logout-overlay-active');
     if (this.$root && this.$root.$off) this.$root.$off('page-title-override');
