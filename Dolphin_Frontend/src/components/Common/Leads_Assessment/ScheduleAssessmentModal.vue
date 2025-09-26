@@ -370,8 +370,7 @@ export default {
         this.$emit('close');
       } catch (error) {
         console.error('Failed to schedule assessment:', error);
-        const errorDetail =
-          error.response?.data?.message || 'Failed to schedule assessment.';
+        const errorDetail = error.response?.data?.message || '';
         this.toast.add({
           severity: 'error',
           summary: 'Error',

@@ -397,46 +397,68 @@ export default {
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
 
+        // 2) Queue individual scheduled emails. Use allSettled so one failing
+        // recipient doesn't cancel the whole batch (we'll surface failures below).
         const emailPromises = (selectedMembers || []).map((member) => {
           if (member && member.email) {
-            let group_id =
+            const group_id =
               member.group_id ||
               (Array.isArray(member.group_ids) && member.group_ids[0]) ||
               (Array.isArray(groupIds) && groupIds.length === 1
                 ? groupIds[0]
                 : null);
-            return axios.post(
-              `${base}/api/schedule-email`,
-              {
-                recipient_email: member.email,
-                subject: 'Assessment Scheduled',
-                body: `You have an assessment scheduled: ${this.selectedAssessment.name}`,
-                send_at: sendAt,
-                assessment_id: this.selectedAssessment.id,
-                member_id: member.id,
-                group_id: group_id,
-              },
-              { headers: { Authorization: `Bearer ${authToken}` } }
-            );
+            return axios
+              .post(
+                `${base}/api/schedule-email`,
+                {
+                  recipient_email: member.email,
+                  subject: 'Assessment Scheduled',
+                  body: `You have an assessment scheduled: ${this.selectedAssessment.name}`,
+                  send_at: sendAt,
+                  assessment_id: this.selectedAssessment.id,
+                  member_id: member.id,
+                  group_id: group_id,
+                },
+                { headers: { Authorization: `Bearer ${authToken}` } }
+              )
+              .catch((err) => ({ error: err, member }));
           }
-          return Promise.resolve();
+          return Promise.resolve({ skipped: true });
         });
 
-        await Promise.all(emailPromises);
+        const results = await Promise.allSettled(emailPromises);
+        const failed = results
+          .filter((r) => r.status === 'fulfilled' && r.value && r.value.error)
+          .map((r) => r.value && r.value.member?.email)
+          .filter(Boolean);
 
-        this._showToast(
-          'success',
-          'Scheduled',
-          'Assessment scheduled and emails queued!'
-        );
+        const msg = failed.length
+          ? 'Assessment scheduled - ' + failed.length + ' email(s) failed'
+          : 'Assessment scheduled';
+        this._showToast('success', 'Scheduled', msg);
+
+        // Close modal then refresh the single assessment's schedule to avoid
+        // a full re-initialize (less disruptive and faster).
         this.closeScheduleModal();
-        // Refresh all data to include new schedule status
-        await this.initializeComponent();
+        try {
+          const updated = await this.fetchScheduleForAssessment(
+            this.selectedAssessment,
+            authToken
+          );
+          // Replace the matching assessment in the list (preserve ordering)
+          this.assessments = this.assessments.map((a) =>
+            a.id === updated.id ? updated : a
+          );
+        } catch (refreshErr) {
+          // If single refresh fails, fall back to full refresh (best-effort)
+          console.warn(
+            '[AssessmentsCard] Failed to refresh single schedule, falling back to full refresh.',
+            refreshErr
+          );
+          await this.initializeComponent();
+        }
       } catch (e) {
         console.error('Failed to schedule assessment', e);
-        const msg =
-          e?.response?.data?.message || 'Failed to schedule assessment.';
-        this._showToast('error', 'Error', msg);
       } finally {
         this.loading = false;
       }
