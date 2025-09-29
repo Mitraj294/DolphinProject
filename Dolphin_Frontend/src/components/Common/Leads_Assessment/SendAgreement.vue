@@ -97,10 +97,13 @@ export default {
   components: { MainLayout, Editor, FormInput, FormRow, FormLabel },
   data() {
     return {
+      leadId: null,
       to: '',
+      recipientName: '',
       subject: 'Agreement and Payment Link',
       templateContent: '', // empty template
       sending: false,
+      templateContent: '',
       priceId: null,
       tinymceConfigSelfHosted: {
         height: 500,
@@ -151,17 +154,100 @@ export default {
       },
     };
   },
+  mounted() {
+    const leadId = this.$route.params.id || this.$route.query.lead_id || null;
+    this.leadId = leadId;
+
+    if (leadId) {
+      this.loadInitialLeadData(leadId);
+    } else {
+      // If no lead ID, fetch a generic template
+      this.fetchServerTemplate();
+    }
+  },
+  watch: {
+    to(newEmail, oldEmail) {
+      if (newEmail && newEmail !== oldEmail && !this.leadId) {
+        this.fetchServerTemplate();
+      }
+    },
+  },
   methods: {
+    async loadInitialLeadData(leadId) {
+      try {
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+        const storage = require('@/services/storage').default;
+        const token = storage.get('authToken');
+        const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        const leadObj = res.data?.lead;
+        if (leadObj) {
+          this.to = leadObj.email || '';
+          this.recipientName = `${leadObj.first_name || ''} ${
+            leadObj.last_name || ''
+          }`.trim();
+          // Now fetch the template with the lead's data
+      this.fetchServerTemplate();
+    }
+      } catch (e) {
+        console.error('Failed to load initial lead data:', e);
+        this.templateContent = '<p>Error: Could not load lead data.</p>';
+      }
+    },
+
+    async fetchServerTemplate() {
+      try {
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+        const name =
+          this.recipientName ||
+          this.to.substring(0, this.to.indexOf('@')) ||
+          '';
+
+        const params = {
+          // A dummy checkout_url is fine for the template, it will be replaced on send
+          checkout_url: '#',
+          name: name,
+        };
+
+        const res = await axios.get(
+          `${API_BASE_URL}/api/email-template/lead-agreement`,
+          { params }
+        );
+        let html = res?.data ? String(res.data) : '';
+
+        // Extract only the body content for the editor
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const container = doc.querySelector('.email-container');
+        if (container) html = container.innerHTML;
+
+        this.templateContent = html;
+      } catch (e) {
+        console.error('Failed to fetch server template:', e?.message || e);
+        this.templateContent =
+          '<p>Error: Could not load the email template.</p>';
+      }
+    },
+
     async handleSendAgreement() {
       if (this.sending) return;
       this.sending = true;
       try {
+        const name =
+          this.recipientName ||
+          this.to.substring(0, this.to.indexOf('@')) ||
+          '';
+
         const payload = {
           to: this.to,
           subject: this.subject,
           body: this.templateContent,
+          name: name,
         };
         if (this.priceId) payload.price_id = this.priceId;
+        if (this.leadId) payload.lead_id = this.leadId;
 
         await axios.post(
           `${process.env.VUE_APP_API_BASE_URL}/api/leads/send-agreement`,

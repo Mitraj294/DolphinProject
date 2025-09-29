@@ -2,5 +2,11 @@
   "dependencies": {
     "@tinymce/tinymce-vue": "^4.0.7",
     "tinymce": "^8.0.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.36.0",
+    "eslint": "^9.36.0",
+    "eslint-plugin-vue": "^10.5.0",
+    "globals": "^16.4.0"
   }
 }
