@@ -11,26 +11,18 @@
                 placeholder="Search Leads ...."
                 v-model="search"
               />
-              <div class="table-search-bar-filters">
-                <FormDropdown
-                  v-model="form.organization_size"
-                  icon="fas fa-users"
-                  :options="[
-                    { value: null, text: 'Select', disabled: true },
-                    ...orgSizeOptions.map((o) => ({ value: o, text: o })),
-                  ]"
-                  required
-                />
-                <FormDropdown
-                  v-model="form.find_us"
-                  icon="fas fa-search"
-                  :options="[
-                    { value: null, text: 'Select', disabled: true },
-                    ...findUsOptions.map((o) => ({ value: o, text: o })),
-                  ]"
-                  required
-                />
-              </div>
+              <FormDropdown
+                v-model="form.organization_size"
+                icon="fas fa-users"
+                :options="orgSizeOptionsWithDefault"
+                required
+              />
+              <FormDropdown
+                v-model="form.find_us"
+                icon="fas fa-search"
+                :options="findUsOptionsWithDefault"
+                required
+              />
             </div>
 
             <button
@@ -55,15 +47,16 @@
                 />
                 <tbody>
                   <tr
-                    v-for="(lead, idx) in paginatedLeads"
+                    v-for="lead in paginatedLeads"
                     :key="lead.id || lead.email"
                   >
                     <td data-label="Contact">
                       <span
                         class="lead-contact-link"
                         @click="goToLeadDetail(lead)"
-                        >{{ lead.contact }}</span
                       >
+                        {{ lead.contact }}
+                      </span>
                     </td>
                     <td data-label="Email">{{ lead.email }}</td>
                     <td data-label="Phone Number">{{ lead.phone }}</td>
@@ -123,7 +116,6 @@
                             class="leads-menu-icon"
                           />
                         </button>
-                        <!-- menu is rendered globally via teleport (see below) -->
                       </div>
                     </td>
                   </tr>
@@ -132,6 +124,7 @@
             </div>
           </div>
         </div>
+
         <Pagination
           :pageSize="pageSize"
           :pageSizes="[10, 25, 100]"
@@ -143,6 +136,7 @@
           @selectPageSize="selectPageSize"
           @togglePageDropdown="showPageDropdown = !showPageDropdown"
         />
+
         <div
           v-if="showNotesModal"
           class="notes-modal-overlay"
@@ -172,15 +166,12 @@
             </div>
           </div>
         </div>
-        <!-- Teleported menu rendered at body to avoid table clipping -->
+
         <teleport to="body">
           <div
             v-if="menuOpen"
             class="leads-menu custom-leads-menu teleported-leads-menu"
-            :style="{
-              top: `${menuPosition.top}px`,
-              right: '33px',
-            }"
+            :style="{ top: `${menuPosition.top}px`, right: '33px' }"
             role="menu"
             @click.stop
           >
@@ -207,14 +198,16 @@ import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
-import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
+
 // Component Imports
 import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
+import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
 import Toast from 'primevue/toast';
+
+// Utilities and Services
 import { findUsOptions, orgSizeOptions } from '@/utils/formUtils';
-// Services
 import storage from '@/services/storage.js';
 
 export default {
@@ -227,24 +220,32 @@ export default {
     FormDropdown,
   },
   setup() {
+    // COMPONENT STATE
     const router = useRouter();
     const toast = useToast();
+    const confirm = useConfirm();
 
     const leads = ref([]);
-    const menuOpen = ref(null);
-    const menuPosition = ref({ top: 0, left: 0 });
+    const search = ref('');
+    const form = ref({ organization_size: null, find_us: null });
+    const isLoading = ref(false);
+
+    // TABLE AND PAGINATION STATE
+    const sortKey = ref('');
+    const sortAsc = ref(true);
     const pageSize = ref(10);
     const currentPage = ref(1);
     const showPageDropdown = ref(false);
+
+    // MODAL AND MENU STATE
+    const menuOpen = ref(null);
+    const menuPosition = ref({ top: 0, left: 0 });
     const showNotesModal = ref(false);
     const notesModalMode = ref('add');
     const notesInput = ref('');
     const currentLead = ref(null);
-    const sortKey = ref('');
-    const sortAsc = ref(true);
-    const isLoading = ref(false);
-    const search = ref('');
 
+    // STATIC DATA
     const customMenuOptions = [
       'Schedule Follow up',
       'Schedule Demo',
@@ -272,15 +273,57 @@ export default {
       { label: 'Actions', key: 'actions', width: '80px' },
     ];
 
-    const form = ref({
-      organization_size: null,
-      find_us: null,
-    });
+    const orgSizeOptionsWithDefault = [
+      { value: null, text: 'Select', disabled: true },
+      ...orgSizeOptions.map((o) => ({ value: o, text: o })),
+    ];
 
-    // Confirm service (styled confirm dialog)
-    const confirm = useConfirm();
+    const findUsOptionsWithDefault = [
+      { value: null, text: 'Select', disabled: true },
+      ...findUsOptions.map((o) => ({ value: o, text: o })),
+    ];
 
-    // Delete (soft-delete) a lead after confirmation using styled confirm dialog
+    // API METHODS
+
+    const fetchLeads = async () => {
+      isLoading.value = true;
+      try {
+        const token = storage.get('authToken');
+        if (!token) {
+          router.push('/login');
+          return;
+        }
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+        const response = await axios.get(`${API_BASE_URL}/api/leads`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        leads.value = response.data.map((lead) => ({
+          id: lead.id,
+          contact: `${lead.first_name} ${lead.last_name}`,
+          email: lead.email,
+          phone: lead.phone,
+          organization: lead.organization_name,
+          size: lead.organization_size,
+          source: lead.find_us,
+          // If the lead has a registered_at timestamp, treat it as Registered in the UI
+          status: lead.registered_at ? 'Registered' : lead.status,
+          notes: lead.notes,
+          notesAction: lead.notes ? 'View' : 'Add',
+        }));
+      } catch (error) {
+        console.error('Failed to fetch leads:', error);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to fetch leads.',
+          life: 3000,
+        });
+      } finally {
+        isLoading.value = false;
+      }
+    };
+
     const deleteLead = async (lead) => {
       if (!lead || !lead.id) return;
 
@@ -326,6 +369,44 @@ export default {
       });
     };
 
+    const updateLeadNotes = async () => {
+      if (!currentLead.value) return;
+      try {
+        const token = storage.get('authToken');
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+        await axios.patch(
+          `${API_BASE_URL}/api/leads/${currentLead.value.id}`,
+          { notes: notesInput.value },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        toast.add({
+          severity: 'success',
+          summary: 'Success',
+          detail: 'Notes updated successfully.',
+          life: 3000,
+        });
+        const lead = leads.value.find((l) => l.id === currentLead.value.id);
+        if (lead) {
+          lead.notes = notesInput.value;
+          lead.notesAction = notesInput.value ? 'View' : 'Add';
+        }
+        closeNotesModal();
+      } catch (error) {
+        console.error('Failed to update notes:', error);
+        toast.add({
+          severity: 'error',
+          summary: 'Error',
+          detail: 'Failed to update notes.',
+          life: 3000,
+        });
+      }
+    };
+
+    // COMPUTED PROPERTIES FOR FILTERING, SORTING, AND PAGINATION
+
+    /**
+     * Filters the list of leads based on active search and form filter criteria.
+     */
     const filteredLeads = computed(() => {
       let filtered = leads.value;
 
@@ -354,20 +435,28 @@ export default {
       return filtered;
     });
 
-    const statusOrder = {
+    /**
+     * A map to define the custom sorting order for lead statuses.
+     */
+    const STATUS_ORDER = {
       'Lead Stage': 1,
       'Assessment Sent': 2,
       Registered: 3,
     };
 
+    /**
+     * Sorts the filtered list of leads based on the selected column and sort direction.
+     */
     const sortedLeads = computed(() => {
       if (!sortKey.value) return filteredLeads.value;
 
-      return [...filteredLeads.value].sort((a, b) => {
+      const leadsToSort = [...filteredLeads.value];
+
+      leadsToSort.sort((a, b) => {
         let comparison = 0;
         if (sortKey.value === 'status') {
-          const orderA = statusOrder[a.status || 'Lead Stage'] || 0;
-          const orderB = statusOrder[b.status || 'Lead Stage'] || 0;
+          const orderA = STATUS_ORDER[a.status || 'Lead Stage'] || 0;
+          const orderB = STATUS_ORDER[b.status || 'Lead Stage'] || 0;
           comparison = orderA - orderB;
         } else {
           const valA = a[sortKey.value];
@@ -377,6 +466,8 @@ export default {
         }
         return sortAsc.value ? comparison : -comparison;
       });
+
+      return leadsToSort;
     });
 
     const totalPages = computed(() =>
@@ -397,44 +488,7 @@ export default {
       return pages;
     });
 
-    const fetchLeads = async () => {
-      isLoading.value = true;
-      try {
-        const token = storage.get('authToken');
-        if (!token) {
-          router.push('/login');
-          return;
-        }
-        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-        const response = await axios.get(`${API_BASE_URL}/api/leads`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        leads.value = response.data.map((lead) => ({
-          id: lead.id,
-          contact: `${lead.first_name} ${lead.last_name}`,
-          email: lead.email,
-          phone: lead.phone,
-          organization: lead.organization_name,
-          size: lead.organization_size,
-          source: lead.find_us,
-          status: lead.status,
-          notes: lead.notes,
-          notesAction: lead.notes ? 'View' : 'Add',
-        }));
-      } catch (error) {
-        console.error('Failed to fetch leads:', error);
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to fetch leads.',
-          life: 3000,
-        });
-      } finally {
-        isLoading.value = false;
-      }
-    };
-
+    // UI METHODS
     const sortBy = (key) => {
       if (sortKey.value === key) {
         sortAsc.value = !sortAsc.value;
@@ -486,19 +540,6 @@ export default {
       menuOpen.value = lead;
     };
 
-    const handleClickOutside = (event) => {
-      if (!menuOpen.value) return;
-      const clickedInActions = event.target.closest('.actions-row');
-      const clickedInMenu = event.target.closest('.teleported-leads-menu');
-      if (!clickedInActions && !clickedInMenu) {
-        menuOpen.value = null;
-      }
-    };
-
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape' && menuOpen.value) menuOpen.value = null;
-    };
-
     const openNotesModal = (lead) => {
       currentLead.value = lead;
       notesInput.value = lead.notes || '';
@@ -510,39 +551,6 @@ export default {
       showNotesModal.value = false;
       currentLead.value = null;
       notesInput.value = '';
-    };
-
-    const updateLeadNotes = async () => {
-      if (!currentLead.value) return;
-      try {
-        const token = storage.get('authToken');
-        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-        await axios.patch(
-          `${API_BASE_URL}/api/leads/${currentLead.value.id}`,
-          { notes: notesInput.value },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        toast.add({
-          severity: 'success',
-          summary: 'Success',
-          detail: 'Notes updated successfully.',
-          life: 3000,
-        });
-        const lead = leads.value.find((l) => l.id === currentLead.value.id);
-        if (lead) {
-          lead.notes = notesInput.value;
-          lead.notesAction = notesInput.value ? 'View' : 'Add';
-        }
-        closeNotesModal();
-      } catch (error) {
-        console.error('Failed to update notes:', error);
-        toast.add({
-          severity: 'error',
-          summary: 'Error',
-          detail: 'Failed to update notes.',
-          life: 3000,
-        });
-      }
     };
 
     const goToLeadDetail = (lead) => {
@@ -574,6 +582,21 @@ export default {
       }
     };
 
+    // Click/keyboard handlers used to close the teleported menu when user clicks outside or presses Escape
+    const handleClickOutside = (event) => {
+      if (!menuOpen.value) return;
+      const clickedInActions = event.target.closest('.actions-row');
+      const clickedInMenu = event.target.closest('.teleported-leads-menu');
+      if (!clickedInActions && !clickedInMenu) {
+        menuOpen.value = null;
+      }
+    };
+
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape' && menuOpen.value) menuOpen.value = null;
+    };
+
+    // LIFECYCLE HOOKS
     onMounted(() => {
       fetchLeads();
       document.addEventListener('click', handleClickOutside);
@@ -616,6 +639,10 @@ export default {
       deleteLead,
       findUsOptions,
       orgSizeOptions,
+      orgSizeOptionsWithDefault,
+      findUsOptionsWithDefault,
+      handleClickOutside,
+      onKeyDown,
       form,
       search,
     };

@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Lead;
+use App\Models\User;
 
 class SendAssessmentController extends Controller
 {
@@ -52,8 +53,11 @@ class SendAssessmentController extends Controller
             }
 
             $to = trim((string)$validated['to']);
+            $responsePayload = null;
+            $responseStatus = 200;
             if (!$to || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-                return response()->json(['error' => 'Invalid recipient email'], 400);
+                $responsePayload = ['error' => 'Invalid recipient email'];
+                $responseStatus = 400;
             }
 
             // Send email
@@ -74,25 +78,79 @@ class SendAssessmentController extends Controller
                 $htmlBody = $wrapper;
             }
 
-            Mail::html($htmlBody, function ($message) use ($to, $validated) {
-                $message->to($to)
-                    ->subject($validated['subject'] ?: 'Complete Your Registration');
-            });
-            Log::info('Mail sent', ['to' => $validated['to']]);
+            if (is_null($responsePayload)) {
+                try {
+                    Mail::html($htmlBody, function ($message) use ($to, $validated) {
+                        $message->to($to)
+                            ->subject($validated['subject'] ?: 'Complete Your Registration');
+                    });
+                    Log::info('Mail sent', ['to' => $validated['to']]);
+                } catch (\Exception $mailException) {
+                    // Log full exception details for troubleshooting
+                    Log::error('SendAssessmentController: Mail send failed', [
+                        'to' => $to,
+                        'error' => $mailException->getMessage(),
+                        'trace' => $mailException->getTraceAsString(),
+                    ]);
 
-            // If we have a lead record, mark it as Assessment Sent
+                    $responsePayload = [
+                        'error' => 'Failed to send email',
+                        'details' => $mailException->getMessage(),
+                    ];
+                    $responseStatus = 500;
+                }
+            }
+
+            // If we have a lead record, record that an assessment was sent.
+            // Do not overwrite a lead that is already Registered.
             try {
                 if ($lead) {
-                    $lead->status = 'Assessment Sent';
+                    // Always record the timestamp that an assessment was sent
                     $lead->assessment_sent_at = now();
+
+                    // Determine whether the lead is already registered.
+                    $isRegistered = false;
+                    if (!empty($lead->registered_at) || (!empty($lead->status) && strtolower($lead->status) === 'registered')) {
+                        $isRegistered = true;
+                    }
+
+                    // Additionally, check the users table: if a user exists with the lead's email,
+                    // treat the lead as Registered and record registered_at if missing.
+                    try {
+                        if (!empty($lead->email)) {
+                            $matchedUser = User::where('email', $lead->email)->first();
+                            if ($matchedUser) {
+                                $isRegistered = true;
+                                if (empty($lead->registered_at)) {
+                                    $lead->registered_at = now();
+                                }
+                                // Ensure status reflects Registered
+                                $lead->status = 'Registered';
+                                Log::info('SendAssessmentController: Lead matched to user; marking Registered', ['lead_id' => $lead->id, 'user_id' => $matchedUser->id]);
+                            }
+                        }
+                    } catch (\Exception $userCheckEx) {
+                        Log::warning('SendAssessmentController: Failed checking users table for lead email', ['lead_id' => $lead->id, 'error' => $userCheckEx->getMessage()]);
+                    }
+
+                    if ($isRegistered) {
+                        // Keep Registered status as-is; assessment_sent_at already recorded below
+                        Log::info('SendAssessmentController: Lead already registered; skipping status overwrite', ['lead_id' => $lead->id]);
+                    } else {
+                        $lead->status = 'Assessment Sent';
+                    }
+
                     $lead->save();
                 }
             } catch (\Exception $e) {
-                
                 Log::error('Failed to update lead status after sending assessment', ['error' => $e->getMessage(), 'lead_id' => $lead ? $lead->id : null]);
             }
 
-            return response()->json(['message' => 'Assessment email sent successfully.']);
+            if (is_null($responsePayload)) {
+                $responsePayload = ['message' => 'Assessment email sent successfully.'];
+                $responseStatus = 200;
+            }
+            return response()->json($responsePayload, $responseStatus);
         } catch (\Exception $e) {
             Log::error('SendAssessmentController@send error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['error' => $e->getMessage()], 500);
