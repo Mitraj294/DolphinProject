@@ -40,6 +40,7 @@ Route::prefix('password')->group(function () {
 
 // Stripe Webhook
 Route::post('/stripe/webhook', [StripeSubscriptionController::class, 'handleWebhook']);
+Route::post('/stripe/checkout-session', [StripeSubscriptionController::class, 'createCheckoutSession']);
 
 // Public Assessments & Leads
 Route::prefix('assessments')->group(function () {
@@ -55,10 +56,13 @@ Route::prefix('leads')->group(function () {
         Route::get('/prefill', [LeadController::class, 'prefill']);
         Route::post('/send-assessment', [SendAssessmentController::class, 'send']);
         Route::post('/send-agreement', [SendAgreementController::class, 'send']);
+    // Validate a guest token generated when sending an agreement email.
+    Route::get('/guest-validate', [SendAgreementController::class, 'validateGuest']);
 });
 
 Route::prefix('email-template')->group(function () {
         Route::get('/lead-registration', [LeadController::class, 'leadRegistration']);
+        Route::get('/lead-agreement', [LeadController::class, 'leadAgreement']);
 });
 
 Route::post('/schedule-email', [ScheduledEmailController::class, 'store']);
@@ -108,7 +112,6 @@ Route::middleware('auth:api')->group(function () {
 
     // Subscription & Billing Management
     Route::prefix('stripe')->group(function () {
-        Route::post('/checkout-session', [StripeSubscriptionController::class, 'createCheckoutSession']);
         Route::post('/customer-portal', [StripeSubscriptionController::class, 'createCustomerPortal']);
     });
 
@@ -216,4 +219,3 @@ Route::middleware('auth:api')->group(function () {
         });
     });
 });
-

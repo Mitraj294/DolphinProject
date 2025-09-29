@@ -30,7 +30,7 @@
               </div>
             </FormRow>
 
-            <div class="send-agreement-label">Email Body (Editable)</div>
+            <div class="send-agreement-label">Editable Template</div>
 
             <div class="send-agreement-template-box">
               <Editor
@@ -101,10 +101,9 @@ export default {
       to: '',
       recipientName: '',
       subject: 'Agreement and Payment Link',
-      templateContent: '', // empty template
-      sending: false,
       templateContent: '',
-      priceId: null,
+      sending: false,
+
       tinymceConfigSelfHosted: {
         height: 500,
         base_url: '/tinymce',
@@ -189,8 +188,8 @@ export default {
             leadObj.last_name || ''
           }`.trim();
           // Now fetch the template with the lead's data
-      this.fetchServerTemplate();
-    }
+          this.fetchServerTemplate();
+        }
       } catch (e) {
         console.error('Failed to load initial lead data:', e);
         this.templateContent = '<p>Error: Could not load lead data.</p>';
@@ -205,9 +204,10 @@ export default {
           this.to.substring(0, this.to.indexOf('@')) ||
           '';
 
+        // Use the subscriptions page URL so the template contains a usable link
+        const checkoutUrl = 'http://127.0.0.1:8080/subscriptions/plans';
         const params = {
-          // A dummy checkout_url is fine for the template, it will be replaced on send
-          checkout_url: '#',
+          checkout_url: checkoutUrl,
           name: name,
         };
 
@@ -240,13 +240,25 @@ export default {
           this.to.substring(0, this.to.indexOf('@')) ||
           '';
 
+        // Ensure the template contains the real checkout link instead of placeholders
+        const checkoutUrl = 'http://127.0.0.1:8080/subscriptions/plans';
+        // Replace href="#" or href="#0" placeholders inserted by the editor with the real URL.
+        // Use a function replacement to preserve the surrounding quote character.
+        const bodyWithLinks = String(this.templateContent).replace(
+          /href=(['"])#(?:0)?\1/g,
+          (match, quote) => {
+            return `href=${quote}${checkoutUrl}${quote}`;
+          }
+        );
+
         const payload = {
           to: this.to,
           subject: this.subject,
-          body: this.templateContent,
+          body: bodyWithLinks,
           name: name,
+          checkout_url: checkoutUrl,
         };
-        if (this.priceId) payload.price_id = this.priceId;
+
         if (this.leadId) payload.lead_id = this.leadId;
 
         await axios.post(
@@ -266,6 +278,8 @@ export default {
           detail += ` ${error.response.data.error}`;
         } else if (error?.message) {
           detail += ` ${error.message}`;
+        } else {
+          throw error;
         }
         this.$toast.add({
           severity: 'error',

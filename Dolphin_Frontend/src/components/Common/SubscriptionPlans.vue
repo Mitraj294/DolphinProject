@@ -1,11 +1,94 @@
 <template>
-  <MainLayout>
-    <div class="page">
+  <div>
+    <!-- Normal site view: render inside MainLayout -->
+    <MainLayout v-if="!isGuestView">
+      <div class="page">
+        <div class="subscription-plans-outer">
+          <div class="subscription-plans-card">
+            <div class="subscription-plans-header"></div>
+            <div class="subscription-plans-header-spacer"></div>
+            <div class="subscription-plans-container">
+              <div class="subscription-plans-title">Subscription Plans</div>
+              <div
+                class="subscription-plans-desc"
+                style="max-width: 600px"
+              >
+                Choose the plan that fits your needs. Whether you’re just
+                starting or looking for long-term value, we’ve got flexible
+                options to help you grow without limits.
+              </div>
+              <div class="subscription-plans-options">
+                <div
+                  class="plan-card"
+                  :class="{ 'plan-card--current': userPlan === 250 }"
+                >
+                  <div class="plan-card-header">
+                    <span class="plan-card-name">Basic</span>
+                  </div>
+                  <div class="plan-card-price">
+                    $250 <span class="plan-card-period">/month</span>
+                  </div>
+                  <button
+                    :class="[
+                      'plan-card-btn',
+                      { 'plan-card-btn--current': userPlan === 250 },
+                    ]"
+                    :disabled="isLoading"
+                    @click="basicBtnAction()"
+                  >
+                    <span v-if="isLoading && userPlan !== 250"
+                      >Redirecting...</span
+                    >
+                    <span v-else>{{ basicBtnText }}</span>
+                  </button>
+                </div>
+                <div
+                  class="plan-card"
+                  :class="{ 'plan-card--current': userPlan === 2500 }"
+                >
+                  <span class="plan-card-badge">Save 2 Months</span>
+                  <div class="plan-card-header">
+                    <span class="plan-card-name">Standard</span>
+                  </div>
+                  <div class="plan-card-price">
+                    $2500 <span class="plan-card-period">/annual</span>
+                  </div>
+                  <button
+                    :class="[
+                      'plan-card-btn',
+                      { 'plan-card-btn--current': userPlan === 2500 },
+                    ]"
+                    :disabled="isLoading"
+                    @click="standardBtnAction()"
+                  >
+                    <span v-if="isLoading && userPlan !== 2500"
+                      >Redirecting...</span
+                    >
+                    <span v-else>{{ standardBtnText }}</span>
+                  </button>
+                </div>
+              </div>
+              <div
+                class="subscription-plans-footer"
+                style="max-width: 600px"
+              >
+                Upgrade anytime, cancel anytime. No hidden fees – just simple,
+                transparent pricing.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
+
+    <!-- Guest standalone view: minimal page (no main layout) -->
+    <div
+      v-else
+      class="page guest-view"
+    >
       <div class="subscription-plans-outer">
         <div class="subscription-plans-card">
-          <div class="subscription-plans-header">
-            <!-- Reserved for future actions, keep for layout consistency -->
-          </div>
+          <div class="subscription-plans-header"></div>
           <div class="subscription-plans-header-spacer"></div>
           <div class="subscription-plans-container">
             <div class="subscription-plans-title">Subscription Plans</div>
@@ -13,15 +96,11 @@
               class="subscription-plans-desc"
               style="max-width: 600px"
             >
-              Choose the plan that fits your needs. Whether you’re just starting
-              or looking for long-term value, we’ve got flexible options to help
-              you grow without limits.
+              Choose a plan to continue. This page was opened from an invitation
+              and may be pre-filled.
             </div>
             <div class="subscription-plans-options">
-              <div
-                class="plan-card"
-                :class="{ 'plan-card--current': userPlan === 250 }"
-              >
+              <div class="plan-card">
                 <div class="plan-card-header">
                   <span class="plan-card-name">Basic</span>
                 </div>
@@ -29,23 +108,15 @@
                   $250 <span class="plan-card-period">/month</span>
                 </div>
                 <button
-                  :class="[
-                    'plan-card-btn',
-                    { 'plan-card-btn--current': userPlan === 250 },
-                  ]"
+                  class="plan-card-btn"
                   :disabled="isLoading"
-                  @click="basicBtnAction()"
+                  @click="startStripeCheckout('monthly')"
                 >
-                  <span v-if="isLoading && userPlan !== 250"
-                    >Redirecting...</span
-                  >
-                  <span v-else>{{ basicBtnText }}</span>
+                  <span v-if="isLoading">Redirecting...</span>
+                  <span v-else>Get Started</span>
                 </button>
               </div>
-              <div
-                class="plan-card"
-                :class="{ 'plan-card--current': userPlan === 2500 }"
-              >
+              <div class="plan-card">
                 <span class="plan-card-badge">Save 2 Months</span>
                 <div class="plan-card-header">
                   <span class="plan-card-name">Standard</span>
@@ -54,17 +125,12 @@
                   $2500 <span class="plan-card-period">/annual</span>
                 </div>
                 <button
-                  :class="[
-                    'plan-card-btn',
-                    { 'plan-card-btn--current': userPlan === 2500 },
-                  ]"
+                  class="plan-card-btn"
                   :disabled="isLoading"
-                  @click="standardBtnAction()"
+                  @click="startStripeCheckout('annually')"
                 >
-                  <span v-if="isLoading && userPlan !== 2500"
-                    >Redirecting...</span
-                  >
-                  <span v-else>{{ standardBtnText }}</span>
+                  <span v-if="isLoading">Redirecting...</span>
+                  <span v-else>Get Started</span>
                 </button>
               </div>
             </div>
@@ -72,14 +138,13 @@
               class="subscription-plans-footer"
               style="max-width: 600px"
             >
-              Upgrade anytime, cancel anytime. No hidden fees – just simple,
-              transparent pricing. industry.
+              After payment you'll be redirected to the login page.
             </div>
           </div>
         </div>
       </div>
     </div>
-  </MainLayout>
+  </div>
 </template>
 
 <script>
@@ -99,6 +164,14 @@ export default {
         annually: 'price_1RqAPlPnfSZSgS1X2zY3qP4K',
       },
       userPlan: null, // will hold user's current plan amount (250 or 2500)
+      // guest view flag and prefill data
+      isGuestView: false,
+      guestParams: {
+        email: null,
+        lead_id: null,
+        price_id: null,
+        guest_token: null,
+      },
     };
   },
   computed: {
@@ -186,9 +259,16 @@ export default {
           this.stripePriceIds[period] || this.stripePriceIds.annually;
         const authToken = storage.get('authToken');
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+
+        const payload = { price_id: priceId };
+        if (this.isGuestView) {
+          payload.email = this.guestParams.email;
+          payload.lead_id = this.guestParams.lead_id;
+        }
+
         const res = await axios.post(
           `${API_BASE_URL}/api/stripe/checkout-session`,
-          { price_id: priceId },
+          payload,
           { headers: { Authorization: `Bearer ${authToken}` } }
         );
         if (res.data && res.data.url) {
@@ -224,12 +304,27 @@ export default {
     },
   },
   mounted() {
-    this.fetchUserPlan();
+    // Detect guest query params (email, lead_id, price_id, guest_token) and
+    // switch to a minimal standalone view when present.
+    const qs = new URLSearchParams(window.location.search);
+    const email = qs.get('email');
+    const lead_id = qs.get('lead_id');
+    const price_id = qs.get('price_id');
+    const guest_token = qs.get('guest_token');
+    if (email || lead_id || price_id || guest_token) {
+      this.isGuestView = true;
+      this.guestParams.email = email;
+      this.guestParams.lead_id = lead_id;
+      this.guestParams.price_id = price_id;
+      this.guestParams.guest_token = guest_token;
+    } else {
+      this.fetchUserPlan();
+    }
 
     // If redirected from Stripe Checkout, the URL will contain checkout_session_id
     // Poll subscription status until webhook processed and DB shows active subscription.
-    const qs = new URLSearchParams(window.location.search);
-    const checkoutSessionId = qs.get('checkout_session_id');
+    const params = new URLSearchParams(window.location.search);
+    const checkoutSessionId = params.get('checkout_session_id');
     if (checkoutSessionId) {
       // poll every 2s for up to 30s
       const maxAttempts = 15;

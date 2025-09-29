@@ -329,6 +329,42 @@ class LeadController extends Controller
                 return response($html, 200)->header('Content-Type', 'text/html');
     }
    
+    public function leadAgreement(Request $request)
+    {
+        $checkout_url = $request->query('checkout_url', '#');
+        $name = $request->query('name', '');
+
+        $safeLink = htmlspecialchars($checkout_url, ENT_QUOTES, 'UTF-8');
+        $safeName = htmlspecialchars($name ?: 'User', ENT_QUOTES, 'UTF-8');
+
+        $html = <<<HTML
+        <!doctype html>
+        <html>
+        <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            <title>Agreement and Payment</title>
+        </head>
+        <body>
+            <div class="email-container">
+                <div style="width:100%; padding:40px 0; background-color:#f6f9fc; font-family: Arial, sans-serif;">
+                    <div style="max-width:600px; margin:0 auto; background:#ffffff; border-radius:6px; padding:30px; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="font-size:20px; font-weight:bold; color:#333333; margin-bottom:15px;">Hello {$safeName},</div>
+                        <div style="font-size:16px; color:#555555; line-height:1.5; margin-bottom:25px;">Please find your agreement and payment link below. Click the button to proceed with the subscription.</div>
+                        <div style="text-align:center;">
+                            <a href="{$safeLink}" style="display:inline-block; padding:10px 20px; background-color:#0164A5; color:#ffffff; text-decoration:none; border-radius:50px; font-weight:bold;">Proceed to Payment</a>
+                        </div>
+                        <div style="font-size:13px; color:#888888; text-align:center; margin-top:30px;">If you did not request this, you can safely ignore this email.</div>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        HTML;
+
+        return response($html, 200)->header('Content-Type', 'text/html');
+    }
+
     public function prefill(Request $request)
     {
         $lead = null;

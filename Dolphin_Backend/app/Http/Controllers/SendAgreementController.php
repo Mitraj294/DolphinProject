@@ -27,7 +27,7 @@ class SendAgreementController extends Controller
                 'subject' => 'required|string',
                 'body' => 'required|string',
                 'price_id' => 'nullable|string',
-                'name' => 'nullable|string',
+                'name' => 'required|string',
                 'lead_id' => 'nullable|integer|exists:leads,id',
             ]);
 
@@ -38,14 +38,18 @@ class SendAgreementController extends Controller
                 ? Lead::find($validated['lead_id'])
                 : Lead::where('email', $validated['to'])->first();
 
-            // Create or find user
+            // Create or find user. For lead-created users we won't require them to login
+            // immediately — instead we generate a guest token that can be used to
+            // access the subscription plans page and Stripe checkout flow.
             $user = User::where('email', $validated['to'])->first();
+            // (no guest token persisted in this flow)
             if (!$user) {
                 $passwordPlain = Str::random(12);
+                $nameParts = $this->splitName($validated['name']);
                 $userData = [
                     'email' => $validated['to'],
-                    'first_name' => $lead->first_name ?? ($validated['name'] ?? null),
-                    'last_name' => $lead->last_name ?? null,
+                    'first_name' => $lead->first_name ?? $nameParts['first_name'],
+                    'last_name' => $lead->last_name ?? $nameParts['last_name'],
                     'password' => Hash::make($passwordPlain),
                 ];
 
@@ -72,34 +76,47 @@ class SendAgreementController extends Controller
                 }
             }
 
+            // Generate a guest token for the user so they can login via magic link
+            $user->remember_token = Str::random(60);
+            $user->save();
+
             // Prepare Stripe Checkout
             $priceId = $validated['price_id'] ?? env('DEFAULT_PRICE_ID');
             if (!$priceId) {
                 Log::warning('No price_id provided and DEFAULT_PRICE_ID not set');
             }
 
-            try {
-                Stripe::setApiKey(config('services.stripe.secret'));
-                $frontend = env('FRONTEND_URL', 'http://localhost:8080');
-                $session = StripeSession::create([
-                    'payment_method_types' => ['card'],
-                    'mode' => 'subscription',
-                    'customer_email' => $user->email,
-                    'line_items' => [[
-                        'price' => $priceId,
-                        'quantity' => 1,
-                    ]],
-                    'success_url' => $frontend . '/subscriptions/success?checkout_session_id={CHECKOUT_SESSION_ID}',
-                    'cancel_url' => $frontend . '/subscriptions/plans',
-                ]);
-            } catch (Exception $e) {
-                Log::error('Failed to create Stripe session: ' . $e->getMessage());
-                return response()->json(['error' => 'Failed to create payment session'], 500);
+            $session = null;
+            $checkoutUrl = null;
+
+            if ($priceId) {
+                try {
+                    Stripe::setApiKey(config('services.stripe.secret'));
+                    $frontend = env('FRONTEND_URL', 'http://localhost:8080');
+                    $session = StripeSession::create([
+                        'payment_method_types' => ['card'],
+                        'mode' => 'subscription',
+                        'customer_email' => $user->email,
+                        'line_items' => [[
+                            'price' => $priceId,
+                            'quantity' => 1,
+                        ]],
+                        'success_url' => $frontend . '/subscriptions/success?checkout_session_id={CHECKOUT_SESSION_ID}',
+                        'cancel_url' => $frontend . '/subscriptions/plans',
+                    ]);
+                    $checkoutUrl = $session->url;
+                } catch (Exception $e) {
+                    Log::error('Failed to create Stripe session: ' . $e->getMessage());
+                    return response()->json(['error' => 'Failed to create payment session'], 500);
+                }
+            } else {
+                Log::info('Skipping Stripe session creation because no price_id/default price is available.');
             }
 
-            // Insert checkout URL into email body
-            $checkoutUrl = $session->url ?? null;
-            $htmlBody = $this->prepareEmailBody($validated, $checkoutUrl);
+            // Insert checkout URL into email body — include identifying query
+            // params so the frontend can accept them and prefill the plans page.
+            $validated['checkout_url'] = $checkoutUrl;
+            $htmlBody = $this->prepareEmailBody($validated, $checkoutUrl, $user->remember_token);
 
             $this->configureMailerForDevelopment();
 
@@ -107,14 +124,20 @@ class SendAgreementController extends Controller
                 $message->to($validated['to'])->subject($validated['subject']);
             });
 
-            return response()->json([
-                'message' => 'Agreement email with payment link sent',
-                'checkout' => [
-                    'id' => $session->id ?? null,
-                    'url' => $checkoutUrl ?? null,
-                ],
+            $responsePayload = [
+                'message' => 'Agreement email sent',
                 'mailer' => config('mail.default'),
-            ], 200);
+            ];
+
+            if ($session) {
+                $responsePayload['message'] = 'Agreement email with payment link sent';
+                $responsePayload['checkout'] = [
+                    'id' => $session->id,
+                    'url' => $checkoutUrl,
+                ];
+            }
+
+            return response()->json($responsePayload, 200);
 
         } catch (Exception $e) {
             Log::error('SendAgreementController@send failed', [
@@ -126,19 +149,41 @@ class SendAgreementController extends Controller
     }
 
     /**
+     * Splits a full name into first and last names.
+     */
+    private function splitName(string $fullName): array
+    {
+        $parts = explode(' ', trim($fullName));
+        $lastName = array_pop($parts);
+        $firstName = implode(' ', $parts);
+        return [
+            'first_name' => $firstName ?: $lastName,
+            'last_name' => $firstName ? $lastName : null,
+        ];
+    }
+
+    /**
      * Prepares the final HTML content with checkout link.
      */
-    private function prepareEmailBody(array $validated, ?string $checkoutUrl = null): string
+    private function prepareEmailBody(array $validated, ?string $token = null): string
     {
         $htmlBody = $validated['body'];
 
-        if ($checkoutUrl) {
-            $htmlBody = str_replace(
-                ['{{checkout_url}}', '{{checkoutUrl}}', '{{name}}'],
-                [$checkoutUrl, $checkoutUrl, $validated['name'] ?? ''],
-                $htmlBody
-            );
-        }
+        // Build a magic link URL that includes the guest token so the recipient can
+        // be logged in automatically.
+        $frontend = env('FRONTEND_URL', 'http://127.0.0.1:8080');
+
+        $magicLink = $frontend . '/magic-login-and-redirect?token=' . $token;
+
+        $replacements = [
+            '{{checkout_url}}' => $magicLink,
+            '{{checkoutUrl}}' => $magicLink,
+            '{{plans_url}}' => $magicLink,
+            '{{plansUrl}}' => $magicLink,
+            '{{name}}' => $validated['name'] ?? '',
+        ];
+
+        $htmlBody = str_replace(array_keys($replacements), array_values($replacements), $htmlBody);
 
         if (stripos($htmlBody, '<html') === false) {
             $safeSubject = htmlspecialchars($validated['subject'], ENT_QUOTES, 'UTF-8');
@@ -146,6 +191,32 @@ class SendAgreementController extends Controller
         }
 
         return $htmlBody;
+    }
+
+    /**
+     * Validate a guest token supplied by the frontend and return basic user data.
+     */
+    public function validateGuest(Request $request)
+    {
+        $token = $request->query('token');
+        if (!$token) {
+            return response()->json(['error' => 'Missing token'], 400);
+        }
+
+        $user = User::where('remember_token', $token)->first();
+        if (!$user) {
+            return response()->json(['valid' => false], 200);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'user' => [
+                'id' => $user->id,
+                'email' => $user->email,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+            ]
+        ], 200);
     }
 
     private function configureMailerForDevelopment(): void

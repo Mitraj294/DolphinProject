@@ -27,28 +27,51 @@ class StripeSubscriptionController extends Controller
 
     public function createCheckoutSession(Request $request)
     {
+        Log::info('createCheckoutSession request:', $request->all());
+
         $user = Auth::user();
         $priceId = $request->input('price_id');
         if (!$priceId) {
             return response()->json(['error' => 'Missing price_id'], 400);
         }
+
         Stripe::setApiKey(config('services.stripe.secret'));
         $frontend = env('FRONTEND_URL', 'http://localhost:8080');
-        // include the Checkout session id in the success URL so the frontend
-        // can pick it up and poll subscription status immediately after redirect
-        // Stripe replaces the placeholder {CHECKOUT_SESSION_ID} with the actual id
-        // when redirecting back to the success_url.
+
+        $customerEmail = null;
+        $leadId = null;
+
+        if ($user) {
+            $customerEmail = $user->email;
+        } else {
+            // Guest user flow
+            $customerEmail = $request->input('email');
+            $leadId = $request->input('lead_id');
+            if (!$customerEmail || !$leadId) {
+                return response()->json(['error' => 'Email and lead_id are required for guest checkout'], 400);
+            }
+        }
+
+        // Construct success URL with session ID and optional guest params
+        $successUrl = $frontend . '/subscriptions/plans?checkout_session_id={CHECKOUT_SESSION_ID}';
+        if ($customerEmail && $leadId) {
+            $successUrl .= '&email=' . urlencode($customerEmail) . '&lead_id=' . $leadId;
+        }
+
+        Log::info('Success URL:', ['url' => $successUrl]);
+
         $session = StripeSession::create([
             'payment_method_types' => ['card'],
             'mode' => 'subscription',
-            'customer_email' => $user->email,
+            'customer_email' => $customerEmail,
             'line_items' => [[
                 'price' => $priceId,
                 'quantity' => 1,
             ]],
-            'success_url' => $frontend . '/subscriptions/plans?checkout_session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => $successUrl,
             'cancel_url' => $frontend . '/subscriptions/plans',
         ]);
+
         return response()->json(['id' => $session->id, 'url' => $session->url]);
     }
 

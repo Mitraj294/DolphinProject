@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import storage from '../services/storage';
 import { ROLES, canAccess } from '@/permissions.js';
 import { fetchSubscriptionStatus } from '@/services/subscription.js';
+import axios from 'axios';
 
 /*
  Route Component Imports
@@ -27,6 +28,7 @@ const TrainingResources = () => import('@/components/Common/TrainingResources.vu
 const GetNotifications = () => import('@/components/Common/GetNotifications.vue');
 
 // Subscription
+const SubscriptionSuccess = () => import('@/components/Common/SubscriptionSuccess.vue');
 const ManageSubscription = () => import('@/components/Common/ManageSubscription.vue');
 const SubscriptionPlans = () => import('@/components/Common/SubscriptionPlans.vue');
 const BillingDetails = () => import('@/components/Common/BillingDetails.vue');
@@ -127,8 +129,13 @@ const routes = [
   {
     path: '/subscriptions/plans',
     name: 'SubscriptionPlans',
-    component: SubscriptionPlans,
     meta: { requiresAuth: true, roles: [ROLES.USER, ROLES.ORGANIZATIONADMIN] }
+  },
+  {
+    path: '/subscriptions/success',
+    name: 'SubscriptionSuccess',
+    component: SubscriptionSuccess,
+    meta: { public: true }
   },
   {
     path: '/organizations/billing-details',
@@ -304,6 +311,23 @@ const handlePublicRoutes = (to, authToken, next) => {
   return true;
 };
 
+// Validate guest token by calling the backend. If valid, store a temporary guest session.
+const validateGuestToken = async (token) => {
+  try {
+    const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+    const res = await axios.get(`${API_BASE_URL}/api/leads/guest-validate`, { params: { token } });
+    if (res?.data?.valid) {
+      // store minimal guest info for the session
+      storage.set('guest_token', token);
+      storage.set('guest_user', res.data.user);
+      return true;
+    }
+  } catch (e) {
+    console.error('Guest validation failed', e);
+  }
+  return false;
+};
+
 const handleExpiredSubscription = (to, next) => {
   const allowedRoutesForExpired = [
     'Profile',
@@ -372,7 +396,33 @@ router.beforeEach(async (to, from, next) => {
   if (authToken) {
     await handleAuthenticatedRoutes(to, role, next);
   } else {
-    // This handles unauthenticated users trying to access protected routes And will Return them to login page
+    // If a guest_token query param is present and user is navigating to SubscriptionPlans,
+    // validate the token and allow the visit (guest flow) without requiring login.
+    const guestToken = to.query?.guest_token || null;
+    if (guestToken && to.name === 'SubscriptionPlans') {
+      const ok = await validateGuestToken(guestToken);
+      if (ok) {
+        // allow visiting plans and mapping to the guest flow
+        next();
+        return;
+      }
+    }
+
+    // Allow unauthenticated access to the plans page when the link contains
+    // lead-identifying query params (email, lead_id, price_id) — this enables
+    // the emailed links to open the plans page directly without requiring
+    // a prior login. If a guest_token is supplied, we still validate it.
+    const isPlansWithData = to.name === 'SubscriptionPlans' && (
+      Boolean(to.query?.email) || Boolean(to.query?.lead_id) || Boolean(to.query?.price_id) || Boolean(to.query?.guest_token)
+    );
+    if (isPlansWithData) {
+      // If a guest_token is present, prefer validating it (already handled above),
+      // otherwise allow the visit and let the frontend render the minimal guest view.
+      next();
+      return;
+    }
+
+    // Default: redirect to login
     next('/');
   }
 });

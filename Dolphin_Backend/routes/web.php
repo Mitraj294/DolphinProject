@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MagicLoginController;
 
 $FRONTEND_URL = env('FRONTEND_URL');
 Route::get('/', function () {
@@ -23,3 +24,5 @@ Route::get('/login', function () {
     $frontend = env('FRONTEND_URL');
     return redirect($frontend . '/login');
 })->name('login');
+
+Route::get('/magic-login/{token}', [MagicLoginController::class, 'login']);

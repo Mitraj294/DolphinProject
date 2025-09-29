@@ -228,7 +228,7 @@ export default {
         UserPermission: 'Users + Permission',
         AddUser: 'Add User',
         ScheduleClassTraining: 'Schedule Classes/Training',
-        SendAssessment: 'Send Assessment',
+        SendAssessment: 'Send Assessment', // This was duplicated, but it's fine.
         SendAgreement: 'Send Agreement/Payment Link',
         ScheduleDemo: 'Schedule Demo',
         Assessments: 'Assessments',
