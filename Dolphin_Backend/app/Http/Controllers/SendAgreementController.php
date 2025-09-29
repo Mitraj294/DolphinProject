@@ -17,7 +17,7 @@ use Exception;
 class SendAgreementController extends Controller
 {
     /**
-     * Handles the request to send an agreement/payment link email to a lead.
+     * Sends an agreement email containing a Stripe payment link.
      */
     public function send(Request $request)
     {
@@ -26,7 +26,6 @@ class SendAgreementController extends Controller
                 'to' => 'required|email',
                 'subject' => 'required|string',
                 'body' => 'required|string',
-                'registration_link' => 'nullable|url',
                 'price_id' => 'nullable|string',
                 'name' => 'nullable|string',
                 'lead_id' => 'nullable|integer|exists:leads,id',
@@ -34,15 +33,12 @@ class SendAgreementController extends Controller
 
             Log::info('SendAgreementController@send called', $validated);
 
-            // Find lead to pull additional fields if present
-            $lead = null;
-            if (!empty($validated['lead_id'])) {
-                $lead = Lead::find($validated['lead_id']);
-            } else {
-                $lead = Lead::where('email', $validated['to'])->first();
-            }
+            // Find lead by ID or email
+            $lead = !empty($validated['lead_id'])
+                ? Lead::find($validated['lead_id'])
+                : Lead::where('email', $validated['to'])->first();
 
-            // Create or find user for this email. We create a user with role 'organizationadmin'
+            // Create or find user
             $user = User::where('email', $validated['to'])->first();
             if (!$user) {
                 $passwordPlain = Str::random(12);
@@ -50,14 +46,11 @@ class SendAgreementController extends Controller
                     'email' => $validated['to'],
                     'first_name' => $lead->first_name ?? ($validated['name'] ?? null),
                     'last_name' => $lead->last_name ?? null,
-                    // Create account with a random password (user will reset it via email link)
                     'password' => Hash::make($passwordPlain),
                 ];
 
-                // Create user minimal record
                 $user = User::create($userData);
 
-                // Attach userDetails where possible
                 try {
                     if ($lead) {
                         $user->userDetails()->create([
@@ -66,38 +59,25 @@ class SendAgreementController extends Controller
                         ]);
                     }
                 } catch (Exception $e) {
-                    Log::warning('Failed to create userDetails for user: ' . $e->getMessage());
+                    Log::warning('Failed to create userDetails: ' . $e->getMessage());
                 }
 
-                // Attach organizationadmin role if present
                 try {
                     $role = Role::where('name', 'organizationadmin')->first();
                     if ($role) {
                         $user->roles()->attach($role->id);
                     }
                 } catch (Exception $e) {
-                    Log::warning('Failed to attach role to user: ' . $e->getMessage());
+                    Log::warning('Failed to attach role: ' . $e->getMessage());
                 }
             }
 
-            // Generate a password reset token and URL so the created user can set their password.
-            try {
-                /** @var \Illuminate\Auth\Passwords\PasswordBroker $broker */
-                $broker = \Illuminate\Support\Facades\Password::broker();
-                $token = $broker->createToken($user);
-                $resetUrl = route('password.reset', ['token' => $token, 'email' => $user->email]);
-            } catch (Exception $e) {
-                Log::warning('Failed to create reset token for user: ' . $e->getMessage());
-                $resetUrl = null;
-            }
-
-            // Prepare Stripe Checkout Session. Use provided price_id or fallback to env DEFAULT_PRICE_ID
+            // Prepare Stripe Checkout
             $priceId = $validated['price_id'] ?? env('DEFAULT_PRICE_ID');
             if (!$priceId) {
                 Log::warning('No price_id provided and DEFAULT_PRICE_ID not set');
             }
 
-            // Create Stripe Checkout session (subscription)
             try {
                 Stripe::setApiKey(config('services.stripe.secret'));
                 $frontend = env('FRONTEND_URL', 'http://localhost:8080');
@@ -117,13 +97,9 @@ class SendAgreementController extends Controller
                 return response()->json(['error' => 'Failed to create payment session'], 500);
             }
 
-            // Insert checkout URL into template (use session->url) and include reset URL
+            // Insert checkout URL into email body
             $checkoutUrl = $session->url ?? null;
-            $htmlBody = $this->prepareEmailBody($validated, $resetUrl ?? $validated['registration_link'] ?? null);
-            if ($checkoutUrl) {
-                // Add a placeholder replacement for checkout_url
-                $htmlBody = str_replace(['{{checkout_url}}', '{{checkoutUrl}}'], [$checkoutUrl, $checkoutUrl], $htmlBody);
-            }
+            $htmlBody = $this->prepareEmailBody($validated, $checkoutUrl);
 
             $this->configureMailerForDevelopment();
 
@@ -131,7 +107,14 @@ class SendAgreementController extends Controller
                 $message->to($validated['to'])->subject($validated['subject']);
             });
 
-            return response()->json(['message' => 'Agreement email & checkout session created', 'checkout' => ['id' => $session->id ?? null, 'url' => $checkoutUrl ?? null], 'mailer' => config('mail.default')], 200);
+            return response()->json([
+                'message' => 'Agreement email with payment link sent',
+                'checkout' => [
+                    'id' => $session->id ?? null,
+                    'url' => $checkoutUrl ?? null,
+                ],
+                'mailer' => config('mail.default'),
+            ], 200);
 
         } catch (Exception $e) {
             Log::error('SendAgreementController@send failed', [
@@ -143,20 +126,20 @@ class SendAgreementController extends Controller
     }
 
     /**
-     * Prepares the final HTML content for the email.
+     * Prepares the final HTML content with checkout link.
      */
-    private function prepareEmailBody(array $validated, ?string $registrationUrl = null): string
+    private function prepareEmailBody(array $validated, ?string $checkoutUrl = null): string
     {
         $htmlBody = $validated['body'];
 
-        // Replace placeholders if a registration URL is provided
-        if ($registrationUrl) {
-            $placeholders = ['{{registrationUrl}}', '{{registration_link}}', '{{name}}'];
-            $replacements = [$registrationUrl, $registrationUrl, $validated['name'] ?? ''];
-            $htmlBody = str_replace($placeholders, $replacements, $htmlBody);
+        if ($checkoutUrl) {
+            $htmlBody = str_replace(
+                ['{{checkout_url}}', '{{checkoutUrl}}', '{{name}}'],
+                [$checkoutUrl, $checkoutUrl, $validated['name'] ?? ''],
+                $htmlBody
+            );
         }
 
-        // Wrap in a basic HTML structure if not already present
         if (stripos($htmlBody, '<html') === false) {
             $safeSubject = htmlspecialchars($validated['subject'], ENT_QUOTES, 'UTF-8');
             return "<!DOCTYPE html><html><head><title>{$safeSubject}</title></head><body>{$htmlBody}</body></html>";
@@ -165,9 +148,6 @@ class SendAgreementController extends Controller
         return $htmlBody;
     }
 
-    /**
-     * Overrides the default mailer to SMTP for development/testing if configured.
-     */
     private function configureMailerForDevelopment(): void
     {
         if (config('mail.default') === 'log' && env('MAIL_FORCE_SMTP', false)) {
