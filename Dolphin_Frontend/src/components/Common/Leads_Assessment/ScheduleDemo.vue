@@ -3,7 +3,7 @@
     <div class="page">
       <div class="schedule-demo-outer">
         <div class="schedule-demo-card">
-          <h2 class="schedule-demo-title">Schedule Demo</h2>
+          <h2 class="schedule-demo-title">{{ titleText }}</h2>
           <div class="schedule-demo-desc">
             Lorem Ipsum is simply dummy text of the printing and typesetting
             industry.
@@ -81,7 +81,7 @@
                 type="submit"
                 class="btn btn-primary"
               >
-                Schedule Demo
+                {{ submitText }}
               </button>
             </div>
           </form>
@@ -112,6 +112,16 @@ export default {
       date: '',
       time: '',
     };
+  },
+  computed: {
+    titleText() {
+      const mode = this.$route && this.$route.query && this.$route.query.mode;
+      return mode === 'followup' ? 'Schedule Follow up' : 'Schedule Demo';
+    },
+    submitText() {
+      const mode = this.$route && this.$route.query && this.$route.query.mode;
+      return mode === 'followup' ? 'Schedule Follow up' : 'Schedule Demo';
+    },
   },
 };
 </script>

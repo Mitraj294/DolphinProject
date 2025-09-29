@@ -42,6 +42,7 @@ const LeadDetail = () => import('@/components/Common/Leads_Assessment/LeadDetail
 const EditLead = () => import('@/components/Common/Leads_Assessment/EditLead.vue');
 const LeadCapture = () => import('@/components/Common/Leads_Assessment/LeadCapture.vue');
 const SendAssessment = () => import('@/components/Common/Leads_Assessment/SendAssessment.vue');
+const SendAgreement = () => import('@/components/Common/Leads_Assessment/SendAgreement.vue');
 const ScheduleDemo = () => import('@/components/Common/Leads_Assessment/ScheduleDemo.vue');
 const ScheduleClassTraining = () => import('@/components/Common/Leads_Assessment/ScheduleClassTraining.vue');
 const Assessments = () => import('@/components/Common/Leads_Assessment/Assessments.vue');
@@ -213,6 +214,13 @@ const routes = [
     path: '/assessments/send-assessment/:id?',
     name: 'SendAssessment',
     component: SendAssessment,
+    props: true,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/assessments/send-agreement/:id?',
+    name: 'SendAgreement',
+    component: SendAgreement,
     props: true,
     meta: { requiresAuth: true }
   },

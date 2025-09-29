@@ -229,6 +229,7 @@ export default {
         AddUser: 'Add User',
         ScheduleClassTraining: 'Schedule Classes/Training',
         SendAssessment: 'Send Assessment',
+        SendAgreement: 'Send Agreement/Payment Link',
         ScheduleDemo: 'Schedule Demo',
         Assessments: 'Assessments',
         TrainingResources: 'Training & Resources',
@@ -245,6 +246,17 @@ export default {
         Members: 'Member Listing',
         Profile: 'Profile',
       };
+
+      // Special-case: if ScheduleDemo and mode=followup, show 'Schedule Follow up'
+      if (routeName === 'ScheduleDemo') {
+        try {
+          const mode =
+            this.$route && this.$route.query && this.$route.query.mode;
+          if (mode === 'followup') return 'Schedule Follow up';
+        } catch (e) {
+          console.debug('Navbar: error checking mode for ScheduleDemo', e);
+        }
+      }
 
       if (simpleMap[routeName]) return simpleMap[routeName];
 

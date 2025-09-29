@@ -562,6 +562,12 @@ export default {
       menuOpen.value = null;
       if (option === 'Schedule Demo') {
         router.push({ name: 'ScheduleDemo', query: { lead_id: lead.id } });
+      } else if (option === 'Schedule Follow up') {
+        // Re-use ScheduleDemo UI for quick follow-up scheduling
+        router.push({
+          name: 'ScheduleDemo',
+          query: { lead_id: lead.id, mode: 'followup' },
+        });
       } else if (option === 'Schedule Class/Training') {
         router.push({
           name: 'ScheduleClassTraining',
@@ -569,6 +575,8 @@ export default {
         });
       } else if (option === 'Send Assessment') {
         router.push({ name: 'SendAssessment', params: { id: lead.id } });
+      } else if (option === 'Send Agreement/Payment Link') {
+        router.push({ name: 'SendAgreement', params: { id: lead.id } });
       } else if (option === 'Delete Lead') {
         // soft-delete
         deleteLead(lead);

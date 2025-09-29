@@ -8,6 +8,7 @@ use App\Http\Controllers\AssessmentScheduleController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GroupController;
 use App\Http\Controllers\LeadController;
+use App\Http\Controllers\SendAgreementController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\MemberRoleController;
@@ -53,6 +54,7 @@ Route::prefix('leads')->group(function () {
         Route::get('/find-us-options', [LeadController::class, 'findUsOptions']);
         Route::get('/prefill', [LeadController::class, 'prefill']);
         Route::post('/send-assessment', [SendAssessmentController::class, 'send']);
+        Route::post('/send-agreement', [SendAgreementController::class, 'send']);
 });
 
 Route::prefix('email-template')->group(function () {
