@@ -1,3 +1,4 @@
+/* global tinymce */
 /* This file is bundled with the code from the following third party libraries */
 
 /**

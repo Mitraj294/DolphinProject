@@ -19,6 +19,9 @@ class Kernel extends ConsoleKernel
         // Update subscription statuses hourly (mark active subscriptions past end as expired)
         $schedule->command('subscriptions:update-status')->everyMinute()->description('Mark expired subscriptions as expired in DB');
 
+    // Reconcile leads with users nightly to ensure lead.status reflects registration
+    $schedule->command('leads:reconcile-with-users --dry-run')->dailyAt('03:00')->description('Dry-run reconcile leads with users (no updates)');
+
 
     }
     /**

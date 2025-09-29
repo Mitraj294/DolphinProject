@@ -20,7 +20,8 @@ function copyRecursiveSync(srcDir, destDir) {
       copyRecursiveSync(srcPath, destPath);
     } else if (entry.isFile()) {
       fs.copyFileSync(srcPath, destPath);
-    }
+    } else {
+      console.warn(`Skipping unsupported entry: ${srcPath}`);
   }
 }
 
@@ -31,4 +32,6 @@ try {
 } catch (err) {
   console.error('Failed to copy TinyMCE assets:', err);
   process.exit(1);
+}
+
 }

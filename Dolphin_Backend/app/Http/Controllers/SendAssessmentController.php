@@ -80,6 +80,25 @@ class SendAssessmentController extends Controller
 
             if (is_null($responsePayload)) {
                 try {
+                    // Allow a safe development override: if MAIL_FORCE_SMTP=true or SMTP env vars are present,
+                    // switch the mailer to smtp at runtime so messages are actually delivered (e.g., Mailtrap).
+                    $activeMailer = config('mail.default');
+                    $forceSmtp = env('MAIL_FORCE_SMTP', false);
+                    $smtpHost = env('MAIL_HOST');
+                    $smtpUser = env('MAIL_USERNAME');
+                    $smtpPass = env('MAIL_PASSWORD');
+
+                    if (($activeMailer === 'log') && ($forceSmtp || ($smtpHost && $smtpUser && $smtpPass))) {
+                        Log::info('SendAssessmentController: overriding mailer to smtp for delivery (dev override)');
+                        // Update runtime config for smtp
+                        config(['mail.default' => 'smtp']);
+                        config(['mail.mailers.smtp.host' => $smtpHost]);
+                        config(['mail.mailers.smtp.port' => env('MAIL_PORT', 2525)]);
+                        config(['mail.mailers.smtp.username' => $smtpUser]);
+                        config(['mail.mailers.smtp.password' => $smtpPass]);
+                        config(['mail.mailers.smtp.encryption' => env('MAIL_ENCRYPTION', null)]);
+                    }
+
                     Mail::html($htmlBody, function ($message) use ($to, $validated) {
                         $message->to($to)
                             ->subject($validated['subject'] ?: 'Complete Your Registration');
@@ -150,6 +169,18 @@ class SendAssessmentController extends Controller
                 $responsePayload = ['message' => 'Assessment email sent successfully.'];
                 $responseStatus = 200;
             }
+
+            // Add the active mailer to the response so callers know whether mails were actually sent or only logged.
+            try {
+                $activeMailer = config('mail.default');
+                $responsePayload['mailer'] = $activeMailer;
+                if ($activeMailer === 'log') {
+                    $responsePayload['note'] = 'Emails are currently being logged (MAIL_MAILER=log). Configure SMTP or Mailtrap to deliver real messages.';
+                }
+            } catch (\Exception $cfgEx) {
+                Log::warning('SendAssessmentController: Unable to read mailer config', ['error' => $cfgEx->getMessage()]);
+            }
+
             return response()->json($responsePayload, $responseStatus);
         } catch (\Exception $e) {
             Log::error('SendAssessmentController@send error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);

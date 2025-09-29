@@ -68,10 +68,11 @@ class LeadController extends Controller
     }
     public function store(Request $request)
     {
-        $data = $request->validate([
-            'first_name' => LeadValidationRules::REQUIRED_STRING,
-            'last_name' => LeadValidationRules::REQUIRED_STRING,
-          'email' => 'required|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL',
+                $data = $request->validate([
+                        'first_name' => LeadValidationRules::REQUIRED_STRING,
+                        'last_name' => LeadValidationRules::REQUIRED_STRING,
+                    // Allow creating leads even if a user already exists with this email. We'll reconcile status below.
+                    'email' => 'required|string|email|max:255',
             'phone' => 'required|regex:/^[6-9]\d{9}$/',
             'find_us' => LeadValidationRules::REQUIRED_STRING,
             'organization_name' => LeadValidationRules::REQUIRED_STRING.'|max:500',
@@ -88,6 +89,27 @@ class LeadController extends Controller
             $data['created_by'] = $request->user()->id;
         }
         $lead = Lead::create($data);
+
+        // If a user already exists with this email, mark the lead as Registered and set registered_at if missing.
+        try {
+            $userModel = '\App\\Models\\User';
+            $matchedUser = $userModel::where('email', $lead->email)->first();
+            if ($matchedUser) {
+                $lead->status = 'Registered';
+                if (empty($lead->registered_at)) {
+                    $lead->registered_at = $matchedUser->created_at ?? now();
+                }
+                // Optionally link the user id column if present on leads table
+                if (property_exists($lead, 'user_id')) {
+                    $lead->user_id = $matchedUser->id;
+                }
+                $lead->save();
+                Log::info('LeadController: Created lead matched existing user; marked Registered', ['lead_id' => $lead->id, 'user_id' => $matchedUser->id]);
+            }
+        } catch (\Exception $e) {
+            Log::warning('LeadController: Failed to check users table after lead create: ' . $e->getMessage());
+        }
+
         return response()->json(['message' => 'Lead saved successfully', 'lead' => $lead], 201);
     }
 
