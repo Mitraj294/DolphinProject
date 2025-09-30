@@ -73,7 +73,10 @@ public function createCheckoutSession(Request $request)
 
     // Only try Stripe if no previous error
     if (empty($response)) {
-        $successUrl = $frontend . '/subscriptions/plans?checkout_session_id={CHECKOUT_SESSION_ID}';
+    // Redirect to an explicit frontend success page after checkout completes.
+    // The frontend success page should display payment confirmation and a
+    // button that allows the user to proceed to login (instead of auto-login).
+    $successUrl = $frontend . '/subscriptions/success?checkout_session_id={CHECKOUT_SESSION_ID}';
         if ($customerEmail && $leadId) {
             $successUrl .= '&email=' . urlencode($customerEmail) . '&lead_id=' . $leadId;
         }
