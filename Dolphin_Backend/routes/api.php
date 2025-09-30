@@ -58,7 +58,7 @@ Route::prefix('leads')->group(function () {
         Route::post('/send-agreement', [SendAgreementController::class, 'send']);
     // Validate a guest token generated when sending an agreement email.
     Route::get('/guest-validate', [SendAgreementController::class, 'validateGuest']);
-    Route::post('/magic-login', [SendAgreementController::class, 'magicLogin']);
+
 });
 
 Route::prefix('email-template')->group(function () {

@@ -26,7 +26,6 @@ const ThankYou = () => import('@/components/auth/ThankYou.vue');
 const ThanksPage = () => import('@/components/Common/ThanksPage.vue');
 const TrainingResources = () => import('@/components/Common/TrainingResources.vue');
 const GetNotifications = () => import('@/components/Common/GetNotifications.vue');
-const MagicLoginRedirect = () => import('@/components/auth/MagicLoginRedirect.vue');
 
 // Subscription
 const SubscriptionSuccess = () => import('@/components/Common/SubscriptionSuccess.vue');
@@ -88,12 +87,6 @@ const routes = [
     meta: { public: true }
   },
   {
-    path: '/magic-login-and-redirect',
-    name: 'MagicLoginRedirect',
-    component: MagicLoginRedirect,
-    meta: { public: true }
-  },
-  {
     path: '/thankyou',
     name: 'ThankYou',
     component: ThankYou,
@@ -136,6 +129,7 @@ const routes = [
   {
     path: '/subscriptions/plans',
     name: 'SubscriptionPlans',
+    component: SubscriptionPlans,
     meta: { requiresAuth: true, roles: [ROLES.USER, ROLES.ORGANIZATIONADMIN] }
   },
   {
