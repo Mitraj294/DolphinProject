@@ -9,9 +9,11 @@ use App\Models\Lead;
 use App\Models\User;
 use App\Models\Role;
 use App\Models\Organization;
+use App\Models\GuestLink;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Exception;
@@ -92,13 +94,18 @@ class SendAgreementController extends Controller
 
             // Create a short-lived personal access token for this user so the emailed link can auto-login
             try {
-                $tokenResult = $user->createToken('GuestLink');
-                $tokenResult->token->expires_at = now()->addHours(2);
-                $tokenResult->token->save();
-                $guestToken = $tokenResult->accessToken;
-                if (!empty($guestToken)) {
-                    $qs['guest_token'] = $guestToken;
-                }
+                    // Create a short guest code and persist to guest_links so the emailed link is small
+                    $guestCode = Str::upper(Str::random(10));
+                    $guestLink = GuestLink::create([
+                        'code' => $guestCode,
+                        'user_id' => $user->id,
+                        'lead_id' => $validated['lead_id'] ?? null,
+                        'meta' => ['price_id' => $validated['price_id'] ?? null],
+                        'expires_at' => now()->addHours(2),
+                    ]);
+                    if ($guestLink) {
+                        $qs['guest_code'] = $guestCode;
+                    }
             } catch (Exception $e) {
                 Log::warning('Failed to create guest token for email link: ' . $e->getMessage());
             }
@@ -109,8 +116,6 @@ class SendAgreementController extends Controller
             // Insert plans URL into email body
             $validated['checkout_url'] = $plansUrl;
             $htmlBody = $this->prepareEmailBody($validated, $plansUrl);
-
-            $this->configureMailerForDevelopment();
 
             // Log a short snippet and any plans-related hrefs from the final HTML
             try {
@@ -161,25 +166,140 @@ class SendAgreementController extends Controller
      */
     public function validateGuest(Request $request)
     {
-        $token = $request->query('token');
-        if (!$token) {
-            return response()->json(['error' => 'Missing token'], 400);
+        $responseData = ['valid' => false];
+        $status = 200;
+
+        // Prefer short guest codes (safer to email). If present, redeem the
+        // guest code by creating a short-lived personal access token and
+        // returning it to the frontend for immediate use.
+        $guestCode = $request->query('guest_code');
+        if ($guestCode) {
+            try {
+                $guestLink = GuestLink::where('code', $guestCode)->first();
+                if (! $guestLink) {
+                    $responseData['message'] = 'Invalid guest code';
+                    // fall through to final return
+                } else {
+                    if ($guestLink->used_at) {
+                        $responseData['message'] = 'Guest code already used';
+                    } elseif ($guestLink->expires_at && Carbon::parse($guestLink->expires_at)->lt(Carbon::now())) {
+                        $responseData['message'] = 'Guest code expired';
+                    } else {
+                        $user = User::find($guestLink->user_id);
+                        if (! $user) {
+                            $responseData['message'] = 'User not found';
+                        } else {
+                            try {
+                                $tokenResult = $user->createToken('GuestLink');
+                                if (isset($tokenResult->token)) {
+                                    $tokenResult->token->expires_at = Carbon::now()->addHours(2);
+                                    $tokenResult->token->save();
+                                }
+                                $plainToken = $tokenResult->accessToken ?? null;
+
+                                // mark the guest link used
+                                $guestLink->used_at = Carbon::now();
+                                $guestLink->save();
+
+                                $responseData = [
+                                    'valid' => true,
+                                    'token' => $plainToken,
+                                    'expires_at' => $tokenResult->token->expires_at ?? null,
+                                    'user' => [
+                                        'id' => $user->id,
+                                        'email' => $user->email,
+                                        'first_name' => $user->first_name,
+                                        'last_name' => $user->last_name,
+                                    ],
+                                ];
+                            } catch (\Exception $e) {
+                                Log::warning('Failed to mint guest token: ' . $e->getMessage());
+                                $responseData['message'] = 'Failed to mint token';
+                            }
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('validateGuest guest_code flow failed: ' . $e->getMessage());
+                $responseData['message'] = 'Guest flow failed';
+            }
+        } else {
+            // Backwards-compatible: accept a full token string in `token` query
+            // parameter and attempt to resolve it against Passport's storage.
+            $token = $request->query('token');
+            if (! $token) {
+                $responseData = ['error' => 'Missing token or guest_code'];
+                $status = 400;
+            } else {
+                $isValid = false;
+                $foundUser = null;
+                try {
+                    $accessTokenModel = null;
+
+                    if (strpos($token, '|') !== false) {
+                        [$idPart] = explode('|', $token, 2);
+                        $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $idPart)->first();
+                    }
+
+                    if (!$accessTokenModel && substr_count($token, '.') === 2) {
+                        try {
+                            $parts = explode('.', $token);
+                            $payloadB64 = $parts[1] ?? null;
+                            $payloadJson = $payloadB64 ? base64_decode(strtr($payloadB64, '-_', '+/')) : null;
+                            $payload = json_decode($payloadJson, true);
+                            if (is_array($payload) && !empty($payload['jti'])) {
+                                $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $payload['jti'])->first();
+                            }
+                        } catch (\Exception $e) {
+                            // ignore malformed JWTs here and continue to fallback
+                        }
+                    }
+
+                    if (!$accessTokenModel) {
+                        $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $token)->first();
+                    }
+
+                    if ($accessTokenModel) {
+                        $now = Carbon::now();
+                        $expiresAt = isset($accessTokenModel->expires_at) ? Carbon::parse($accessTokenModel->expires_at) : null;
+                        if (empty($accessTokenModel->revoked) && (! $expiresAt || $expiresAt->gt($now))) {
+                            $foundUser = \App\Models\User::find($accessTokenModel->user_id);
+                            if ($foundUser) {
+                                $isValid = true;
+                            }
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('validateGuest token check failed: ' . $e->getMessage());
+                }
+
+                if (! $isValid) {
+                    try {
+                        $user = User::where('remember_token', $token)->first();
+                        if ($user) {
+                            $isValid = true;
+                            $foundUser = $user;
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning('validateGuest remember_token fallback failed: ' . $e->getMessage());
+                    }
+                }
+
+                if ($isValid && $foundUser) {
+                    $responseData = [
+                        'valid' => true,
+                        'user' => [
+                            'id' => $foundUser->id,
+                            'email' => $foundUser->email,
+                            'first_name' => $foundUser->first_name,
+                            'last_name' => $foundUser->last_name,
+                        ],
+                    ];
+                }
+            }
         }
 
-        $user = User::where('remember_token', $token)->first();
-        if (!$user) {
-            return response()->json(['valid' => false], 200);
-        }
-
-        return response()->json([
-            'valid' => true,
-            'user' => [
-                'id' => $user->id,
-                'email' => $user->email,
-                'first_name' => $user->first_name,
-                'last_name' => $user->last_name,
-            ]
-        ], 200);
+        return response()->json($responseData, $status);
     }
 
     /**
@@ -200,88 +320,31 @@ class SendAgreementController extends Controller
         $htmlBody = str_replace('/subscriptions/plans', $checkoutUrl, $htmlBody);
 
         $checkoutUrlHtmlAttr = htmlspecialchars($checkoutUrl, ENT_QUOTES, 'UTF-8');
-        $hrefPattern = '/href=(["\'])(?:https?:\/\/[^"\']+)?\/subscriptions\/plans(?:\?[^"\']*)?\1/i';
+    $hrefPattern = "/href=(['\"])(?:https?:\\/\\/[^\"']+)?\\/subscriptions\\/plans(?:\\?[^\"']*)?\\1/i";
         $htmlBody = preg_replace($hrefPattern, 'href=$1' . $checkoutUrlHtmlAttr . '$1', $htmlBody);
 
-        // DOM parsing for anchor hrefs
+        // Ensure anchor hrefs point to the final URL
         try {
             libxml_use_internal_errors(true);
             $dom = new \DOMDocument();
             $wrapped = '<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/></head><body>' . $htmlBody . '</body></html>';
             $dom->loadHTML($wrapped, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
-            $anchors = $dom->getElementsByTagName('a');
-            foreach ($anchors as $a) {
+            foreach ($dom->getElementsByTagName('a') as $a) {
                 $href = $a->getAttribute('href');
-                if ($href && str_contains($href, '/subscriptions/plans')) {
+                if ($href && preg_match('/\/subscriptions\/plans/i', $href)) {
                     $a->setAttribute('href', $checkoutUrl);
                 }
             }
-            $body = $dom->getElementsByTagName('body')->item(0);
-            $newHtml = '';
-            foreach ($body->childNodes as $child) {
-                $newHtml .= $dom->saveHTML($child);
-            }
-            if (!empty($newHtml)) {
-                $htmlBody = $newHtml;
-            }
             libxml_clear_errors();
-        } catch (Exception $e) {
+            $htmlBody = '';
+            foreach ($dom->getElementsByTagName('body')->item(0)->childNodes as $child) {
+                $htmlBody .= $dom->saveHTML($child);
+            }
+        } catch (\Exception $e) {
+            // If DOM parsing fails, fallback to the replaced raw HTML
             Log::warning('prepareEmailBody DOM parsing failed: ' . $e->getMessage());
         }
 
-        // Ensure the email includes a visible, copy/paste-friendly URL
-        $safeUrl = htmlspecialchars($checkoutUrl, ENT_QUOTES, 'UTF-8');
-        $plainLinkBlock = "<div style=\"margin-top:18px;text-align:center;font-size:13px;color:#666;\">" .
-            "If the button above doesn't work, copy and paste this link into your browser:<br/>" .
-            "<a href=\"{$safeUrl}\" target=\"_self\">{$safeUrl}</a>" .
-            "</div>";
-
-        try {
-            Log::info('SendAgreementController: prepared checkout_url for email', [
-                'checkout_url' => $checkoutUrl,
-                'to' => $validated['to'] ?? null,
-                'lead_id' => $validated['lead_id'] ?? null
-            ]);
-        } catch (Exception $e) {
-            // Non-fatal if logging fails.
-        }
-
-        if (stripos($htmlBody, '<html') === false) {
-            $safeSubject = htmlspecialchars($validated['subject'] ?? 'Agreement', ENT_QUOTES, 'UTF-8');
-            return "<!DOCTYPE html><html><head><title>{$safeSubject}</title></head><body>" . $htmlBody . $plainLinkBlock . "</body></html>";
-        }
-
-        $pos = stripos($htmlBody, '</body>');
-        if ($pos !== false) {
-            $htmlBody = substr_replace($htmlBody, $plainLinkBlock, $pos, 0);
-            return $htmlBody;
-        }
-
-        return $htmlBody . $plainLinkBlock;
-    }
-
-    /**
-     * Splits a full name into first and last names.
-     */
-    private function splitName(string $fullName): array
-    {
-        $parts = explode(' ', trim($fullName));
-        $lastName = array_pop($parts);
-        $firstName = implode(' ', $parts);
-        return [
-            'first_name' => $firstName ?: $lastName,
-            'last_name' => $firstName ? $lastName : null,
-        ];
-    }
-
-    /**
-     * Configure mailer for development.
-     */
-    private function configureMailerForDevelopment(): void
-    {
-        if (config('mail.default') === 'log' && env('MAIL_FORCE_SMTP', false)) {
-            Log::info('Overriding mailer to SMTP for development.');
-            config(['mail.default' => 'smtp']);
-        }
+        return $htmlBody;
     }
 }

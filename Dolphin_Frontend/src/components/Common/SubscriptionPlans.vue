@@ -170,6 +170,7 @@ export default {
         email: null,
         lead_id: null,
         price_id: null,
+        guest_code: null,
         guest_token: null,
       },
     };
@@ -259,12 +260,7 @@ export default {
           this.stripePriceIds[period] || this.stripePriceIds.annually;
         const authToken = storage.get('authToken');
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-
-        const payload = { price_id: priceId };
-        if (this.isGuestView) {
-          payload.email = this.guestParams.email;
-          payload.lead_id = this.guestParams.lead_id;
-        }
+        const payload = this.buildCheckoutPayload(priceId);
 
         const res = await axios.post(
           `${API_BASE_URL}/api/stripe/checkout-session`,
@@ -299,29 +295,105 @@ export default {
         this.isLoading = false;
       }
     },
+    buildCheckoutPayload(priceId) {
+      const payload = { price_id: priceId };
+      if (this.isGuestView) {
+        payload.email = this.guestParams.email;
+        payload.lead_id = this.guestParams.lead_id;
+        if (this.guestParams.guest_code)
+          payload.guest_code = this.guestParams.guest_code;
+        if (!payload.guest_code && this.guestParams.guest_token)
+          payload.guest_token = this.guestParams.guest_token;
+      }
+      return payload;
+    },
     goToBillingDetails() {
       this.$router.push({ name: 'BillingDetails' });
     },
   },
   mounted() {
-    // Detect guest query params (email, lead_id, price_id, guest_token) and
-    // switch to a minimal standalone view when present.
+    // Detect guest query params (email, lead_id, price_id, guest_code or legacy guest_token)
+    // and switch to a minimal standalone view when present.
     const qs = new URLSearchParams(window.location.search);
     const email = qs.get('email');
     const lead_id = qs.get('lead_id');
     const price_id = qs.get('price_id');
+    const guest_code = qs.get('guest_code');
     const guest_token = qs.get('guest_token');
-    if (email || lead_id || price_id || guest_token) {
+
+    if (email || lead_id || price_id || guest_code || guest_token) {
       this.isGuestView = true;
       this.guestParams.email = email;
       this.guestParams.lead_id = lead_id;
       this.guestParams.price_id = price_id;
-      this.guestParams.guest_token = guest_token;
+      this.guestParams.guest_code = guest_code || null;
 
-      // If a short-lived guest token is present, persist it and attempt to
-      // fetch the current user so the app behaves as if logged-in for the
-      // duration of the token (safe, short-lived token generated server-side).
-      if (guest_token) {
+      // If we have a short guest_code (preferred), redeem it to obtain a
+      // short-lived access token from the backend and auto-login the user.
+      if (guest_code) {
+        (async () => {
+          try {
+            const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+            const res = await axios.get(
+              `${API_BASE_URL}/api/leads/guest-validate`,
+              {
+                params: { guest_code },
+              }
+            );
+            if (res?.data?.valid && res?.data?.token) {
+              const token = res.data.token;
+              storage.set('authToken', token);
+              axios.defaults.headers.common[
+                'Authorization'
+              ] = `Bearer ${token}`;
+              const { fetchCurrentUser } = await import('@/services/user');
+              const user = await fetchCurrentUser();
+              if (user) {
+                storage.set('first_name', user.first_name || '');
+                storage.set('last_name', user.last_name || '');
+                storage.set('guest_email', user.email || email || '');
+                storage.set(
+                  'userName',
+                  user.userName ||
+                    `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+                    storage.get('guest_email') ||
+                    'Guest'
+                );
+                storage.set('isGuestImpersonation', true);
+                try {
+                  window.dispatchEvent(new Event('auth-updated'));
+                } catch (e) {
+                  console.warn('Could not dispatch auth-updated event', e);
+                }
+              }
+
+              // Remove guest_code from URL to keep links clean
+              try {
+                const url = new URL(window.location.href);
+                url.searchParams.delete('guest_code');
+                window.history.replaceState({}, document.title, url.toString());
+              } catch (e) {
+                console.warn('Failed to remove guest_code from URL', e);
+              }
+              return;
+            }
+          } catch (e) {
+            console.warn('Guest code redemption failed', e);
+          }
+
+          // If redemption failed, fall back to seeding guest info only
+          try {
+            storage.set('guest_email', this.guestParams.email || '');
+            storage.set('guest_lead_id', this.guestParams.lead_id || '');
+            storage.set('isGuestImpersonation', true);
+            window.dispatchEvent(new Event('auth-updated'));
+          } catch (e) {
+            console.warn('Could not seed guest storage', e);
+          }
+        })();
+      } else if (guest_token) {
+        // Legacy behavior: if a full guest token is present, persist it and
+        // try to fetch the user (backwards compatibility only).
         (async () => {
           try {
             storage.set('authToken', guest_token);
@@ -334,13 +406,6 @@ export default {
               storage.set('first_name', user.first_name || '');
               storage.set('last_name', user.last_name || '');
               storage.set('guest_email', user.email || email || '');
-              storage.set(
-                'userName',
-                user.userName ||
-                  `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
-                  storage.get('guest_email') ||
-                  'Guest'
-              );
               storage.set('isGuestImpersonation', true);
               try {
                 window.dispatchEvent(new Event('auth-updated'));
@@ -353,7 +418,7 @@ export default {
           }
         })();
       } else {
-        // No token — seed minimal guest info so the UI can show name/email.
+        // No token/code — seed minimal guest info so the UI can show name/email.
         try {
           storage.set('guest_email', this.guestParams.email || '');
           storage.set('guest_lead_id', this.guestParams.lead_id || '');

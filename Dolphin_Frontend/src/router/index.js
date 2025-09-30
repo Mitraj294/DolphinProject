@@ -313,14 +313,19 @@ const handlePublicRoutes = (to, authToken, next) => {
 };
 
 // Validate guest token by calling the backend. If valid, store a temporary guest session.
-const validateGuestToken = async (token) => {
+const validateGuestToken = async (opts) => {
+  // opts: { token } for legacy, or { guest_code }
   try {
     const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
-    const res = await axios.get(`${API_BASE_URL}/api/leads/guest-validate`, { params: { token } });
+    const res = await axios.get(`${API_BASE_URL}/api/leads/guest-validate`, { params: opts });
     if (res?.data?.valid) {
+      // If server returned a token, persist it for API calls
+      if (res.data.token) {
+        storage.set('authToken', res.data.token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+      }
       // store minimal guest info for the session
-      storage.set('guest_token', token);
-      storage.set('guest_user', res.data.user);
+      storage.set('guest_user', res.data.user || null);
       return true;
     }
   } catch (e) {
@@ -401,7 +406,7 @@ router.beforeEach(async (to, from, next) => {
     // validate the token and allow the visit (guest flow) without requiring login.
     const guestToken = to.query?.guest_token || null;
     if (guestToken && to.name === 'SubscriptionPlans') {
-      const ok = await validateGuestToken(guestToken);
+      const ok = await validateGuestToken({ token: guestToken });
       if (ok) {
         // allow visiting plans and mapping to the guest flow
         next();
@@ -414,7 +419,7 @@ router.beforeEach(async (to, from, next) => {
     // the emailed links to open the plans page directly without requiring
     // a prior login. If a guest_token is supplied, we still validate it.
     const isPlansWithData = to.name === 'SubscriptionPlans' && (
-      Boolean(to.query?.email) || Boolean(to.query?.lead_id) || Boolean(to.query?.price_id) || Boolean(to.query?.guest_token)
+      Boolean(to.query?.email) || Boolean(to.query?.lead_id) || Boolean(to.query?.price_id) || Boolean(to.query?.guest_token) || Boolean(to.query?.guest_code)
     );
     if (isPlansWithData) {
       // If a guest_token is present, prefer validating it (already handled above),

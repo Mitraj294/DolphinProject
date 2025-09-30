@@ -77,8 +77,13 @@ public function createCheckoutSession(Request $request)
         if ($customerEmail && $leadId) {
             $successUrl .= '&email=' . urlencode($customerEmail) . '&lead_id=' . $leadId;
         }
+        // Prefer a short guest_code (new flow) but fall back to legacy guest_token
+        $guestCode = $request->input('guest_code');
         $guestToken = $request->input('guest_token');
-        if ($guestToken) {
+        if ($guestCode) {
+            $successUrl .= '&guest_code=' . urlencode($guestCode);
+        } elseif ($guestToken) {
+            // Backwards compatibility: some emails still include the full personal access token
             $successUrl .= '&guest_token=' . urlencode($guestToken);
         }
         Log::info('Success URL:', ['url' => $successUrl]);

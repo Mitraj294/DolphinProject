@@ -33,11 +33,25 @@
             <div class="send-agreement-label">Editable Template</div>
 
             <div class="send-agreement-template-box">
-              <Editor
-                v-model="templateContent"
-                :init="tinymceConfigSelfHosted"
-                @onInit="onTinyMCEInit"
-              />
+              <template v-if="tinyMceLoaded">
+                <Editor
+                  v-model="templateContent"
+                  :init="tinymceConfigSelfHosted"
+                  @onInit="onTinyMCEInit"
+                />
+              </template>
+              <template v-else>
+                <textarea
+                  v-model="templateContent"
+                  style="
+                    width: 100%;
+                    min-height: 240px;
+                    padding: 12px;
+                    border-radius: 8px;
+                    border: 1px solid #ddd;
+                  "
+                />
+              </template>
             </div>
 
             <div class="send-agreement-link-actions-row">
@@ -67,30 +81,6 @@ import {
 } from '@/components/Common/Common_UI/Form';
 import Editor from '@tinymce/tinymce-vue';
 import axios from 'axios';
-
-import 'tinymce/tinymce';
-import 'tinymce/themes/silver';
-import 'tinymce/icons/default';
-import 'tinymce/models/dom';
-
-// Plugins
-import 'tinymce/plugins/advlist';
-import 'tinymce/plugins/autolink';
-import 'tinymce/plugins/lists';
-import 'tinymce/plugins/link';
-import 'tinymce/plugins/image';
-import 'tinymce/plugins/charmap';
-import 'tinymce/plugins/preview';
-import 'tinymce/plugins/anchor';
-import 'tinymce/plugins/searchreplace';
-import 'tinymce/plugins/visualblocks';
-import 'tinymce/plugins/code';
-import 'tinymce/plugins/fullscreen';
-import 'tinymce/plugins/insertdatetime';
-import 'tinymce/plugins/media';
-import 'tinymce/plugins/table';
-import 'tinymce/plugins/wordcount';
-import 'tinymce/plugins/help';
 
 export default {
   name: 'SendAgreement',
@@ -151,11 +141,26 @@ export default {
           'body { font-family: Arial, sans-serif; font-size: 14px; margin: 20px; }',
         license_key: 'gpl',
       },
+      tinyMceLoaded: false,
+      // Track whether we've patched addEventListener and allow restoring later
+      tinyMceShimPatched: false,
+      tinyMceShimRestoreTimer: null,
     };
   },
   mounted() {
     const leadId = this.$route.params.id || this.$route.query.lead_id || null;
     this.leadId = leadId;
+
+    // Dynamically load TinyMCE assets and apply a passive-event wrapper to
+    // avoid console warnings about non-passive touch listeners.
+    this.loadTinyMceAssets()
+      .then(() => {
+        this.tinyMceLoaded = true;
+      })
+      .catch((e) => {
+        console.warn('Failed to load TinyMCE assets:', e);
+        this.tinyMceLoaded = false;
+      });
 
     if (leadId) {
       this.loadInitialLeadData(leadId);
@@ -295,6 +300,104 @@ export default {
     },
     onTinyMCEInit(event, editor) {
       console.log('TinyMCE initialized:', editor);
+      // TinyMCE finished initializing — restore original addEventListener
+      this.restoreTinyMceShim();
+    },
+    async loadTinyMceAssets() {
+      // listeners, browsers warn unless they are passive. We can't change
+      // TinyMCE internals easily, but we can wrap addEventListener to
+      // coerce passive: true for touch events during TinyMCE init.
+      const origAdd = EventTarget.prototype.addEventListener;
+      const patched = function (type, listener, options) {
+        try {
+          if (type === 'touchstart' || type === 'touchmove') {
+            // If caller passed a boolean for capture, preserve it while forcing passive
+            if (typeof options === 'boolean') {
+              return origAdd.call(this, type, listener, {
+                passive: true,
+                capture: options,
+              });
+            }
+
+            // If no options were provided, install as passive without capture
+            if (options === undefined) {
+              return origAdd.call(this, type, listener, { passive: true });
+            }
+
+            // If an options object was provided, clone and ensure passive:true
+            if (typeof options === 'object' && options !== null) {
+              if (options.passive === true) {
+                return origAdd.call(this, type, listener, options);
+              }
+              const newOpts = { ...options, passive: true };
+              return origAdd.call(this, type, listener, newOpts);
+            }
+          }
+        } catch (err) {
+          // If anything goes wrong, log and fall back to original behavior
+          // (this should be rare and not break page behavior)
+          // eslint-disable-next-line no-console
+          console.warn('Passive event shim error', err);
+          return origAdd.call(this, type, listener, options);
+        }
+
+        return origAdd.call(this, type, listener, options);
+      };
+
+      // Install the shim and KEEP it patched until Editor init calls restore
+      EventTarget.prototype.addEventListener = patched;
+      try {
+        // Load tinyMCE core and plugins from public/tinymce
+        // The project already copies tinymce to public/tinymce during serve
+        // so we can load the script dynamically.
+        await this.loadScript('/tinymce/tinymce.min.js');
+        // Wait a tick for tinymce internals to initialize
+        await new Promise((r) => setTimeout(r, 50));
+
+        // Remember original so we can restore later from onTinyMCEInit
+        this._origAdd = origAdd;
+        this.tinyMceShimPatched = true;
+
+        // Safety timeout: restore after 5s if onInit never fires
+        this.tinyMceShimRestoreTimer = setTimeout(() => {
+          // eslint-disable-next-line no-console
+          console.warn(
+            'TinyMCE shim safety timeout reached; restoring original addEventListener'
+          );
+          this.restoreTinyMceShim();
+        }, 5000);
+      } catch (e) {
+        // Loading failed — restore original to avoid leaving the shim in place
+        EventTarget.prototype.addEventListener = origAdd;
+        throw e;
+      }
+    },
+    restoreTinyMceShim() {
+      try {
+        if (this.tinyMceShimPatched && this._origAdd) {
+          EventTarget.prototype.addEventListener = this._origAdd;
+        }
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('Error restoring TinyMCE shim', err);
+      } finally {
+        this.tinyMceShimPatched = false;
+        this._origAdd = null;
+        if (this.tinyMceShimRestoreTimer) {
+          clearTimeout(this.tinyMceShimRestoreTimer);
+          this.tinyMceShimRestoreTimer = null;
+        }
+      }
+    },
+    loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.onload = () => resolve();
+        s.onerror = (e) => reject(e);
+        document.head.appendChild(s);
+      });
     },
   },
 };
