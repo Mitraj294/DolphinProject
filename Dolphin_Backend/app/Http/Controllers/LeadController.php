@@ -166,8 +166,8 @@ class LeadController extends Controller
         // $orgUserDetails = null;
         
                                 // Build a registration link that points to the frontend app so users land on the registration page.
-                                // Prefer FRONTEND_URL (set in .env), fallback to a sensible local dev port.
-                                $frontendBase = env('FRONTEND_URL', env('APP_URL', 'FRONTEND_URL'));
+                                // Prefer FRONTEND_URL (set in .env), fallback to APP_URL and finally a sensible local dev port.
+                                $frontendBase = env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080'));
 
                                 // Prepare query params to prefill the registration form on the frontend.
                                 $queryParams = [
@@ -187,6 +187,7 @@ class LeadController extends Controller
                                 ];
 
                                 $registration_link = rtrim($frontendBase, '/') . '/register?' . http_build_query($queryParams);
+                                Log::info('LeadController: prepared registration_link', ['registration_link' => $registration_link, 'lead_id' => $lead->id]);
                                 $safeLink = htmlspecialchars($registration_link, ENT_QUOTES, 'UTF-8');
                                 $safeName = htmlspecialchars((string)($lead->first_name ?? $lead->email), ENT_QUOTES, 'UTF-8');
                                
@@ -295,7 +296,8 @@ class LeadController extends Controller
    
     public function leadRegistration(Request $request)
     {
-                $registration_link = $request->query('registration_link', rtrim(env('FRONTEND_URL', env('APP_URL', 'FRONTEND_URL')), '/') . '/register');
+                // Prefer FRONTEND_URL, fallback to APP_URL, then localhost dev URL
+                $registration_link = $request->query('registration_link', rtrim(env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080')), '/') . '/register');
                 $name = $request->query('name', '');
 
                 $safeLink = htmlspecialchars($registration_link, ENT_QUOTES, 'UTF-8');
@@ -331,13 +333,16 @@ class LeadController extends Controller
    
     public function leadAgreement(Request $request)
     {
-        $checkout_url = $request->query('checkout_url', '#');
+    // Prefer provided checkout_url; if missing, point to frontend plans page.
+    $checkout_url = $request->query('checkout_url', rtrim(env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080')), '/') . '/subscriptions/plans');
         $name = $request->query('name', '');
 
         $safeLink = htmlspecialchars($checkout_url, ENT_QUOTES, 'UTF-8');
         $safeName = htmlspecialchars($name ?: 'User', ENT_QUOTES, 'UTF-8');
 
-        $html = <<<HTML
+    Log::info('LeadController: prepared leadAgreement checkout_url', ['checkout_url' => $checkout_url, 'name' => $name]);
+
+    $html = <<<HTML
         <!doctype html>
         <html>
         <head>
@@ -355,6 +360,7 @@ class LeadController extends Controller
                             <a href="{$safeLink}" style="display:inline-block; padding:10px 20px; background-color:#0164A5; color:#ffffff; text-decoration:none; border-radius:50px; font-weight:bold;">Proceed to Payment</a>
                         </div>
                         <div style="font-size:13px; color:#888888; text-align:center; margin-top:30px;">If you did not request this, you can safely ignore this email.</div>
+                        
                     </div>
                 </div>
             </div>

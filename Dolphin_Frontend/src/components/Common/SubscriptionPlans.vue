@@ -317,6 +317,52 @@ export default {
       this.guestParams.lead_id = lead_id;
       this.guestParams.price_id = price_id;
       this.guestParams.guest_token = guest_token;
+
+      // If a short-lived guest token is present, persist it and attempt to
+      // fetch the current user so the app behaves as if logged-in for the
+      // duration of the token (safe, short-lived token generated server-side).
+      if (guest_token) {
+        (async () => {
+          try {
+            storage.set('authToken', guest_token);
+            axios.defaults.headers.common[
+              'Authorization'
+            ] = `Bearer ${guest_token}`;
+            const { fetchCurrentUser } = await import('@/services/user');
+            const user = await fetchCurrentUser();
+            if (user) {
+              storage.set('first_name', user.first_name || '');
+              storage.set('last_name', user.last_name || '');
+              storage.set('guest_email', user.email || email || '');
+              storage.set(
+                'userName',
+                user.userName ||
+                  `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+                  storage.get('guest_email') ||
+                  'Guest'
+              );
+              storage.set('isGuestImpersonation', true);
+              try {
+                window.dispatchEvent(new Event('auth-updated'));
+              } catch (e) {
+                console.warn('Could not dispatch auth-updated event', e);
+              }
+            }
+          } catch (e) {
+            console.warn('Guest auto-login failed', e);
+          }
+        })();
+      } else {
+        // No token — seed minimal guest info so the UI can show name/email.
+        try {
+          storage.set('guest_email', this.guestParams.email || '');
+          storage.set('guest_lead_id', this.guestParams.lead_id || '');
+          storage.set('isGuestImpersonation', true);
+          window.dispatchEvent(new Event('auth-updated'));
+        } catch (e) {
+          console.warn('Could not seed guest storage', e);
+        }
+      }
     } else {
       this.fetchUserPlan();
     }

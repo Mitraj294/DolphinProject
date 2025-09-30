@@ -25,55 +25,97 @@ use Carbon\Carbon;
 class StripeSubscriptionController extends Controller
 {
 
-    public function createCheckoutSession(Request $request)
-    {
-        Log::info('createCheckoutSession request:', $request->all());
+public function createCheckoutSession(Request $request)
+{
+    Log::info('createCheckoutSession request:', $request->all());
 
-        $user = Auth::user();
-        $priceId = $request->input('price_id');
-        if (!$priceId) {
-            return response()->json(['error' => 'Missing price_id'], 400);
-        }
+    $user = Auth::user();
+    $priceId = $request->input('price_id');
+    $frontend = env('FRONTEND_URL', 'http://localhost:8080');
 
-        Stripe::setApiKey(config('services.stripe.secret'));
-        $frontend = env('FRONTEND_URL', 'http://localhost:8080');
+    $customerEmail = null;
+    $leadId = null;
+    $response = [];
+    $status = 200;
 
-        $customerEmail = null;
-        $leadId = null;
+    // Error collection
+    if (!$priceId) {
+        $response = ['error' => 'Missing price_id'];
+        $status = 400;
+    }
 
+    if (empty($response)) {
         if ($user) {
             $customerEmail = $user->email;
         } else {
-            // Guest user flow
-            $customerEmail = $request->input('email');
+            $customerEmail = trim((string)$request->input('email')) ?: null;
             $leadId = $request->input('lead_id');
+
             if (!$customerEmail || !$leadId) {
-                return response()->json(['error' => 'Email and lead_id are required for guest checkout'], 400);
+                $response = ['error' => 'Email and lead_id are required for guest checkout'];
+                $status = 400;
+            } else {
+                $lower = strtolower($customerEmail);
+                if (in_array($lower, ['...', 'n/a', 'na', 'none', 'null', 'user@example.com'], true) || strlen($customerEmail) > 254) {
+                    Log::warning('Guest email rejected as placeholder or too long', ['email' => $customerEmail, 'lead_id' => $leadId]);
+                    $response = ['error' => 'Invalid email address provided'];
+                    $status = 400;
+                } elseif (!filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                    Log::warning('Invalid guest email provided for checkout', ['email' => $customerEmail, 'lead_id' => $leadId]);
+                    $response = ['error' => 'Invalid email address provided'];
+                    $status = 400;
+                } else {
+                    Log::info('Guest checkout email validated', ['email' => $customerEmail, 'lead_id' => $leadId]);
+                }
             }
         }
+    }
 
-        // Construct success URL with session ID and optional guest params
+    // Only try Stripe if no previous error
+    if (empty($response)) {
         $successUrl = $frontend . '/subscriptions/plans?checkout_session_id={CHECKOUT_SESSION_ID}';
         if ($customerEmail && $leadId) {
             $successUrl .= '&email=' . urlencode($customerEmail) . '&lead_id=' . $leadId;
         }
-
+        $guestToken = $request->input('guest_token');
+        if ($guestToken) {
+            $successUrl .= '&guest_token=' . urlencode($guestToken);
+        }
         Log::info('Success URL:', ['url' => $successUrl]);
 
-        $session = StripeSession::create([
-            'payment_method_types' => ['card'],
-            'mode' => 'subscription',
-            'customer_email' => $customerEmail,
-            'line_items' => [[
-                'price' => $priceId,
-                'quantity' => 1,
-            ]],
-            'success_url' => $successUrl,
-            'cancel_url' => $frontend . '/subscriptions/plans',
-        ]);
+        Stripe::setApiKey(config('services.stripe.secret'));
 
-        return response()->json(['id' => $session->id, 'url' => $session->url]);
+        try {
+            $session = StripeSession::create([
+                'payment_method_types' => ['card'],
+                'mode' => 'subscription',
+                'customer_email' => $customerEmail,
+                'line_items' => [[
+                    'price' => $priceId,
+                    'quantity' => 1,
+                ]],
+                'success_url' => $successUrl,
+                'cancel_url' => $frontend . '/subscriptions/plans',
+            ]);
+            $response = ['id' => $session->id, 'url' => $session->url];
+            $status = 200;
+        } catch (\Stripe\Exception\InvalidRequestException $e) {
+            Log::error('Stripe InvalidRequestException creating checkout session', [
+                'message' => $e->getMessage(),
+                'params' => ['price_id' => $priceId, 'email' => $customerEmail, 'lead_id' => $leadId]
+            ]);
+            $response = ['error' => 'Stripe rejected the request: ' . $e->getMessage()];
+            $status = 400;
+        } catch (\Throwable $e) {
+            Log::error('Unexpected error creating Stripe checkout session: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            $response = ['error' => 'Could not create Stripe checkout session.'];
+            $status = 500;
+        }
     }
+
+    return response()->json($response, $status);
+}
+
 
     /**
      * Refresh the authenticated user's roles and return them.
