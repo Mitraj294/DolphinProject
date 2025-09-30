@@ -204,10 +204,16 @@ export default {
           this.to.substring(0, this.to.indexOf('@')) ||
           '';
 
-        // Use the subscriptions page URL so the template contains a usable link
-        const checkoutUrl = 'http://127.0.0.1:8080/subscriptions/plans';
+        // Use a magic-login preview URL so the template contains a usable
+        // link that will be replaced server-side with a one-time token.
+        // The backend expects query params: email, lead_id, price_id, guest_token
+        const frontendBase = 'http://127.0.0.1:8080';
+        const previewMagicLink = `${frontendBase}/magic-login-and-redirect?token=PREVIEW_TOKEN&email=${encodeURIComponent(
+          name || ''
+        )}&lead_id=${this.leadId || ''}&price_id=`;
         const params = {
-          checkout_url: checkoutUrl,
+          // backend will replace {{magic_link}} placeholder with real link
+          checkout_url: previewMagicLink,
           name: name,
         };
 
@@ -241,13 +247,12 @@ export default {
           '';
 
         // Ensure the template contains the real checkout link instead of placeholders
-        const checkoutUrl = 'http://127.0.0.1:8080/subscriptions/plans';
-        // Replace href="#" or href="#0" placeholders inserted by the editor with the real URL.
+        // Replace href="#" or href="#0" placeholders inserted by the editor with the placeholder.
         // Use a function replacement to preserve the surrounding quote character.
         const bodyWithLinks = String(this.templateContent).replace(
           /href=(['"])#(?:0)?\1/g,
           (match, quote) => {
-            return `href=${quote}${checkoutUrl}${quote}`;
+            return `href=${quote}{{magic_link}}${quote}`;
           }
         );
 
@@ -256,7 +261,8 @@ export default {
           subject: this.subject,
           body: bodyWithLinks,
           name: name,
-          checkout_url: checkoutUrl,
+          // include lead id so backend can attach token to the correct user/lead
+          checkout_url: '{{magic_link}}',
         };
 
         if (this.leadId) payload.lead_id = this.leadId;

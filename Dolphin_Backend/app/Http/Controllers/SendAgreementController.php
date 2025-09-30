@@ -199,4 +199,7 @@ class SendAgreementController extends Controller
             config(['mail.default' => 'smtp']);
         }
     }
+
+   
+
 }

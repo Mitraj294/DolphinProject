@@ -229,7 +229,7 @@ export default {
   text-align: center;
 }
 .manage-subscription-msg.green {
-  color: green !important;
+  color: rgb(29, 121, 29) !important;
 }
 .manage-subscription-msg.red {
   color: red !important;
