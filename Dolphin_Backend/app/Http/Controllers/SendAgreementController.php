@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Mail;
 use App\Models\Lead;
 use App\Models\User;
 use App\Models\Role;
+use App\Models\Organization;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Exception;
@@ -165,7 +167,7 @@ class SendAgreementController extends Controller
     /**
      * Prepares the final HTML content with checkout link.
      */
-    private function prepareEmailBody(array $validated, ?string $token = null): string
+    private function prepareEmailBody(array $validated, ?string $checkoutUrl = null, ?string $token = null): string
     {
         $htmlBody = $validated['body'];
 
@@ -173,15 +175,34 @@ class SendAgreementController extends Controller
         // be logged in automatically.
         $frontend = env('FRONTEND_URL', 'http://127.0.0.1:8080');
 
-        $magicLink = $frontend . '/magic-login-and-redirect?token=' . $token;
+        $queryParams = array_filter([
+            'token' => $token,
+            'email' => $validated['to'] ?? null,
+            'lead_id' => $validated['lead_id'] ?? null,
+            'price_id' => $validated['price_id'] ?? null,
+        ], static fn($value) => $value !== null && $value !== '');
+
+        $magicLink = $frontend . '/magic-login-and-redirect';
+        if (!empty($queryParams)) {
+            $magicLink .= '?' . http_build_query($queryParams);
+        }
 
         $replacements = [
-            '{{checkout_url}}' => $magicLink,
-            '{{checkoutUrl}}' => $magicLink,
+            '{{magic_link}}' => $magicLink,
             '{{plans_url}}' => $magicLink,
             '{{plansUrl}}' => $magicLink,
             '{{name}}' => $validated['name'] ?? '',
         ];
+
+        if ($checkoutUrl) {
+            $replacements['{{checkout_url}}'] = $checkoutUrl;
+            $replacements['{{checkoutUrl}}'] = $checkoutUrl;
+            $replacements['{{stripe_checkout_url}}'] = $checkoutUrl;
+            $replacements['{{stripeCheckoutUrl}}'] = $checkoutUrl;
+        } else {
+            $replacements['{{checkout_url}}'] = $magicLink;
+            $replacements['{{checkoutUrl}}'] = $magicLink;
+        }
 
         $htmlBody = str_replace(array_keys($replacements), array_values($replacements), $htmlBody);
 
@@ -217,6 +238,74 @@ class SendAgreementController extends Controller
                 'last_name' => $user->last_name,
             ]
         ], 200);
+    }
+
+    /**
+     * Exchange a one-time guest token for an API access token so the lead
+     * can be automatically logged in from the emailed magic link.
+     */
+    public function magicLogin(Request $request)
+    {
+        $validated = $request->validate([
+            'token' => 'required|string',
+        ]);
+
+        $tokenValue = $validated['token'];
+
+        $user = User::with(['roles', 'userDetails'])->where('remember_token', $tokenValue)->first();
+        if (!$user) {
+            Log::warning('Magic login attempted with invalid token', ['token' => $tokenValue]);
+            return response()->json(['error' => 'Invalid or expired link'], 410);
+        }
+
+        try {
+            $personalToken = $user->createToken('magic-link');
+            $tokenModel = $personalToken->token;
+
+            if (!$tokenModel->expires_at) {
+                $tokenModel->expires_at = Carbon::now()->addHours(12);
+                $tokenModel->save();
+            }
+
+            $expiresAt = Carbon::parse($tokenModel->expires_at);
+            $expiresIn = max($expiresAt->diffInSeconds(Carbon::now()), 0);
+
+            $organization = Organization::where('user_id', $user->id)->first();
+            $roleName = optional($user->roles->first())->name ?? 'user';
+
+            $userPayload = [
+                'id' => $user->id,
+                'email' => $user->email,
+                'role' => $roleName,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'organization_id' => $organization?->id,
+                'organization_name' => $organization?->organization_name,
+            ];
+
+            // Invalidate the token so it cannot be reused.
+            $user->remember_token = null;
+            $user->save();
+
+            Log::info('Magic login token consumed successfully', ['user_id' => $user->id]);
+
+            return response()->json([
+                'message' => 'Magic login successful',
+                'access_token' => $personalToken->accessToken,
+                'refresh_token' => null,
+                'token_type' => 'Bearer',
+                'expires_in' => $expiresIn,
+                'expires_at' => $expiresAt->toDateTimeString(),
+                'user' => $userPayload,
+            ]);
+        } catch (Exception $exception) {
+            Log::error('Magic login processing failed', [
+                'token' => $tokenValue,
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json(['error' => 'Unable to complete login'], 500);
+        }
     }
 
     private function configureMailerForDevelopment(): void

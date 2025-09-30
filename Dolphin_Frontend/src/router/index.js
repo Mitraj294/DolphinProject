@@ -26,6 +26,7 @@ const ThankYou = () => import('@/components/auth/ThankYou.vue');
 const ThanksPage = () => import('@/components/Common/ThanksPage.vue');
 const TrainingResources = () => import('@/components/Common/TrainingResources.vue');
 const GetNotifications = () => import('@/components/Common/GetNotifications.vue');
+const MagicLoginRedirect = () => import('@/components/auth/MagicLoginRedirect.vue');
 
 // Subscription
 const SubscriptionSuccess = () => import('@/components/Common/SubscriptionSuccess.vue');
@@ -84,6 +85,12 @@ const routes = [
     path: '/reset-password',
     name: 'ResetPassword',
     component: ResetPassword,
+    meta: { public: true }
+  },
+  {
+    path: '/magic-login-and-redirect',
+    name: 'MagicLoginRedirect',
+    component: MagicLoginRedirect,
     meta: { public: true }
   },
   {
