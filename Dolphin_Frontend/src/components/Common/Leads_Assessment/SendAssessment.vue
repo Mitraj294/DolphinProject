@@ -1,17 +1,18 @@
 <template>
+  <!-- Main layout wrapper -->
   <MainLayout>
     <div class="page">
       <div class="send-assessment-table-outer">
         <div class="send-assessment-table-card">
+          <!-- Header -->
           <div class="send-assessment-table-header">
             <div class="send-assessment-title">Send Assessment</div>
           </div>
 
-          <form
-            class="send-assessment-form"
-            @submit.prevent="handleSendAssessment"
-          >
+          <!-- Assessment send form -->
+          <form class="send-assessment-form" @submit.prevent="handleSendAssessment">
             <FormRow>
+              <!-- Recipient Email -->
               <div class="send-assessment-field">
                 <FormLabel>To</FormLabel>
                 <FormInput
@@ -20,6 +21,7 @@
                   placeholder="meet@gmail.com"
                 />
               </div>
+              <!-- Email Subject -->
               <div class="send-assessment-field">
                 <FormLabel>Subject</FormLabel>
                 <FormInput
@@ -30,8 +32,8 @@
               </div>
             </FormRow>
 
+            <!-- Editable template for email body -->
             <div class="send-assessment-label">Editable Template</div>
-
             <div class="send-assessment-template-box">
               <Editor
                 v-model="templateContent"
@@ -40,6 +42,7 @@
               />
             </div>
 
+            <!-- Form actions -->
             <div class="send-assessment-link-actions-row">
               <div class="send-assessment-actions">
                 <button
@@ -59,22 +62,17 @@
 </template>
 
 <script>
+// Layout and Form UI imports
 import MainLayout from '@/components/layout/MainLayout.vue';
-import {
-  FormInput,
-  FormRow,
-  FormLabel,
-} from '@/components/Common/Common_UI/Form';
+import { FormInput, FormRow, FormLabel } from '@/components/Common/Common_UI/Form';
 import Editor from '@tinymce/tinymce-vue';
 import axios from 'axios';
 
+// TinyMCE core and plugins (self-hosted)
 import 'tinymce/tinymce';
 import 'tinymce/themes/silver';
 import 'tinymce/icons/default';
-
 import 'tinymce/models/dom';
-
-// Import plugins
 import 'tinymce/plugins/advlist';
 import 'tinymce/plugins/autolink';
 import 'tinymce/plugins/lists';
@@ -93,53 +91,41 @@ import 'tinymce/plugins/table';
 import 'tinymce/plugins/wordcount';
 import 'tinymce/plugins/help';
 
+/**
+
+ * SendAssessment.vue
+
+ * - Allows sending assessment invite emails to leads/users.
+ * - Loads editable template from backend or generates based on lead.
+ * - Uses TinyMCE editor for rich email composition.
+
+ */
 export default {
   name: 'SendAssessment',
   components: { MainLayout, Editor, FormInput, FormRow, FormLabel },
   data() {
     return {
-      leadId: null,
-      to: '',
-      recipientName: '',
-      subject: 'Complete Your Registration',
-      templateContent: '',
-      sending: false,
-      registrationLink: '',
+      leadId: null,               // ID of the lead (from route, query, or backend)
+      to: '',                     // Recipient email
+      recipientName: '',          // Recipient name
+      subject: 'Complete Your Registration', // Default subject
+      templateContent: '',        // Email body (HTML)
+      sending: false,             // Email sending state
+      registrationLink: '',       // Registration link for invite
+
+      // TinyMCE configuration (self-hosted, free plugins only)
       tinymceConfigSelfHosted: {
         height: 500,
-
-        // Set the base URL for TinyMCE assets
         base_url: '/tinymce',
         suffix: '.min',
-
-        // Skin configuration
         skin_url: '/tinymce/skins/ui/oxide',
         content_css: '/tinymce/skins/content/default/content.css',
-
         menubar: 'edit view insert format tools table help',
-
-        // Only FREE plugins (no premium features)
         plugins: [
-          'advlist',
-          'autolink',
-          'lists',
-          'link',
-          'image',
-          'charmap',
-          'preview',
-          'anchor',
-          'searchreplace',
-          'visualblocks',
-          'code',
-          'fullscreen',
-          'insertdatetime',
-          'media',
-          'table',
-          'wordcount',
-          'help',
+          'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+          'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+          'insertdatetime', 'media', 'table', 'wordcount', 'help',
         ],
-
-        // Simplified toolbar with only free features
         toolbar:
           'undo redo | formatselect | ' +
           'bold italic underline strikethrough | ' +
@@ -147,58 +133,52 @@ export default {
           'bullist numlist outdent indent | ' +
           'link image table | ' +
           'code preview fullscreen | help',
-
-        // Email template settings
         valid_elements: '*[*]',
         cleanup: false,
         convert_urls: false,
         remove_script_host: false,
         relative_urls: false,
-
-        // Basic formatting (free features only)
         block_formats:
           'Paragraph=p; Heading 1=h1; Heading 2=h2; Heading 3=h3; Heading 4=h4; Heading 5=h5; Heading 6=h6; Preformatted=pre',
-
-        // UI settings
         branding: false,
         statusbar: false,
         elementpath: false,
         resize: 'both',
         promotion: false,
-
         content_style:
           'body { font-family: Arial, sans-serif; font-size: 14px; margin: 20px; }',
-
-        // GPL license for self-hosted
         license_key: 'gpl',
       },
     };
   },
-  // mounted() now only handles the initial trigger for loading data.
-  mounted() {
-    console.log('=== TINYMCE COMPONENT MOUNTED ===');
-    const leadId = this.$route.params.id || this.$route.query.lead_id || null;
-    // store leadId so generated registration links can include it and enable full prefill
-    this.leadId = leadId;
-    console.log('Lead ID from route:', leadId);
 
-    if (leadId) {
-      console.log('Loading initial lead data for ID:', leadId);
-      this.loadInitialLeadData(leadId);
-    }
+
+  // Lifecycle: On mount, load initial lead data if available
+
+  mounted() {
+    const leadId = this.$route.params.id || this.$route.query.lead_id || null;
+    this.leadId = leadId;
+    if (leadId) this.loadInitialLeadData(leadId);
   },
+
+
+  // Watchers: If recipient email changes, re-fetch server template
+
   watch: {
     to(newEmail, oldEmail) {
-      console.log('=== TO EMAIL WATCHER ===');
-      console.log('Email changed from:', oldEmail, 'to:', newEmail);
       if (newEmail && newEmail !== oldEmail) {
-        console.log('Fetching server template for new email');
         this.fetchServerTemplate();
       }
     },
   },
+
+
+  // Methods
+
   methods: {
-    // The main logic for loading the initial lead from the URL.
+    /**
+     * Loads lead data and default template from backend for given leadId.
+     */
     async loadInitialLeadData(leadId) {
       try {
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
@@ -210,21 +190,11 @@ export default {
 
         const leadObj = res.data?.lead;
         const leadDefaultTemplate = res.data?.defaultTemplate;
-
-        console.log('=== LEAD DATA LOADED ===');
-        console.log('Lead object:', leadObj);
-        console.log('Default template exists:', !!leadDefaultTemplate);
-
         if (leadObj && leadDefaultTemplate) {
-          // keep lead id for registration link prefill
           this.leadId = leadObj.id || this.leadId;
           this.to = leadObj.email || '';
-          this.recipientName = `${leadObj.first_name || ''} ${
-            leadObj.last_name || ''
-          }`.trim();
-
+          this.recipientName = `${leadObj.first_name || ''} ${leadObj.last_name || ''}`.trim();
           this.templateContent = String(leadDefaultTemplate);
-          console.log('Template content set for TinyMCE');
         }
       } catch (e) {
         console.error('Failed to load initial lead data:', e);
@@ -232,9 +202,11 @@ export default {
       }
     },
 
+    /**
+     * Builds registration link for recipient, including lead_id for prefill.
+     */
     updateRegistrationLink() {
       if (this.to) {
-        // include lead_id when available so frontend register page can fetch full lead data
         const base = `${window.location.origin}/register`;
         const params = new URLSearchParams();
         params.set('email', this.to);
@@ -245,50 +217,48 @@ export default {
       }
     },
 
+    /**
+     * Fetches server-generated email template for the given recipient.
+     */
     async fetchServerTemplate() {
       if (!this.to) return;
-
       this.updateRegistrationLink();
-
       try {
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const params = {
           registration_link: this.registrationLink,
           name: this.recipientName,
         };
-
         const res = await axios.get(
           `${API_BASE_URL}/api/email-template/lead-registration`,
           { params }
         );
         let html = res?.data ? String(res.data) : '';
-
-        // Parse the full HTML response to extract only the body content.
+        // Only use the .email-container inner HTML for the editor
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         const container = doc.querySelector('.email-container');
         if (container) html = container.innerHTML;
-
         this.templateContent = html;
       } catch (e) {
         console.error('Failed to fetch server template:', e?.message || e);
-        this.templateContent =
-          '<p>Error: Could not load the email template.</p>';
+        this.templateContent = '<p>Error: Could not load the email template.</p>';
       }
     },
 
+    /**
+     * Handles the form submit: sends assessment email to backend.
+     */
     async handleSendAssessment() {
       if (this.sending) return;
       this.sending = true;
       try {
         const name = this.computeRecipientName();
         const payload = this.buildPayload(name);
-
         await axios.post(
           `${process.env.VUE_APP_API_BASE_URL}/api/leads/send-assessment`,
           payload
         );
-
         this.$toast.add({
           severity: 'success',
           summary: 'Assessment Sent',
@@ -309,17 +279,22 @@ export default {
       }
     },
 
+    /**
+     * Compute recipient name from available sources.
+     */
     computeRecipientName() {
       return (
         this.recipientName ||
-        (this.$route.params &&
-          (this.$route.params.contact || this.$route.params.name)) ||
+        (this.$route.params && (this.$route.params.contact || this.$route.params.name)) ||
         this.$route.query.contact ||
         this.$route.query.name ||
         ''
       );
     },
 
+    /**
+     * Build payload for backend API.
+     */
     buildPayload(name) {
       const payload = {
         to: this.to,
@@ -328,15 +303,16 @@ export default {
         registration_link: this.registrationLink,
         name,
       };
-
       const leadId =
         (this.$route.params && this.$route.params.id) ||
         (this.$route.query && this.$route.query.lead_id);
       if (leadId) payload.lead_id = leadId;
-
       return payload;
     },
 
+    /**
+     * Format email sending error for toast notification.
+     */
     formatSendErrorDetail(error) {
       let detail = 'Failed to send assessment email.';
       if (error?.response?.data) {
@@ -358,6 +334,9 @@ export default {
       return detail;
     },
 
+    /**
+     * TinyMCE editor init callback.
+     */
     onTinyMCEInit(event, editor) {
       console.log('TinyMCE initialized:', editor);
     },
@@ -368,9 +347,7 @@ export default {
 <style scoped>
 .send-assessment-table-outer {
   width: 100%;
-
   min-width: 260px;
-
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -380,7 +357,6 @@ export default {
 }
 .send-assessment-table-card {
   width: 100%;
-
   min-width: 0;
   background: #fff;
   border-radius: 24px;
@@ -391,7 +367,6 @@ export default {
   padding: 32px 32px 24px 32px;
   display: flex;
   flex-direction: column;
-
   position: relative;
 }
 @media (max-width: 600px) {

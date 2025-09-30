@@ -18,40 +18,59 @@ use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Exception;
 
+
+// SendAgreementController
+// Controller for sending Stripe agreement/payment links via email,
+// managing guest token validation for quick access, and preparing
+// email bodies with dynamic URLs and user information.
+// Structure:
+//   - send()           : Send agreement/payment email
+//   - validateGuest()  : Validate guest token or token string
+//   - prepareEmailBody(): Replace placeholders in email HTML
+
 class SendAgreementController extends Controller
 {
-    /**
-     * Sends an agreement email containing a Stripe payment link.
-     */
+    
+    // Send an agreement email containing a Stripe payment link.
+    // Handles user creation, guest token generation, and email composition.
+    // @param Request $request
+    // @return \Illuminate\Http\JsonResponse
+    
     public function send(Request $request)
     {
         try {
+            
+            // 1. Request Validation
+            
             $validated = $request->validate([
-                'to' => 'required|email',
+                'to'      => 'required|email',
                 'subject' => 'required|string',
-                'body' => 'required|string',
+                'body'    => 'required|string',
                 'price_id' => 'nullable|string',
-                'name' => 'required|string',
+                'name'    => 'required|string',
                 'lead_id' => 'nullable|integer|exists:leads,id',
             ]);
-
             Log::info('SendAgreementController@send called', $validated);
 
-            // Find lead by ID or email
+            
+            // 2. Find Lead by ID or Email
+            
             $lead = !empty($validated['lead_id'])
                 ? Lead::find($validated['lead_id'])
                 : Lead::where('email', $validated['to'])->first();
 
-            // Create or find user
+            
+            // 3. Create or Find User
+            
             $user = User::where('email', $validated['to'])->first();
             if (!$user) {
                 $passwordPlain = Str::random(12);
                 $nameParts = $this->splitName($validated['name']);
                 $userData = [
-                    'email' => $validated['to'],
+                    'email'      => $validated['to'],
                     'first_name' => $lead->first_name ?? $nameParts['first_name'],
-                    'last_name' => $lead->last_name ?? $nameParts['last_name'],
-                    'password' => Hash::make($passwordPlain),
+                    'last_name'  => $lead->last_name ?? $nameParts['last_name'],
+                    'password'   => Hash::make($passwordPlain),
                 ];
                 $user = User::create($userData);
 
@@ -59,7 +78,7 @@ class SendAgreementController extends Controller
                 try {
                     if ($lead) {
                         $user->userDetails()->create([
-                            'phone' => $lead->phone,
+                            'phone'      => $lead->phone,
                             'country_id' => $lead->country_id ?? null,
                         ]);
                     }
@@ -67,7 +86,7 @@ class SendAgreementController extends Controller
                     Log::warning('Failed to create userDetails: ' . $e->getMessage());
                 }
 
-                // Attach role
+                // Attach organizationadmin role
                 try {
                     $role = Role::where('name', 'organizationadmin')->first();
                     if ($role) {
@@ -78,7 +97,9 @@ class SendAgreementController extends Controller
                 }
             }
 
-            // Build plans URL with identifying query params
+            
+            // 4. Build plans URL with query params
+            
             $frontend = env('FRONTEND_URL', 'http://127.0.0.1:8080');
             $plansUrl = $frontend . '/subscriptions/plans';
             $qs = [];
@@ -92,20 +113,21 @@ class SendAgreementController extends Controller
                 $qs['price_id'] = $validated['price_id'];
             }
 
-            // Create a short-lived personal access token for this user so the emailed link can auto-login
+            
+            // 5. Create short guest code for auto-login
+            
             try {
-                    // Create a short guest code and persist to guest_links so the emailed link is small
-                    $guestCode = Str::upper(Str::random(10));
-                    $guestLink = GuestLink::create([
-                        'code' => $guestCode,
-                        'user_id' => $user->id,
-                        'lead_id' => $validated['lead_id'] ?? null,
-                        'meta' => ['price_id' => $validated['price_id'] ?? null],
-                        'expires_at' => now()->addHours(2),
-                    ]);
-                    if ($guestLink) {
-                        $qs['guest_code'] = $guestCode;
-                    }
+                $guestCode = Str::upper(Str::random(10));
+                $guestLink = GuestLink::create([
+                    'code'      => $guestCode,
+                    'user_id'   => $user->id,
+                    'lead_id'   => $validated['lead_id'] ?? null,
+                    'meta'      => ['price_id' => $validated['price_id'] ?? null],
+                    'expires_at'=> now()->addHours(2),
+                ]);
+                if ($guestLink) {
+                    $qs['guest_code'] = $guestCode;
+                }
             } catch (Exception $e) {
                 Log::warning('Failed to create guest token for email link: ' . $e->getMessage());
             }
@@ -113,11 +135,13 @@ class SendAgreementController extends Controller
                 $plansUrl .= '?' . http_build_query($qs);
             }
 
-            // Insert plans URL into email body
+            
+            // 6. Prepare and send email
+            
             $validated['checkout_url'] = $plansUrl;
             $htmlBody = $this->prepareEmailBody($validated, $plansUrl);
 
-            // Log a short snippet and any plans-related hrefs from the final HTML
+            // Log important email info
             try {
                 $hrefs = [];
                 libxml_use_internal_errors(true);
@@ -132,10 +156,10 @@ class SendAgreementController extends Controller
                 }
                 libxml_clear_errors();
                 Log::info('SendAgreementController: final email HTML preview', [
-                    'to' => $validated['to'] ?? null,
-                    'checkout_url' => $validated['checkout_url'] ?? null,
-                    'hrefs' => array_values(array_unique(array_filter($hrefs))),
-                    'snippet' => substr(strip_tags($htmlBody), 0, 500),
+                    'to'          => $validated['to'] ?? null,
+                    'checkout_url'=> $validated['checkout_url'] ?? null,
+                    'hrefs'       => array_values(array_unique(array_filter($hrefs))),
+                    'snippet'     => substr(strip_tags($htmlBody), 0, 500),
                 ]);
             } catch (Exception $e) {
                 Log::warning('SendAgreementController: failed to parse final HTML for logging: ' . $e->getMessage());
@@ -147,7 +171,7 @@ class SendAgreementController extends Controller
 
             $responsePayload = [
                 'message' => 'Agreement email sent',
-                'mailer' => config('mail.default'),
+                'mailer'  => config('mail.default'),
             ];
 
             return response()->json($responsePayload, 200);
@@ -161,24 +185,26 @@ class SendAgreementController extends Controller
         }
     }
 
-    /**
-     * Validate a guest token supplied by the frontend and return basic user data.
-     */
+    
+    // Validate a guest token supplied by the frontend and return basic user data.
+    // Supports both guest code and full token string.
+    // @param Request $request
+    // @return \Illuminate\Http\JsonResponse
+    
     public function validateGuest(Request $request)
     {
         $responseData = ['valid' => false];
         $status = 200;
 
-        // Prefer short guest codes (safer to email). If present, redeem the
-        // guest code by creating a short-lived personal access token and
-        // returning it to the frontend for immediate use.
+        
+        // Validate with guest_code (preferred)
+        
         $guestCode = $request->query('guest_code');
         if ($guestCode) {
             try {
                 $guestLink = GuestLink::where('code', $guestCode)->first();
-                if (! $guestLink) {
+                if (!$guestLink) {
                     $responseData['message'] = 'Invalid guest code';
-                    // fall through to final return
                 } else {
                     if ($guestLink->used_at) {
                         $responseData['message'] = 'Guest code already used';
@@ -186,7 +212,7 @@ class SendAgreementController extends Controller
                         $responseData['message'] = 'Guest code expired';
                     } else {
                         $user = User::find($guestLink->user_id);
-                        if (! $user) {
+                        if (!$user) {
                             $responseData['message'] = 'User not found';
                         } else {
                             try {
@@ -196,19 +222,17 @@ class SendAgreementController extends Controller
                                     $tokenResult->token->save();
                                 }
                                 $plainToken = $tokenResult->accessToken ?? null;
-
-                                // mark the guest link used
                                 $guestLink->used_at = Carbon::now();
                                 $guestLink->save();
 
                                 $responseData = [
-                                    'valid' => true,
-                                    'token' => $plainToken,
+                                    'valid'      => true,
+                                    'token'      => $plainToken,
                                     'expires_at' => $tokenResult->token->expires_at ?? null,
-                                    'user' => [
-                                        'id' => $user->id,
-                                        'email' => $user->email,
-                                        'first_name' => $user->first_name,
+                                    'user'       => [
+                                        'id'        => $user->id,
+                                        'email'     => $user->email,
+                                        'first_name'=> $user->first_name,
                                         'last_name' => $user->last_name,
                                     ],
                                 ];
@@ -224,10 +248,11 @@ class SendAgreementController extends Controller
                 $responseData['message'] = 'Guest flow failed';
             }
         } else {
-            // Backwards-compatible: accept a full token string in `token` query
-            // parameter and attempt to resolve it against Passport's storage.
+            
+            // Validate with token (legacy, fallback)
+            
             $token = $request->query('token');
-            if (! $token) {
+            if (!$token) {
                 $responseData = ['error' => 'Missing token or guest_code'];
                 $status = 400;
             } else {
@@ -235,12 +260,10 @@ class SendAgreementController extends Controller
                 $foundUser = null;
                 try {
                     $accessTokenModel = null;
-
                     if (strpos($token, '|') !== false) {
                         [$idPart] = explode('|', $token, 2);
                         $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $idPart)->first();
                     }
-
                     if (!$accessTokenModel && substr_count($token, '.') === 2) {
                         try {
                             $parts = explode('.', $token);
@@ -251,18 +274,16 @@ class SendAgreementController extends Controller
                                 $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $payload['jti'])->first();
                             }
                         } catch (\Exception $e) {
-                            // ignore malformed JWTs here and continue to fallback
+                            // ignore malformed JWTs here
                         }
                     }
-
                     if (!$accessTokenModel) {
                         $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $token)->first();
                     }
-
                     if ($accessTokenModel) {
                         $now = Carbon::now();
                         $expiresAt = isset($accessTokenModel->expires_at) ? Carbon::parse($accessTokenModel->expires_at) : null;
-                        if (empty($accessTokenModel->revoked) && (! $expiresAt || $expiresAt->gt($now))) {
+                        if (empty($accessTokenModel->revoked) && (!$expiresAt || $expiresAt->gt($now))) {
                             $foundUser = \App\Models\User::find($accessTokenModel->user_id);
                             if ($foundUser) {
                                 $isValid = true;
@@ -272,8 +293,7 @@ class SendAgreementController extends Controller
                 } catch (\Exception $e) {
                     Log::warning('validateGuest token check failed: ' . $e->getMessage());
                 }
-
-                if (! $isValid) {
+                if (!$isValid) {
                     try {
                         $user = User::where('remember_token', $token)->first();
                         if ($user) {
@@ -284,14 +304,13 @@ class SendAgreementController extends Controller
                         Log::warning('validateGuest remember_token fallback failed: ' . $e->getMessage());
                     }
                 }
-
                 if ($isValid && $foundUser) {
                     $responseData = [
                         'valid' => true,
                         'user' => [
-                            'id' => $foundUser->id,
-                            'email' => $foundUser->email,
-                            'first_name' => $foundUser->first_name,
+                            'id'        => $foundUser->id,
+                            'email'     => $foundUser->email,
+                            'first_name'=> $foundUser->first_name,
                             'last_name' => $foundUser->last_name,
                         ],
                     ];
@@ -302,28 +321,38 @@ class SendAgreementController extends Controller
         return response()->json($responseData, $status);
     }
 
-    /**
-     * Prepares the final HTML content for the send-agreement email.
-     * Replaces placeholders like {{checkout_url}} and {{name}}.
-     */
+    
+    // Prepare the final HTML content for the send-agreement email.
+    // Replaces placeholders like {{checkout_url}} and {{name}}.
+    // @param array $validated
+    // @param string $checkoutUrl
+    // @return string
+    
     private function prepareEmailBody(array $validated, string $checkoutUrl): string
     {
         $htmlBody = $validated['body'] ?? '';
-        $placeholders = ['{{checkout_url}}', '{{checkoutUrl}}', '{{checkouturl}}', '{{name}}', '{{plans_url}}'];
-        $replacements = [$checkoutUrl, $checkoutUrl, $checkoutUrl, $validated['name'] ?? '', $checkoutUrl];
+        // Replace common placeholders
+        $placeholders = [
+            '{{checkout_url}}', '{{checkoutUrl}}', '{{checkouturl}}',
+            '{{name}}', '{{plans_url}}'
+        ];
+        $replacements = [
+            $checkoutUrl, $checkoutUrl, $checkoutUrl,
+            $validated['name'] ?? '', $checkoutUrl
+        ];
         $htmlBody = str_replace($placeholders, $replacements, $htmlBody);
 
-        // Replace any occurrence of the plans page URL in hrefs or plain text.
+        // Replace plans page URL in hrefs and plain text
         $pattern = '/https?:\/\/[\w:\.\-@]+\/subscriptions\/plans(?:\?[^"\'\s<>]*)?/i';
         $htmlBody = preg_replace($pattern, $checkoutUrl, $htmlBody);
-
         $htmlBody = str_replace('/subscriptions/plans', $checkoutUrl, $htmlBody);
 
+        // Replace anchor hrefs with final URL
         $checkoutUrlHtmlAttr = htmlspecialchars($checkoutUrl, ENT_QUOTES, 'UTF-8');
-    $hrefPattern = "/href=(['\"])(?:https?:\\/\\/[^\"']+)?\\/subscriptions\\/plans(?:\\?[^\"']*)?\\1/i";
+        $hrefPattern = "/href=(['\"])(?:https?:\\/\\/[^\"']+)?\\/subscriptions\\/plans(?:\\?[^\"']*)?\\1/i";
         $htmlBody = preg_replace($hrefPattern, 'href=$1' . $checkoutUrlHtmlAttr . '$1', $htmlBody);
 
-        // Ensure anchor hrefs point to the final URL
+        // Ensure anchor hrefs point to the final URL using DOM parsing
         try {
             libxml_use_internal_errors(true);
             $dom = new \DOMDocument();
@@ -341,10 +370,22 @@ class SendAgreementController extends Controller
                 $htmlBody .= $dom->saveHTML($child);
             }
         } catch (\Exception $e) {
-            // If DOM parsing fails, fallback to the replaced raw HTML
             Log::warning('prepareEmailBody DOM parsing failed: ' . $e->getMessage());
         }
 
         return $htmlBody;
+    }
+
+    
+    // Helper to split a full name into first and last name.
+    // @param string $name
+    // @return array ['first_name' => ..., 'last_name' => ...]
+    
+    private function splitName($name)
+    {
+        $parts = explode(' ', trim($name));
+        $first = $parts[0] ?? '';
+        $last = isset($parts[1]) ? implode(' ', array_slice($parts, 1)) : '';
+        return ['first_name' => $first, 'last_name' => $last];
     }
 }

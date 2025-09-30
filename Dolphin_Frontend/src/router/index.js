@@ -1,18 +1,25 @@
+/**
+  Dolphin Project - Vue Router Configuration
+  
+  Implements static and dynamic route imports, navigation guards, 
+  subscription flow, role-based access, and guest token support.
+ 
+  Structure:
+ Static imports: For core, frequently-used components.
+ Dynamic imports: For heavier/feature components (lazy-loaded).
+ Route definitions: Public, authenticated, organization, lead, assessment, superadmin, etc.
+ Navigation guards: Auth/role/subscription/guest logic.
+ */
+
 import { createRouter, createWebHistory } from 'vue-router';
-import storage from '../services/storage';
-import { ROLES, canAccess } from '@/permissions.js';
-import { fetchSubscriptionStatus } from '@/services/subscription.js';
+
+// Service/Utility imports
+import storage from '@/services/storage'; // Services folder for storage utils
+import { ROLES, canAccess } from '@/permissions'; // Permissions helper
+import { fetchSubscriptionStatus } from '@/services/subscription'; // Subscription service
 import axios from 'axios';
 
-/*
- Route Component Imports
- Using a hybrid strategy for optimal performance.
- - STATIC IMPORTS: For core, frequently-used components (e.g., Login, Dashboard).
- - DYNAMIC IMPORTS (Lazy Loading): For feature-specific, heavier components.
-
-*/
-
-// Static Imports (Core Components)
+// STATIC COMPONENT IMPORTS (Core/Essential)
 import Login from '@/components/auth/Login.vue';
 import Register from '@/components/auth/Register.vue';
 import ForgotPassword from '@/components/auth/ForgotPassword.vue';
@@ -21,13 +28,13 @@ import Dashboard from '@/components/Common/Dashboard/Dashboard.vue';
 import Profile from '@/components/Common/Profile.vue';
 import AssessmentAnswerPage from '@/components/Common/AssessmentAnswerPage.vue';
 
-// Dynamic Imports (Lazy-Loaded Feature Components)
+// DYNAMIC COMPONENT IMPORTS (Lazy-Loaded)
 const ThankYou = () => import('@/components/auth/ThankYou.vue');
 const ThanksPage = () => import('@/components/Common/ThanksPage.vue');
 const TrainingResources = () => import('@/components/Common/TrainingResources.vue');
 const GetNotifications = () => import('@/components/Common/GetNotifications.vue');
 
-// Subscription
+// Subscription Flow
 const SubscriptionSuccess = () => import('@/components/Common/SubscriptionSuccess.vue');
 const ManageSubscription = () => import('@/components/Common/ManageSubscription.vue');
 const SubscriptionPlans = () => import('@/components/Common/SubscriptionPlans.vue');
@@ -50,18 +57,16 @@ const ScheduleClassTraining = () => import('@/components/Common/Leads_Assessment
 const Assessments = () => import('@/components/Common/Leads_Assessment/Assessments.vue');
 const AssessmentSummary = () => import('@/components/Common/Leads_Assessment/AssessmentSummary.vue');
 
-// Organization
+// Organizations
 const Organizations = () => import('@/components/Common/Organizations/Organizations.vue');
 const OrganizationDetail = () => import('@/components/Common/Organizations/OrganizationDetail.vue');
 const OrganizationEdit = () => import('@/components/Common/Organizations/OrganizationEdit.vue');
 const MyOrganization = () => import('@/components/Common/MyOrganization/MyOrganization.vue');
 const MemberListing = () => import('@/components/Common/MyOrganization/MemberListing.vue');
 
-
-// Route Definitions
-
+// ROUTE DEFINITIONS
 const routes = [
-  // Public Routes
+  //PUBLIC ROUTES
   {
     path: '/',
     name: 'Login',
@@ -105,7 +110,7 @@ const routes = [
     meta: { public: true }
   },
 
-  // Authenticated Routes
+  //AUTHENTICATED ROUTES 
   {
     path: '/dashboard',
     name: 'Dashboard',
@@ -119,7 +124,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
-  // Subscription & Billing
+  //  SUBSCRIPTION & BILLING 
   {
     path: '/manage-subscription',
     name: 'ManageSubscription',
@@ -145,8 +150,8 @@ const routes = [
     props: true,
     meta: { requiresAuth: true }
   },
-  
-  // Organizations
+
+  //  ORGANIZATIONS 
   {
     path: '/organizations',
     name: 'Organizations',
@@ -167,8 +172,8 @@ const routes = [
     props: true,
     meta: { requiresAuth: true }
   },
-  
-  // My Organization
+
+  //  MY ORGANIZATION 
   {
     path: '/my-organization',
     name: 'MyOrganization',
@@ -183,7 +188,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
-  // Leads
+  //LEADS
   {
     path: '/leads',
     name: 'Leads',
@@ -211,7 +216,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
-  // Assessments
+  //  ASSESSMENTS 
   {
     path: '/assessments',
     name: 'Assessments',
@@ -240,7 +245,7 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
-  // Superadmin
+  //SUPERADMIN 
   {
     path: '/user-permission',
     name: 'UserPermission',
@@ -259,8 +264,8 @@ const routes = [
     component: Notifications,
     meta: { requiresAuth: true, roles: [ROLES.SUPERADMIN] }
   },
-  
-  // Other Authenticated Routes
+
+  //OTHER AUTH ROUTES
   {
     path: '/training-resources',
     name: 'TrainingResources',
@@ -286,24 +291,27 @@ const routes = [
     meta: { requiresAuth: true }
   },
 
-  // Catch-all Route
+  //CATCH-ALL ROUTE
   {
     path: '/:catchAll(.*)',
     redirect: '/dashboard'
   }
 ];
 
-
+// ROUTER INSTANCE
 const router = createRouter({
   history: createWebHistory(process.env.BASE_URL),
-  routes
+  routes,
 });
 
-// Refactored Navigation Guard Logic
+// NAVIGATION GUARDS
 
+/**
+  Handles navigation for public routes.
+ Redirects authenticated users away from guest-only pages.
+ */
 const handlePublicRoutes = (to, authToken, next) => {
   if (!to.meta.public) return false;
-
   if (authToken && to.meta.guestOnly) {
     next('/dashboard');
   } else {
@@ -312,19 +320,18 @@ const handlePublicRoutes = (to, authToken, next) => {
   return true;
 };
 
-// Validate guest token by calling the backend. If valid, store a temporary guest session.
+/**
+  Validates guest token via backend, sets temporary session.
+ */
 const validateGuestToken = async (opts) => {
-  // opts: { token } for legacy, or { guest_code }
   try {
     const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
     const res = await axios.get(`${API_BASE_URL}/api/leads/guest-validate`, { params: opts });
     if (res?.data?.valid) {
-      // If server returned a token, persist it for API calls
       if (res.data.token) {
         storage.set('authToken', res.data.token);
         axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
       }
-      // store minimal guest info for the session
       storage.set('guest_user', res.data.user || null);
       return true;
     }
@@ -334,6 +341,9 @@ const validateGuestToken = async (opts) => {
   return false;
 };
 
+/**
+  Handles navigation for expired subscriptions.
+ */
 const handleExpiredSubscription = (to, next) => {
   const allowedRoutesForExpired = [
     'Profile',
@@ -348,41 +358,39 @@ const handleExpiredSubscription = (to, next) => {
   }
 };
 
+/**
+  Checks permissions and proceeds or redirects.
+ */
 const checkPermissionsAndNavigate = (to, role, next) => {
   if (to.meta.roles && !to.meta.roles.includes(role)) {
     return next('/dashboard');
   }
-  
   if (canAccess(role, 'routes', to.path)) {
     return next();
   }
-  
   return next('/dashboard');
 };
 
-
+/**
+  Handles navigation for authenticated routes, including subscription logic.
+ */
 const handleAuthenticatedRoutes = async (to, role, next) => {
   const subscriptionPages = ['ManageSubscription', 'SubscriptionPlans', 'BillingDetails'];
   if (subscriptionPages.includes(to.name)) {
     return next();
   }
-
   try {
     const subscriptionStatus = await fetchSubscriptionStatus();
     storage.set('subscription_status', subscriptionStatus.status);
 
     if (subscriptionStatus.status === 'expired') {
-      // Expired applies to everyone
       handleExpiredSubscription(to, next);
       return;
     }
-
-    // Treat 'none' like expired only for organization admins
     if (subscriptionStatus.status === 'none' && role === ROLES.ORGANIZATIONADMIN) {
       handleExpiredSubscription(to, next);
       return;
     }
-
     checkPermissionsAndNavigate(to, role, next);
   } catch (error) {
     console.error("Error fetching subscription status:", error);
@@ -391,43 +399,39 @@ const handleAuthenticatedRoutes = async (to, role, next) => {
   }
 };
 
+/**
+  Global navigation guard
+ */
 router.beforeEach(async (to, from, next) => {
   const authToken = storage.get('authToken');
   const role = storage.get('role');
 
+  // Handle public routes (Login, Register, etc)
   if (handlePublicRoutes(to, authToken, next)) {
     return;
   }
 
+  // Authenticated user flow
   if (authToken) {
     await handleAuthenticatedRoutes(to, role, next);
   } else {
-    // If a guest_token query param is present and user is navigating to SubscriptionPlans,
-    // validate the token and allow the visit (guest flow) without requiring login.
+    // Guest token validation for SubscriptionPlans
     const guestToken = to.query?.guest_token || null;
     if (guestToken && to.name === 'SubscriptionPlans') {
       const ok = await validateGuestToken({ token: guestToken });
       if (ok) {
-        // allow visiting plans and mapping to the guest flow
         next();
         return;
       }
     }
-
-    // Allow unauthenticated access to the plans page when the link contains
-    // lead-identifying query params (email, lead_id, price_id) — this enables
-    // the emailed links to open the plans page directly without requiring
-    // a prior login. If a guest_token is supplied, we still validate it.
+    // Allow unauthenticated access to plans page for emailed links with guest data
     const isPlansWithData = to.name === 'SubscriptionPlans' && (
       Boolean(to.query?.email) || Boolean(to.query?.lead_id) || Boolean(to.query?.price_id) || Boolean(to.query?.guest_token) || Boolean(to.query?.guest_code)
     );
     if (isPlansWithData) {
-      // If a guest_token is present, prefer validating it (already handled above),
-      // otherwise allow the visit and let the frontend render the minimal guest view.
       next();
       return;
     }
-
     // Default: redirect to login
     next('/');
   }

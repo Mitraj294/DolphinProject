@@ -1,16 +1,20 @@
 <template>
+  <!-- Main Layout Wrapper -->
   <MainLayout>
     <div class="page">
       <div class="send-agreement-table-outer">
         <div class="send-agreement-table-card">
+          <!-- Header Section -->
           <div class="send-agreement-table-header">
             <div class="send-agreement-title">Send Agreement/Payment Link</div>
           </div>
 
+          <!-- Agreement Form -->
           <form
             class="send-agreement-form"
             @submit.prevent="handleSendAgreement"
           >
+            <!-- Recipient and Subject Row -->
             <FormRow>
               <div class="send-agreement-field">
                 <FormLabel>To</FormLabel>
@@ -30,9 +34,10 @@
               </div>
             </FormRow>
 
+            <!-- Editable Email Template Section -->
             <div class="send-agreement-label">Editable Template</div>
-
             <div class="send-agreement-template-box">
+              <!-- TinyMCE Editor (loaded dynamically) -->
               <template v-if="tinyMceLoaded">
                 <Editor
                   v-model="templateContent"
@@ -40,6 +45,7 @@
                   @onInit="onTinyMCEInit"
                 />
               </template>
+              <!-- Fallback textarea if TinyMCE fails to load -->
               <template v-else>
                 <textarea
                   v-model="templateContent"
@@ -54,6 +60,7 @@
               </template>
             </div>
 
+            <!-- Form Actions -->
             <div class="send-agreement-link-actions-row">
               <div class="send-agreement-actions">
                 <button
@@ -73,6 +80,7 @@
 </template>
 
 <script>
+// Layout and Form UI imports
 import MainLayout from '@/components/layout/MainLayout.vue';
 import {
   FormInput,
@@ -82,18 +90,23 @@ import {
 import Editor from '@tinymce/tinymce-vue';
 import axios from 'axios';
 
+// Component: SendAgreement
+// Purpose: Send agreement/payment link email to leads. Supports TinyMCE editor
+//          with dynamic asset loading and passive event shimming.
 export default {
   name: 'SendAgreement',
   components: { MainLayout, Editor, FormInput, FormRow, FormLabel },
+
   data() {
     return {
-      leadId: null,
-      to: '',
-      recipientName: '',
-      subject: 'Agreement and Payment Link',
-      templateContent: '',
-      sending: false,
+      leadId: null, // Lead ID (from route param or query)
+      to: '', // Recipient email
+      recipientName: '', // Recipient name
+      subject: 'Agreement and Payment Link', // Default subject
+      templateContent: '', // Email template HTML content
+      sending: false, // Sending state
 
+      // TinyMCE Configuration (Self-hosted assets)
       tinymceConfigSelfHosted: {
         height: 500,
         base_url: '/tinymce',
@@ -141,18 +154,19 @@ export default {
           'body { font-family: Arial, sans-serif; font-size: 14px; margin: 20px; }',
         license_key: 'gpl',
       },
-      tinyMceLoaded: false,
-      // Track whether we've patched addEventListener and allow restoring later
-      tinyMceShimPatched: false,
-      tinyMceShimRestoreTimer: null,
+      tinyMceLoaded: false, // Whether TinyMCE assets are loaded
+      tinyMceShimPatched: false, // Whether passive event shim is patched
+      tinyMceShimRestoreTimer: null, // Timer for restoring event shim
     };
   },
+
+  // Lifecycle Hooks
   mounted() {
+    // Get leadId from route param or query
     const leadId = this.$route.params.id || this.$route.query.lead_id || null;
     this.leadId = leadId;
 
-    // Dynamically load TinyMCE assets and apply a passive-event wrapper to
-    // avoid console warnings about non-passive touch listeners.
+    // Dynamically load TinyMCE assets and patch passive event listeners
     this.loadTinyMceAssets()
       .then(() => {
         this.tinyMceLoaded = true;
@@ -162,21 +176,27 @@ export default {
         this.tinyMceLoaded = false;
       });
 
+    // Load lead data if leadId is present, else fetch generic template
     if (leadId) {
       this.loadInitialLeadData(leadId);
     } else {
-      // If no lead ID, fetch a generic template
       this.fetchServerTemplate();
     }
   },
+
+  // Watchers
   watch: {
+    // Whenever recipient email changes (and no leadId), re-fetch template
     to(newEmail, oldEmail) {
       if (newEmail && newEmail !== oldEmail && !this.leadId) {
         this.fetchServerTemplate();
       }
     },
   },
+
+  // Methods
   methods: {
+    // Load initial lead data from backend
     async loadInitialLeadData(leadId) {
       try {
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
@@ -185,14 +205,13 @@ export default {
         const res = await axios.get(`${API_BASE_URL}/api/leads/${leadId}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
-
         const leadObj = res.data?.lead;
         if (leadObj) {
           this.to = leadObj.email || '';
           this.recipientName = `${leadObj.first_name || ''} ${
             leadObj.last_name || ''
           }`.trim();
-          // Now fetch the template with the lead's data
+          // Fetch template using lead's data
           this.fetchServerTemplate();
         }
       } catch (e) {
@@ -201,6 +220,7 @@ export default {
       }
     },
 
+    // Fetch agreement email template from server
     async fetchServerTemplate() {
       try {
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
@@ -208,22 +228,17 @@ export default {
           this.recipientName ||
           this.to.substring(0, this.to.indexOf('@')) ||
           '';
-
-        // Use the normal subscriptions plans page for preview and sent emails.
+        // Preview URL for plans (used in template)
         const frontendBase = 'http://127.0.0.1:8080';
         const previewPlansLink = `${frontendBase}/subscriptions/plans`;
-        const params = {
-          checkout_url: previewPlansLink,
-          name: name,
-        };
-
+        const params = { checkout_url: previewPlansLink, name };
         const res = await axios.get(
           `${API_BASE_URL}/api/email-template/lead-agreement`,
           { params }
         );
         let html = res?.data ? String(res.data) : '';
 
-        // Extract only the body content for the editor
+        // Only extract the .email-container inner HTML for editor
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         const container = doc.querySelector('.email-container');
@@ -237,6 +252,7 @@ export default {
       }
     },
 
+    // Handle form submission: send agreement email
     async handleSendAgreement() {
       if (this.sending) return;
       this.sending = true;
@@ -245,27 +261,20 @@ export default {
           this.recipientName ||
           this.to.substring(0, this.to.indexOf('@')) ||
           '';
-
-        // Ensure the template contains the real checkout link instead of placeholders
-        // Replace href="#" or href="#0" placeholders inserted by the editor with the plans URL.
-        // Use a function replacement to preserve the surrounding quote character.
+        // Replace # placeholder links with real plans link
         const plansLink = 'http://127.0.0.1:8080/subscriptions/plans';
         const bodyWithLinks = String(this.templateContent).replace(
           /href=(['"])#(?:0)?\1/g,
-          (match, quote) => {
-            return `href=${quote}${plansLink}${quote}`;
-          }
+          (match, quote) => `href=${quote}${plansLink}${quote}`
         );
 
         const payload = {
           to: this.to,
           subject: this.subject,
           body: bodyWithLinks,
-          name: name,
-          // include lead id so backend can attach token to the correct user/lead
-          checkout_url: 'http://127.0.0.1:8080/subscriptions/plans',
+          name,
+          checkout_url: plansLink,
         };
-
         if (this.leadId) payload.lead_id = this.leadId;
 
         await axios.post(
@@ -298,33 +307,29 @@ export default {
         this.sending = false;
       }
     },
+
+    // TinyMCE initialization handler: restore original addEventListener
     onTinyMCEInit(event, editor) {
       console.log('TinyMCE initialized:', editor);
-      // TinyMCE finished initializing — restore original addEventListener
       this.restoreTinyMceShim();
     },
+
+    // Dynamically load TinyMCE core JS and patch event listeners for mobile
     async loadTinyMceAssets() {
-      // listeners, browsers warn unless they are passive. We can't change
-      // TinyMCE internals easily, but we can wrap addEventListener to
-      // coerce passive: true for touch events during TinyMCE init.
+      // Shim addEventListener to force passive for touch events during TinyMCE init
       const origAdd = EventTarget.prototype.addEventListener;
       const patched = function (type, listener, options) {
         try {
           if (type === 'touchstart' || type === 'touchmove') {
-            // If caller passed a boolean for capture, preserve it while forcing passive
             if (typeof options === 'boolean') {
               return origAdd.call(this, type, listener, {
                 passive: true,
                 capture: options,
               });
             }
-
-            // If no options were provided, install as passive without capture
             if (options === undefined) {
               return origAdd.call(this, type, listener, { passive: true });
             }
-
-            // If an options object was provided, clone and ensure passive:true
             if (typeof options === 'object' && options !== null) {
               if (options.passive === true) {
                 return origAdd.call(this, type, listener, options);
@@ -334,51 +339,42 @@ export default {
             }
           }
         } catch (err) {
-          // If anything goes wrong, log and fall back to original behavior
-          // (this should be rare and not break page behavior)
-          // eslint-disable-next-line no-console
           console.warn('Passive event shim error', err);
           return origAdd.call(this, type, listener, options);
         }
-
         return origAdd.call(this, type, listener, options);
       };
 
-      // Install the shim and KEEP it patched until Editor init calls restore
+      // Patch addEventListener until Editor init
       EventTarget.prototype.addEventListener = patched;
       try {
         // Load tinyMCE core and plugins from public/tinymce
-        // The project already copies tinymce to public/tinymce during serve
-        // so we can load the script dynamically.
         await this.loadScript('/tinymce/tinymce.min.js');
-        // Wait a tick for tinymce internals to initialize
         await new Promise((r) => setTimeout(r, 50));
 
-        // Remember original so we can restore later from onTinyMCEInit
         this._origAdd = origAdd;
         this.tinyMceShimPatched = true;
 
-        // Safety timeout: restore after 5s if onInit never fires
+        // Safety: restore after 5s if onInit never fires
         this.tinyMceShimRestoreTimer = setTimeout(() => {
-          // eslint-disable-next-line no-console
           console.warn(
             'TinyMCE shim safety timeout reached; restoring original addEventListener'
           );
           this.restoreTinyMceShim();
         }, 5000);
       } catch (e) {
-        // Loading failed — restore original to avoid leaving the shim in place
         EventTarget.prototype.addEventListener = origAdd;
         throw e;
       }
     },
+
+    // Restore original addEventListener after TinyMCE loads
     restoreTinyMceShim() {
       try {
         if (this.tinyMceShimPatched && this._origAdd) {
           EventTarget.prototype.addEventListener = this._origAdd;
         }
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn('Error restoring TinyMCE shim', err);
       } finally {
         this.tinyMceShimPatched = false;
@@ -389,6 +385,8 @@ export default {
         }
       }
     },
+
+    // Helper: load external JS script
     loadScript(src) {
       return new Promise((resolve, reject) => {
         const s = document.createElement('script');
@@ -404,7 +402,7 @@ export default {
 </script>
 
 <style scoped>
-/* same CSS as your original */
+/* Layout/Structure styles */
 .send-agreement-table-outer {
   width: 100%;
   min-width: 260px;

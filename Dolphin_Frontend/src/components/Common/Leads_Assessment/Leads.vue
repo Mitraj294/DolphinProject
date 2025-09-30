@@ -1,22 +1,31 @@
 <template>
   <MainLayout>
     <div class="page">
+      <!-- Toast notifications -->
       <Toast />
+
+      <!-- Leads Table Section -->
       <div class="table-outer">
         <div class="table-card">
+          <!-- Search & Filter Row -->
           <div class="table-search-header-row">
             <div class="table-search-bar-filters">
+              <!-- Search Input -->
               <input
                 class="org-search"
                 placeholder="Search Leads ...."
                 v-model="search"
               />
+
+              <!-- Organization Size Dropdown -->
               <FormDropdown
                 v-model="form.organization_size"
                 icon="fas fa-users"
                 :options="orgSizeOptionsWithDefault"
                 required
               />
+
+              <!-- Find Us Source Dropdown -->
               <FormDropdown
                 v-model="form.find_us"
                 icon="fas fa-search"
@@ -25,6 +34,7 @@
               />
             </div>
 
+            <!-- Add New Lead Button -->
             <button
               class="btn btn-primary add-new-btn"
               @click="$router.push('/leads/lead-capture')"
@@ -38,13 +48,16 @@
             </button>
           </div>
 
+          <!-- Table Section -->
           <div class="table-container">
             <div class="table-scroll">
               <table class="table">
+                <!-- Table Header -->
                 <TableHeader
                   :columns="tableColumns"
                   @sort="sortBy"
                 />
+                <!-- Table Body -->
                 <tbody>
                   <tr
                     v-for="lead in paginatedLeads"
@@ -79,6 +92,7 @@
                         class="btn-view"
                         @click="openNotesModal(lead)"
                       >
+                        <!-- Notes Action Icon -->
                         <template v-if="lead.notesAction === 'View'">
                           <img
                             src="@/assets/images/Detail.svg"
@@ -101,6 +115,7 @@
                       data-label="Actions"
                       style="position: relative"
                     >
+                      <!-- Actions Menu Trigger -->
                       <div class="actions-row">
                         <button
                           class="leads-menu-btn"
@@ -125,6 +140,7 @@
           </div>
         </div>
 
+        <!-- Pagination Controls -->
         <Pagination
           :pageSize="pageSize"
           :pageSizes="[10, 25, 100]"
@@ -137,6 +153,7 @@
           @togglePageDropdown="showPageDropdown = !showPageDropdown"
         />
 
+        <!-- Notes Modal -->
         <div
           v-if="showNotesModal"
           class="notes-modal-overlay"
@@ -167,6 +184,7 @@
           </div>
         </div>
 
+        <!-- Teleported Actions Menu -->
         <teleport to="body">
           <div
             v-if="menuOpen"
@@ -193,22 +211,26 @@
 </template>
 
 <script>
+// Vue composition API imports
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 
-// Component Imports
+// Component imports
 import MainLayout from '@/components/layout/MainLayout.vue';
 import Pagination from '@/components/layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import FormDropdown from '@/components/Common/Common_UI/Form/FormDropdown.vue';
 import Toast from 'primevue/toast';
 
-// Utilities and Services
+// Utility imports
 import { findUsOptions, orgSizeOptions } from '@/utils/formUtils';
 import storage from '@/services/storage.js';
+
+//Leads Management Component
+//Handles the display, filtering, pagination, and actions for all leads.
 
 export default {
   name: 'Leads',
@@ -220,24 +242,25 @@ export default {
     FormDropdown,
   },
   setup() {
-    // COMPONENT STATE
+    // Router, toast, confirmation dialog
     const router = useRouter();
     const toast = useToast();
     const confirm = useConfirm();
 
+    // States
     const leads = ref([]);
     const search = ref('');
     const form = ref({ organization_size: null, find_us: null });
     const isLoading = ref(false);
 
-    // TABLE AND PAGINATION STATE
+    // Table and pagination state
     const sortKey = ref('');
     const sortAsc = ref(true);
     const pageSize = ref(10);
     const currentPage = ref(1);
     const showPageDropdown = ref(false);
 
-    // MODAL AND MENU STATE
+    // Modal and menu state
     const menuOpen = ref(null);
     const menuPosition = ref({ top: 0, left: 0 });
     const showNotesModal = ref(false);
@@ -245,7 +268,7 @@ export default {
     const notesInput = ref('');
     const currentLead = ref(null);
 
-    // STATIC DATA
+    // Menu options for each lead
     const customMenuOptions = [
       'Schedule Follow up',
       'Schedule Demo',
@@ -256,6 +279,7 @@ export default {
       'Delete Lead',
     ];
 
+    // Table columns definition
     const tableColumns = [
       { label: 'Contact', key: 'contact', sortable: true, width: '170px' },
       { label: 'Email', key: 'email', width: '250px' },
@@ -273,18 +297,17 @@ export default {
       { label: 'Actions', key: 'actions', width: '80px' },
     ];
 
+    // Dropdown options
     const orgSizeOptionsWithDefault = [
       { value: null, text: 'Select', disabled: true },
       ...orgSizeOptions.map((o) => ({ value: o, text: o })),
     ];
-
     const findUsOptionsWithDefault = [
       { value: null, text: 'Select', disabled: true },
       ...findUsOptions.map((o) => ({ value: o, text: o })),
     ];
 
-    // API METHODS
-
+    // Fetch leads from the API
     const fetchLeads = async () => {
       isLoading.value = true;
       try {
@@ -297,7 +320,6 @@ export default {
         const response = await axios.get(`${API_BASE_URL}/api/leads`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
         leads.value = response.data.map((lead) => ({
           id: lead.id,
           contact: `${lead.first_name} ${lead.last_name}`,
@@ -306,13 +328,12 @@ export default {
           organization: lead.organization_name,
           size: lead.organization_size,
           source: lead.find_us,
-          // If the lead has a registered_at timestamp, treat it as Registered in the UI
           status: lead.registered_at ? 'Registered' : lead.status,
           notes: lead.notes,
           notesAction: lead.notes ? 'View' : 'Add',
         }));
       } catch (error) {
-        console.error('Failed to fetch leads:', error);
+        console.error('Error fetching leads:', error);
         toast.add({
           severity: 'error',
           summary: 'Error',
@@ -324,9 +345,9 @@ export default {
       }
     };
 
+    // Delete a lead
     const deleteLead = async (lead) => {
       if (!lead || !lead.id) return;
-
       confirm.require({
         message: `Are you sure you want to delete lead "${lead.contact}"? This will archive the lead.`,
         header: 'Confirm Delete',
@@ -344,7 +365,6 @@ export default {
             await axios.delete(`${API_BASE_URL}/api/leads/${lead.id}`, {
               headers: { Authorization: `Bearer ${token}` },
             });
-            // Remove from local leads array source so computed lists update
             const idx = leads.value.findIndex((l) => l.id === lead.id);
             if (idx !== -1) {
               leads.value.splice(idx, 1);
@@ -356,7 +376,7 @@ export default {
               life: 3000,
             });
           } catch (error) {
-            console.error('Failed to delete lead:', error);
+            console.error('Error deleting lead:', error);
             toast.add({
               severity: 'error',
               summary: 'Delete failed',
@@ -369,6 +389,7 @@ export default {
       });
     };
 
+    // Update notes for a lead
     const updateLeadNotes = async () => {
       if (!currentLead.value) return;
       try {
@@ -392,7 +413,7 @@ export default {
         }
         closeNotesModal();
       } catch (error) {
-        console.error('Failed to update notes:', error);
+        console.error('Error updating notes:', error);
         toast.add({
           severity: 'error',
           summary: 'Error',
@@ -402,14 +423,9 @@ export default {
       }
     };
 
-    // COMPUTED PROPERTIES FOR FILTERING, SORTING, AND PAGINATION
-
-    /**
-     * Filters the list of leads based on active search and form filter criteria.
-     */
+    // Computed: filter, sort, paginate leads
     const filteredLeads = computed(() => {
       let filtered = leads.value;
-
       if (search.value) {
         const searchTerm = search.value.toLowerCase();
         filtered = filtered.filter(
@@ -419,39 +435,27 @@ export default {
             lead.organization.toLowerCase().includes(searchTerm)
         );
       }
-
       if (form.value.organization_size) {
         filtered = filtered.filter(
           (lead) => lead.size === form.value.organization_size
         );
       }
-
       if (form.value.find_us) {
         filtered = filtered.filter(
           (lead) => lead.source === form.value.find_us
         );
       }
-
       return filtered;
     });
 
-    /**
-     * A map to define the custom sorting order for lead statuses.
-     */
     const STATUS_ORDER = {
       'Lead Stage': 1,
       'Assessment Sent': 2,
       Registered: 3,
     };
-
-    /**
-     * Sorts the filtered list of leads based on the selected column and sort direction.
-     */
     const sortedLeads = computed(() => {
       if (!sortKey.value) return filteredLeads.value;
-
       const leadsToSort = [...filteredLeads.value];
-
       leadsToSort.sort((a, b) => {
         let comparison = 0;
         if (sortKey.value === 'status') {
@@ -466,29 +470,23 @@ export default {
         }
         return sortAsc.value ? comparison : -comparison;
       });
-
       return leadsToSort;
     });
 
     const totalPages = computed(() =>
       Math.ceil(sortedLeads.value.length / pageSize.value)
     );
-
     const paginatedLeads = computed(() => {
       const start = (currentPage.value - 1) * pageSize.value;
-      const end = start + pageSize.value;
-      return sortedLeads.value.slice(start, end);
+      return sortedLeads.value.slice(start, start + pageSize.value);
     });
-
     const paginationPages = computed(() => {
       const pages = [];
-      for (let i = 1; i <= totalPages.value; i++) {
-        pages.push(i);
-      }
+      for (let i = 1; i <= totalPages.value; i++) pages.push(i);
       return pages;
     });
 
-    // UI METHODS
+    // UI Methods
     const sortBy = (key) => {
       if (sortKey.value === key) {
         sortAsc.value = !sortAsc.value;
@@ -497,32 +495,26 @@ export default {
         sortAsc.value = true;
       }
     };
-
     const goToPage = (page) => {
       if (page >= 1 && page <= totalPages.value) {
         currentPage.value = page;
       }
     };
-
     const selectPageSize = (size) => {
       pageSize.value = size;
       currentPage.value = 1;
       showPageDropdown.value = false;
     };
-
     const toggleMenu = (lead, event) => {
-      // if closing the same menu
       if (menuOpen.value && menuOpen.value === lead) {
         menuOpen.value = null;
         return;
       }
-      // compute a safe position for the teleported menu
       try {
         const btn = event.currentTarget || event.target;
         const rect = btn.getBoundingClientRect();
-        const menuWidth = 220; // approximate
+        const menuWidth = 220;
         const padding = 8;
-        // prefer aligning right edge with button right edge
         let left = rect.right + window.scrollX - menuWidth;
         if (left < padding) left = rect.left + window.scrollX;
         if (left + menuWidth > window.innerWidth - padding) {
@@ -530,40 +522,36 @@ export default {
         }
         const top = rect.bottom + window.scrollY + 6;
         menuPosition.value = { top, left };
-      } catch (e) {
-        console.warn(
-          'Failed to position teleported menu, defaulting to 0,0',
-          e
-        );
+      } catch {
         menuPosition.value = { top: 0, left: 0 };
       }
       menuOpen.value = lead;
     };
 
+    // Notes modal
     const openNotesModal = (lead) => {
       currentLead.value = lead;
       notesInput.value = lead.notes || '';
       notesModalMode.value = lead.notes ? 'view' : 'add';
       showNotesModal.value = true;
     };
-
     const closeNotesModal = () => {
       showNotesModal.value = false;
       currentLead.value = null;
       notesInput.value = '';
     };
 
+    // Lead detail navigation
     const goToLeadDetail = (lead) => {
       router.push({ name: 'LeadDetail', params: { id: lead.id } });
     };
 
+    // Lead actions from menu
     const selectCustomAction = (lead, option) => {
-      console.log(`Action "${option}" selected for lead:`, lead.contact);
       menuOpen.value = null;
       if (option === 'Schedule Demo') {
         router.push({ name: 'ScheduleDemo', query: { lead_id: lead.id } });
       } else if (option === 'Schedule Follow up') {
-        // Re-use ScheduleDemo UI for quick follow-up scheduling
         router.push({
           name: 'ScheduleDemo',
           query: { lead_id: lead.id, mode: 'followup' },
@@ -578,7 +566,6 @@ export default {
       } else if (option === 'Send Agreement/Payment Link') {
         router.push({ name: 'SendAgreement', params: { id: lead.id } });
       } else if (option === 'Delete Lead') {
-        // soft-delete
         deleteLead(lead);
       } else {
         toast.add({
@@ -590,7 +577,7 @@ export default {
       }
     };
 
-    // Click/keyboard handlers used to close the teleported menu when user clicks outside or presses Escape
+    // Close menu handlers
     const handleClickOutside = (event) => {
       if (!menuOpen.value) return;
       const clickedInActions = event.target.closest('.actions-row');
@@ -599,23 +586,22 @@ export default {
         menuOpen.value = null;
       }
     };
-
     const onKeyDown = (event) => {
       if (event.key === 'Escape' && menuOpen.value) menuOpen.value = null;
     };
 
-    // LIFECYCLE HOOKS
+    // Lifecycle hooks
     onMounted(() => {
       fetchLeads();
       document.addEventListener('click', handleClickOutside);
       document.addEventListener('keydown', onKeyDown);
     });
-
     onBeforeUnmount(() => {
       document.removeEventListener('click', handleClickOutside);
       document.removeEventListener('keydown', onKeyDown);
     });
 
+    // Return to template
     return {
       leads,
       menuOpen,
@@ -659,6 +645,7 @@ export default {
 </script>
 
 <style scoped>
+/* ---- Responsive Search and Filter Layout ---- */
 .form-box {
   min-height: 32px !important;
   max-height: 32px !important;
@@ -691,7 +678,7 @@ export default {
   }
 }
 
-/* Flex row for search and add button */
+/* ---- Flex row for search and add button ---- */
 .table-search-header-row {
   display: flex;
   flex-direction: row;
@@ -711,17 +698,8 @@ export default {
   flex-wrap: wrap;
   margin-right: auto;
 }
-.table-search-bar-filters-right {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-end;
-  align-items: right;
-  gap: 12px;
-  flex-wrap: wrap;
-  margin-right: auto;
-}
 
-/* All original styles are preserved below */
+/* ---- Notes and Action Button Styling ---- */
 .leads-notes-btn {
   background: #fff;
   border: 1.5px solid #e0e0e0;
@@ -786,7 +764,6 @@ export default {
 .leads-menu-item:hover {
   background: #f0f8ff;
 }
-
 .leads-add-btn-icon {
   width: 18px;
   height: 18px;
@@ -843,13 +820,11 @@ export default {
   justify-content: center;
   margin-top: 8px;
 }
-
 .lead-contact-link {
   cursor: pointer;
   font-weight: 500;
   color: #0074c2;
 }
-
 .btn-view {
   min-width: 80px;
   justify-content: center;
@@ -862,12 +837,10 @@ export default {
   align-items: center;
   gap: 5px;
 }
-
 .btn-view-icon {
   width: 16px;
   height: 16px;
 }
-
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -892,8 +865,6 @@ export default {
 .status-badge.registered {
   background: #28a745;
 }
-
-/* --- Table Search Bar Styles --- */
 .table-search-bar {
   padding: 18px 46px 18px 24px;
   background: #fff;
@@ -922,7 +893,6 @@ export default {
 .org-search::placeholder {
   margin-left: 4px;
 }
-
 .form-input-with-icon {
   max-height: 32px !important;
   border: 1.5px solid #e0e0e0;

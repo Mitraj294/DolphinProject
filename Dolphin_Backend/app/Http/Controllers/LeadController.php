@@ -9,9 +9,22 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\LeadAssessmentRegistrationMail;
 
-/**
- * Validation rules for Lead model fields.
- */
+
+// LeadController
+// Controller for managing Lead operations:
+//  - Create, update, show, list, delete leads
+//  - Generate registration and agreement email templates
+//  - Prefill registration form data
+//  - Get distinct 'find_us' options for leads
+// Structure:
+// 1. Validation Rules (LeadValidationRules)
+// 2. Message Constants (Message)
+// 3. Controller Methods
+ 
+
+
+// 1. Validation Rules for Lead Model Fields
+
 class LeadValidationRules
 {
     public const REQUIRED_INTEGER = 'required|integer';
@@ -23,23 +36,26 @@ class LeadValidationRules
     public const REQUIRED_DATE = 'required|date';
 }
 
-/**
- * Common messages used by LeadController.
- */
+
+// 2. Common Messages Used by LeadController
+
 class Message
 {
     public const MESSAGE = 'Lead Not Found';
 }
 
-/**
- * Controller to manage Lead operations.
- */
+
+// 3. LeadController
+
 class LeadController extends Controller
 {
-    /**
-     * Update an existing lead.
-     * Handles PATCH for notes-only update.
-     */
+    
+    // Update an existing lead.
+    // Handles PATCH for notes-only update.
+    // @param Request $request
+    // @param int $id
+    // @return \Illuminate\Http\JsonResponse
+     
     public function update(Request $request, $id)
     {
         $lead = Lead::find($id);
@@ -51,56 +67,57 @@ class LeadController extends Controller
         // PATCH for notes-only update
         if ($request->isMethod('patch')) {
             $payloadKeys = array_keys($request->all());
-            $onlyNotes = !empty($payloadKeys) && collect($payloadKeys)->every(function ($k) { return $k === 'notes'; });
+            $onlyNotes = !empty($payloadKeys) && collect($payloadKeys)->every(fn ($k) => $k === 'notes');
             if ($request->has('notes') && $onlyNotes) {
-                $data = $request->validate([
-                    'notes' => LeadValidationRules::OPTIONAL_STRING,
-                ]);
+                $data = $request->validate(['notes' => LeadValidationRules::OPTIONAL_STRING]);
                 $lead->update($data);
                 return response()->json(['message' => 'Notes updated successfully', 'lead' => $lead]);
             }
         }
 
+        // Full update validation rules
         $data = $request->validate([
-            'first_name' => LeadValidationRules::REQUIRED_STRING,
-            'last_name' => LeadValidationRules::REQUIRED_STRING,
-            'email' => LeadValidationRules::REQUIRED_EMAIL,
-            'phone' => 'required|regex:/^[6-9]\d{9}$/',
-            'find_us' => LeadValidationRules::REQUIRED_STRING,
+            'first_name'        => LeadValidationRules::REQUIRED_STRING,
+            'last_name'         => LeadValidationRules::REQUIRED_STRING,
+            'email'             => LeadValidationRules::REQUIRED_EMAIL,
+            'phone'             => 'required|regex:/^[6-9]\d{9}$/',
+            'find_us'           => LeadValidationRules::REQUIRED_STRING,
             'organization_name' => LeadValidationRules::REQUIRED_STRING . '|max:500',
             'organization_size' => LeadValidationRules::REQUIRED_STRING,
-            'notes' => LeadValidationRules::OPTIONAL_STRING,
-            'address' => LeadValidationRules::REQUIRED_STRING . '|max:500',
-            'country_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
-            'state_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:states,id',
-            'city_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
-            'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
+            'notes'             => LeadValidationRules::OPTIONAL_STRING,
+            'address'           => LeadValidationRules::REQUIRED_STRING . '|max:500',
+            'country_id'        => LeadValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
+            'state_id'          => LeadValidationRules::REQUIRED_INTEGER . '|exists:states,id',
+            'city_id'           => LeadValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
+            'zip'               => 'required|regex:/^[1-9][0-9]{5}$/',
         ]);
 
         $lead->update($data);
         return response()->json(['message' => 'Lead updated successfully', 'lead' => $lead]);
     }
 
-    /**
-     * Store a new lead.
-     */
+    
+    // Store a new lead.
+    // @param Request $request
+    // @return \Illuminate\Http\JsonResponse
+     
     public function store(Request $request)
     {
         $data = $request->validate([
-            'first_name' => LeadValidationRules::REQUIRED_STRING,
-            'last_name' => LeadValidationRules::REQUIRED_STRING,
+            'first_name'        => LeadValidationRules::REQUIRED_STRING,
+            'last_name'         => LeadValidationRules::REQUIRED_STRING,
             // Allow creating leads even if a user already exists with this email.
-            'email' => 'required|string|email|max:255',
-            'phone' => 'required|regex:/^[6-9]\d{9}$/',
-            'find_us' => LeadValidationRules::REQUIRED_STRING,
+            'email'             => 'required|string|email|max:255',
+            'phone'             => 'required|regex:/^[6-9]\d{9}$/',
+            'find_us'           => LeadValidationRules::REQUIRED_STRING,
             'organization_name' => LeadValidationRules::REQUIRED_STRING . '|max:500',
             'organization_size' => LeadValidationRules::REQUIRED_STRING,
-            'notes' => LeadValidationRules::OPTIONAL_STRING,
-            'address' => LeadValidationRules::REQUIRED_STRING . '|max:500',
-            'country_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
-            'state_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:states,id',
-            'city_id' => LeadValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
-            'zip' => 'required|regex:/^[1-9][0-9]{5}$/',
+            'notes'             => LeadValidationRules::OPTIONAL_STRING,
+            'address'           => LeadValidationRules::REQUIRED_STRING . '|max:500',
+            'country_id'        => LeadValidationRules::REQUIRED_INTEGER . '|exists:countries,id',
+            'state_id'          => LeadValidationRules::REQUIRED_INTEGER . '|exists:states,id',
+            'city_id'           => LeadValidationRules::REQUIRED_INTEGER . '|exists:cities,id',
+            'zip'               => 'required|regex:/^[1-9][0-9]{5}$/',
         ]);
 
         // Record creator if authenticated
@@ -123,7 +140,10 @@ class LeadController extends Controller
                     $lead->user_id = $matchedUser->id;
                 }
                 $lead->save();
-                Log::info('LeadController: Created lead matched existing user; marked Registered', ['lead_id' => $lead->id, 'user_id' => $matchedUser->id]);
+                Log::info('LeadController: Created lead matched existing user; marked Registered', [
+                    'lead_id' => $lead->id,
+                    'user_id' => $matchedUser->id
+                ]);
             }
         } catch (\Exception $e) {
             Log::warning('LeadController: Failed to check users table after lead create: ' . $e->getMessage());
@@ -132,10 +152,11 @@ class LeadController extends Controller
         return response()->json(['message' => 'Lead saved successfully', 'lead' => $lead], 201);
     }
 
-    /**
-     * List all leads for authenticated user.
-     * Superadmin sees all leads.
-     */
+    
+    // List all leads for authenticated user.
+    // Superadmin sees all leads.
+    // @return \Illuminate\Http\JsonResponse
+     
     public function index()
     {
         $user = request()->user();
@@ -148,14 +169,18 @@ class LeadController extends Controller
             $leads = Lead::all();
             try {
                 $ids = $leads->pluck('id')->values()->all();
-                Log::info('LeadController@index superadmin fetch', ['user_id' => $user->id, 'count' => $leads->count(), 'ids' => $ids]);
+                Log::info('LeadController@index superadmin fetch', [
+                    'user_id' => $user->id,
+                    'count'   => $leads->count(),
+                    'ids'     => $ids
+                ]);
                 try {
                     $debugPath = storage_path('logs/leads_debug.log');
                     $payload = [
-                        'time' => now()->toDateTimeString(),
+                        'time'    => now()->toDateTimeString(),
                         'user_id' => $user->id,
-                        'count' => $leads->count(),
-                        'ids' => $ids,
+                        'count'   => $leads->count(),
+                        'ids'     => $ids,
                     ];
                     file_put_contents($debugPath, json_encode($payload, JSON_PRETTY_PRINT) . PHP_EOL, FILE_APPEND | LOCK_EX);
                 } catch (\Exception $e) {
@@ -171,10 +196,12 @@ class LeadController extends Controller
         return response()->json($leads);
     }
 
-    /**
-     * Show details for a single lead.
-     * Includes registration link, organization, and sales person info if available.
-     */
+    
+    // Show details for a single lead.
+    // Includes registration link, organization, and sales person info if available.
+    // @param int $id
+    // @return \Illuminate\Http\JsonResponse
+     
     public function show($id)
     {
         $lead = Lead::find($id);
@@ -182,25 +209,29 @@ class LeadController extends Controller
             return response()->json(['message' => Message::MESSAGE], 404);
         }
 
+        // Prepare registration link for the lead
         $frontendBase = env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080'));
         $queryParams = [
-            'email' => $lead->email,
-            'first_name' => $lead->first_name ?? '',
-            'last_name' => $lead->last_name ?? '',
-            'phone' => $lead->phone ?? '',
-            'organization_name' => $lead->organization_name ?? '',
-            'organization_size' => $lead->organization_size ?? '',
-            'organization_address' => $lead->address ?? '',
-            'organization_city' => (string)($lead->city_id ?? ''),
-            'organization_state' => (string)($lead->state_id ?? ''),
-            'organization_zip' => $lead->zip ?? '',
-            'country' => (string)($lead->country_id ?? ''),
-            'find_us' => $lead->find_us ?? '',
-            'lead_id' => $lead->id,
+            'email'               => $lead->email,
+            'first_name'          => $lead->first_name ?? '',
+            'last_name'           => $lead->last_name ?? '',
+            'phone'               => $lead->phone ?? '',
+            'organization_name'   => $lead->organization_name ?? '',
+            'organization_size'   => $lead->organization_size ?? '',
+            'organization_address'=> $lead->address ?? '',
+            'organization_city'   => (string)($lead->city_id ?? ''),
+            'organization_state'  => (string)($lead->state_id ?? ''),
+            'organization_zip'    => $lead->zip ?? '',
+            'country'             => (string)($lead->country_id ?? ''),
+            'find_us'             => $lead->find_us ?? '',
+            'lead_id'             => $lead->id,
         ];
         $registration_link = rtrim($frontendBase, '/') . '/register?' . http_build_query($queryParams);
 
-        Log::info('LeadController: prepared registration_link', ['registration_link' => $registration_link, 'lead_id' => $lead->id]);
+        Log::info('LeadController: prepared registration_link', [
+            'registration_link' => $registration_link,
+            'lead_id'           => $lead->id
+        ]);
         $safeLink = htmlspecialchars($registration_link, ENT_QUOTES, 'UTF-8');
         $safeName = htmlspecialchars((string)($lead->first_name ?? $lead->email), ENT_QUOTES, 'UTF-8');
 
@@ -213,10 +244,8 @@ class LeadController extends Controller
             <p style="font-size: 13px; color: #888888; text-align: center;">If you did not request this, you can safely ignore this email.</p>
         HTML;
 
-        $org = null;
-        $orgUser = null;
-        $orgUserDetails = null;
-
+        // Organization, user, and details resolution
+        $org = null; $orgUser = null; $orgUserDetails = null;
         try {
             $userModel = '\App\\Models\\User';
             $user = $userModel::where('email', $lead->email)->first();
@@ -235,8 +264,7 @@ class LeadController extends Controller
             Log::warning('LeadController::show organization lookup failed: ' . $e->getMessage());
         }
 
-        $resp = ['lead' => $lead];
-        $resp['defaultTemplate'] = $defaultTemplate;
+        $resp = ['lead' => $lead, 'defaultTemplate' => $defaultTemplate];
 
         // Sales person resolution
         try {
@@ -253,11 +281,11 @@ class LeadController extends Controller
                     $salesUser = $userModel::find($salesPersonId);
                     if ($salesUser) {
                         $resp['sales_person'] = [
-                            'id' => $salesUser->id,
+                            'id'         => $salesUser->id,
                             'first_name' => $salesUser->first_name ?? null,
-                            'last_name' => $salesUser->last_name ?? null,
-                            'full_name' => trim(($salesUser->first_name ?? '') . ' ' . ($salesUser->last_name ?? '')),
-                            'email' => $salesUser->email ?? null,
+                            'last_name'  => $salesUser->last_name ?? null,
+                            'full_name'  => trim(($salesUser->first_name ?? '') . ' ' . ($salesUser->last_name ?? '')),
+                            'email'      => $salesUser->email ?? null,
                         ];
                         $lead->sales_person = $resp['sales_person']['full_name'];
                         $lead->sales_person_id = $salesUser->id;
@@ -277,9 +305,12 @@ class LeadController extends Controller
         return response()->json($resp);
     }
 
-    /**
-     * Soft-delete a lead by id.
-     */
+    
+    // Soft-delete a lead by id.
+    // @param Request $request
+    // @param int $id
+    // @return \Illuminate\Http\JsonResponse
+     
     public function destroy(Request $request, $id)
     {
         $lead = Lead::find($id);
@@ -289,7 +320,10 @@ class LeadController extends Controller
 
         try {
             $lead->delete();
-            Log::info('LeadController@destroy soft-deleted lead', ['lead_id' => $id, 'deleted_by' => $request->user()->id ?? null]);
+            Log::info('LeadController@destroy soft-deleted lead', [
+                'lead_id'   => $id,
+                'deleted_by'=> $request->user()->id ?? null
+            ]);
             return response()->json(['message' => 'Lead soft-deleted', 'id' => $id]);
         } catch (\Exception $e) {
             Log::error('LeadController@destroy failed to delete lead: ' . $e->getMessage());
@@ -297,9 +331,11 @@ class LeadController extends Controller
         }
     }
 
-    /**
-     * Generates registration invite email HTML.
-     */
+    
+    // Generates registration invite email HTML.
+    // @param Request $request
+    // @return \Illuminate\Http\Response
+     
     public function leadRegistration(Request $request)
     {
         $registration_link = $request->query('registration_link', rtrim(env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080')), '/') . '/register');
@@ -336,9 +372,11 @@ class LeadController extends Controller
         return response($html, 200)->header('Content-Type', 'text/html');
     }
 
-    /**
-     * Generates lead agreement email HTML.
-     */
+    
+    // Generates lead agreement email HTML.
+    // @param Request $request
+    // @return \Illuminate\Http\Response
+     
     public function leadAgreement(Request $request)
     {
         $checkout_url = $request->query('checkout_url', rtrim(env('FRONTEND_URL', env('APP_URL', 'http://127.0.0.1:8080')), '/') . '/subscriptions/plans');
@@ -377,9 +415,11 @@ class LeadController extends Controller
         return response($html, 200)->header('Content-Type', 'text/html');
     }
 
-    /**
-     * Prefill lead info for registration form.
-     */
+    
+    // Prefill lead info for registration form.
+    // @param Request $request
+    // @return \Illuminate\Http\JsonResponse
+     
     public function prefill(Request $request)
     {
         $lead = null;
@@ -399,24 +439,25 @@ class LeadController extends Controller
         }
 
         return response()->json(['lead' => [
-            'first_name' => $lead->first_name,
-            'last_name' => $lead->last_name,
-            'email' => $lead->email,
-            'phone' => $lead->phone,
-            'organization_name' => $lead->organization_name ?? '',
-            'organization_size' => $lead->organization_size ?? '',
-            'organization_address' => $lead->address ?? '',
-            'organization_city_id' => $lead->city_id ?? '',
-            'organization_state_id' => $lead->state_id ?? '',
-            'organization_zip' => $lead->zip ?? '',
-            'country_id' => $lead->country_id ?? '',
-            'find_us' => $lead->find_us ?? '',
+            'first_name'             => $lead->first_name,
+            'last_name'              => $lead->last_name,
+            'email'                  => $lead->email,
+            'phone'                  => $lead->phone,
+            'organization_name'      => $lead->organization_name ?? '',
+            'organization_size'      => $lead->organization_size ?? '',
+            'organization_address'   => $lead->address ?? '',
+            'organization_city_id'   => $lead->city_id ?? '',
+            'organization_state_id'  => $lead->state_id ?? '',
+            'organization_zip'       => $lead->zip ?? '',
+            'country_id'             => $lead->country_id ?? '',
+            'find_us'                => $lead->find_us ?? '',
         ]]);
     }
 
-    /**
-     * Get distinct values for 'find_us' field from leads table.
-     */
+    
+    // Get distinct values for 'find_us' field from leads table.
+    // @return \Illuminate\Http\JsonResponse
+     
     public function findUsOptions()
     {
         $values = Lead::whereNotNull('find_us')
