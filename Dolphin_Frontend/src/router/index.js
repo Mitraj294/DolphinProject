@@ -433,22 +433,26 @@ router.beforeEach(async (to, from, next) => {
   if (handlePublicRoutes(to, authToken, next)) {
     return;
   }
+  // If the incoming URL is the plans page and contains guest data, allow
+  // navigation immediately so the component can handle redemption. This
+  // prevents redirect-to-login when the validation request fails or is slow.
+  const isPlansWithData = to.name === 'SubscriptionPlans' && (
+    Boolean(to.query?.email) || Boolean(to.query?.lead_id) || Boolean(to.query?.price_id) || Boolean(to.query?.guest_token) || Boolean(to.query?.guest_code)
+  );
+  if (isPlansWithData) {
+    next();
+    return;
+  }
 
   // Authenticated user flow
   if (authToken) {
     await handleAuthenticatedRoutes(to, role, next);
   } else {
-    // Guest validation and graceful access to plans page for emailed links
+    // Try to validate guest token/code as a fallback (non-blocking path). If
+    // it succeeds we continue; otherwise we'll fallthrough to the default
+    // redirect to login.
     const validated = await tryValidateGuestForPlans(to);
     if (validated) {
-      next();
-      return;
-    }
-
-    const isPlansWithData = to.name === 'SubscriptionPlans' && (
-      Boolean(to.query?.email) || Boolean(to.query?.lead_id) || Boolean(to.query?.price_id) || Boolean(to.query?.guest_token) || Boolean(to.query?.guest_code)
-    );
-    if (isPlansWithData) {
       next();
       return;
     }

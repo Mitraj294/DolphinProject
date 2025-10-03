@@ -1,6 +1,4 @@
 <?php
-// phpcs:ignoreFile
-
 namespace Tests;
 
 use App\Console\Kernel as ConsoleKernel;

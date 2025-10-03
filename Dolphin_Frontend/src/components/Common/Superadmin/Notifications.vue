@@ -226,12 +226,7 @@ import Pagination from '../../layout/Pagination.vue';
 import TableHeader from '@/components/Common/Common_UI/TableHeader.vue';
 import NotificationDetail from './NotificationDetail.vue';
 
-import {
-  FormDropdown,
-  FormRow,
-  FormLabel,
-  FormDateTime,
-} from '@/components/Common/Common_UI/Form';
+import { FormLabel } from '@/components/Common/Common_UI/Form';
 import FormInput from '../Common_UI/Form/FormInput.vue';
 import MultiSelectDropdown from '../Common_UI/Form/MultiSelectDropdown.vue';
 import Toast from 'primevue/toast';
@@ -245,11 +240,8 @@ export default {
     Pagination,
     TableHeader,
     NotificationDetail,
-    FormDropdown,
-    FormRow,
     FormInput,
     FormLabel,
-    FormDateTime,
     MultiSelectDropdown,
     Toast,
   },

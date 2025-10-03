@@ -131,6 +131,21 @@ class SendAgreementController extends Controller
             } catch (Exception $e) {
                 Log::warning('Failed to create guest token for email link: ' . $e->getMessage());
             }
+            // Include current subscription details (if any) so guest view can show them
+            try {
+                $currentSub = $user->subscriptions()->latest('created_at')->first();
+                if ($currentSub) {
+                    // add useful, read-only metadata to the querystring
+                    $qs['plan_amount'] = $currentSub->amount;
+                    $qs['plan_name'] = $currentSub->plan_name;
+                    if ($currentSub->subscription_end) {
+                        $qs['subscription_end'] = $currentSub->subscription_end->toDateTimeString();
+                    }
+                    $qs['subscription_status'] = $currentSub->status;
+                }
+            } catch (Exception $e) {
+                Log::warning('Failed to append subscription details to plans URL: ' . $e->getMessage());
+            }
             if (!empty($qs)) {
                 $plansUrl .= '?' . http_build_query($qs);
             }
