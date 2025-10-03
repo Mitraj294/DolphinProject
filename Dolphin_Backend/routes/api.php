@@ -45,6 +45,8 @@ Route::prefix('password')->group(function () {
 
 Route::post('/stripe/webhook', [StripeSubscriptionController::class, 'handleWebhook']);
 Route::post('/stripe/checkout-session', [StripeSubscriptionController::class, 'createCheckoutSession']);
+// Retrieve a checkout session and related subscription details (public)
+Route::get('/stripe/session', [StripeSubscriptionController::class, 'getSessionDetails']);
 
 
 // Public Assessments & Leads
@@ -114,6 +116,19 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/', [AuthController::class, 'deleteAccount']);
     });
 
+    Route::prefix('notifications')->group(function () {
+        Route::get('/user', [NotificationController::class, 'userNotifications']);
+        Route::get('/unread', [NotificationController::class, 'unreadAnnouncements']);
+    });
+
+    // Allow marking notifications as read and marking all as read for authenticated users
+    Route::prefix('announcements')->group(function () {
+        Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+    });
+    Route::prefix('notifications')->group(function () {
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
+    });
+
     // Subscription & Billing Management
     Route::prefix('stripe')->group(function () {
         Route::post('/customer-portal', [StripeSubscriptionController::class, 'createCustomerPortal']);
@@ -147,18 +162,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/organization-assessment-questions', [OrganizationAssessmentQuestionController::class, 'index']);
 
         
-        // Notifications
-        
-        Route::prefix('announcements')->group(function () {
-            Route::get('/user', [NotificationController::class, 'userAnnouncements']);
-            Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
-        });
-        Route::prefix('notifications')->group(function () {
-            Route::get('/user', [NotificationController::class, 'userNotifications']);
-            Route::get('/unread', [NotificationController::class, 'unreadAnnouncements']);
-            Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
-            Route::post('/create', [NotificationController::class, 'createNotification']);
-        });
+        // Notifications (admin endpoints remain in superadmin block below)
 
     
         // 2.2.1 Role-Based Routes (Active Subscription Required)

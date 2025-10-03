@@ -81,7 +81,7 @@ public function createCheckoutSession(Request $request)
         $user = $authUser;
     }
     $priceId = $request->input('price_id');
-    $frontend = env('FRONTEND_URL', 'http://localhost:8080');
+    $frontend = env('FRONTEND_URL', 'http://127.0.0.1:8080');
 
     $customerEmail = null;
     $leadId = null;
@@ -582,5 +582,63 @@ public function createCheckoutSession(Request $request)
         );
 
         Log::info('Subscription record updated/created successfully.', ['subscription_id' => $data['stripe_subscription_id']]);
+    }
+
+    /**
+     * Public endpoint to retrieve checkout session and subscription details.
+     * Accepts query param `session_id` and returns a compact JSON object with
+     * plan, amount, period, subscription_end, next_billing, and invoice info when available.
+     */
+    public function getSessionDetails(Request $request)
+    {
+        $sessionId = $request->query('session_id') ?: $request->query('checkout_session_id');
+        if (!$sessionId) {
+            return response()->json(['error' => 'Missing session_id'], 400);
+        }
+
+        Stripe::setApiKey(config('services.stripe.secret'));
+
+        try {
+            $session = StripeSession::retrieve($sessionId);
+        } catch (Throwable $e) {
+            Log::warning('Could not retrieve checkout session: ' . $e->getMessage(), ['session_id' => $sessionId]);
+            return response()->json(['error' => 'Could not retrieve session'], 404);
+        }
+
+        $result = [
+            'id' => $session->id,
+            'customer_email' => $session->customer_email ?? null,
+            'amount_total' => $session->amount_total ?? null,
+            'currency' => $session->currency ?? null,
+            'line_items' => [],
+            'subscription' => null,
+            'next_billing' => null,
+            'subscription_end' => null,
+        ];
+
+        // (Optional) line items retrieval omitted — not needed for compact success page
+
+        try {
+            if (!empty($session->subscription)) {
+                $stripeSub = \Stripe\Subscription::retrieve($session->subscription);
+                $result['subscription'] = [
+                    'id' => $stripeSub->id ?? null,
+                    'status' => $stripeSub->status ?? null,
+                    'current_period_end' => $stripeSub->current_period_end ?? null,
+                    'current_period_start' => $stripeSub->current_period_start ?? null,
+                ];
+                if (!empty($stripeSub->current_period_end)) {
+                    $result['subscription_end'] = \Carbon\Carbon::createFromTimestamp($stripeSub->current_period_end)->toDateTimeString();
+                }
+                // Use subscription current_period_end as next billing estimate/fallback
+                if (!empty($stripeSub->current_period_end)) {
+                    $result['next_billing'] = \Carbon\Carbon::createFromTimestamp($stripeSub->current_period_end)->toDateTimeString();
+                }
+            }
+        } catch (Throwable $e) {
+            Log::warning('Could not retrieve subscription for session: ' . $e->getMessage(), ['session_id' => $sessionId]);
+        }
+
+        return response()->json($result);
     }
 }

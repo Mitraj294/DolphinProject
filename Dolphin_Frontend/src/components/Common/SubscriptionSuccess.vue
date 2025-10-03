@@ -36,12 +36,63 @@
               />
             </svg>
           </div>
-          <h2 class="thankyou-title">Subscription Successful!</h2>
+          <h2 class="thankyou-title">Successfully Subscribed!</h2>
           <div class="thankyou-desc">
             Your subscription has been processed successfully
           </div>
           <div class="thankyou-touch">
             Thank you for subscribing. We will be in touch.
+          </div>
+          <!-- Plan summary: prefilled from query params when available -->
+          <div
+            v-if="shouldShowPlanSummary"
+            class="plan-summary"
+          >
+            <div class="plan-summary-left">
+              <div class="plan-name">{{ planName || defaultPlanLabel }}</div>
+              <div class="plan-price">
+                <span class="price">{{ formattedAmount }}</span>
+                <span class="period">/{{ planPeriodDisplay }}</span>
+              </div>
+              <div class="plan-meta">
+                <span
+                  class="status"
+                  :class="subscriptionStatusClass"
+                  >{{ subscriptionStatusLabel }}</span
+                >
+                <span
+                  v-if="subscriptionEnd"
+                  class="ends"
+                  >Ends: {{ formattedEnd }}</span
+                >
+                <span
+                  v-if="nextBilling"
+                  class="next-billing"
+                >
+                  Next bill: {{ formattedNextBilling }}
+                </span>
+                <span
+                  v-else-if="nextPayment"
+                  class="next-billing"
+                >
+                  Next payment: {{ formattedNextPayment }}
+                </span>
+              </div>
+            </div>
+            <div class="plan-summary-right">
+              <button
+                class="btn btn-outline"
+                @click="goToBilling"
+              >
+                View Billing Details
+              </button>
+            </div>
+          </div>
+          <div
+            v-else-if="loadingSession"
+            class="plan-summary plan-summary--loading"
+          >
+            <div class="loader">Loading plan details…</div>
           </div>
           <div class="success-actions">
             <button
@@ -74,6 +125,63 @@ export default {
     this.checkoutSessionId = q.checkout_session_id || null;
     this.email = q.email || null;
     this.guestCode = q.guest_code || q.guest_token || null;
+    // Plan details available from redirect query params (guest flow)
+    this.planAmount = q.plan_amount || q.planAmount || null;
+    this.planName = q.plan_name || q.plan || null;
+    this.planPeriod = q.plan_period || q.period || null;
+    this.subscriptionEnd = q.subscription_end || q.subscriptionEnd || null;
+    this.subscriptionStatus =
+      q.subscription_status || q.subscriptionStatus || null;
+    // Next billing/payment info (multiple possible param names)
+    this.nextBilling =
+      q.next_billing ||
+      q.next_billing_date ||
+      q.nextBill ||
+      q.next_bill_date ||
+      null;
+    this.nextPayment =
+      q.next_payment || q.next_payment_date || q.nextPayment || null;
+
+    // If we only have a checkout session id, fetch details from backend to fill plan info
+    if (!this.planName && !this.planAmount && this.checkoutSessionId) {
+      this.loadingSession = true;
+      try {
+        const axios = require('axios');
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
+        const url = `${API_BASE_URL}/api/stripe/session`;
+        const params = { session_id: this.checkoutSessionId };
+        axios
+          .get(url, { params })
+          .then((resp) => {
+            const d = resp.data || {};
+            // map available fields
+            if (d.amount_total)
+              this.planAmount = (d.amount_total / 100).toFixed(2);
+            if (d.line_items && d.line_items[0] && d.line_items[0].description)
+              this.planName = d.line_items[0].description;
+            if (d.subscription_end) this.subscriptionEnd = d.subscription_end;
+            if (d.next_billing) this.nextBilling = d.next_billing;
+          })
+          .catch((err) => {
+            // not critical — don't block the UI
+            // eslint-disable-next-line no-console
+            console.debug(
+              'Could not fetch session details',
+              err?.message || err
+            );
+          })
+          .finally(() => {
+            this.loadingSession = false;
+          });
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.debug(
+          'SubscriptionSuccess mounted helper error',
+          e?.message || e
+        );
+        this.loadingSession = false;
+      }
+    }
   },
   methods: {
     goHome() {
@@ -93,13 +201,119 @@ export default {
       // Navigate to the named Login route to be resilient to path changes
       this.$router.push({ name: 'Login' });
     },
+    goToBilling() {
+      // navigate to billing details page
+      this.$router.push({ path: '/organizations/billing-details' });
+    },
   },
+
   data() {
     return {
       checkoutSessionId: null,
       email: null,
       guestCode: null,
+      planAmount: null,
+      planName: null,
+      planPeriod: null,
+      subscriptionEnd: null,
+      nextBilling: null,
+      nextPayment: null,
+      loadingSession: false,
+      subscriptionStatus: null,
     };
+  },
+  computed: {
+    shouldShowPlanSummary() {
+      // show summary when we have any plan info, or when not loading
+      return (
+        (this.planName || this.planAmount || this.subscriptionStatus) &&
+        !this.loadingSession
+      );
+    },
+    formattedAmount() {
+      if (!this.planAmount) return '';
+      // parse numeric strings like 250.00
+      const n = parseFloat(String(this.planAmount).replace(/,/g, ''));
+      if (!Number.isFinite(n)) return this.planAmount;
+      // show without decimals if whole number
+      return `$${n % 1 === 0 ? n.toFixed(0) : n.toFixed(2)}`;
+    },
+    formattedNextBilling() {
+      if (!this.nextBilling) return null;
+      const d = new Date(this.nextBilling);
+      if (isNaN(d.getTime())) return this.nextBilling;
+      return d.toLocaleString();
+    },
+    formattedNextPayment() {
+      if (!this.nextPayment) return null;
+      const d = new Date(this.nextPayment);
+      if (isNaN(d.getTime())) return this.nextPayment;
+      return d.toLocaleString();
+    },
+    planPeriodLabel() {
+      const p = String(this.planPeriod || '').toLowerCase();
+      if (p.includes('month')) return 'month';
+      if (p.includes('ann') || p.includes('year')) return 'annual';
+      return this.planPeriod || 'plan';
+    },
+    formattedEnd() {
+      if (!this.subscriptionEnd) return null;
+      const d = new Date(this.subscriptionEnd);
+      if (isNaN(d.getTime())) return this.subscriptionEnd;
+      return d.toLocaleString();
+    },
+    defaultPlanLabel() {
+      // Prefer an explicit plan name when provided
+      if (this.planName) {
+        const name = String(this.planName).toLowerCase();
+        if (name.includes('basic')) return 'Basic';
+        if (name.includes('standard')) return 'Standard';
+      }
+
+      // Fallback to period-based mapping: Monthly -> Basic, Annual -> Standard
+      const p = String(this.planPeriod || '').toLowerCase();
+      if (p.includes('month')) return 'Basic';
+      if (p.includes('ann') || p.includes('year')) return 'Standard';
+
+      // As a last resort, infer from amount (common pricing heuristics used here)
+      if (this.planAmount) {
+        const n = parseFloat(String(this.planAmount).replace(/,/g, ''));
+        if (Number.isFinite(n)) {
+          if (n >= 1000) return 'Standard';
+          return 'Basic';
+        }
+      }
+
+      return 'Basic';
+    },
+    planPeriodDisplay() {
+      const p = String(this.planPeriod || '').toLowerCase();
+      if (p.includes('month')) return 'Month';
+      if (p.includes('ann') || p.includes('year')) return 'Annual';
+
+      // Infer from numeric amount when period isn't provided
+      if (this.planAmount) {
+        const n = parseFloat(String(this.planAmount).replace(/[,\s]/g, ''));
+        if (Number.isFinite(n)) return n >= 1000 ? 'Annual' : 'Month';
+      }
+
+      // default
+      return 'Month';
+    },
+    subscriptionStatusLabel() {
+      if (!this.subscriptionStatus) return '';
+      return (
+        String(this.subscriptionStatus).charAt(0).toUpperCase() +
+        String(this.subscriptionStatus).slice(1)
+      );
+    },
+    subscriptionStatusClass() {
+      if (!this.subscriptionStatus) return '';
+      const s = String(this.subscriptionStatus).toLowerCase();
+      if (s === 'active' || s === 'success') return 'status-active';
+      if (s === 'expired') return 'status-expired';
+      return 'status-unknown';
+    },
   },
 };
 </script>
@@ -197,6 +411,54 @@ export default {
   padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
+}
+.btn-outline {
+  background: white;
+  color: #2196f3;
+  border: 2px solid #2196f3;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.plan-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 8px 0;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #f6fbff;
+  border: 1px solid #e6f0fb;
+}
+.plan-summary-left {
+  text-align: left;
+}
+.plan-name {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: #0b4666;
+}
+.plan-price {
+  margin-top: 6px;
+  font-size: 1.2rem;
+  color: #111;
+}
+.plan-meta {
+  margin-top: 6px;
+  font-size: 0.9rem;
+  color: #555;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.status-active {
+  color: #2e7d32;
+  font-weight: 600;
+}
+.status-expired {
+  color: #d32f2f;
+  font-weight: 600;
 }
 .bg-lines {
   position: absolute;

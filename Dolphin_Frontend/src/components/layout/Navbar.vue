@@ -183,10 +183,10 @@ export default {
       assessmentNameCache: {},
       assessmentNameFetching: {},
       isNavbarAlive: false,
-      _boundFetchUnread: null,
-      _boundUpdateNotificationCount: null,
-      _boundAuthUpdated: null,
-      _boundCountSync: null,
+      boundFetchUnread: null,
+      boundUpdateNotificationCount: null,
+      boundAuthUpdated: null,
+      boundCountSync: null,
     };
   },
   setup() {
@@ -223,7 +223,6 @@ export default {
     titleForRoute(routeName) {
       if (!routeName)
         return this.$route && this.$route.name ? this.$route.name : '';
-
       const simpleMap = {
         UserPermission: 'Users + Permission',
         AddUser: 'Add User',
@@ -247,33 +246,35 @@ export default {
         Profile: 'Profile',
       };
 
-      // Special-case: if ScheduleDemo and mode=followup, show 'Schedule Follow up'
-      if (routeName === 'ScheduleDemo') {
-        try {
-          const mode =
-            this.$route && this.$route.query && this.$route.query.mode;
-          if (mode === 'followup') return 'Schedule Follow up';
-        } catch (e) {
-          console.debug('Navbar: error checking mode for ScheduleDemo', e);
-        }
-      }
+      // Handle special ScheduleDemo case separately to reduce branching
+      if (routeName === 'ScheduleDemo') return this.scheduleDemoTitle();
 
-      if (simpleMap[routeName]) return simpleMap[routeName];
+      if (Object.hasOwn(simpleMap, routeName)) return simpleMap[routeName];
 
-      if (routeName === 'OrganizationDetail')
-        return this.handleOrganizationDetailTitle();
-      if (routeName === 'OrganizationEdit')
-        return this.handleOrganizationEditTitle();
-      if (routeName === 'LeadDetail') return this.handleLeadDetailTitle();
-      if (routeName === 'EditLead') return this.handleEditLeadTitle();
-      if (routeName === 'BillingDetails')
-        return this.handleBillingDetailsTitle();
-      if (routeName === 'AssessmentSummary')
-        return this.handleAssessmentSummaryTitle();
-      if (routeName === 'MyOrganization')
-        return this.handleMyOrganizationTitle();
+      // Route-specific handlers
+      const handlers = {
+        OrganizationDetail: this.handleOrganizationDetailTitle,
+        OrganizationEdit: this.handleOrganizationEditTitle,
+        LeadDetail: this.handleLeadDetailTitle,
+        EditLead: this.handleEditLeadTitle,
+        BillingDetails: this.handleBillingDetailsTitle,
+        AssessmentSummary: this.handleAssessmentSummaryTitle,
+        MyOrganization: this.handleMyOrganizationTitle,
+      };
+
+      if (handlers[routeName]) return handlers[routeName].call(this);
 
       return this.$route && this.$route.name ? this.$route.name : '';
+    },
+
+    scheduleDemoTitle() {
+      try {
+        const mode = this.$route && this.$route.query && this.$route.query.mode;
+        if (mode === 'followup') return 'Schedule Follow up';
+      } catch (e) {
+        console.debug('Navbar: error checking mode for ScheduleDemo', e);
+      }
+      return 'Schedule Demo';
     },
     handleOrganizationDetailTitle() {
       const organization_name =
@@ -415,20 +416,8 @@ export default {
     },
     async fetchUnreadCount() {
       try {
-        // Only fetch unread notifications when the subscription is active (or unknown)
-        const subStatus = storage.get('subscription_status');
-        const currentRole = this.roleName || authMiddleware.getRole();
-        const bypassRoles = ['dolphinadmin', 'superadmin', 'salesperson'];
-        if (
-          subStatus &&
-          subStatus !== 'active' &&
-          !bypassRoles.includes(currentRole)
-        ) {
-          // subscription not active: do not call notifications endpoint for billable roles
-          this.notificationCount = 0;
-          storage.set('notificationCount', String(0));
-          return;
-        }
+        // Fetch unread notifications for authenticated user regardless of local subscription flag.
+        // Backend will enforce any additional access controls; frontend should show badge if there are unread items.
         let token = storage.get('authToken');
         if (token && typeof token === 'object' && token.token)
           token = token.token;
@@ -740,10 +729,9 @@ export default {
       console.warn('Failed to fetch initial unread count', e);
     }
     this.fetchCurrentUser();
-    this._boundFetchUnread = this.fetchUnreadCount.bind(this);
-    this._boundUpdateNotificationCount =
-      this.updateNotificationCount.bind(this);
-    this._boundAuthUpdated = this._debounce(() => {
+    this.boundFetchUnread = this.fetchUnreadCount.bind(this);
+    this.boundUpdateNotificationCount = this.updateNotificationCount.bind(this);
+    this.boundAuthUpdated = this._debounce(() => {
       this.roleName = authMiddleware.getRole();
       this.updateUserInfo();
       this.updateNotificationCount();
@@ -755,20 +743,20 @@ export default {
       }
       this.$forceUpdate && this.$forceUpdate();
     }, 500);
-    this._boundFetchUnread = this._debounce(
+    this.boundFetchUnread = this._debounce(
       this.fetchUnreadCount.bind(this),
       500
     );
-    window.addEventListener('notification-updated', this._boundFetchUnread);
-    window.addEventListener('auth-updated', this._boundAuthUpdated);
-    window.addEventListener('storage', this._boundUpdateNotificationCount);
-    this._boundCountSync = (event) => {
+    window.addEventListener('notification-updated', this.boundFetchUnread);
+    window.addEventListener('auth-updated', this.boundAuthUpdated);
+    window.addEventListener('storage', this.boundUpdateNotificationCount);
+    this.boundCountSync = (event) => {
       const incoming = event?.detail?.count;
       if (typeof incoming !== 'number' || Number.isNaN(incoming)) return;
       this.notificationCount = incoming;
       storage.set('notificationCount', String(incoming));
     };
-    window.addEventListener('notification-count-sync', this._boundCountSync);
+    window.addEventListener('notification-count-sync', this.boundCountSync);
 
     if (this.$root && this.$root.$on) {
       this.$root.$on('page-title-override', (val) => {
@@ -790,7 +778,7 @@ export default {
 
     this.$watch(
       () => this.$route && this.$route.fullPath,
-      (newVal, oldVal) => {
+      () => {
         try {
           const rn = this.$route && this.$route.name;
           if (rn === 'AssessmentSummary') {
@@ -807,26 +795,23 @@ export default {
       }
     );
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.isNavbarAlive = false;
     document.removeEventListener('mousedown', this.handleClickOutside);
     window.removeEventListener('resize', this.checkScreen);
-    if (this._boundUpdateNotificationCount) {
-      window.removeEventListener('storage', this._boundUpdateNotificationCount);
+    if (this.boundUpdateNotificationCount) {
+      window.removeEventListener('storage', this.boundUpdateNotificationCount);
     }
-    if (this._boundFetchUnread) {
-      window.removeEventListener(
-        'notification-updated',
-        this._boundFetchUnread
-      );
+    if (this.boundFetchUnread) {
+      window.removeEventListener('notification-updated', this.boundFetchUnread);
     }
-    if (this._boundAuthUpdated) {
-      window.removeEventListener('auth-updated', this._boundAuthUpdated);
+    if (this.boundAuthUpdated) {
+      window.removeEventListener('auth-updated', this.boundAuthUpdated);
     }
-    if (this._boundCountSync) {
+    if (this.boundCountSync) {
       window.removeEventListener(
         'notification-count-sync',
-        this._boundCountSync
+        this.boundCountSync
       );
     }
     document.body.classList.remove('logout-overlay-active');

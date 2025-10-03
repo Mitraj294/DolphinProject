@@ -372,7 +372,8 @@ const handleExpiredSubscription = (to, next) => {
     'Profile',
     'ManageSubscription',
     'SubscriptionPlans',
-    'BillingDetails'
+    'BillingDetails',
+    'GetNotification'
   ];
   if (allowedRoutesForExpired.includes(to.name)) {
     next();
