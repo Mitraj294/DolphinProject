@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\DB;
 use Stripe\Stripe;
 use Stripe\Checkout\Session as StripeSession;
 use Stripe\Customer;
@@ -29,7 +30,56 @@ public function createCheckoutSession(Request $request)
 {
     Log::info('createCheckoutSession request:', $request->all());
 
+    // Try optional authentication from Authorization header (Bearer token).
+    // The route is intentionally public to support guest checkouts, but when
+    // an Authorization header is present we should honor it and treat the
+    // request as authenticated (so organization admins don't get forced into
+    // the guest checkout branch).
+    try {
+        $authHeader = $request->header('Authorization');
+        if ($authHeader && preg_match('/Bearer\s+(.*)$/i', $authHeader, $m)) {
+            $bearer = $m[1];
+            $accessTokenModel = null;
+            if (strpos($bearer, '|') !== false) {
+                [$idPart] = explode('|', $bearer, 2);
+                $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $idPart)->first();
+            }
+            if (!$accessTokenModel && substr_count($bearer, '.') === 2) {
+                try {
+                    $parts = explode('.', $bearer);
+                    $payloadB64 = $parts[1] ?? null;
+                    $payloadJson = $payloadB64 ? base64_decode(strtr($payloadB64, '-_', '+/')) : null;
+                    $payload = json_decode($payloadJson, true);
+                    if (is_array($payload) && !empty($payload['jti'])) {
+                        $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $payload['jti'])->first();
+                    }
+                } catch (\Exception $e) {
+                    // ignore malformed JWTs here
+                }
+            }
+            if (!$accessTokenModel) {
+                $accessTokenModel = DB::table('oauth_access_tokens')->where('id', $bearer)->first();
+            }
+            if ($accessTokenModel) {
+                $now = Carbon::now();
+                $expiresAt = isset($accessTokenModel->expires_at) ? Carbon::parse($accessTokenModel->expires_at) : null;
+                if (empty($accessTokenModel->revoked) && (!$expiresAt || $expiresAt->gt($now))) {
+                    $authUser = User::find($accessTokenModel->user_id);
+                    if ($authUser) {
+                        Auth::setUser($authUser);
+                    }
+                }
+            }
+        }
+    } catch (\Exception $e) {
+        Log::warning('Optional token authentication failed: ' . $e->getMessage());
+    }
+
     $user = Auth::user();
+    // If we set a user via optional token parsing above, prefer that.
+    if (isset($authUser) && $authUser instanceof User) {
+        $user = $authUser;
+    }
     $priceId = $request->input('price_id');
     $frontend = env('FRONTEND_URL', 'http://localhost:8080');
 

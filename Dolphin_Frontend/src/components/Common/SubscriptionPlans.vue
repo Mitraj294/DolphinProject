@@ -258,41 +258,73 @@ export default {
       try {
         const priceId =
           this.stripePriceIds[period] || this.stripePriceIds.annually;
-        const authToken = storage.get('authToken');
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const payload = this.buildCheckoutPayload(priceId);
 
+        // Ensure authenticated for non-guest flow
+        if (!this.ensureNonGuestAuth()) return;
+
+        const headers = this.getAuthHeaders();
         const res = await axios.post(
           `${API_BASE_URL}/api/stripe/checkout-session`,
           payload,
-          { headers: { Authorization: `Bearer ${authToken}` } }
+          { headers }
         );
+
         if (res.data && res.data.url) {
           window.location.href = res.data.url;
-        } else if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Checkout Error',
-            detail: 'Could not start Stripe Checkout.',
-            life: 4000,
-          });
         } else {
-          console.warn('Toast not available: Could not start Stripe Checkout.');
+          this.notifyToast(
+            'error',
+            'Checkout Error',
+            'Could not start Stripe Checkout.'
+          );
         }
       } catch (e) {
-        if (this.$toast && typeof this.$toast.add === 'function') {
-          this.$toast.add({
-            severity: 'error',
-            summary: 'Checkout Error',
-            detail: 'Stripe Checkout failed.',
-            life: 4000,
-          });
-        } else {
-          console.error('Toast not available: Stripe Checkout failed.');
-        }
+        this.notifyToast('error', 'Checkout Error', 'Stripe Checkout failed.');
         console.error('[Subscription] Stripe checkout error:', e);
       } finally {
         this.isLoading = false;
+      }
+    },
+    // Helpers to reduce cognitive complexity of startStripeCheckout
+    ensureNonGuestAuth() {
+      const authToken = storage.get('authToken');
+      if (!this.isGuestView && !authToken) {
+        if (this.$toast && typeof this.$toast.add === 'function') {
+          this.$toast.add({
+            severity: 'warn',
+            summary: 'Authentication Required',
+            detail: 'Please login again to start checkout.',
+            life: 4000,
+          });
+        } else {
+          console.warn(
+            '[Subscription] No auth token found for non-guest checkout'
+          );
+        }
+        this.isLoading = false;
+        // Redirect to login page
+        window.location.href = '/';
+        return false;
+      }
+      return true;
+    },
+    getAuthHeaders() {
+      const headers = {};
+      const authToken = storage.get('authToken');
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+      return headers;
+    },
+    notifyToast(severity, summary, detail) {
+      if (this.$toast && typeof this.$toast.add === 'function') {
+        this.$toast.add({ severity, summary, detail, life: 4000 });
+        return;
+      }
+      if (severity === 'error') {
+        console.error(summary + ': ' + detail);
+      } else {
+        console.warn(summary + ': ' + detail);
       }
     },
     buildCheckoutPayload(priceId) {

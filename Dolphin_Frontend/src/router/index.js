@@ -342,6 +342,29 @@ const validateGuestToken = async (opts) => {
 };
 
 /**
+ * Try to validate guest_token or guest_code for the SubscriptionPlans route.
+ * Returns true when validation succeeded (caller should `next()`), false otherwise.
+ */
+const tryValidateGuestForPlans = async (to) => {
+  if (to.name !== 'SubscriptionPlans') return false;
+  try {
+    const guestToken = to.query?.guest_token || null;
+    if (guestToken) {
+      const ok = await validateGuestToken({ token: guestToken });
+      if (ok) return true;
+    }
+    const guestCode = to.query?.guest_code || null;
+    if (guestCode) {
+      const ok = await validateGuestToken({ guest_code: guestCode });
+      if (ok) return true;
+    }
+  } catch (e) {
+    console.error('Guest validation helper failed', e);
+  }
+  return false;
+};
+
+/**
   Handles navigation for expired subscriptions.
  */
 const handleExpiredSubscription = (to, next) => {
@@ -415,16 +438,13 @@ router.beforeEach(async (to, from, next) => {
   if (authToken) {
     await handleAuthenticatedRoutes(to, role, next);
   } else {
-    // Guest token validation for SubscriptionPlans
-    const guestToken = to.query?.guest_token || null;
-    if (guestToken && to.name === 'SubscriptionPlans') {
-      const ok = await validateGuestToken({ token: guestToken });
-      if (ok) {
-        next();
-        return;
-      }
+    // Guest validation and graceful access to plans page for emailed links
+    const validated = await tryValidateGuestForPlans(to);
+    if (validated) {
+      next();
+      return;
     }
-    // Allow unauthenticated access to plans page for emailed links with guest data
+
     const isPlansWithData = to.name === 'SubscriptionPlans' && (
       Boolean(to.query?.email) || Boolean(to.query?.lead_id) || Boolean(to.query?.price_id) || Boolean(to.query?.guest_token) || Boolean(to.query?.guest_code)
     );
@@ -432,6 +452,7 @@ router.beforeEach(async (to, from, next) => {
       next();
       return;
     }
+
     // Default: redirect to login
     next('/');
   }
