@@ -599,8 +599,10 @@ public function createCheckoutSession(Request $request)
                     'customer_name' => $data['customer_name'] ?? null,
                 ];
 
-                \Illuminate\Support\Facades\Mail::to($data['customer_email'])->queue(new \App\Mail\SubscriptionReceipt($mailPayload));
-                Log::info('Queued subscription receipt email', ['email' => $data['customer_email']]);
+                // Use Notification so we can leverage Notification channels and queuing
+                \Illuminate\Support\Facades\Notification::route('mail', $data['customer_email'])
+                    ->notify(new \App\Notifications\SubscriptionReceiptNotification($mailPayload));
+                Log::info('Queued subscription receipt notification', ['email' => $data['customer_email']]);
             }
         } catch (\Throwable $e) {
             Log::warning('Failed to queue subscription receipt email: ' . $e->getMessage(), ['user_id' => $user->id]);
