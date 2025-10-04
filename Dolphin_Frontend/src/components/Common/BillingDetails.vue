@@ -49,9 +49,9 @@
                   <span v-else>
                     {{
                       currentPlan?.price
-                        ? `$${currentPlan.price}`
+                        ? `${currentPlan.price}`
                         : currentPlan?.amount
-                        ? `$${currentPlan.amount}`
+                        ? `${currentPlan.amount}`
                         : ''
                     }}
                   </span>
@@ -143,13 +143,15 @@
                       label: 'Payment Date',
                       key: 'paymentDate',
                       minWidth: '200px',
+                      sortable: true,
                     },
                     {
                       label: 'Subscription End',
                       key: 'subscriptionEnd',
                       minWidth: '200px',
+                      sortable: true,
                     },
-                    { label: 'Amount', key: 'amount', minWidth: '200px' },
+                    { label: 'Amount', key: 'amount', minWidth: '200px', sortable: true },
                     { label: 'Download', key: 'invoice', minWidth: '200px' },
                     {
                       label: 'Description',
@@ -157,10 +159,13 @@
                       minWidth: '200px',
                     },
                   ]"
+                  :active-sort-key="activeSortKey"
+                  :sort-asc="sortAsc"
+                  @sort="handleSort"
                 />
                 <tbody>
                   <tr
-                    v-for="(item, idx) in billingHistory"
+                    v-for="(item, idx) in sortedBillingHistory"
                     :key="idx"
                   >
                     <td>
@@ -177,7 +182,7 @@
                           : ''
                       }}
                     </td>
-                    <td>{{ item.amount ? `$${item.amount}` : '' }}</td>
+                    <td>{{ item.amount ? `${item.amount}` : '' }}</td>
                     <td>
                       <a
                         v-if="item.pdfUrl"
@@ -239,6 +244,8 @@ export default {
     return {
       currentPlan: null,
       billingHistory: [],
+      activeSortKey: 'paymentDate',
+      sortAsc: false,
     };
   },
   computed: {
@@ -252,8 +259,36 @@ export default {
       });
       return sorted[0] || null;
     },
+    sortedBillingHistory() {
+      if (!this.activeSortKey) return this.billingHistory;
+      const sorted = [...this.billingHistory].sort((a, b) => {
+        let valA = a[this.activeSortKey];
+        let valB = b[this.activeSortKey];
+
+        if (
+          this.activeSortKey === 'paymentDate' ||
+          this.activeSortKey === 'subscriptionEnd'
+        ) {
+          valA = valA ? new Date(valA) : 0;
+          valB = valB ? new Date(valB) : 0;
+        }
+
+        if (valA < valB) return this.sortAsc ? -1 : 1;
+        if (valA > valB) return this.sortAsc ? 1 : -1;
+        return 0;
+      });
+      return sorted;
+    },
   },
   methods: {
+    handleSort(key) {
+      if (this.activeSortKey === key) {
+        this.sortAsc = !this.sortAsc;
+      } else {
+        this.activeSortKey = key;
+        this.sortAsc = true;
+      }
+    },
     async fetchBillingDetails() {
       try {
         const authToken = storage.get('authToken');

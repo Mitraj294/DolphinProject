@@ -348,7 +348,7 @@ export default {
   border-radius: 20px;
   box-shadow: 0 8px 24px 0 rgba(0, 0, 0, 0.08);
   padding: 48px 40px 32px 40px;
-  max-width: 420px;
+
   width: 100%;
   text-align: center;
   z-index: 2;

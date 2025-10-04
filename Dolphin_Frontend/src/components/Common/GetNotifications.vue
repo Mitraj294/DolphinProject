@@ -153,9 +153,8 @@ import Pagination from '@/components/layout/Pagination.vue';
 import storage from '@/services/storage';
 import authMiddleware from '@/middleware/authMiddleware';
 import axios from 'axios';
-import { ref } from 'vue';
+import { parseISO, isValid, isSameDay } from 'date-fns';
 
-const date = ref();
 export default {
   name: 'GetNotification',
   components: { Pagination, MainLayout },
@@ -193,21 +192,27 @@ export default {
 
       // if a date is selected, filter by created_at date (YYYY-MM-DD)
       if (this.selectedDate) {
-        const sel = this.selectedDate;
-        list = list.filter((n) => {
-          // try multiple places for created timestamp
-          const createdAt =
-            n.created_at ||
-            (n._rawData && (n._rawData.created_at || n._rawData.createdAt)) ||
-            '';
-          if (!createdAt) return false;
-          const d = new Date(createdAt);
-          if (isNaN(d)) return false;
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth() + 1).padStart(2, '0');
-          const dd = String(d.getDate()).padStart(2, '0');
-          return `${yyyy}-${mm}-${dd}` === sel;
-        });
+        // selectedDate is in YYYY-MM-DD format from the input[type=date]
+        const sel = parseISO(this.selectedDate);
+        if (isValid(sel)) {
+          list = list.filter((n) => {
+            const createdAt =
+              n.created_at ||
+              (n._rawData && (n._rawData.created_at || n._rawData.createdAt)) ||
+              '';
+            if (!createdAt) return false;
+            // try parsing ISO, if invalid fallback to Date
+            let d =
+              typeof createdAt === 'string'
+                ? parseISO(createdAt)
+                : new Date(createdAt);
+            if (!isValid(d)) {
+              d = new Date(createdAt);
+            }
+            if (!isValid(d)) return false;
+            return isSameDay(d, sel);
+          });
+        }
       }
 
       return list;
@@ -377,10 +382,12 @@ export default {
       const serverMsg =
         error?.response?.data?.message || error?.response?.data?.error || null;
       this.$nextTick(() => {
-        this.$notify?.({
-          type: 'error',
-          message: serverMsg || 'Failed to fetch notifications.',
-        });
+        if (this.$notify) {
+          this.$notify({
+            type: 'error',
+            message: serverMsg || 'Failed to fetch notifications.',
+          });
+        }
       });
     },
     onDateChange() {
@@ -436,11 +443,12 @@ export default {
         window.dispatchEvent(new Event('storage'));
       } catch (error) {
         console.error('Error marking all as read:', error);
-        this.$notify &&
+        if (this.$notify) {
           this.$notify({
             type: 'error',
             message: 'Failed to mark all notifications as read.',
           });
+        }
       }
     },
     async markAsRead(id) {
@@ -469,11 +477,12 @@ export default {
           window.dispatchEvent(new Event('storage'));
         } catch (error) {
           console.error('Failed to mark notification as read:', error);
-          this.$notify &&
+          if (this.$notify) {
             this.$notify({
               type: 'error',
               message: 'Failed to mark notification as read.',
             });
+          }
         }
       }
     },
@@ -550,13 +559,10 @@ export default {
   },
 };
 </script>
-
 <style scoped>
-/* --- Layout and spacing to match Leads/OrganizationTable --- */
 .notifications-table-outer {
   width: 100%;
   min-width: 260px;
-
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -769,7 +775,6 @@ export default {
   padding: 32px 0;
 }
 
-/* Responsive styles to match base pages */
 @media (max-width: 1400px) {
   .notifications-controls {
     padding: 8px 8px 0 8px;

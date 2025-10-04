@@ -149,7 +149,7 @@ export default {
     window.addEventListener('resize', this.updateDropdownPosition);
     window.addEventListener('scroll', this.updateDropdownPosition, true);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     document.removeEventListener('mousedown', this.handleClickOutside);
     window.removeEventListener('resize', this.updateDropdownPosition);
     window.removeEventListener('scroll', this.updateDropdownPosition, true);

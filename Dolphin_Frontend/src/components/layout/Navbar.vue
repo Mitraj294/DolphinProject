@@ -91,12 +91,14 @@
             class="navbar-dropdown"
             ref="dropdown"
           >
-            <div class="navbar-dropdown-item0">
+            <div
+              class="navbar-dropdown-item0"
+              @click="goToProfile"
+            >
               <i class="fas fa-user"></i>
               <div
                 class="navbar-dropdown-item"
                 v-if="roleName"
-                @click="goToProfile"
               >
                 Profile
               </div>
@@ -129,14 +131,12 @@
                 Manage Subscriptions
               </div>
             </div>
-            <div class="navbar-dropdown-item0">
+            <div
+              class="navbar-dropdown-item0"
+              @click="confirmLogout"
+            >
               <i class="fas fa-sign-out-alt"></i>
-              <div
-                class="navbar-dropdown-item"
-                @click="confirmLogout"
-              >
-                Logout
-              </div>
+              <div class="navbar-dropdown-item">Logout</div>
             </div>
           </div>
         </transition>
@@ -1038,12 +1038,9 @@ export default {
   display: flex;
   align-items: center;
   gap: 10px;
-  justify-content: center;
-  /* horizontally center icon + label */
+  justify-content: start;
   text-align: center;
-  /* center text fallback */
   width: 100%;
-  /* make items fill dropdown width so centering is apparent */
 }
 
 .navbar-dropdown-item0 {
