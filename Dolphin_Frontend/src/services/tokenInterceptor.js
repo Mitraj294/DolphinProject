@@ -57,11 +57,26 @@ const handleSubscriptionExpired = (error, data) => {
 // Request interceptor
 axios.interceptors.request.use(
   (config) => {
-    const authToken = storage.get('authToken');
+    // normalize auth token from storage (support string or object shapes)
+    let authToken = storage.get('authToken');
     const tokenExpiry = storage.get('tokenExpiry');
+
+    if (authToken && typeof authToken === 'object') {
+      if (authToken.token) authToken = authToken.token;
+      else if (authToken.access_token) authToken = authToken.access_token;
+      else authToken = null;
+    }
 
     if (authToken && isTokenExpired(tokenExpiry)) {
       return handleTokenExpiry();
+    }
+
+    if (authToken && typeof authToken === 'string') {
+      config.headers = config.headers || {};
+      // only set Authorization if not already set
+      if (!config.headers.Authorization && !config.headers.authorization) {
+        config.headers.Authorization = `Bearer ${authToken}`;
+      }
     }
 
     return config;

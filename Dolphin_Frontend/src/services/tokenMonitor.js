@@ -27,52 +27,55 @@ const tokenMonitor = {
     // Clear any existing interval
     this.stopMonitoring();
 
+    const normalizeToken = (raw) => {
+      let token = raw;
+      if (token && typeof token === 'object') {
+        if (token.token) return token.token;
+        if (token.access_token) return token.access_token;
+        return null;
+      }
+      return token;
+    };
+
+    const fetchStatus = async (token) => {
+      return axios.get(`${API_BASE_URL}/api/token/status`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    };
+
+    const handleExpired = () => {
+      console.log('Token has expired');
+      storage.clear();
+      if (onExpired && typeof onExpired === 'function') onExpired();
+      this.stopMonitoring();
+    };
+
     tokenCheckInterval = setInterval(async () => {
+      let authToken = normalizeToken(storage.get('authToken'));
+      if (!authToken) return;
+
       try {
-        const authToken = storage.get('authToken');
-        if (!authToken) {
-          return; // No token to check
-        }
-
-        const response = await axios.get(`${API_BASE_URL}/api/token/status`, {
-          headers: { Authorization: `Bearer ${authToken}` }
-        });
-
+        const response = await fetchStatus(authToken);
         const { expires_in_seconds } = response.data;
         const expiresInMs = expires_in_seconds * 1000;
 
-        // Token is expired
         if (expires_in_seconds <= 0) {
-          console.log('Token has expired');
-          storage.clear();
-          if (onExpired && typeof onExpired === 'function') {
-            onExpired();
-          }
-          this.stopMonitoring();
+          handleExpired();
           return;
         }
 
-        // Token is expiring soon
         if (expiresInMs <= warningThreshold) {
           const now = Date.now();
-          // Only warn once per session or if it's been more than 5 minutes since last warning
           if (now - lastExpiryWarning > 5 * 60 * 1000) {
             console.warn(`Token will expire in ${Math.round(expires_in_seconds / 60)} minutes`);
             lastExpiryWarning = now;
-            if (onExpiringSoon && typeof onExpiringSoon === 'function') {
-              onExpiringSoon(expires_in_seconds);
-            }
+            if (onExpiringSoon && typeof onExpiringSoon === 'function') onExpiringSoon(expires_in_seconds);
           }
         }
-
       } catch (error) {
         if (error.response && error.response.status === 401) {
           console.log('Token validation failed with 401');
-          storage.clear();
-          if (onExpired && typeof onExpired === 'function') {
-            onExpired();
-          }
-          this.stopMonitoring();
+          handleExpired();
         } else {
           console.error('Token status check failed:', error);
         }
@@ -99,10 +102,16 @@ const tokenMonitor = {
    */
   async checkTokenNow() {
     try {
-      const authToken = storage.get('authToken');
+      let authToken = storage.get('authToken');
       if (!authToken) {
         return null;
       }
+      if (authToken && typeof authToken === 'object') {
+        if (authToken.token) authToken = authToken.token;
+        else if (authToken.access_token) authToken = authToken.access_token;
+        else authToken = null;
+      }
+      if (!authToken) return null;
 
       const response = await axios.get(`${API_BASE_URL}/api/token/status`, {
         headers: { Authorization: `Bearer ${authToken}` }

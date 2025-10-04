@@ -148,7 +148,6 @@
 </template>
 
 <script>
-
 // Component Imports
 
 import MainLayout from '@/components/layout/MainLayout.vue';
@@ -159,17 +158,16 @@ export default {
   name: 'SubscriptionPlans',
   components: { MainLayout },
 
-  
   // Data
-  
+
   data() {
     return {
       planPeriod: 'annually',
       isAnnually: true,
       isLoading: false,
       stripePriceIds: {
-        monthly: 'price_1RqAOwPnfSZSgS1X7vLNRdmX',
-        annually: 'price_1RqAPlPnfSZSgS1X2zY3qP4K',
+        monthly: 'price_1SERsJPnfSZSgS1XktSvPTQr',
+        annually: 'price_1SERriPnfSZSgS1XYnWP4uM2',
       },
       userPlan: null,
       isGuestView: false,
@@ -183,9 +181,8 @@ export default {
     };
   },
 
-  
   // Computed Properties
-  
+
   computed: {
     /**
      * Determines the text for the Basic plan button based on the user's current plan.
@@ -222,18 +219,16 @@ export default {
     },
   },
 
-  
   // Watchers
-  
+
   watch: {
     isAnnually(val) {
       this.planPeriod = val ? 'annually' : 'monthly';
     },
   },
 
-  
   // Methods
-  
+
   methods: {
     /**
      * Fetches the current user's subscription plan from the backend.
@@ -311,9 +306,8 @@ export default {
     },
   },
 
-  
   // Lifecycle Hooks
-  
+
   mounted() {
     const qs = new URLSearchParams(window.location.search);
     const hasGuestParams = [

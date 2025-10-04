@@ -582,6 +582,29 @@ public function createCheckoutSession(Request $request)
         );
 
         Log::info('Subscription record updated/created successfully.', ['subscription_id' => $data['stripe_subscription_id']]);
+
+        // Queue a receipt email to the customer when we have a receipt URL or invoice number
+        try {
+            if (!empty($data['customer_email']) && filter_var($data['customer_email'], FILTER_VALIDATE_EMAIL)) {
+                // Use a lightweight array payload to avoid serializing large objects
+                $mailPayload = [
+                    'plan' => $data['plan'] ?? $data['plan_name'] ?? null,
+                    'plan_name' => $data['plan_name'] ?? null,
+                    'amount' => $data['amount'] ?? null,
+                    'invoice_number' => $data['invoice_number'] ?? $data['invoiceNumber'] ?? null,
+                    'payment_date' => $data['payment_date'] ?? null,
+                    'next_billing' => $data['next_billing'] ?? $data['nextBill'] ?? $data['subscription_end'] ?? null,
+                    'subscription_end' => $data['subscription_end'] ?? $data['subscriptionEnd'] ?? null,
+                    'receipt_url' => $data['receipt_url'] ?? $data['pdfUrl'] ?? null,
+                    'customer_name' => $data['customer_name'] ?? null,
+                ];
+
+                \Illuminate\Support\Facades\Mail::to($data['customer_email'])->queue(new \App\Mail\SubscriptionReceipt($mailPayload));
+                Log::info('Queued subscription receipt email', ['email' => $data['customer_email']]);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('Failed to queue subscription receipt email: ' . $e->getMessage(), ['user_id' => $user->id]);
+        }
     }
 
     /**
