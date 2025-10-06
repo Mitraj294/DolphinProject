@@ -151,7 +151,12 @@
                       minWidth: '200px',
                       sortable: true,
                     },
-                    { label: 'Amount', key: 'amount', minWidth: '200px', sortable: true },
+                    {
+                      label: 'Amount',
+                      key: 'amount',
+                      minWidth: '200px',
+                      sortable: true,
+                    },
                     { label: 'Download', key: 'invoice', minWidth: '200px' },
                     {
                       label: 'Description',
@@ -182,7 +187,7 @@
                           : ''
                       }}
                     </td>
-                    <td>{{ item.amount ? `${item.amount}` : '' }}</td>
+                    <td>{{ item.amount ? `${item.amount}` : '' }}$</td>
                     <td>
                       <a
                         v-if="item.pdfUrl"

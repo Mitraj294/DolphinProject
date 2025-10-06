@@ -2,43 +2,71 @@
   <MainLayout>
     <div class="page">
       <div class="manage-subscription-outer">
-        <div class="manage-subscription-card">
-          <div class="manage-subscription-header"></div>
-          <div class="manage-subscription-header-spacer"></div>
-          <div class="manage-subscription-container">
-            <div class="manage-subscription-img-box">
-              <img
-                src="@/assets/images/Group 14.svg"
-                alt="No Plans"
-                class="manage-subscription-img"
-              />
-            </div>
-            <div class="manage-subscription-content">
-              <div class="manage-subscription-msg">
-                <div v-if="loading">Loading subscription status...</div>
-                <div
-                  v-else-if="status === 'active'"
-                  class="manage-subscription-msg green"
-                >
-                  You are subscribed to the {{ plan_name }} {{ status }} plan.
+        <div class="thankyou-layout small">
+          <div class="thankyou-bg">
+            <div class="manage-card">
+              <div class="manage-top">
+                <div class="manage-illustration">
+                  <img
+                    src="@/assets/images/Group 14.svg"
+                    alt="Subscription"
+                  />
                 </div>
-                <div
-                  v-else-if="status === 'expired'"
-                  class="manage-subscription-msg red"
+                <h1
+                  class="welcome-line"
+                  v-if="!loading && userName"
                 >
-                  Your Plan {{ plan_name }} expired on {{ subscriptionEnd }}.
-                  Please renew.
-                </div>
-                <div
-                  v-else
-                  class="manage-subscription-msg"
+                  Welcome back, {{ userName }}!
+                </h1>
+                <h2 class="manage-title">
+                  <span v-if="loading">Checking subscription…</span>
+                  <span v-else-if="status === 'active'">You're subscribed</span>
+                  <span v-else-if="status === 'expired'"
+                    >Subscription expired</span
+                  >
+                  <span v-else>Get started with a plan</span>
+                </h2>
+                <p
+                  class="manage-subtitle"
+                  v-if="!loading"
                 >
-                  You have not selected any plans yet.
-                </div>
+                  <template v-if="status === 'active'">
+                    You are subscribed to the
+                    <span
+                      class="pill status-pill"
+                      :class="{
+                        'status-pill-active': status === 'active',
+                        'status-pill-expired': status === 'expired',
+                      }"
+                    >
+                      {{ status }}
+                    </span>
+                    <strong>{{ plan_name }}</strong>
+                  </template>
+                  <template v-else-if="status === 'expired'">
+                    Your <strong>{{ plan_name || '—' }}</strong>
+
+                    <span
+                      class="pill status-pill"
+                      :class="{
+                        'status-pill-active': status === 'active',
+                        'status-pill-expired': status === 'expired',
+                      }"
+                    >
+                      {{ status }}
+                    </span>
+                    on <strong>{{ subscriptionEnd || '—' }}</strong
+                    >. Please renew to continue access.
+                  </template>
+                  <template v-else>
+                    Choose from our plans and start using Dolphin today.
+                  </template>
+                </p>
               </div>
-              <div>
+
+              <div class="manage-actions">
                 <button
-                  class="btn btn-primary manage-subscription-btn"
+                  class="btn btn-primary"
                   @click="handleButton"
                   :disabled="loading"
                 >
@@ -48,14 +76,14 @@
                   >
                   <template v-else>Explore Subscriptions</template>
                 </button>
-                <!-- Show Billing Details only when billing history exists -->
+
                 <button
                   v-if="hasBillingHistory"
-                  class="btn btn-primary manage-subscription-btn"
+                  class="btn btn-outline"
                   @click="goToBillingDetails"
+                  :disabled="loading"
                 >
                   <template v-if="loading">Checking...</template>
-
                   <template v-else>Billing Details</template>
                 </button>
               </div>
@@ -79,6 +107,7 @@ export default {
       status: null,
       plan_name: null,
       subscriptionEnd: null,
+      userName: null,
       loading: true,
       hasBillingHistory: false,
     };
@@ -96,6 +125,14 @@ export default {
       this.subscriptionEnd = null;
     } finally {
       this.loading = false;
+    }
+
+    // load user display name if available
+    try {
+      const storage = (await import('@/services/storage.js')).default;
+      this.userName = storage.get('userName') || null;
+    } catch {
+      this.userName = null;
     }
 
     // fetch billing history to determine whether Billing Details button should be shown
@@ -336,6 +373,129 @@ export default {
     font-size: 0.9rem;
     padding: 6px 12px;
     border-radius: 12px;
+  }
+}
+</style>
+
+<style scoped>
+/* Improved card-style layout matching SubscriptionSuccess look */
+.thankyou-layout.small {
+  display: flex;
+  --manage-card-min-height: 420px; /* tune this value to match SubscriptionSuccess */
+  min-height: var(--manage-card-min-height);
+  align-items: center;
+  justify-content: center;
+  /* remove outer padding so card can reach container edges */
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.thankyou-bg {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  /* visible boundary for the card */
+  border: 1px solid #ebebeb;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  min-height: var(--manage-card-min-height);
+}
+.manage-card {
+  width: 100%;
+  background: transparent; /* let the thankyou-bg show as the card */
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+  text-align: center;
+  min-height: var(--manage-card-min-height);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.manage-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 28px; /* internal padding for content inside the boundary */
+}
+.manage-illustration img {
+  width: 160px;
+  height: auto;
+}
+.manage-title {
+  font-size: 1.5rem;
+  margin: 0;
+  color: #0b4666;
+}
+.welcome-line {
+  font-size: 1.25rem;
+  margin: 0 0 10px 0;
+  color: #2b587a;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+.manage-subtitle {
+  color: #555;
+  margin: 0 0 8px 0;
+  max-width: 72ch;
+}
+.status-pill {
+  display: inline-block;
+
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #e8f5e9;
+  color: #196f3d;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.status-pill-active {
+  background: #e8f5e9;
+  color: #196f3d;
+}
+.status-pill-expired {
+  background: #fdecea;
+  color: #a72b2b;
+}
+.manage-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 18px;
+  flex-wrap: wrap;
+  padding: 12px 28px 20px 28px; /* keep actions visually separated from content */
+}
+.btn {
+  border-radius: 10px;
+  padding: 10px 22px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-outline {
+  background: white;
+  border: 1px solid #dcdcdc;
+  color: #0074c2;
+}
+
+@media (max-width: 768px) {
+  .manage-illustration img {
+    width: 120px;
+  }
+  .manage-title {
+    font-size: 1.25rem;
+  }
+  .manage-subtitle {
+    font-size: 0.95rem;
+  }
+  .thankyou-layout.small {
+    --manage-card-min-height: 360px;
+    min-height: var(--manage-card-min-height);
   }
 }
 </style>

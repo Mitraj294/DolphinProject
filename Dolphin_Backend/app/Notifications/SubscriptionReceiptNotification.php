@@ -26,7 +26,18 @@ class SubscriptionReceiptNotification extends Notification implements ShouldQueu
 
     public function toMail($notifiable)
     {
-        return new SubscriptionReceipt($this->subscription);
+        // When notifications are queued using AnonymousNotifiable::route('mail', $email)
+        // the MailChannel will not automatically apply the recipient to a Mailable.
+        // Set the recipient here so the serialized Mailable includes the To header
+        // and Symfony Mailer doesn't reject it when the job is processed.
+        $recipient = $notifiable->routeNotificationFor('mail', $this) ?? null;
+
+        $mailable = new SubscriptionReceipt($this->subscription);
+        if ($recipient) {
+            $mailable->to($recipient);
+        }
+
+        return $mailable;
     }
 
     public function toArray($notifiable)
