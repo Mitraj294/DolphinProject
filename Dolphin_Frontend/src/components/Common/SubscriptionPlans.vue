@@ -263,9 +263,11 @@ export default {
       try {
         const priceId =
           this.stripePriceIds[period] || this.stripePriceIds.annually;
+        console.log('Starting checkout with period:', period, 'priceId:', priceId);
         const authToken = storage.get('authToken');
         const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
         const payload = this.buildCheckoutPayload(priceId);
+        console.log('Checkout payload:', payload);
 
         const res = await axios.post(
           `${API_BASE_URL}/api/stripe/checkout-session`,
@@ -293,9 +295,40 @@ export default {
     buildCheckoutPayload(priceId) {
       const payload = { price_id: priceId };
       if (this.isGuestView) {
-        Object.assign(payload, this.guestParams);
+        // Add guest params but exclude null/undefined values to avoid overriding valid priceId
+        const filteredGuestParams = {};
+        Object.keys(this.guestParams).forEach(key => {
+          if (this.guestParams[key] !== null && this.guestParams[key] !== undefined) {
+            // Don't override the priceId we already set
+            if (key !== 'price_id') {
+              filteredGuestParams[key] = this.guestParams[key];
+            }
+          }
+        });
+        Object.assign(payload, filteredGuestParams);
       }
       return payload;
+    },
+
+    /**
+     * Validates guest token via backend, sets temporary session.
+     */
+    async validateGuestToken(opts) {
+      try {
+        const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+        const res = await axios.get(`${API_BASE_URL}/api/leads/guest-validate`, { params: opts });
+        if (res?.data?.valid) {
+          if (res.data.token) {
+            storage.set('authToken', res.data.token);
+            axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+          }
+          storage.set('guest_user', res.data.user || null);
+          return true;
+        }
+      } catch (e) {
+        console.error('Guest validation failed', e);
+      }
+      return false;
     },
 
     /**
@@ -309,7 +342,10 @@ export default {
   // Lifecycle Hooks
 
   mounted() {
+    console.log('SubscriptionPlans mounted, URL:', window.location.href);
     const qs = new URLSearchParams(window.location.search);
+    console.log('URL search params:', qs.toString());
+    
     const hasGuestParams = [
       'email',
       'lead_id',
@@ -318,7 +354,17 @@ export default {
       'guest_token',
     ].some((p) => qs.has(p));
 
+    console.log('Guest params check:', {
+      hasGuestParams,
+      email: qs.has('email'),
+      lead_id: qs.has('lead_id'),
+      price_id: qs.has('price_id'),
+      guest_code: qs.has('guest_code'),
+      guest_token: qs.has('guest_token')
+    });
+
     if (hasGuestParams) {
+      console.log('Setting guest view mode');
       this.isGuestView = true;
       this.guestParams = {
         email: qs.get('email'),
@@ -327,11 +373,32 @@ export default {
         guest_code: qs.get('guest_code'),
         guest_token: qs.get('guest_token'),
       };
+      console.log('Guest params:', this.guestParams);
 
+      // Validate guest token/code to get authentication
       if (this.guestParams.guest_code) {
-        // Handle guest code redemption for auto-login
+        console.log('Validating guest code:', this.guestParams.guest_code);
+        this.validateGuestToken({ guest_code: this.guestParams.guest_code }).then(success => {
+          console.log('Guest code validation result:', success);
+          if (success) {
+            console.log('Guest authentication successful, auth token set');
+          } else {
+            console.log('Guest authentication failed');
+          }
+        });
+      } else if (this.guestParams.guest_token) {
+        console.log('Validating guest token:', this.guestParams.guest_token);
+        this.validateGuestToken({ token: this.guestParams.guest_token }).then(success => {
+          console.log('Guest token validation result:', success);
+          if (success) {
+            console.log('Guest authentication successful, auth token set');
+          } else {
+            console.log('Guest authentication failed');
+          }
+        });
       }
     } else {
+      console.log('No guest params detected, fetching user plan');
       this.fetchUserPlan();
     }
   },

@@ -47,10 +47,27 @@ app.component('Button', Button); // Register PrimeVue Button globally
 
 // Sync encrypted storage role with backend user role on app start
 
-
+// Check if this is a guest access scenario (like subscription plans with guest_code)
+const isGuestAccess = () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const hasGuestParams = urlParams.has('guest_code') || urlParams.has('guest_token') || 
+         urlParams.has('lead_id') || urlParams.has('email');
+  console.log('isGuestAccess check:', {
+    url: window.location.href,
+    search: window.location.search,
+    hasGuestParams,
+    guest_code: urlParams.get('guest_code'),
+    guest_token: urlParams.get('guest_token'),
+    lead_id: urlParams.get('lead_id'),
+    email: urlParams.get('email')
+  });
+  return hasGuestParams;
+};
 
 const authToken = storage.get('authToken');
-if (authToken) {
+console.log('Main.js startup:', { authToken: !!authToken, isGuest: isGuestAccess() });
+
+if (authToken && !isGuestAccess()) {
   fetchCurrentUser().then(user => {
     // Also fetch subscription status so refreshing the page reflects current state immediately
     fetchSubscriptionStatus().then(status => {

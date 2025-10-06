@@ -97,7 +97,6 @@
     <div
       v-if="showSendModal"
       class="modal-overlay"
-      @click.self="showSendModal = false"
     >
       <div class="modal-card">
         <button
@@ -177,7 +176,7 @@
                   <FormInput
                     v-model="scheduledDate"
                     type="date"
-                    placeholder="MM/DD/YYYY"
+                 placeholder="MM/DD/YYYY"
                   />
                 </div>
               </div>
@@ -945,6 +944,55 @@ export default {
   padding: 32px 0;
 }
 
+/* Fix for table scrollbar covering border radius */
+.recipient-table-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 8px;
+  background: white;
+}
+
+.recipient-table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.recipient-table-wrap::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.recipient-table-wrap::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.recipient-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Ensure table maintains its border radius */
+.recipient-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.recipient-table th.rounded-th-left {
+  border-top-left-radius: 8px;
+}
+
+.recipient-table th.rounded-th-right {
+  border-top-right-radius: 8px;
+}
+
+/* Add subtle shadow to table container */
+.detail-table {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
 .table-container .table {
   width: 100%;
   table-layout: fixed;
@@ -1042,5 +1090,8 @@ export default {
   .modal-form-actions {
     margin-top: 10px;
   }
+}
+.form-box{
+  padding: 0 !important;;
 }
 </style>

@@ -16,8 +16,10 @@
       :value="selectedLabel"
       class="form-input-with-icon"
       @click="toggleDropdown"
+      @keydown="handleKeyDown"
       :disabled="disabled"
       :style="inputStyle"
+      tabindex="0"
     />
     <span class="form-dropdown-chevron">
       <i class="fas fa-chevron-down"></i>
@@ -35,12 +37,20 @@
           class="dropdown-search"
           placeholder="Search"
           v-model="search"
+          @keydown="handleSearchKeyDown"
+          ref="searchInput"
         />
         <div
-          v-for="option in filteredOptions"
+          v-for="(option, index) in filteredOptions"
           :key="option.value"
+          :ref="`dropdownItem${index}`"
           class="dropdown-item"
+          :class="{ 
+            'dropdown-item-focused': index === focusedIndex,
+            'dropdown-item-selected': option.value === modelValue
+          }"
           @click="selectOption(option)"
+          @mouseenter="focusedIndex = index"
         >
           <span>{{ option.text }}</span>
         </div>
@@ -67,6 +77,7 @@ export default {
       showDropdown: false,
       search: '',
       dropdownStyle: {},
+      focusedIndex: -1,
     };
   },
   computed: {
@@ -125,8 +136,22 @@ export default {
       if (this.disabled) return;
       this.showDropdown = !this.showDropdown;
       if (this.showDropdown) {
+        // Find the index of the currently selected option
+        const selectedIndex = this.filteredOptions.findIndex(opt => opt.value === this.modelValue);
+        this.focusedIndex = selectedIndex >= 0 ? selectedIndex : -1;
+        
         // update position on open
-        this.$nextTick(() => this.updateDropdownPosition());
+        this.$nextTick(() => {
+          this.updateDropdownPosition();
+          // Focus search input for immediate typing
+          if (this.$refs.searchInput) {
+            this.$refs.searchInput.focus();
+          }
+          // Scroll to selected item if exists
+          if (this.focusedIndex >= 0) {
+            this.scrollToFocusedItem();
+          }
+        });
       }
     },
     selectOption(option) {
@@ -134,6 +159,104 @@ export default {
       this.$emit('change', option.value); // Always emit change event
       this.showDropdown = false;
       this.search = '';
+      this.focusedIndex = -1;
+    },
+    selectFocusedOption() {
+      if (this.focusedIndex >= 0 && this.focusedIndex < this.filteredOptions.length) {
+        this.selectOption(this.filteredOptions[this.focusedIndex]);
+      }
+    },
+    scrollToFocusedItem() {
+      if (this.focusedIndex < 0) return;
+      
+      this.$nextTick(() => {
+        const dropdownEl = this.$refs.dropdownEl;
+        const itemRefs = this.$refs[`dropdownItem${this.focusedIndex}`];
+        
+        if (dropdownEl && itemRefs && itemRefs.length > 0) {
+          const item = itemRefs[0];
+          const dropdownRect = dropdownEl.getBoundingClientRect();
+          const itemRect = item.getBoundingClientRect();
+          
+          // Check if item is above the visible area
+          if (itemRect.top < dropdownRect.top) {
+            dropdownEl.scrollTop = item.offsetTop;
+          }
+          // Check if item is below the visible area
+          else if (itemRect.bottom > dropdownRect.bottom) {
+            dropdownEl.scrollTop = item.offsetTop - dropdownEl.clientHeight + item.clientHeight;
+          }
+        }
+      });
+    },
+    handleKeyDown(event) {
+      if (this.disabled) return;
+      
+      switch (event.key) {
+        case 'ArrowDown':
+        case 'Down':
+          event.preventDefault();
+          if (!this.showDropdown) {
+            this.toggleDropdown();
+          } else {
+            this.focusedIndex = Math.min(this.focusedIndex + 1, this.filteredOptions.length - 1);
+            this.scrollToFocusedItem();
+          }
+          break;
+        case 'ArrowUp':
+        case 'Up':
+          event.preventDefault();
+          if (this.showDropdown) {
+            this.focusedIndex = Math.max(this.focusedIndex - 1, 0);
+            this.scrollToFocusedItem();
+          }
+          break;
+        case 'Enter':
+          event.preventDefault();
+          if (!this.showDropdown) {
+            this.toggleDropdown();
+          } else {
+            this.selectFocusedOption();
+          }
+          break;
+        case 'Escape':
+          event.preventDefault();
+          this.showDropdown = false;
+          this.focusedIndex = -1;
+          break;
+        case ' ':
+        case 'Spacebar':
+          if (!this.showDropdown) {
+            event.preventDefault();
+            this.toggleDropdown();
+          }
+          break;
+      }
+    },
+    handleSearchKeyDown(event) {
+      switch (event.key) {
+        case 'ArrowDown':
+        case 'Down':
+          event.preventDefault();
+          this.focusedIndex = Math.min(this.focusedIndex + 1, this.filteredOptions.length - 1);
+          this.scrollToFocusedItem();
+          break;
+        case 'ArrowUp':
+        case 'Up':
+          event.preventDefault();
+          this.focusedIndex = Math.max(this.focusedIndex - 1, 0);
+          this.scrollToFocusedItem();
+          break;
+        case 'Enter':
+          event.preventDefault();
+          this.selectFocusedOption();
+          break;
+        case 'Escape':
+          event.preventDefault();
+          this.showDropdown = false;
+          this.focusedIndex = -1;
+          break;
+      }
     },
     handleClickOutside(event) {
       if (!this.showDropdown) return;
@@ -173,7 +296,17 @@ export default {
   },
   watch: {
     showDropdown(newVal) {
-      if (newVal) this.$nextTick(() => this.updateDropdownPosition());
+      if (newVal) {
+        this.$nextTick(() => this.updateDropdownPosition());
+      } else {
+        this.focusedIndex = -1;
+        this.search = '';
+      }
+    },
+    search() {
+      // Reset focused index when search changes, but maintain selection if visible
+      const selectedIndex = this.filteredOptions.findIndex(opt => opt.value === this.modelValue);
+      this.focusedIndex = selectedIndex >= 0 ? selectedIndex : -1;
     },
   },
   beforeUnmount() {
@@ -280,5 +413,18 @@ export default {
 }
 .dropdown-item:hover {
   background: #f6f6f6;
+}
+.dropdown-item-focused {
+  background: #f6f6f6 !important;
+  color: #000000 !important;
+}
+.dropdown-item-selected {
+  background: #e3f2fd;
+  color: #000000;
+  font-weight: 500;
+}
+.dropdown-item-selected.dropdown-item-focused {
+  background: #f6f6f6 !important;
+  color: #000000 !important;
 }
 </style>

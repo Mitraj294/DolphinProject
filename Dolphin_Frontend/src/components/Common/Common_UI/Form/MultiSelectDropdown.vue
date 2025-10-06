@@ -2,6 +2,8 @@
   <div
     class="form-box"
     ref="dropdownRoot"
+        @click.stop="toggleDropdown"
+      @keydown="handleKeyDown"
   >
     <div>
       <span class="form-input-icon">
@@ -36,10 +38,9 @@
     </div>
     <Button
       class="form-dropdown-chevron"
-      @click.stop="toggleDropdown"
-      @keydown.enter.prevent="toggleDropdown"
-      @keydown.space.prevent="toggleDropdown"
+  
       type="button"
+      tabindex="0"
     >
       <i
         class="fas fa-chevron-down"
@@ -57,6 +58,8 @@
           class="dropdown-search"
           placeholder="Search"
           v-model="search"
+          @keydown="handleSearchKeyDown"
+          ref="searchInput"
         />
         <div
           v-if="enableSelectAll"
@@ -70,10 +73,13 @@
           ></span>
         </div>
         <div
-          v-for="item in filteredItems"
+          v-for="(item, index) in filteredItems"
           :key="item[optionValue]"
+          :ref="`dropdownItem${index}`"
           class="dropdown-item"
+          :class="{ 'dropdown-item-focused': index === focusedIndex }"
           @click="toggleItem(item)"
+          @mouseenter="focusedIndex = index"
         >
           <span>{{ item[optionLabel] }}</span>
           <span
@@ -112,6 +118,7 @@ export default {
       showDropdown: false,
       search: '',
       dropdownStyle: {},
+      focusedIndex: -1,
     };
   },
   computed: {
@@ -153,6 +160,20 @@ export default {
     document.removeEventListener('mousedown', this.handleClickOutside);
     window.removeEventListener('resize', this.updateDropdownPosition);
     window.removeEventListener('scroll', this.updateDropdownPosition, true);
+  },
+  watch: {
+    showDropdown(newVal) {
+      if (newVal) {
+        this.$nextTick(() => this.updateDropdownPosition());
+      } else {
+        this.focusedIndex = -1;
+        this.search = '';
+      }
+    },
+    search() {
+      // Reset focused index when search changes
+      this.focusedIndex = -1;
+    },
   },
   methods: {
     labelFor(s) {
@@ -346,8 +367,16 @@ export default {
     },
     toggleDropdown() {
       this.showDropdown = !this.showDropdown;
-      if (this.showDropdown)
-        this.$nextTick(() => this.updateDropdownPosition());
+      if (this.showDropdown) {
+        this.focusedIndex = -1;
+        this.$nextTick(() => {
+          this.updateDropdownPosition();
+          // Focus search input for immediate typing
+          if (this.$refs.searchInput) {
+            this.$refs.searchInput.focus();
+          }
+        });
+      }
     },
     toggleItem(item) {
       // Compare items by the configured optionValue (defaults to 'id')
@@ -363,6 +392,101 @@ export default {
         );
       } else {
         this.$emit('update:selectedItems', [...this.selectedItems, item]);
+      }
+    },
+    selectFocusedOption() {
+      if (this.focusedIndex >= 0 && this.focusedIndex < this.filteredItems.length) {
+        this.toggleItem(this.filteredItems[this.focusedIndex]);
+      }
+    },
+    scrollToFocusedItem() {
+      if (this.focusedIndex < 0) return;
+      
+      this.$nextTick(() => {
+        const dropdownEl = this.$refs.dropdownEl;
+        const itemRefs = this.$refs[`dropdownItem${this.focusedIndex}`];
+        
+        if (dropdownEl && itemRefs && itemRefs.length > 0) {
+          const item = itemRefs[0];
+          const dropdownRect = dropdownEl.getBoundingClientRect();
+          const itemRect = item.getBoundingClientRect();
+          
+          // Check if item is above the visible area
+          if (itemRect.top < dropdownRect.top) {
+            dropdownEl.scrollTop = item.offsetTop;
+          }
+          // Check if item is below the visible area
+          else if (itemRect.bottom > dropdownRect.bottom) {
+            dropdownEl.scrollTop = item.offsetTop - dropdownEl.clientHeight + item.clientHeight;
+          }
+        }
+      });
+    },
+    handleKeyDown(event) {
+      switch (event.key) {
+        case 'ArrowDown':
+        case 'Down':
+          event.preventDefault();
+          if (!this.showDropdown) {
+            this.toggleDropdown();
+          } else {
+            this.focusedIndex = Math.min(this.focusedIndex + 1, this.filteredItems.length - 1);
+            this.scrollToFocusedItem();
+          }
+          break;
+        case 'ArrowUp':
+        case 'Up':
+          event.preventDefault();
+          if (this.showDropdown) {
+            this.focusedIndex = Math.max(this.focusedIndex - 1, 0);
+            this.scrollToFocusedItem();
+          }
+          break;
+        case 'Enter':
+          event.preventDefault();
+          if (!this.showDropdown) {
+            this.toggleDropdown();
+          } else {
+            this.selectFocusedOption();
+          }
+          break;
+        case 'Escape':
+          event.preventDefault();
+          this.showDropdown = false;
+          this.focusedIndex = -1;
+          break;
+        case ' ':
+        case 'Spacebar':
+          if (!this.showDropdown) {
+            event.preventDefault();
+            this.toggleDropdown();
+          }
+          break;
+      }
+    },
+    handleSearchKeyDown(event) {
+      switch (event.key) {
+        case 'ArrowDown':
+        case 'Down':
+          event.preventDefault();
+          this.focusedIndex = Math.min(this.focusedIndex + 1, this.filteredItems.length - 1);
+          this.scrollToFocusedItem();
+          break;
+        case 'ArrowUp':
+        case 'Up':
+          event.preventDefault();
+          this.focusedIndex = Math.max(this.focusedIndex - 1, 0);
+          this.scrollToFocusedItem();
+          break;
+        case 'Enter':
+          event.preventDefault();
+          this.selectFocusedOption();
+          break;
+        case 'Escape':
+          event.preventDefault();
+          this.showDropdown = false;
+          this.focusedIndex = -1;
+          break;
       }
     },
     toggleSelectAll() {
@@ -591,6 +715,10 @@ export default {
 }
 .dropdown-item:hover {
   background: #f6f6f6;
+}
+.dropdown-item-focused {
+  background: #f6f6f6 !important;
+  color: #000000 !important;
 }
 .dropdown-checkbox {
   width: 18px;

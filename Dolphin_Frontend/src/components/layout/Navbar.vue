@@ -452,7 +452,18 @@ export default {
       this.userName = storage.get('userName') || '';
       this.userEmail = storage.get('email') || '';
     },
+    isGuestAccess() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.has('guest_code') || urlParams.has('guest_token') || 
+             (urlParams.has('lead_id') && urlParams.has('email'));
+    },
     async fetchCurrentUser() {
+      // Skip user fetch if this is a guest access scenario
+      if (this.isGuestAccess()) {
+        console.log('Navbar: Skipping fetchCurrentUser due to guest access');
+        return;
+      }
+      
       try {
         let token = storage.get('authToken');
         if (token && typeof token === 'object' && token.token)
@@ -728,7 +739,10 @@ export default {
     } catch (e) {
       console.warn('Failed to fetch initial unread count', e);
     }
-    this.fetchCurrentUser();
+    // Only fetch current user if not in guest access mode
+    if (!this.isGuestAccess()) {
+      this.fetchCurrentUser();
+    }
     this.boundFetchUnread = this.fetchUnreadCount.bind(this);
     this.boundUpdateNotificationCount = this.updateNotificationCount.bind(this);
     this.boundAuthUpdated = this._debounce(() => {
@@ -737,7 +751,10 @@ export default {
       this.updateNotificationCount();
       try {
         this.fetchUnreadCount();
-        this.fetchCurrentUser();
+        // Only fetch current user if not in guest access mode
+        if (!this.isGuestAccess()) {
+          this.fetchCurrentUser();
+        }
       } catch (e) {
         console.warn('Failed to fetch unread count after auth update', e);
       }

@@ -19,12 +19,12 @@ class AnswerController extends Controller
     public function getQuestions(): JsonResponse
     {
         try {
-            // The questions table stores the question text in the 'text' column.
-            $questions = Question::all(['id', 'text', 'options'])->map(function ($q) {
+            // The questions table stores the question text in the 'question' column.
+            $questions = Question::all(['id', 'question', 'options'])->map(function ($q) {
                 return [
                     'id' => $q->id,
                     // Return 'question' key to match frontend expectations.
-                    'question' => $q->text,
+                    'question' => $q->question,
                     'options' => $q->options,
                 ];
             });
