@@ -31,11 +31,7 @@ class Kernel extends ConsoleKernel
     {
     $this->load(__DIR__.'/Commands');
 
-    // Register explicit smoke test command
-    $this->commands([
-        \App\Console\Commands\TestSendSubscriptionReceipt::class,
-    ]);
-
+    
     // Console routes should be loaded via PSR-4 namespaces or Composer autoload;
     // avoid runtime require_once and prefer namespace imports or service providers.
     }
