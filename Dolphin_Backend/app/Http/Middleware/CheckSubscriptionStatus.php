@@ -9,9 +9,25 @@ use Symfony\Component\HttpFoundation\Response;
 use App\Models\User;
 use App\Models\Organization;
 use App\Models\Subscription;
+use App\Http\Controllers\SubscriptionController;
 
 class CheckSubscriptionStatus
 {
+    /**
+     * The subscription controller instance.
+     *
+     * @var SubscriptionController
+     */
+    protected SubscriptionController $subscriptionController;
+
+    /**
+     * Create a new middleware instance.
+     */
+    public function __construct(SubscriptionController $subscriptionController)
+    {
+        $this->subscriptionController = $subscriptionController;
+    }
+
     /**
      * Roles that are exempt from subscription checks.
      *
@@ -62,7 +78,17 @@ class CheckSubscriptionStatus
                 // activeSubscription is a hasOne constrained to status='active'
                 $active = $organization->activeSubscription()->first();
                 if ($active) {
-                    $allow = true;
+                    // Check if the organization's subscription has expired in real-time
+                    if ($this->subscriptionController->hasExpired($active)) {
+                        // Update status for consistency
+                        $active->update(['status' => 'expired']);
+                        $forceBlock = true;
+                        $blockContext['latest'] = $active;
+                        $blockContext['status'] = 'expired';
+                        $blockContext['message'] = 'Your organization\'s subscription has expired. Please renew your subscription to continue.';
+                    } else {
+                        $allow = true;
+                    }
                 } else {
                     // No active subscription — we must block this organization admin (do not fall through to other exemptions)
                     $forceBlock = true;
@@ -70,7 +96,7 @@ class CheckSubscriptionStatus
                     $blockContext['latest'] = $latest;
                     $blockContext['status'] = $latest?->status ?? 'none';
                     $blockContext['message'] = $blockContext['status'] === 'expired'
-                        ? 'Your subscription has expired. Please renew your subscription to continue.'
+                        ? 'Your organization\'s subscription has expired. Please renew your subscription to continue.'
                         : 'You have not selected any plans yet.';
                 }
             }
@@ -165,7 +191,21 @@ class CheckSubscriptionStatus
         }
 
         if (method_exists($user, 'subscriptions')) {
-            return $user->subscriptions()->where('status', 'active')->exists();
+            // Get the latest subscription and check if it's truly active (not expired)
+            $subscription = $user->subscriptions()
+                ->where('status', 'active')
+                ->orderByDesc('created_at')
+                ->first();
+            
+            if ($subscription) {
+                // Check if subscription has expired in real-time using controller
+                if ($this->subscriptionController->hasExpired($subscription)) {
+                    // Optionally update the status in database for consistency
+                    $subscription->update(['status' => 'expired']);
+                    return false;
+                }
+                return true;
+            }
         }
 
         return false;

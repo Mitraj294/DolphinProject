@@ -16,8 +16,8 @@ class Kernel extends ConsoleKernel
         // Clean up expired tokens daily at 2 AM
         $schedule->command('tokens:cleanup --force')->dailyAt('02:00')->description('Clean up expired OAuth tokens');
 
-        // Update subscription statuses hourly (mark active subscriptions past end as expired)
-        $schedule->command('subscriptions:update-status')->everyMinute()->description('Mark expired subscriptions as expired in DB');
+        // Update subscription statuses daily for cleanup, reporting, and email notifications
+        $schedule->command('subscriptions:update-status')->dailyAt('04:00')->description('Daily cleanup: mark expired subscriptions in DB for reporting and notifications');
 
     // Reconcile leads with users nightly to ensure lead.status reflects registration
     $schedule->command('leads:reconcile-with-users --dry-run')->dailyAt('03:00')->description('Dry-run reconcile leads with users (no updates)');

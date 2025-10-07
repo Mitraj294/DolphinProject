@@ -3,6 +3,28 @@
 # Set the host (change to your local network IP if needed)
 HOST="127.0.0.1"
 
+# Cleanup function to remove cron job when script exits
+cleanup() {
+    echo ""
+    echo "Stopping Dolphin development environment..."
+    
+    # Remove the Laravel scheduler cron job
+    CRON_ENTRY="* * * * * cd /home/digilab/Dolphin/Dolphin_Backend && php artisan schedule:run >> /dev/null 2>&1"
+    echo "Removing Laravel scheduler cron job..."
+    crontab -l 2>/dev/null | grep -v "$CRON_ENTRY" | crontab - 2>/dev/null || true
+    echo "Cron job removed"
+    
+    # Kill background processes
+    echo "Stopping backend and frontend servers..."
+    kill $(jobs -p) 2>/dev/null || true
+    echo "Development servers stopped"
+    
+    exit 0
+}
+
+# Set up trap to call cleanup on script exit
+trap cleanup SIGINT SIGTERM EXIT
+
 
 # Start Laravel backend and ensure it binds to port 8000.
 cd Dolphin_Backend
@@ -34,15 +56,11 @@ fi
 # Start artisan on the desired port
 php artisan serve --host=$HOST --port=$BACKEND_PORT &
 
-# Ensure Laravel scheduler cron job is present
+# Add Laravel scheduler cron job when project starts
 CRON_ENTRY="* * * * * cd $(pwd) && php artisan schedule:run >> /dev/null 2>&1"
-CRON_EXISTS=$(crontab -l 2>/dev/null | grep -F "$CRON_ENTRY" || true)
-if [ -z "$CRON_EXISTS" ]; then
-    (crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
-    echo "Laravel scheduler cron job added."
-else
-    echo "Laravel scheduler cron job already present."
-fi
+echo "Adding Laravel scheduler cron job for this development session..."
+(crontab -l 2>/dev/null; echo "$CRON_ENTRY") | crontab -
+echo "Cron job added: Laravel scheduler will run while project is active"
 
 # Start Vue frontend
 cd ../Dolphin_Frontend

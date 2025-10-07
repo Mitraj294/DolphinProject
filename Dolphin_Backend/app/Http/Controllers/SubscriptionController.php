@@ -12,6 +12,50 @@ use Carbon\Carbon;
 class SubscriptionController extends Controller
 {
     
+    /**
+     * Check if a subscription has expired.
+     *
+     * @param Subscription $subscription
+     * @return bool
+     */
+    public function hasExpired(Subscription $subscription): bool
+    {
+        // If no end date is set, consider it as never expiring
+        if (!$subscription->subscription_end) {
+            return false;
+        }
+        
+        // Compare the end date with the current time
+        return $subscription->subscription_end->isPast();
+    }
+
+    /**
+     * Check if a subscription is currently active (not expired).
+     *
+     * @param Subscription $subscription
+     * @return bool
+     */
+    public function isActive(Subscription $subscription): bool
+    {
+        return $subscription->status === 'active' && !$this->hasExpired($subscription);
+    }
+
+    /**
+     * Update subscription status if it has expired and return the status.
+     *
+     * @param Subscription $subscription
+     * @return bool True if active, false if expired
+     */
+    public function checkAndUpdateStatus(Subscription $subscription): bool
+    {
+        if ($this->hasExpired($subscription) && $subscription->status === 'active') {
+            $subscription->update(['status' => 'expired']);
+            return false;
+        }
+        
+        return $subscription->status === 'active';
+    }
+    
     //Get the current active subscription plan for the relevant user.
     //Accessible by the user or by a superadmin viewing a specific organization.
      
