@@ -4,7 +4,7 @@ FROM php:8.2-apache
 # Set working directory
 WORKDIR /var/www/html
 
-# Install system dependencies
+# Install system dependencies and PHP extensions in a single layer
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -14,11 +14,9 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     zip \
     unzip \
+    && docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -26,16 +24,13 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Copy application files
 COPY . /var/www/html
 
-# Set correct permissions
+# Set correct permissions, install PHP dependencies, enable mod_rewrite, and create storage dirs
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+    && chmod -R 755 /var/www/html/bootstrap/cache \
+    && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist \
+    && a2enmod rewrite
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Configure Apache
-RUN a2enmod rewrite
 COPY docker-apache.conf /etc/apache2/sites-available/000-default.conf
 
 # Create storage directories if they don't exist
@@ -47,9 +42,9 @@ RUN mkdir -p storage/framework/sessions \
 # Expose port 80
 EXPOSE 80
 
-# Start Apache
-CMD php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan migrate --force && \
-    php artisan passport:keys --force && \
-    apache2-foreground
+# Add entrypoint script (will be copied in the build)
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Use the entrypoint script (exec form) to run startup tasks and then apache
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
