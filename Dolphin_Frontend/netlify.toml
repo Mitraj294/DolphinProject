@@ -4,8 +4,8 @@
   # Base directory for the build
   base = "Dolphin_Frontend"
   
-  # Build command
-  command = "npm run build"
+  # Build command - use legacy-peer-deps to avoid dependency conflicts
+  command = "npm install --legacy-peer-deps && npm run build"
   
   # Output directory
   publish = "dist"
@@ -14,8 +14,8 @@
   # Node version
   NODE_VERSION = "18"
   
-  # Vue CLI Service mode
-  NODE_ENV = "production"
+  # Set to development during build to install devDependencies
+  NODE_ENV = "development"
 
 # Redirect rules for Vue Router (SPA)
 [[redirects]]
