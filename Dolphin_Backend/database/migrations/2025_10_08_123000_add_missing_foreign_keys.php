@@ -54,6 +54,14 @@ class AddMissingForeignKeys extends Migration
         foreach ($constraints as $name => $cfg) {
             [$table, $column, $refTable, $refCol, $onDelete] = $cfg;
 
+            // Ensure both sides of the FK exist (table + column) before attempting to add the constraint.
+            // This prevents Postgres from failing when a column wasn't created by earlier migrations.
+            if (! Schema::hasTable($table) || ! Schema::hasColumn($table, $column)
+                || ! Schema::hasTable($refTable) || ! Schema::hasColumn($refTable, $refCol)) {
+                // Skip adding this FK because the table/column is missing in this environment.
+                continue;
+            }
+
             // check whether constraint exists (driver-specific)
             if ($driver === 'pgsql') {
                 // Postgres: look up constraint by name in pg_constraint
