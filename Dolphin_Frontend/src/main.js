@@ -10,6 +10,7 @@ import { fetchSubscriptionStatus } from './services/subscription';
 
 import storage from './services/storage';
 import tokenMonitor from './services/tokenMonitor';
+import { loadRuntimeEnv } from './runtime-env';
 
 import './services/tokenInterceptor';
 
@@ -26,23 +27,25 @@ import 'primevue/resources/primevue.min.css'; // Core PrimeVue styles
 import 'primeicons/primeicons.css'; // PrimeIcons for PrimeVue components
 import '@fortawesome/fontawesome-free/css/all.min.css'; // Font Awesome for your custom icons
 import 'primeflex/primeflex.css';
-const app = createApp(App);
-
-
-// Install PrimeVue and its services
-app.use(PrimeVue); // Initialize PrimeVue
-app.use(ToastService); // Install the ToastService globally
-app.use(ConfirmService); // Install the ConfirmService globally for ConfirmDialog
 import Toast from 'primevue/toast';
-app.component('Toast', Toast); // Register Toast globally
 import ConfirmDialog from 'primevue/confirmdialog';
-app.component('ConfirmDialog', ConfirmDialog);
-// PrimeVue v3 uses the Calendar component for date selection. "primevue/datepicker" is not available
-// in this PrimeVue version, so import the Calendar component instead and register it globally.
 import Calendar from 'primevue/calendar';
-app.component('Calendar', Calendar); // Register Calendar globally
 import Button from 'primevue/button';
-app.component('Button', Button); // Register PrimeVue Button globally
+async function bootstrap() {
+  await loadRuntimeEnv();
+  const app = createApp(App);
+
+  // Install PrimeVue and its services
+  app.use(PrimeVue); // Initialize PrimeVue
+  app.use(ToastService); // Install the ToastService globally
+  app.use(ConfirmService); // Install the ConfirmService globally for ConfirmDialog
+  app.component('Toast', Toast); // Register Toast globally
+  app.component('ConfirmDialog', ConfirmDialog);
+  app.component('Calendar', Calendar); // Register Calendar globally
+  app.component('Button', Button); // Register PrimeVue Button globally
+
+  return app;
+}
 
 
 // Sync encrypted storage role with backend user role on app start

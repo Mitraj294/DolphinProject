@@ -2,7 +2,8 @@
 import axios from 'axios';
 import storage from './storage';
 
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL  ;
+import { getApiBase } from '@/env';
+const API_BASE_URL = getApiBase();
 
 export async function fetchCurrentUser() {
   try {

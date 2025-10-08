@@ -120,7 +120,10 @@ import { useToast } from 'primevue/usetoast';
 import storage from '@/services/storage';
 import { fetchCurrentUser } from '@/services/user';
 import { FormLabel } from '@/components/Common/Common_UI/Form';
-const API_BASE_URL = process.env.VUE_APP_API_BASE_URL;
+// Prefer a runtime-injected value (window.__env) so the built app can be
+// configured without a rebuild. Fall back to window.VUE_APP_API_BASE_URL or
+// the compiled process.env value.
+const API_BASE_URL = (window.__env && window.__env.VUE_APP_API_BASE_URL) || window.VUE_APP_API_BASE_URL || process.env.VUE_APP_API_BASE_URL || '';
 
 export default {
   name: 'Login',
