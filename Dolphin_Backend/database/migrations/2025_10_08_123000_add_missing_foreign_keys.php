@@ -48,28 +48,52 @@ class AddMissingForeignKeys extends Migration
             'users_organization_id_foreign' => ['users','organization_id','organizations','id',self::ON_DELETE_SET_NULL],
         ];
 
-        $dbName = DB::getDatabaseName();
+    $dbName = DB::getDatabaseName();
+    $driver = DB::connection()->getDriverName();
 
         foreach ($constraints as $name => $cfg) {
             [$table, $column, $refTable, $refCol, $onDelete] = $cfg;
 
-            // check whether constraint exists
-            $exists = DB::selectOne("SELECT CONSTRAINT_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ? AND REFERENCED_TABLE_NAME = ? AND REFERENCED_COLUMN_NAME = ?", [$dbName, $table, $column, $refTable, $refCol]);
+            // check whether constraint exists (driver-specific)
+            if ($driver === 'pgsql') {
+                // Postgres: look up constraint by name in pg_constraint
+                $exists = DB::selectOne("SELECT conname FROM pg_constraint WHERE conname = ?", [$name]);
+            } else {
+                // MySQL and other DBs: look up by constraint name in information_schema.TABLE_CONSTRAINTS
+                $exists = DB::selectOne(
+                    "SELECT CONSTRAINT_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = ? AND CONSTRAINT_NAME = ?",
+                    [$dbName, $name]
+                );
+            }
 
             if ($exists) {
                 continue;
             }
 
-            // Add FK using raw SQL because Laravel's Schema builder won't create with the exact name easily
-            $constraintSql = sprintf(
-                'ALTER TABLE `%s` ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`) ON DELETE %s',
-                $table,
-                $name,
-                $column,
-                $refTable,
-                $refCol,
-                strtoupper($onDelete)
-            );
+            // Build driver-appropriate SQL for adding the FK
+            if ($driver === 'pgsql') {
+                // Postgres: unquoted identifiers (assumes lower-case names)
+                $constraintSql = sprintf(
+                    'ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s) ON DELETE %s',
+                    $table,
+                    $name,
+                    $column,
+                    $refTable,
+                    $refCol,
+                    strtoupper($onDelete)
+                );
+            } else {
+                // MySQL and others: use backticks for identifiers
+                $constraintSql = sprintf(
+                    'ALTER TABLE `%s` ADD CONSTRAINT `%s` FOREIGN KEY (`%s`) REFERENCES `%s`(`%s`) ON DELETE %s',
+                    $table,
+                    $name,
+                    $column,
+                    $refTable,
+                    $refCol,
+                    strtoupper($onDelete)
+                );
+            }
 
             DB::statement($constraintSql);
         }
@@ -93,14 +117,31 @@ class AddMissingForeignKeys extends Migration
             'user_roles_user_id_foreign','users_organization_id_foreign'
         ];
 
+        $driver = DB::connection()->getDriverName();
+
         foreach ($constraintNames as $name) {
-            // Find the table for the constraint
+            // Try to find the table for the constraint (MySQL/info_schema first)
             $row = DB::selectOne("SELECT TABLE_NAME FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = ? AND CONSTRAINT_NAME = ?", [DB::getDatabaseName(), $name]);
-            if (! $row) {
+            $table = null;
+            if ($row) {
+                $table = $row->TABLE_NAME;
+            } elseif ($driver === 'pgsql') {
+                // Postgres: resolve the table name from pg_constraint
+                $row = DB::selectOne("SELECT conrelid::regclass::text AS table_name FROM pg_constraint WHERE conname = ?", [$name]);
+                if ($row) {
+                    $table = $row->table_name ?? $row->TABLE_NAME ?? null;
+                }
+            }
+
+            if (! $table) {
                 continue;
             }
-            $table = $row->TABLE_NAME;
-            DB::statement(sprintf('ALTER TABLE `%s` DROP FOREIGN KEY `%s`', $table, $name));
+
+            if ($driver === 'pgsql') {
+                DB::statement(sprintf('ALTER TABLE %s DROP CONSTRAINT %s', $table, $name));
+            } else {
+                DB::statement(sprintf('ALTER TABLE `%s` DROP FOREIGN KEY `%s`', $table, $name));
+            }
         }
     }
 }
