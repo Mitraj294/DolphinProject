@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 return new class extends Migration
 {
@@ -40,7 +41,7 @@ return new class extends Migration
                     $table->dropForeign(['country_id']);
                 }
             } catch (\Exception $e) {
-               \Log::error('Error dropping foreign key on organizations(country_id)', [
+               Log::error('Error dropping foreign key on organizations(country_id)', [
                    'error' => $e->getMessage()
                ]);
             }
@@ -49,7 +50,7 @@ return new class extends Migration
                     $table->dropForeign(['state_id']);
                 }
             } catch (\Exception $e) {
-               \Log::error('Error dropping foreign key on organizations(state_id)', [
+            Log::error('Error dropping foreign key on organizations(state_id)', [
                    'error' => $e->getMessage()
                ]);
             }
@@ -58,7 +59,7 @@ return new class extends Migration
                     $table->dropForeign(['city_id']);
                 }
             } catch (\Exception $e) {
-               \Log::error('Error dropping foreign key on organizations(city_id)', [
+            Log::error('Error dropping foreign key on organizations(city_id)', [
                    'error' => $e->getMessage()
                ]);
             }
