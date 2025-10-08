@@ -4,6 +4,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 return new class extends Migration
 {
@@ -101,42 +102,94 @@ return new class extends Migration
     {
         // LEADS
         Schema::table('leads', function (Blueprint $table) {
-            $table->dropForeign(['country_id']);
-            $table->dropForeign(['state_id']);
-            $table->dropForeign(['city_id']);
-            $table->dropColumn(['country_id', 'state_id', 'city_id']);
-            $table->string('country')->nullable()->after('address');
-            $table->string('state')->nullable()->after('country');
-            $table->string('city')->nullable()->after('state');
+            if (Schema::hasColumn('leads', 'country_id')) {
+                try { $table->dropForeign(['country_id']); } catch (\Exception $e) { Log::warning('Could not drop FK leads.country_id', ['error' => $e->getMessage()]); }
+            }
+            if (Schema::hasColumn('leads', 'state_id')) {
+                try { $table->dropForeign(['state_id']); } catch (\Exception $e) { Log::warning('Could not drop FK leads.state_id', ['error' => $e->getMessage()]); }
+            }
+            if (Schema::hasColumn('leads', 'city_id')) {
+                try { $table->dropForeign(['city_id']); } catch (\Exception $e) { Log::warning('Could not drop FK leads.city_id', ['error' => $e->getMessage()]); }
+            }
+            $cols = [];
+            if (Schema::hasColumn('leads', 'country_id')) { $cols[] = 'country_id'; }
+            if (Schema::hasColumn('leads', 'state_id')) { $cols[] = 'state_id'; }
+            if (Schema::hasColumn('leads', 'city_id')) { $cols[] = 'city_id'; }
+            if (! empty($cols)) { $table->dropColumn($cols); }
+            if (! Schema::hasColumn('leads', 'country')) {
+                $table->string('country')->nullable()->after('address');
+            }
+            if (! Schema::hasColumn('leads', 'state')) {
+                $table->string('state')->nullable()->after('country');
+            }
+            if (! Schema::hasColumn('leads', 'city')) {
+                $table->string('city')->nullable()->after('state');
+            }
         });
 
         // ORGANIZATIONS
         Schema::table('organizations', function (Blueprint $table) {
-            $table->dropForeign(['country_id']);
-            $table->dropForeign(['state_id']);
-            $table->dropForeign(['city_id']);
-            $table->dropColumn(['country_id', 'state_id', 'city_id']);
-            $table->string('country')->nullable()->after('address2');
-            $table->string('state')->nullable()->after('country');
-            $table->string('city')->nullable()->after('state');
+            if (Schema::hasColumn('organizations', 'country_id')) {
+                try { $table->dropForeign(['country_id']); } catch (\Exception $e) { Log::warning('Could not drop FK organizations.country_id', ['error' => $e->getMessage()]); }
+            }
+            if (Schema::hasColumn('organizations', 'state_id')) {
+                try { $table->dropForeign(['state_id']); } catch (\Exception $e) { Log::warning('Could not drop FK organizations.state_id', ['error' => $e->getMessage()]); }
+            }
+            if (Schema::hasColumn('organizations', 'city_id')) {
+                try { $table->dropForeign(['city_id']); } catch (\Exception $e) { Log::warning('Could not drop FK organizations.city_id', ['error' => $e->getMessage()]); }
+            }
+            $cols = [];
+            if (Schema::hasColumn('organizations', 'country_id')) { $cols[] = 'country_id'; }
+            if (Schema::hasColumn('organizations', 'state_id')) { $cols[] = 'state_id'; }
+            if (Schema::hasColumn('organizations', 'city_id')) { $cols[] = 'city_id'; }
+            if (! empty($cols)) { $table->dropColumn($cols); }
+            if (! Schema::hasColumn('organizations', 'country')) {
+                $table->string('country')->nullable()->after('address2');
+            }
+            if (! Schema::hasColumn('organizations', 'state')) {
+                $table->string('state')->nullable()->after('country');
+            }
+            if (! Schema::hasColumn('organizations', 'city')) {
+                $table->string('city')->nullable()->after('state');
+            }
         });
 
         // USER_DETAILS
         Schema::table('user_details', function (Blueprint $table) {
-            $table->dropForeign(['country_id']);
-            $table->dropForeign(['state_id']);
-            $table->dropForeign(['city_id']);
-            $table->dropColumn(['country_id', 'state_id', 'city_id']);
-            $table->string('country')->nullable()->after('address');
-            $table->string('state')->nullable()->after('country');
-            $table->string('city')->nullable()->after('state');
+            if (Schema::hasColumn('user_details', 'country_id')) {
+                try { $table->dropForeign(['country_id']); } catch (\Exception $e) { Log::warning('Could not drop FK user_details.country_id', ['error' => $e->getMessage()]); }
+            }
+            if (Schema::hasColumn('user_details', 'state_id')) {
+                try { $table->dropForeign(['state_id']); } catch (\Exception $e) { Log::warning('Could not drop FK user_details.state_id', ['error' => $e->getMessage()]); }
+            }
+            if (Schema::hasColumn('user_details', 'city_id')) {
+                try { $table->dropForeign(['city_id']); } catch (\Exception $e) { Log::warning('Could not drop FK user_details.city_id', ['error' => $e->getMessage()]); }
+            }
+            $cols = [];
+            if (Schema::hasColumn('user_details', 'country_id')) { $cols[] = 'country_id'; }
+            if (Schema::hasColumn('user_details', 'state_id')) { $cols[] = 'state_id'; }
+            if (Schema::hasColumn('user_details', 'city_id')) { $cols[] = 'city_id'; }
+            if (! empty($cols)) { $table->dropColumn($cols); }
+            if (! Schema::hasColumn('user_details', 'country')) {
+                $table->string('country')->nullable()->after('address');
+            }
+            if (! Schema::hasColumn('user_details', 'state')) {
+                $table->string('state')->nullable()->after('country');
+            }
+            if (! Schema::hasColumn('user_details', 'city')) {
+                $table->string('city')->nullable()->after('state');
+            }
         });
 
         // USERS
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['country_id']);
-            $table->dropColumn('country_id');
-            $table->string('country')->nullable()->after('phone');
+            if (Schema::hasColumn('users', 'country_id')) {
+                try { $table->dropForeign(['country_id']); } catch (\Exception $e) { Log::warning('Could not drop FK users.country_id', ['error' => $e->getMessage()]); }
+                $table->dropColumn('country_id');
+            }
+            if (! Schema::hasColumn('users', 'country')) {
+                $table->string('country')->nullable()->after('phone');
+            }
         });
     }
 };

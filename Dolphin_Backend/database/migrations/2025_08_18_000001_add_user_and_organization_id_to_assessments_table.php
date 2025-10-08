@@ -2,6 +2,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 return new class extends Migration {
     public function up() {
@@ -15,10 +16,14 @@ return new class extends Migration {
     }
     public function down() {
         Schema::table('assessments', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-            $table->dropForeign(['organization_id']);
-            $table->dropColumn('user_id');
-            $table->dropColumn('organization_id');
+            if (Schema::hasColumn('assessments', 'user_id')) {
+                try { $table->dropForeign(['user_id']); } catch (\Exception $e) { Log::warning('Could not drop FK assessments.user_id', ['error' => $e->getMessage()]); }
+                $table->dropColumn('user_id');
+            }
+            if (Schema::hasColumn('assessments', 'organization_id')) {
+                try { $table->dropForeign(['organization_id']); } catch (\Exception $e) { Log::warning('Could not drop FK assessments.organization_id', ['error' => $e->getMessage()]); }
+                $table->dropColumn('organization_id');
+            }
         });
     }
 };

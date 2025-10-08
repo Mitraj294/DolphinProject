@@ -6,13 +6,21 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up() {
         Schema::table('users', function (Blueprint $table) {
-            $table->dropForeign(['country_id']);
-            $table->dropColumn('country_id');
+            if (Schema::hasColumn('users', 'country_id')) {
+                try {
+                    $table->dropForeign(['country_id']);
+                } catch (\Exception $e) {
+                    // Foreign key may not exist; continue
+                }
+                $table->dropColumn('country_id');
+            }
         });
     }
     public function down() {
         Schema::table('users', function (Blueprint $table) {
-            $table->unsignedBigInteger('country_id')->nullable();
+            if (! Schema::hasColumn('users', 'country_id')) {
+                $table->unsignedBigInteger('country_id')->nullable();
+            }
         });
     }
 };

@@ -38,7 +38,13 @@ return new class extends Migration
     {
         if (Schema::hasTable('assessment_schedules')) {
             Schema::table('assessment_schedules', function (Blueprint $table) {
-                $table->dropForeign(['assessment_id']);
+                if (Schema::hasColumn('assessment_schedules', 'assessment_id')) {
+                    try {
+                        $table->dropForeign(['assessment_id']);
+                    } catch (\Exception $e) {
+                        // FK may not exist; ignore
+                    }
+                }
             });
         }
     }
