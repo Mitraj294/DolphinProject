@@ -8,13 +8,15 @@ class CreateAssessmentQuestionTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('assessment_question', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('assessment_id');
-            $table->unsignedBigInteger('question_id');
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
-        });
+        if (!Schema::hasTable('assessment_question')) {
+            Schema::create('assessment_question', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('assessment_id');
+                $table->unsignedBigInteger('question_id');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+            });
+        }
     }
 
     public function down(): void

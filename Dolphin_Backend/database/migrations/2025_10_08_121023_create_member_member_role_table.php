@@ -8,13 +8,15 @@ class CreateMemberMemberRoleTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('member_member_role', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('member_id');
-            $table->unsignedBigInteger('member_role_id');
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
-        });
+        if (!Schema::hasTable('member_member_role')) {
+            Schema::create('member_member_role', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('member_id');
+                $table->unsignedBigInteger('member_role_id');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+            });
+        }
     }
 
     public function down(): void

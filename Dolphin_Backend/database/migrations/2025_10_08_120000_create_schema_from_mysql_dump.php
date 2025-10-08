@@ -52,33 +52,40 @@ return new class extends Migration
 
     private function createUserAndRoleTables()
     {
-        Schema::create('users', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->string('email')->nullable(false)->unique(false);
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        if (!Schema::hasTable('users')) {
+            Schema::create('users', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->string('email')->nullable(false)->unique(false);
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
 
-        Schema::create('roles', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->string('name', 255)->unique();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('roles')) {
+            Schema::create('roles', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->string('name', 255)->unique();
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('user_roles', function (Blueprint $table) {
-            $table->unsignedBigInteger('user_id');
-            $table->unsignedBigInteger('role_id');
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
-            $table->timestamp('deleted_at')->nullable();
-            $table->primary(['user_id', 'role_id']);
-        });
+        if (!Schema::hasTable('user_roles')) {
+            Schema::create('user_roles', function (Blueprint $table) {
+                $table->unsignedBigInteger('user_id');
+                $table->unsignedBigInteger('role_id');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+                $table->timestamp('deleted_at')->nullable();
+                $table->primary(['user_id', 'role_id']);
+            });
+        }
     }
 
 
     private function createAnnouncementTables()
     {
-        Schema::create('announcements', function (Blueprint $table) {
+        if (!Schema::hasTable('announcements')) {
+            Schema::create('announcements', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->text('body');
             $table->unsignedBigInteger('sender_id')->nullable();
@@ -86,40 +93,50 @@ return new class extends Migration
             $table->timestamp('dispatched_at')->nullable();
             $table->timestamp('sent_at')->nullable();
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('announcement_admin', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('announcement_id');
-            $table->unsignedBigInteger('admin_id');
-        });
+        if (!Schema::hasTable('announcement_admin')) {
+            Schema::create('announcement_admin', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('announcement_id');
+                $table->unsignedBigInteger('admin_id');
+            });
+        }
 
-        Schema::create('announcement_group', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('announcement_id');
-            $table->unsignedBigInteger('group_id');
-        });
+        if (!Schema::hasTable('announcement_group')) {
+            Schema::create('announcement_group', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('announcement_id');
+                $table->unsignedBigInteger('group_id');
+            });
+        }
 
-        Schema::create('announcement_organization', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('announcement_id');
-            $table->unsignedBigInteger('organization_id');
-        });
+        if (!Schema::hasTable('announcement_organization')) {
+            Schema::create('announcement_organization', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('announcement_id');
+                $table->unsignedBigInteger('organization_id');
+            });
+        }
     }
 
 
     private function createAssessmentTables()
     {
-        Schema::create('answers', function (Blueprint $table) {
+        if (!Schema::hasTable('answers')) {
+            Schema::create('answers', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id')->nullable();
             $table->string('question', 255);
             $table->text('answer');
             $table->timestamps();
             $table->softDeletes();
-        });
+            });
+        }
 
-        Schema::create('assessment_answer_tokens', function (Blueprint $table) {
+        if (!Schema::hasTable('assessment_answer_tokens')) {
+            Schema::create('assessment_answer_tokens', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('assessment_id');
             $table->unsignedBigInteger('member_id');
@@ -128,16 +145,20 @@ return new class extends Migration
             $table->timestamp('expires_at')->nullable();
             $table->boolean('used')->default(false);
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('assessment_question', function (Blueprint $table) {
+        if (!Schema::hasTable('assessment_question')) {
+            Schema::create('assessment_question', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('assessment_id');
             $table->unsignedBigInteger('question_id');
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('assessment_question_answers', function (Blueprint $table) {
+        if (!Schema::hasTable('assessment_question_answers')) {
+            Schema::create('assessment_question_answers', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('assessment_id');
             $table->unsignedBigInteger('organization_assessment_question_id');
@@ -146,9 +167,11 @@ return new class extends Migration
             $table->unsignedBigInteger('group_id')->nullable();
             $table->text('answer');
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('assessment_schedules', function (Blueprint $table) {
+        if (!Schema::hasTable('assessment_schedules')) {
+            Schema::create('assessment_schedules', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('assessment_id');
             $table->date('date')->nullable();
@@ -156,50 +179,60 @@ return new class extends Migration
             $table->json('group_ids')->nullable();
             $table->json('member_ids')->nullable();
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('assessments', function (Blueprint $table) {
+        if (!Schema::hasTable('assessments')) {
+            Schema::create('assessments', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id')->nullable();
             $table->unsignedBigInteger('organization_id')->nullable();
             $table->string('name', 255);
             $table->timestamps();
             $table->softDeletes();
-        });
+            });
+        }
     }
 
 
     private function createLocationTables()
     {
-        Schema::create('cities', function (Blueprint $table) {
+        if (!Schema::hasTable('cities')) {
+            Schema::create('cities', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 255);
             $table->mediumInteger('state_id')->unsigned();
             $table->mediumInteger('country_id')->unsigned();
             $table->timestamp('created_at')->default('2014-01-01 06:31:01');
             $table->timestamp('updated_at')->useCurrentOnUpdate();
-        });
+            });
+        }
 
-        Schema::create('countries', function (Blueprint $table) {
+        if (!Schema::hasTable('countries')) {
+            Schema::create('countries', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 100);
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->useCurrentOnUpdate();
-        });
+            });
+        }
 
-        Schema::create('states', function (Blueprint $table) {
+        if (!Schema::hasTable('states')) {
+            Schema::create('states', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 255);
             $table->mediumInteger('country_id')->unsigned();
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->useCurrentOnUpdate();
-        });
+            });
+        }
     }
 
 
     private function createQueueTables()
     {
-        Schema::create('failed_jobs', function (Blueprint $table) {
+        if (!Schema::hasTable('failed_jobs')) {
+            Schema::create('failed_jobs', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('uuid');
             $table->text('connection');
@@ -207,9 +240,11 @@ return new class extends Migration
             $table->longText('payload');
             $table->longText('exception');
             $table->timestamp('failed_at')->useCurrent();
-        });
+            });
+        }
 
-        Schema::create('job_batches', function (Blueprint $table) {
+        if (!Schema::hasTable('job_batches')) {
+            Schema::create('job_batches', function (Blueprint $table) {
             $table->string('id', 255)->primary();
             $table->string('name', 255);
             $table->integer('total_jobs');
@@ -220,9 +255,11 @@ return new class extends Migration
             $table->integer('cancelled_at')->nullable();
             $table->integer('created_at');
             $table->integer('finished_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('jobs', function (Blueprint $table) {
+        if (!Schema::hasTable('jobs')) {
+            Schema::create('jobs', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('queue', 255)->index();
             $table->longText('payload');
@@ -230,9 +267,11 @@ return new class extends Migration
             $table->unsignedInteger('reserved_at')->nullable();
             $table->unsignedInteger('available_at');
             $table->unsignedInteger('created_at');
-        });
+            });
+        }
 
-        Schema::create('jobs_backup', function (Blueprint $table) {
+        if (!Schema::hasTable('jobs_backup')) {
+            Schema::create('jobs_backup', function (Blueprint $table) {
             $table->bigInteger('id')->default(0);
             $table->string('queue', 255);
             $table->longText('payload');
@@ -240,13 +279,15 @@ return new class extends Migration
             $table->unsignedInteger('reserved_at')->nullable();
             $table->unsignedInteger('available_at');
             $table->unsignedInteger('created_at');
-        });
+            });
+        }
     }
 
 
     private function createLeadsAndMembersTables()
     {
-        Schema::create('leads', function (Blueprint $table) {
+        if (!Schema::hasTable('leads')) {
+            Schema::create('leads', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('created_by')->nullable();
             $table->string('first_name', 255);
@@ -267,22 +308,28 @@ return new class extends Migration
             $table->timestamp('registered_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
-        });
+            });
+        }
 
-        Schema::create('member_member_role', function (Blueprint $table) {
+        if (!Schema::hasTable('member_member_role')) {
+            Schema::create('member_member_role', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('member_id');
             $table->unsignedBigInteger('member_role_id');
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('member_roles', function (Blueprint $table) {
+        if (!Schema::hasTable('member_roles')) {
+            Schema::create('member_roles', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('name', 255)->unique();
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('members', function (Blueprint $table) {
+        if (!Schema::hasTable('members')) {
+            Schema::create('members', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('organization_id')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
@@ -292,19 +339,23 @@ return new class extends Migration
             $table->string('phone', 255)->nullable();
             $table->timestamps();
             $table->softDeletes();
-        });
+            });
+        }
     }
 
 
     private function createNotificationsAndOauthTables()
     {
-        Schema::create('migrations', function (Blueprint $table) {
+        if (!Schema::hasTable('migrations')) {
+            Schema::create('migrations', function (Blueprint $table) {
             $table->increments('id');
             $table->string('migration', 255);
             $table->integer('batch');
-        });
+            });
+        }
 
-        Schema::create('notifications', function (Blueprint $table) {
+        if (!Schema::hasTable('notifications')) {
+            Schema::create('notifications', function (Blueprint $table) {
             $table->char('id', 36)->primary();
             $table->string('type', 255);
             $table->string('notifiable_type', 255)->index();
@@ -312,9 +363,11 @@ return new class extends Migration
             $table->text('data');
             $table->timestamp('read_at')->nullable();
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('oauth_access_tokens', function (Blueprint $table) {
+        if (!Schema::hasTable('oauth_access_tokens')) {
+            Schema::create('oauth_access_tokens', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->char('client_id', 36);
@@ -324,18 +377,22 @@ return new class extends Migration
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('oauth_auth_codes', function (Blueprint $table) {
+        if (!Schema::hasTable('oauth_auth_codes')) {
+            Schema::create('oauth_auth_codes', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->unsignedBigInteger('user_id');
             $table->char('client_id', 36);
             $table->text('scopes')->nullable();
             $table->boolean('revoked');
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('oauth_clients', function (Blueprint $table) {
+        if (!Schema::hasTable('oauth_clients')) {
+            Schema::create('oauth_clients', function (Blueprint $table) {
             $table->char('id', 36)->primary();
             $table->string('owner_type', 255)->nullable()->index();
             $table->unsignedBigInteger('owner_id')->nullable();
@@ -346,9 +403,11 @@ return new class extends Migration
             $table->text('grant_types');
             $table->boolean('revoked');
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('oauth_device_codes', function (Blueprint $table) {
+        if (!Schema::hasTable('oauth_device_codes')) {
+            Schema::create('oauth_device_codes', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->char('client_id', 36)->index();
@@ -358,26 +417,32 @@ return new class extends Migration
             $table->dateTime('user_approved_at')->nullable();
             $table->dateTime('last_polled_at')->nullable();
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('oauth_refresh_tokens', function (Blueprint $table) {
+        if (!Schema::hasTable('oauth_refresh_tokens')) {
+            Schema::create('oauth_refresh_tokens', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->char('access_token_id', 80)->index();
             $table->boolean('revoked');
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
     }
 
 
     private function createOrganizationAndSubscriptionTables()
     {
-        Schema::create('organization_assessment_questions', function (Blueprint $table) {
+        if (!Schema::hasTable('organization_assessment_questions')) {
+            Schema::create('organization_assessment_questions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('text', 255);
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('organizations', function (Blueprint $table) {
+        if (!Schema::hasTable('organizations')) {
+            Schema::create('organizations', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('organization_name', 255)->nullable();
             $table->string('organization_size', 255)->nullable();
@@ -389,9 +454,11 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->timestamps();
             $table->softDeletes();
-        });
+            });
+        }
 
-        Schema::create('subscriptions', function (Blueprint $table) {
+        if (!Schema::hasTable('subscriptions')) {
+            Schema::create('subscriptions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->string('stripe_subscription_id')->nullable()->index();
@@ -416,63 +483,74 @@ return new class extends Migration
             $table->json('meta')->nullable();
             $table->timestamps();
             $table->softDeletes();
-        });
-    }
+            });
+        }
 
+    }
 
     private function createMiscTables()
     {
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email', 255)->index();
-            $table->string('token', 255);
-            $table->timestamp('created_at')->nullable();
-        });
+        if (!Schema::hasTable('password_reset_tokens')) {
+            Schema::create('password_reset_tokens', function (Blueprint $table) {
+                $table->string('email', 255)->index();
+                $table->string('token', 255);
+                $table->timestamp('created_at')->nullable();
+            });
+        }
 
-        Schema::create('questions', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->string('question', 255);
-            $table->json('options')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        if (!Schema::hasTable('questions')) {
+            Schema::create('questions', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->string('question', 255);
+                $table->json('options')->nullable();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
 
-        Schema::create('scheduled_emails', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('assessment_id')->nullable()->index();
-            $table->unsignedBigInteger('group_id')->nullable()->index();
-            $table->unsignedBigInteger('member_id')->nullable()->index();
-            $table->string('recipient_email', 255);
-            $table->string('subject', 255);
-            $table->text('body');
-            $table->dateTime('send_at')->nullable();
-            $table->boolean('sent')->default(false);
-            $table->timestamp('sent_at')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('scheduled_emails')) {
+            Schema::create('scheduled_emails', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('assessment_id')->nullable()->index();
+                $table->unsignedBigInteger('group_id')->nullable()->index();
+                $table->unsignedBigInteger('member_id')->nullable()->index();
+                $table->string('recipient_email', 255);
+                $table->string('subject', 255);
+                $table->text('body');
+                $table->dateTime('send_at')->nullable();
+                $table->boolean('sent')->default(false);
+                $table->timestamp('sent_at')->nullable();
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('sessions', function (Blueprint $table) {
-            $table->string('id', 255)->primary();
-            $table->unsignedBigInteger('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->longText('payload');
-            $table->integer('last_activity')->index();
-            $table->timestamp('deleted_at')->nullable();
-        });
+        if (!Schema::hasTable('sessions')) {
+            Schema::create('sessions', function (Blueprint $table) {
+                $table->string('id', 255)->primary();
+                $table->unsignedBigInteger('user_id')->nullable()->index();
+                $table->string('ip_address', 45)->nullable();
+                $table->text('user_agent')->nullable();
+                $table->longText('payload');
+                $table->integer('last_activity')->index();
+                $table->timestamp('deleted_at')->nullable();
+            });
+        }
 
-        Schema::create('user_details', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('user_id')->nullable()->index();
-            $table->string('phone', 255)->nullable();
-            $table->string('find_us', 255)->nullable();
-            $table->string('address', 255)->nullable();
-            $table->unsignedBigInteger('country_id')->nullable()->index();
-            $table->unsignedBigInteger('state_id')->nullable()->index();
-            $table->unsignedBigInteger('city_id')->nullable()->index();
-            $table->string('zip', 255)->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        if (!Schema::hasTable('user_details')) {
+            Schema::create('user_details', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('user_id')->nullable()->index();
+                $table->string('phone', 255)->nullable();
+                $table->string('find_us', 255)->nullable();
+                $table->string('address', 255)->nullable();
+                $table->unsignedBigInteger('country_id')->nullable()->index();
+                $table->unsignedBigInteger('state_id')->nullable()->index();
+                $table->unsignedBigInteger('city_id')->nullable()->index();
+                $table->string('zip', 255)->nullable();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
     }
 
     /**

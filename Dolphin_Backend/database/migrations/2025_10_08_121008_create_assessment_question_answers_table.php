@@ -8,17 +8,19 @@ class CreateAssessmentQuestionAnswersTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('assessment_question_answers', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('assessment_id');
-            $table->unsignedBigInteger('organization_assessment_question_id');
-            $table->unsignedBigInteger('assessment_question_id');
-            $table->unsignedBigInteger('member_id');
-            $table->unsignedBigInteger('group_id')->nullable();
-            $table->text('answer');
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
-        });
+        if (!Schema::hasTable('assessment_question_answers')) {
+            Schema::create('assessment_question_answers', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('assessment_id');
+                $table->unsignedBigInteger('organization_assessment_question_id');
+                $table->unsignedBigInteger('assessment_question_id');
+                $table->unsignedBigInteger('member_id');
+                $table->unsignedBigInteger('group_id')->nullable();
+                $table->text('answer');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+            });
+        }
     }
 
     public function down(): void

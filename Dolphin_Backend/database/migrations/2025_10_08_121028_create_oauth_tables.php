@@ -8,7 +8,8 @@ class CreateOauthTables extends Migration
 {
     public function up(): void
     {
-        Schema::create('oauth_access_tokens', function (Blueprint $table) {
+        if (! Schema::hasTable('oauth_access_tokens')) {
+            Schema::create('oauth_access_tokens', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->char('client_id', 36);
@@ -18,18 +19,22 @@ class CreateOauthTables extends Migration
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('oauth_auth_codes', function (Blueprint $table) {
+        if (! Schema::hasTable('oauth_auth_codes')) {
+            Schema::create('oauth_auth_codes', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->unsignedBigInteger('user_id');
             $table->char('client_id', 36);
             $table->text('scopes')->nullable();
             $table->boolean('revoked');
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('oauth_clients', function (Blueprint $table) {
+        if (! Schema::hasTable('oauth_clients')) {
+            Schema::create('oauth_clients', function (Blueprint $table) {
             $table->char('id', 36)->primary();
             $table->string('owner_type', 255)->nullable()->index();
             $table->unsignedBigInteger('owner_id')->nullable();
@@ -41,9 +46,11 @@ class CreateOauthTables extends Migration
             $table->boolean('revoked');
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('oauth_device_codes', function (Blueprint $table) {
+        if (! Schema::hasTable('oauth_device_codes')) {
+            Schema::create('oauth_device_codes', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->char('client_id', 36)->index();
@@ -53,14 +60,17 @@ class CreateOauthTables extends Migration
             $table->dateTime('user_approved_at')->nullable();
             $table->dateTime('last_polled_at')->nullable();
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('oauth_refresh_tokens', function (Blueprint $table) {
+        if (! Schema::hasTable('oauth_refresh_tokens')) {
+            Schema::create('oauth_refresh_tokens', function (Blueprint $table) {
             $table->char('id', 80)->primary();
             $table->char('access_token_id', 80)->index();
             $table->boolean('revoked');
             $table->dateTime('expires_at')->nullable();
-        });
+            });
+        }
     }
 
     public function down(): void

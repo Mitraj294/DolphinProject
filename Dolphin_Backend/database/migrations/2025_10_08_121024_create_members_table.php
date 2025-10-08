@@ -8,7 +8,8 @@ class CreateMembersTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('members', function (Blueprint $table) {
+        if (! Schema::hasTable('members')) {
+            Schema::create('members', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('organization_id')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
@@ -19,7 +20,8 @@ class CreateMembersTable extends Migration
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
-        });
+            });
+        }
     }
 
     public function down(): void

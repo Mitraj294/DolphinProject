@@ -8,11 +8,13 @@ class CreateAnnouncementGroupTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('announcement_group', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('announcement_id');
-            $table->unsignedBigInteger('group_id');
-        });
+        if (! Schema::hasTable('announcement_group')) {
+            Schema::create('announcement_group', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('announcement_id');
+                $table->unsignedBigInteger('group_id');
+            });
+        }
     }
 
     public function down(): void

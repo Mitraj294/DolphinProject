@@ -8,14 +8,17 @@ class CreateOrganizationAndSubscriptionTables extends Migration
 {
     public function up(): void
     {
-        Schema::create('organization_assessment_questions', function (Blueprint $table) {
+        if (! Schema::hasTable('organization_assessment_questions')) {
+            Schema::create('organization_assessment_questions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('text', 255);
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('organizations', function (Blueprint $table) {
+        if (! Schema::hasTable('organizations')) {
+            Schema::create('organizations', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->string('organization_name', 255)->nullable();
             $table->string('organization_size', 255)->nullable();
@@ -28,9 +31,11 @@ class CreateOrganizationAndSubscriptionTables extends Migration
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
-        });
+            });
+        }
 
-        Schema::create('subscriptions', function (Blueprint $table) {
+        if (! Schema::hasTable('subscriptions')) {
+            Schema::create('subscriptions', function (Blueprint $table) {
             $table->bigIncrements('id');
             $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->string('stripe_subscription_id')->nullable()->index();
@@ -56,7 +61,8 @@ class CreateOrganizationAndSubscriptionTables extends Migration
             $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
             $table->timestamp('deleted_at')->nullable();
-        });
+            });
+        }
     }
 
     public function down(): void

@@ -8,13 +8,15 @@ class CreateGroupMemberTable extends Migration
 {
     public function up(): void
     {
-        Schema::create('group_member', function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->unsignedBigInteger('group_id');
-            $table->unsignedBigInteger('member_id');
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
-        });
+        if (!Schema::hasTable('group_member')) {
+            Schema::create('group_member', function (Blueprint $table) {
+                $table->bigIncrements('id');
+                $table->unsignedBigInteger('group_id');
+                $table->unsignedBigInteger('member_id');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('updated_at')->nullable();
+            });
+        }
     }
 
     public function down(): void
