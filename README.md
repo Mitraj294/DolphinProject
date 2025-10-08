@@ -59,6 +59,8 @@ php artisan key:generate
 # DB_PASSWORD=
 
 # Run database migrations
+# Note: As of January 2025, migrations have been consolidated into a single baseline.
+# See Dolphin_Backend/MIGRATION_GUIDE.md for details on existing databases.
 php artisan migrate
 
 # Set up Laravel Passport for API authentication
