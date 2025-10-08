@@ -17,7 +17,6 @@ return new class extends Migration
                 }
 
                 $sm = Schema::getConnection()->getDoctrineSchemaManager();
-                $indexes = @array_column($sm->listTableForeignKeys('assessment_schedules'), 'name');
 
                 // Add FK if not present
                 $exists = false;

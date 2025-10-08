@@ -15,23 +15,23 @@ use Illuminate\Support\Facades\Schema;
  */
 class CreateAssessmentsAndQuestionsTables extends Migration
 {
-	/**
-	 * Run the migrations.
-	 *
-	 * Intentionally left empty to avoid breaking the migration sequence.
-	 * Restore real schema here if needed.
-	 */
-	public function up(): void
-	{
-		// no-op placeholder
-	}
+    /**
+     * Run the migrations.
+     *
+     * Intentionally left empty to avoid breaking the migration sequence.
+     * Restore real schema here if needed.
+     */
+    public function up(): void
+    {
+        // no-op placeholder
+    }
 
-	/**
-	 * Reverse the migrations.
-	 */
-	public function down(): void
-	{
-		// no-op placeholder
-	}
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        // no-op placeholder
+    }
 }
 
