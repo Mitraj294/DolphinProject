@@ -28,17 +28,25 @@ return new class extends Migration
 
     private function createCacheTables()
     {
-        Schema::create('cache', function (Blueprint $table) {
-            $table->string('key', 255)->primary();
-            $table->mediumText('value');
-            $table->integer('expiration');
-        });
+        // Only create cache tables if they do not already exist. This makes the migration
+        // idempotent and prevents failures when deploying to environments that already
+        // have the tables (for example during redeploys or when the schema was created
+        // by an earlier migration or provisioning step).
+        if (!Schema::hasTable('cache')) {
+            Schema::create('cache', function (Blueprint $table) {
+                $table->string('key', 255)->primary();
+                $table->mediumText('value');
+                $table->integer('expiration');
+            });
+        }
 
-        Schema::create('cache_locks', function (Blueprint $table) {
-            $table->string('key', 255)->primary();
-            $table->string('owner', 255);
-            $table->integer('expiration');
-        });
+        if (!Schema::hasTable('cache_locks')) {
+            Schema::create('cache_locks', function (Blueprint $table) {
+                $table->string('key', 255)->primary();
+                $table->string('owner', 255);
+                $table->integer('expiration');
+            });
+        }
     }
 
 
