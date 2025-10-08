@@ -13,13 +13,6 @@ return new class extends Migration
             $table->string('name');
             $table->timestamps();
         });
-        Schema::create('assessment_question', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('assessment_id');
-            $table->unsignedBigInteger('question_id');
-            $table->foreign('assessment_id')->references('id')->on('assessments')->onDelete('cascade');
-            $table->foreign('question_id')->references('id')->on('organization_assessment_questions')->onDelete('cascade');
-        });
     }
 
     public function down(): void
