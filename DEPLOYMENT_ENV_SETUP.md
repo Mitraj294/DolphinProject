@@ -56,6 +56,32 @@ FRONTEND_URL=https://your-app-name.netlify.app
 ```
 **Update this after deploying frontend!** Replace with your actual Netlify URL.
 
+> Tip: If you host the frontend on multiple domains (Netlify, a staging URL, or local dev),
+> you can supply a comma-separated list of allowed origins to the backend using
+> `FRONTEND_URLS`. For example:
+>
+> ```bash
+> FRONTEND_URLS=https://dolphinproject.netlify.app,https://staging-your-app.netlify.app,http://127.0.0.1:8080
+> ```
+>
+> After updating `FRONTEND_URL` or `FRONTEND_URLS` in Render, the backend will redeploy and
+> allow cross-origin requests from those origins.
+
+### ✅ How to verify CORS headers (quick)
+
+Once the backend is deployed, verify it returns the CORS headers for your frontend origin:
+
+```bash
+# replace BACKEND_URL and FRONTEND_URL with your values
+curl -I -X OPTIONS "https://dolphin-backend-xxxxx.onrender.com/api/login" \
+   -H "Origin: https://dolphinproject.netlify.app" \
+   -H "Access-Control-Request-Method: POST"
+```
+
+You should see an `Access-Control-Allow-Origin: https://dolphinproject.netlify.app` header
+in the response. If not, ensure `FRONTEND_URL` or `FRONTEND_URLS` includes your frontend domain
+and redeploy the backend on Render.
+
 ---
 
 ```bash
@@ -227,6 +253,31 @@ Use the Render dashboard or an authenticated API endpoint to verify the backend 
 2. Open browser console (F12)
 3. Try to login or make API call
 4. Check for CORS errors
+
+### Populate countries table (if empty)
+
+On a fresh database the `countries` table may be empty. We've added a seeder to populate a minimal set of countries.
+
+To run the seeder on Render (via SSH or a deploy hook), run:
+
+```bash
+cd Dolphin_Backend
+php artisan db:seed --class=Database\\Seeders\\CountriesSeeder
+```
+
+If you cannot run artisan on the host, run locally against the production database credentials (be careful) or add a deploy hook that runs the seeder during a deployment.
+
+If the endpoint still returns empty, check backend logs (Render logs) for messages from `LocationController` which logs the fetch and count.
+
+To populate states and cities too, run:
+
+```bash
+cd Dolphin_Backend
+php artisan db:seed --class=Database\\Seeders\\StatesSeeder
+php artisan db:seed --class=Database\\Seeders\\CitiesSeeder
+```
+
+You can also call all seeders at once by creating a DatabaseSeeder that references these classes and running `php artisan db:seed`.
 
 ---
 
