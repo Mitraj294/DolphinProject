@@ -61,6 +61,8 @@ FRONTEND_URL=http://127.0.0.1:8080
 
 ### 4. Database and Authentication
 
+⚠️ **Important**: As of January 2025, the database migrations have been consolidated into a single baseline migration. See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for detailed instructions.
+
 ```bash
 # Run database migrations to create the necessary tables
 php artisan migrate
@@ -68,6 +70,8 @@ php artisan migrate
 # Set up Laravel Passport for API authentication
 php artisan passport:install
 ```
+
+**For existing databases**: If you have an existing DolphinProject database, please read [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) before running migrations.
 
 ### 5. Running the Server
 
