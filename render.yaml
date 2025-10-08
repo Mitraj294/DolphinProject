@@ -11,8 +11,8 @@ services:
     rootDir: Dolphin_Backend
     dockerfilePath: ./Dockerfile
     
-    # Health check endpoint
-    healthCheckPath: /api/health
+
+  # configure a readiness probe that checks application readiness after migrations complete.
     
     # Environment variables
     envVars:

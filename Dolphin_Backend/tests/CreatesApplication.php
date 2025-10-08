@@ -27,7 +27,6 @@ trait CreatesApplication
                 web: $basePath . '/routes/web.php',
                 api: $basePath . '/routes/api.php',
                 commands: $basePath . '/routes/console.php',
-                health: '/up',
             )
             ->withMiddleware(static function (Middleware $middleware): void {
                 // No global middleware overrides for tests.

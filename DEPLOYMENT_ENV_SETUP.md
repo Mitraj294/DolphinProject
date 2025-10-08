@@ -220,11 +220,7 @@ VUE_APP_DEBUG=false
 ## 🧪 HOW TO TEST
 
 ### Backend Health Check:
-```bash
-curl https://your-backend.onrender.com/api/health
-```
-
-Should return success response.
+Use the Render dashboard or an authenticated API endpoint to verify the backend is running. Backend readiness is managed by the platform; avoid relying on unversioned application-level health endpoints.
 
 ### Frontend Test:
 1. Visit: `https://your-app.netlify.app`

@@ -29,11 +29,8 @@ use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 // They handle user registration, authentication, password resets, and
 // public-facing resources like the Stripe webhook.
 
-// Simple health check used by hosting providers (Render, etc.)
-// Return HTTP 200 to avoid repeated 404 probe logs when the app is starting
-Route::get('/health', function () {
-    return response()->json(['status' => 'ok'], 200);
-});
+// should only be added if gated by a readiness mechanism that ensures migrations/startup
+// tasks have completed.
 
 
 // Authentication & Password Reset

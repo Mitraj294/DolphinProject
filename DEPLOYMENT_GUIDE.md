@@ -106,12 +106,7 @@ Copy the output and paste it as `APP_KEY` in Render.
 
 ### Step 6: Verify Backend
 
-Test your backend:
-```bash
-curl https://dolphin-backend.onrender.com/api/health
-```
-
-You should see a success response.
+Test your backend using the Render dashboard or by calling an authenticated endpoint once the service is running.
 
 ---
 

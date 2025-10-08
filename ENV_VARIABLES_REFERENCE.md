@@ -268,8 +268,9 @@ Make a test API call to verify connection.
 
 ### After Deployment:
 
-- [ ] Test backend health endpoint
 - [ ] Test frontend loads correctly
+
+> Note: Backend readiness and health checks are platform-managed (Render). Do not rely on application-level, unauthenticated health endpoints unless they are explicitly implemented and gated by startup readiness.
 - [ ] Test API connectivity
 - [ ] Test authentication
 - [ ] Test email sending (if applicable)

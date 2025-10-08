@@ -96,8 +96,8 @@ VUE_APP_STRIPE_PUBLIC_KEY=pk_test_YOUR_KEY  # Optional
 ## ✅ Post-Deployment Checklist
 
 ```bash
-# Backend Health Check
-curl https://dolphin-backend.onrender.com/api/health
+# Backend health is managed by the platform (Render). Use the Render dashboard or platform health checks
+# to verify the service readiness; do not rely on an application-level health endpoint.
 
 # Frontend Access
 open https://your-app.netlify.app
