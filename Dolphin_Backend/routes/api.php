@@ -24,6 +24,17 @@ use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\UserController;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 
+// Route parameter constants to avoid duplicated literals (fixes php:S1192 warnings)
+if (!defined('ROUTE_PARAM_ID')) {
+    define('ROUTE_PARAM_ID', '/{id}');
+}
+if (!defined('ROUTE_PARAM_ORGANIZATION')) {
+    define('ROUTE_PARAM_ORGANIZATION', '/{organization}');
+}
+if (!defined('ROUTE_PARAM_GROUP')) {
+    define('ROUTE_PARAM_GROUP', '/{group}');
+}
+
 // 1. PUBLIC API ROUTES
 // These routes are open to the public and do not require authentication.
 // They handle user registration, authentication, password resets, and
@@ -55,7 +66,7 @@ Route::get('/stripe/session', [StripeSubscriptionController::class, 'getSessionD
 // Public Assessments & Leads
 
 Route::prefix('assessments')->group(function () {
-    Route::get('/{id}/summary', [AssessmentController::class, 'summary']);
+    Route::get(ROUTE_PARAM_ID . '/summary', [AssessmentController::class, 'summary']);
     Route::post('/send-link', [AssessmentAnswerLinkController::class, 'sendLink']);
     Route::get('/answer/{token}', [AssessmentAnswerLinkController::class, 'getAssessmentByToken']);
     Route::post('/answer/{token}', [AssessmentAnswerLinkController::class, 'submitAnswers'])
@@ -88,15 +99,15 @@ Route::get('/scheduled-email/show', [ScheduledEmailController::class, 'show']);
 
 Route::prefix('countries')->group(function () {
     Route::get('/', [LocationController::class, 'countries']);
-    Route::get('/{id}', [LocationController::class, 'getCountryById']);
+    Route::get(ROUTE_PARAM_ID, [LocationController::class, 'getCountryById']);
 });
 Route::prefix('states')->group(function () {
     Route::get('/', [LocationController::class, 'states']);
-    Route::get('/{id}', [LocationController::class, 'getStateById']);
+    Route::get(ROUTE_PARAM_ID, [LocationController::class, 'getStateById']);
 });
 Route::prefix('cities')->group(function () {
     Route::get('/', [LocationController::class, 'cities']);
-    Route::get('/{id}', [LocationController::class, 'getCityById']);
+    Route::get(ROUTE_PARAM_ID, [LocationController::class, 'getCityById']);
 });
 
 // 2. AUTHENTICATED API ROUTES
@@ -126,7 +137,7 @@ Route::middleware('auth:api')->group(function () {
 
     // Allow marking notifications as read and marking all as read for authenticated users
     Route::prefix('announcements')->group(function () {
-        Route::post('/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::post(ROUTE_PARAM_ID . '/read', [NotificationController::class, 'markAsRead']);
     });
     Route::prefix('notifications')->group(function () {
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead']);
@@ -186,13 +197,13 @@ Route::middleware('auth:api')->group(function () {
             Route::prefix('organizations')->group(function () {
                 // Superadmin-only endpoints for creating/updating/deleting organizations
                 Route::post('/', [OrganizationController::class, 'store']);
-                Route::patch('/{organization}', [OrganizationController::class, 'update']);
-                Route::delete('/{organization}', [OrganizationController::class, 'destroy']);
+                Route::patch(ROUTE_PARAM_ORGANIZATION, [OrganizationController::class, 'update']);
+                Route::delete(ROUTE_PARAM_ORGANIZATION, [OrganizationController::class, 'destroy']);
             });
 
             Route::prefix('announcements')->group(function () {
                 Route::get('/', [NotificationController::class, 'allAnnouncements']);
-                Route::get('/{id}', [NotificationController::class, 'showAnnouncement']);
+                Route::get(ROUTE_PARAM_ID, [NotificationController::class, 'showAnnouncement']);
             });
             Route::get('/notifications', [NotificationController::class, 'allNotifications']);
         });
@@ -216,12 +227,12 @@ Route::middleware('auth:api')->group(function () {
         Route::middleware('auth.role:organizationadmin,superadmin')->group(function () {
             Route::prefix('organizations')->group(function () {
                 Route::get('/', [OrganizationController::class, 'index']);
-                Route::get('/{organization}', [OrganizationController::class, 'show']);
+                Route::get(ROUTE_PARAM_ORGANIZATION, [OrganizationController::class, 'show']);
             });
 
             Route::prefix('groups')->group(function () {
                 Route::get('/', [GroupController::class, 'index']);
-                Route::get('/{group}', [GroupController::class, 'show']);
+                Route::get(ROUTE_PARAM_GROUP, [GroupController::class, 'show']);
             });
 
             Route::apiResource('members', MemberController::class);
@@ -234,8 +245,8 @@ Route::middleware('auth:api')->group(function () {
         Route::middleware('auth.role:organizationadmin')->group(function () {
             Route::prefix('groups')->group(function () {
                 Route::post('/', [GroupController::class, 'store']);
-                Route::patch('/{group}', [GroupController::class, 'update']);
-                Route::delete('/{group}', [GroupController::class, 'destroy']);
+                Route::patch(ROUTE_PARAM_GROUP, [GroupController::class, 'update']);
+                Route::delete(ROUTE_PARAM_GROUP, [GroupController::class, 'destroy']);
             });
         });
 
