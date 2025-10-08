@@ -17,8 +17,10 @@ return new class extends Migration {
 
     public function down() {
         Schema::table('assessment_question_answers', function (Blueprint $table) {
-            $table->dropForeign(['assessment_question_id']);
-            $table->dropColumn('assessment_question_id');
+            if (Schema::hasColumn('assessment_question_answers', 'assessment_question_id')) {
+                $table->dropForeign(['assessment_question_id']);
+                $table->dropColumn('assessment_question_id');
+            }
         });
     }
 };

@@ -30,6 +30,13 @@ use Illuminate\Foundation\Support\Providers\RouteServiceProvider;
 // public-facing resources like the Stripe webhook.
 
 
+// Health Check
+
+Route::get('/health', function () {
+    return response()->json(['status' => 'ok'], 200);
+});
+
+
 // Authentication & Password Reset
 
 Route::post('/register', [AuthController::class, 'register']);
