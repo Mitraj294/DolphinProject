@@ -13,150 +13,75 @@ return new class extends Migration
      */
     public function up()
     {
+        // Location FK action constant
+        define('LOCATION_FK_ACTION', 'set null');
+
+        // Small helper to add a nullable unsignedBigInteger column and optional FK
+        $addLocationColumn = function (string $tableName, string $columnName, ?string $afterColumn, string $refTable) {
+            if (! Schema::hasColumn($tableName, $columnName)) {
+                Schema::table($tableName, function (Blueprint $table) use ($columnName, $afterColumn) {
+                    if ($afterColumn) {
+                        $table->unsignedBigInteger($columnName)->nullable()->after($afterColumn);
+                    } else {
+                        $table->unsignedBigInteger($columnName)->nullable();
+                    }
+                });
+
+                if (Schema::hasTable($refTable)) {
+                    Schema::table($tableName, function (Blueprint $table) use ($columnName, $refTable) {
+                        $table->foreign($columnName)->references('id')->on($refTable)->onDelete(LOCATION_FK_ACTION);
+                    });
+                }
+            }
+        };
+
         // LEADS: add/drop columns; add FKs only if referenced tables exist
         if (Schema::hasTable('leads')) {
             // remove old text fields if present
             Schema::table('leads', function (Blueprint $table) {
-                if (Schema::hasColumn('leads', 'country')) $table->dropColumn('country');
-                if (Schema::hasColumn('leads', 'state')) $table->dropColumn('state');
-                if (Schema::hasColumn('leads', 'city')) $table->dropColumn('city');
+                if (Schema::hasColumn('leads', 'country')) { $table->dropColumn('country'); }
+                if (Schema::hasColumn('leads', 'state')) { $table->dropColumn('state'); }
+                if (Schema::hasColumn('leads', 'city')) { $table->dropColumn('city'); }
             });
 
-            // add country_id/state_id/city_id columns if missing
-            if (!Schema::hasColumn('leads', 'country_id')) {
-                Schema::table('leads', function (Blueprint $table) {
-                    $table->unsignedBigInteger('country_id')->nullable()->after('address');
-                });
-                if (Schema::hasTable('countries')) {
-                    Schema::table('leads', function (Blueprint $table) {
-                        $table->foreign('country_id')->references('id')->on('countries')->onDelete('set null');
-                    });
-                }
-            }
-
-            if (!Schema::hasColumn('leads', 'state_id')) {
-                Schema::table('leads', function (Blueprint $table) {
-                    $table->unsignedBigInteger('state_id')->nullable()->after('country_id');
-                });
-                if (Schema::hasTable('states')) {
-                    Schema::table('leads', function (Blueprint $table) {
-                        $table->foreign('state_id')->references('id')->on('states')->onDelete('set null');
-                    });
-                }
-            }
-
-            if (!Schema::hasColumn('leads', 'city_id')) {
-                Schema::table('leads', function (Blueprint $table) {
-                    $table->unsignedBigInteger('city_id')->nullable()->after('state_id');
-                });
-                if (Schema::hasTable('cities')) {
-                    Schema::table('leads', function (Blueprint $table) {
-                        $table->foreign('city_id')->references('id')->on('cities')->onDelete('set null');
-                    });
-                }
-            }
+            $addLocationColumn('leads', 'country_id', 'address', 'countries');
+            $addLocationColumn('leads', 'state_id', 'country_id', 'states');
+            $addLocationColumn('leads', 'city_id', 'state_id', 'cities');
         }
 
         // ORGANIZATIONS
         if (Schema::hasTable('organizations')) {
             Schema::table('organizations', function (Blueprint $table) {
-                if (Schema::hasColumn('organizations', 'country')) $table->dropColumn('country');
-                if (Schema::hasColumn('organizations', 'state')) $table->dropColumn('state');
-                if (Schema::hasColumn('organizations', 'city')) $table->dropColumn('city');
+                if (Schema::hasColumn('organizations', 'country')) { $table->dropColumn('country'); }
+                if (Schema::hasColumn('organizations', 'state')) { $table->dropColumn('state'); }
+                if (Schema::hasColumn('organizations', 'city')) { $table->dropColumn('city'); }
             });
 
-            if (!Schema::hasColumn('organizations', 'country_id')) {
-                Schema::table('organizations', function (Blueprint $table) {
-                    $table->unsignedBigInteger('country_id')->nullable()->after('address2');
-                });
-                if (Schema::hasTable('countries')) {
-                    Schema::table('organizations', function (Blueprint $table) {
-                        $table->foreign('country_id')->references('id')->on('countries')->onDelete('set null');
-                    });
-                }
-            }
-
-            if (!Schema::hasColumn('organizations', 'state_id')) {
-                Schema::table('organizations', function (Blueprint $table) {
-                    $table->unsignedBigInteger('state_id')->nullable()->after('country_id');
-                });
-                if (Schema::hasTable('states')) {
-                    Schema::table('organizations', function (Blueprint $table) {
-                        $table->foreign('state_id')->references('id')->on('states')->onDelete('set null');
-                    });
-                }
-            }
-
-            if (!Schema::hasColumn('organizations', 'city_id')) {
-                Schema::table('organizations', function (Blueprint $table) {
-                    $table->unsignedBigInteger('city_id')->nullable()->after('state_id');
-                });
-                if (Schema::hasTable('cities')) {
-                    Schema::table('organizations', function (Blueprint $table) {
-                        $table->foreign('city_id')->references('id')->on('cities')->onDelete('set null');
-                    });
-                }
-            }
+            $addLocationColumn('organizations', 'country_id', 'address2', 'countries');
+            $addLocationColumn('organizations', 'state_id', 'country_id', 'states');
+            $addLocationColumn('organizations', 'city_id', 'state_id', 'cities');
         }
 
         // USER_DETAILS
         if (Schema::hasTable('user_details')) {
             Schema::table('user_details', function (Blueprint $table) {
-                if (Schema::hasColumn('user_details', 'country')) $table->dropColumn('country');
-                if (Schema::hasColumn('user_details', 'state')) $table->dropColumn('state');
-                if (Schema::hasColumn('user_details', 'city')) $table->dropColumn('city');
+                if (Schema::hasColumn('user_details', 'country')) { $table->dropColumn('country'); }
+                if (Schema::hasColumn('user_details', 'state')) { $table->dropColumn('state'); }
+                if (Schema::hasColumn('user_details', 'city')) { $table->dropColumn('city'); }
             });
 
-            if (!Schema::hasColumn('user_details', 'country_id')) {
-                Schema::table('user_details', function (Blueprint $table) {
-                    $table->unsignedBigInteger('country_id')->nullable()->after('address');
-                });
-                if (Schema::hasTable('countries')) {
-                    Schema::table('user_details', function (Blueprint $table) {
-                        $table->foreign('country_id')->references('id')->on('countries')->onDelete('set null');
-                    });
-                }
-            }
-
-            if (!Schema::hasColumn('user_details', 'state_id')) {
-                Schema::table('user_details', function (Blueprint $table) {
-                    $table->unsignedBigInteger('state_id')->nullable()->after('country_id');
-                });
-                if (Schema::hasTable('states')) {
-                    Schema::table('user_details', function (Blueprint $table) {
-                        $table->foreign('state_id')->references('id')->on('states')->onDelete('set null');
-                    });
-                }
-            }
-
-            if (!Schema::hasColumn('user_details', 'city_id')) {
-                Schema::table('user_details', function (Blueprint $table) {
-                    $table->unsignedBigInteger('city_id')->nullable()->after('state_id');
-                });
-                if (Schema::hasTable('cities')) {
-                    Schema::table('user_details', function (Blueprint $table) {
-                        $table->foreign('city_id')->references('id')->on('cities')->onDelete('set null');
-                    });
-                }
-            }
+            $addLocationColumn('user_details', 'country_id', 'address', 'countries');
+            $addLocationColumn('user_details', 'state_id', 'country_id', 'states');
+            $addLocationColumn('user_details', 'city_id', 'state_id', 'cities');
         }
 
         // USERS
         if (Schema::hasTable('users')) {
             Schema::table('users', function (Blueprint $table) {
-                if (Schema::hasColumn('users', 'country')) $table->dropColumn('country');
+                if (Schema::hasColumn('users', 'country')) { $table->dropColumn('country'); }
             });
 
-            if (!Schema::hasColumn('users', 'country_id')) {
-                Schema::table('users', function (Blueprint $table) {
-                    $table->unsignedBigInteger('country_id')->nullable()->after('phone');
-                });
-                if (Schema::hasTable('countries')) {
-                    Schema::table('users', function (Blueprint $table) {
-                        $table->foreign('country_id')->references('id')->on('countries')->onDelete('set null');
-                    });
-                }
-            }
+            $addLocationColumn('users', 'country_id', 'phone', 'countries');
         }
 }
 
