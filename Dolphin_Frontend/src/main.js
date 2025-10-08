@@ -69,43 +69,48 @@ const isGuestAccess = () => {
 
 const authToken = storage.get('authToken');
 console.log('Main.js startup:', { authToken: !!authToken, isGuest: isGuestAccess() });
-
-if (authToken && !isGuestAccess()) {
-  fetchCurrentUser().then(user => {
-    // Also fetch subscription status so refreshing the page reflects current state immediately
-    fetchSubscriptionStatus().then(status => {
-      if (status) {
-        storage.set('subscriptionStatus', status);
-      }
-    }).catch(err => {
-      console.warn('Could not fetch subscription status on startup', err);
-    });
-    if (user?.role) {
-      const localRole = storage.get('role');
-      if (user.role !== localRole) {
-        storage.set('role', user.role);
-      }
-      
-      // Start token monitoring after successful authentication check
-      tokenMonitor.startMonitoring({
-        checkInterval: 5 * 60 * 1000, // Check every 5 minutes
-        warningThreshold: 10 * 60 * 1000, // Warn when 10 minutes left
-        onExpiringSoon: (seconds) => {
-          console.warn(`Your session will expire in ${Math.round(seconds / 60)} minutes`);
-          // You could show a toast notification here
-        },
-        onExpired: () => {
-          console.log('Session expired, redirecting to login');
-          // Force redirect to login page
-          window.location.href = '/login';
+// Create the app instance then run startup logic that depends on it.
+bootstrap().then(app => {
+  if (authToken && !isGuestAccess()) {
+    fetchCurrentUser().then(user => {
+      // Also fetch subscription status so refreshing the page reflects current state immediately
+      fetchSubscriptionStatus().then(status => {
+        if (status) {
+          storage.set('subscriptionStatus', status);
         }
+      }).catch(err => {
+        console.warn('Could not fetch subscription status on startup', err);
       });
-    }
-  }).finally(() => {
+      if (user?.role) {
+        const localRole = storage.get('role');
+        if (user.role !== localRole) {
+          storage.set('role', user.role);
+        }
+
+        // Start token monitoring after successful authentication check
+        tokenMonitor.startMonitoring({
+          checkInterval: 5 * 60 * 1000, // Check every 5 minutes
+          warningThreshold: 10 * 60 * 1000, // Warn when 10 minutes left
+          onExpiringSoon: (seconds) => {
+            console.warn(`Your session will expire in ${Math.round(seconds / 60)} minutes`);
+            // You could show a toast notification here
+          },
+          onExpired: () => {
+            console.log('Session expired, redirecting to login');
+            // Force redirect to login page
+            window.location.href = '/login';
+          }
+        });
+      }
+    }).finally(() => {
+      app.use(router);
+      app.mount('#app');
+    });
+  } else {
     app.use(router);
     app.mount('#app');
-  });
-} else {
-  app.use(router);
-  app.mount('#app');
-}
+  }
+}).catch(err => {
+  // If bootstrap fails (e.g. loadRuntimeEnv), log and fail gracefully
+  console.error('Failed to bootstrap app:', err);
+});

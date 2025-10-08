@@ -44,7 +44,6 @@
 import Sidebar from './Sidebar.vue';
 import Navbar from '@/components/layout/Navbar.vue';
 import Footer from '@/components/layout/Footer.vue';
-import ToastService from 'primevue/toastservice';
 import Toast from 'primevue/toast';
 
 import authMiddleware from '../../middleware/authMiddleware.js';
@@ -103,9 +102,7 @@ export default {
       this.sidebarExpanded = false;
     }
     // Provide ToastService for PrimeVue Toast
-    if (this.$app && this.$app.use) {
-      this.$app.use(ToastService);
-    }
+    // ToastService is registered globally during app bootstrap in main.js
   },
   beforeDestroy() {
     window.removeEventListener('resize', this.handleResize);
