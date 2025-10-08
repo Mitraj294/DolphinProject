@@ -1,0 +1,56 @@
+# Netlify Configuration for Dolphin Frontend
+
+[build]
+  # Base directory for the build
+  base = "Dolphin_Frontend"
+  
+  # Build command
+  command = "npm run build"
+  
+  # Output directory
+  publish = "dist"
+
+[build.environment]
+  # Node version
+  NODE_VERSION = "18"
+  
+  # Vue CLI Service mode
+  NODE_ENV = "production"
+
+# Redirect rules for Vue Router (SPA)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer-when-downgrade"
+
+# Cache static assets
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Custom 404 page (optional)
+# [[redirects]]
+#   from = "/404"
+#   to = "/404.html"
+#   status = 404
