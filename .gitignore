@@ -1,1 +1,13 @@
 Dolphin_Backup/
+
+# Environment files with sensitive data
+.env
+.env.local
+.env.*.local
+
+# Node modules
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*

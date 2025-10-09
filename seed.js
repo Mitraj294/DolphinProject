@@ -1,8 +1,9 @@
 const { Client } = require('pg');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
 const client = new Client({
-  connectionString: 'postgresql://dolphin123:CufoUH0IXfeUWyb4TXMXFpHoyQ7K7gNm@dpg-d3jlcimr433s739dgco0-a.oregon-postgres.render.com/dolphin_db_s1zc',
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false, // Needed for most cloud DBs, including Render
   }
