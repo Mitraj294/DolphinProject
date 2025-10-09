@@ -39,11 +39,6 @@ else
     echo -e "${GREEN}  ✓ .env.example found${NC}"
 fi
 
-if [ ! -f "Dockerfile" ]; then
-    echo -e "${RED}  ✗ Dockerfile not found${NC}"
-    exit 1
-fi
-echo -e "${GREEN}  ✓ Dockerfile found${NC}"
 
 cd ..
 

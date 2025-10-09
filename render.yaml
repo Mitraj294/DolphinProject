@@ -4,12 +4,16 @@ services:
   # Laravel Web Service
   - type: web
     name: dolphin-backend
-    runtime: docker
+    runtime: php
     region: oregon
     plan: free
     branch: main
     rootDir: Dolphin_Backend
-    dockerfilePath: ./Dockerfile
+    buildCommand: |
+      composer install --no-dev --optimize-autoloader
+      npm install
+      npm run prod
+ 
     
 
   # configure a readiness probe that checks application readiness after migrations complete.
