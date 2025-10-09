@@ -2,12 +2,9 @@ services:
   # Laravel Backend API
   - type: web
     name: dolphin-backend
-    runtime: php
-    env: php
+    runtime: docker
     region: oregon
     plan: free
-    buildCommand: "./Dolphin_Backend/build.sh"
-    startCommand: "./Dolphin_Backend/start.sh"
     envVars:
       - key: APP_NAME
         value: Dolphin
@@ -82,8 +79,13 @@ services:
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-pro
+      - key: GEMINI_PLAN
+        value: student
     autoDeploy: true
-    rootDir: Dolphin_Backend
 
 databases:
   # PostgreSQL Database
