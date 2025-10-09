@@ -5,33 +5,10 @@ services:
     region: oregon
     branch: remove-docker-sail
     root: Dolphin_Backend
-    repo: ""
     plan: free
     buildCommand: composer install --no-dev --optimize-autoloader --no-interaction
     startCommand: php artisan serve --host 0.0.0.0 --port $PORT
-    healthCheckPath: /health
     autoDeploy: true
-# Render Blueprint for Dolphin Laravel Backend
-
-services:
-  # Laravel Web Service
-  - type: web
-    name: dolphin-backend
-    runtime: php
-    region: oregon
-    plan: free
-    branch: main
-    rootDir: Dolphin_Backend
-    buildCommand: |
-      composer install --no-dev --optimize-autoloader
-      npm install
-      npm run prod
- 
-    
-
-  # configure a readiness probe that checks application readiness after migrations complete.
-    
-    # Environment variables
     envVars:
       - key: APP_NAME
         value: Dolphin
