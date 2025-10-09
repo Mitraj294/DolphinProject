@@ -1,0 +1,32 @@
+# Render ignore file - exclude these from deployment
+
+# Development files
+Dolphin_Backup/
+node_modules/
+.git/
+.env.local
+.env.development
+
+# Frontend (deployed separately on Netlify)
+Dolphin_Frontend/
+
+# Development scripts
+start-dev.sh
+stop-dev.sh
+check-deployment.sh
+
+# Documentation images
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

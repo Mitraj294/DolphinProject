@@ -102,6 +102,34 @@ From the root directory of the project:
 -   Role-based Permissions
 -   Stripe Integration for Payments
 
+## Deployment
+
+### Production Deployment on Render
+
+The backend is configured for deployment on [Render.com](https://render.com) with the frontend on Netlify.
+
+**Quick Start:**
+
+1. Push your code to GitHub/GitLab/Bitbucket
+2. Go to [Render Dashboard](https://dashboard.render.com) → New → Blueprint
+3. Connect your repository
+4. Render will detect `render.yaml` and create all services automatically
+5. Update environment variables in the Render Dashboard
+6. Update your frontend's `VUE_APP_API_BASE_URL` to point to your Render backend
+
+**📖 For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)**
+
+**✅ Quick Check:**
+```bash
+./check-deployment.sh
+```
+
+### Deployment Files
+
+- `render.yaml` - Render blueprint configuration
+- `Dolphin_Backend/build.sh` - Build script for Render
+- `Dolphin_Backend/start.sh` - Start script for Render
+- `DEPLOYMENT.md` - Complete deployment guide
 
 ![alt text](image.png)
 ![alt text](Gemini_Generated_Image_6l7pw36l7pw36l7p.png)

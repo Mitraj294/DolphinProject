@@ -1,0 +1,94 @@
+services:
+  # Laravel Backend API
+  - type: web
+    name: dolphin-backend
+    runtime: php
+    env: php
+    region: oregon
+    plan: free
+    buildCommand: "./Dolphin_Backend/build.sh"
+    startCommand: "./Dolphin_Backend/start.sh"
+    envVars:
+      - key: APP_NAME
+        value: Dolphin
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_KEY
+        generateValue: true
+        sync: false
+      - key: APP_URL
+        sync: false
+      - key: FRONTEND_URL
+        value: https://your-frontend-app.netlify.app
+      - key: FRONTEND_URLS
+        value: https://your-frontend-app.netlify.app,https://www.your-domain.com
+      - key: LOG_CHANNEL
+        value: errorlog
+      - key: LOG_LEVEL
+        value: info
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: dolphin-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: dolphin-db
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: dolphin-db
+          property: database
+      - key: DB_USERNAME
+        fromDatabase:
+          name: dolphin-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: dolphin-db
+          property: password
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_LIFETIME
+        value: 120
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: FILESYSTEM_DISK
+        value: local
+      - key: MAIL_MAILER
+        sync: false
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_PORT
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM_ADDRESS
+        value: noreply@dolphin.app
+      - key: MAIL_FROM_NAME
+        value: Dolphin
+      - key: STRIPE_KEY
+        sync: false
+      - key: STRIPE_SECRET
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+    autoDeploy: true
+    rootDir: Dolphin_Backend
+
+databases:
+  # PostgreSQL Database
+  - name: dolphin-db
+    databaseName: dolphin
+    user: dolphin
+    plan: free
+    region: oregon

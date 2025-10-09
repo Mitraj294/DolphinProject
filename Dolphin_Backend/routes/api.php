@@ -43,6 +43,28 @@ if (!defined('ROUTE_PARAM_GROUP')) {
 // should only be added if gated by a readiness mechanism that ensures migrations/startup
 // tasks have completed.
 
+// Health check endpoint for monitoring (Render, etc.)
+Route::get('/health', function () {
+    try {
+        // Check database connection
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        
+        return response()->json([
+            'status' => 'ok',
+            'service' => 'dolphin-backend',
+            'timestamp' => now()->toISOString(),
+            'database' => 'connected',
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'service' => 'dolphin-backend',
+            'timestamp' => now()->toISOString(),
+            'database' => 'disconnected',
+            'message' => $e->getMessage(),
+        ], 503);
+    }
+});
 
 // Authentication & Password Reset
 
