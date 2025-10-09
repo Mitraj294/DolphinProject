@@ -1,0 +1,69 @@
+# Dolphin Backend .dockerignore
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+
+# Documentation
+*.md
+README.md
+DEPLOYMENT.md
+RENDER_SETUP.md
+
+# Development files
+.env
+.env.local
+.env.development
+.env.example
+.env.render
+
+# Frontend (deployed separately)
+Dolphin_Frontend/
+
+# Backups
+Dolphin_Backup/
+
+# Node modules (root level)
+/node_modules/
+/package.json
+/package-lock.json
+/eslint.config.mjs
+
+# Scripts
+start-dev.sh
+stop-dev.sh
+check-deployment.sh
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+
+# Laravel specific (will be in Dolphin_Backend/)
+/vendor/
+/node_modules/
+/public/hot
+/public/storage
+/storage/*.key
+.env
+.phpunit.result.cache
+npm-debug.log
+yarn-error.log
