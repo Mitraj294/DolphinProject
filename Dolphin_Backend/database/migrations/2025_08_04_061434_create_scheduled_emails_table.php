@@ -11,15 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('scheduled_emails', function (Blueprint $table) {
-            $table->id();
-            $table->string('recipient_email');
-            $table->string('subject');
-            $table->text('body');
-            $table->dateTime('send_at');
-            $table->boolean('sent')->default(false);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('scheduled_emails')) {
+            Schema::create('scheduled_emails', function (Blueprint $table) {
+                $table->id();
+                $table->string('recipient_email');
+                $table->string('subject');
+                $table->text('body');
+                $table->dateTime('send_at');
+                $table->boolean('sent')->default(false);
+                $table->timestamps();
+            });
+        }
     }
 
     /**

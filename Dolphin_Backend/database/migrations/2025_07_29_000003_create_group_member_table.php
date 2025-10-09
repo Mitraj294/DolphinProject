@@ -7,12 +7,14 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('group_member', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('group_id')->constrained('groups')->onDelete('cascade');
-            $table->foreignId('member_id')->constrained('members')->onDelete('cascade');
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('group_member')) {
+            Schema::create('group_member', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('group_id')->constrained('groups')->onDelete('cascade');
+                $table->foreignId('member_id')->constrained('members')->onDelete('cascade');
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void

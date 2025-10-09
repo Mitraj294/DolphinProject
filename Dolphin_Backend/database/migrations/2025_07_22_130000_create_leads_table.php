@@ -10,23 +10,25 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('leads', function (Blueprint $table) {
-            $table->id();
-            $table->string('first_name');
-            $table->string('last_name');
-            $table->string('email');
-            $table->string('phone')->nullable();
-            $table->string('find_us')->nullable();
-            $table->string('organization_name')->nullable();
-            $table->string('organization_size')->nullable();
-            $table->string('address')->nullable();
-            $table->string('country')->nullable();
-            $table->string('state')->nullable();
-            $table->string('city')->nullable();
-            $table->string('zip')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
-        });
+        if (! Schema::hasTable('leads')) {
+            Schema::create('leads', function (Blueprint $table) {
+                $table->id();
+                $table->string('first_name');
+                $table->string('last_name');
+                $table->string('email');
+                $table->string('phone')->nullable();
+                $table->string('find_us')->nullable();
+                $table->string('organization_name')->nullable();
+                $table->string('organization_size')->nullable();
+                $table->string('address')->nullable();
+                $table->string('country')->nullable();
+                $table->string('state')->nullable();
+                $table->string('city')->nullable();
+                $table->string('zip')->nullable();
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
     }
 
     /**

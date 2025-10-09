@@ -15,27 +15,33 @@ return new class extends Migration {
         });
 
         // Create pivot tables
-        Schema::create('announcement_organization', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('announcement_id');
-            $table->unsignedBigInteger('organization_id');
-            $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
-            $table->foreign('organization_id')->references('id')->on('organizations')->onDelete('cascade');
-        });
-        Schema::create('announcement_admin', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('announcement_id');
-            $table->unsignedBigInteger('admin_id');
-            $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
-            $table->foreign('admin_id')->references('id')->on('users')->onDelete('cascade');
-        });
-        Schema::create('announcement_group', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('announcement_id');
-            $table->unsignedBigInteger('group_id');
-            $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
-            $table->foreign('group_id')->references('id')->on('groups')->onDelete('cascade');
-        });
+        if (! Schema::hasTable('announcement_organization')) {
+            Schema::create('announcement_organization', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('announcement_id');
+                $table->unsignedBigInteger('organization_id');
+                $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
+                $table->foreign('organization_id')->references('id')->on('organizations')->onDelete('cascade');
+            });
+        }
+        if (! Schema::hasTable('announcement_admin')) {
+            Schema::create('announcement_admin', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('announcement_id');
+                $table->unsignedBigInteger('admin_id');
+                $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
+                $table->foreign('admin_id')->references('id')->on('users')->onDelete('cascade');
+            });
+        }
+        if (! Schema::hasTable('announcement_group')) {
+            Schema::create('announcement_group', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('announcement_id');
+                $table->unsignedBigInteger('group_id');
+                $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
+                $table->foreign('group_id')->references('id')->on('groups')->onDelete('cascade');
+            });
+        }
     }
 
     public function down(): void

@@ -11,24 +11,29 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('subscriptions', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('user_id')->index();
-            $table->string('stripe_subscription_id')->index();
-            $table->string('stripe_customer_id')->nullable();
-            $table->string('plan')->nullable();
-            $table->string('status')->nullable();
-            $table->string('payment_method')->nullable();
-            $table->date('payment_date')->nullable();
-            $table->date('subscription_start')->nullable();
-            $table->date('subscription_end')->nullable();
-            $table->decimal('amount', 10, 2)->nullable();
-            $table->string('receipt_url')->nullable();
-           
-            $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-        });
+        if (! Schema::hasTable('subscriptions')) {
+            Schema::create('subscriptions', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('user_id')->index();
+                $table->string('stripe_subscription_id')->nullable()->index();
+                $table->string('stripe_customer_id')->nullable();
+                $table->string('plan')->nullable();
+                $table->string('status')->nullable();
+                $table->string('payment_method')->nullable();
+                $table->dateTime('payment_date')->nullable();
+                $table->dateTime('subscription_start')->nullable();
+                $table->dateTime('subscription_end')->nullable();
+                $table->decimal('amount', 10, 2)->nullable();
+                $table->string('receipt_url')->nullable();
+                $table->string('invoice_number')->nullable();
+                $table->text('description')->nullable();
+                $table->string('customer_name')->nullable();
+                $table->string('customer_email')->nullable();
+                $table->string('customer_country')->nullable();
+                $table->timestamps();
+                $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            });
+        }
     }
 
     /**

@@ -9,15 +9,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        Schema::create('assessment_answer_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('assessment_id');
-            $table->unsignedBigInteger('member_id');
-            $table->string('token')->unique();
-            $table->timestamp('expires_at')->nullable();
-            $table->boolean('used')->default(false);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('assessment_answer_tokens')) {
+            Schema::create('assessment_answer_tokens', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('assessment_id');
+                $table->unsignedBigInteger('member_id');
+                $table->unsignedBigInteger('group_id')->nullable();
+                $table->string('token')->unique();
+                $table->timestamp('expires_at')->nullable();
+                $table->boolean('used')->default(false);
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void

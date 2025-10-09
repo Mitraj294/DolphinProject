@@ -11,18 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('guest_links', function (Blueprint $table) {
-            $table->id();
-            $table->string('code')->unique();
-            $table->unsignedBigInteger('user_id')->index();
-            $table->unsignedBigInteger('lead_id')->nullable()->index();
-            $table->json('meta')->nullable();
-            $table->timestamp('expires_at')->nullable();
-            $table->timestamp('used_at')->nullable();
-            $table->timestamps();
-
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-        });
+        if (! Schema::hasTable('guest_links')) {
+            Schema::create('guest_links', function (Blueprint $table) {
+                $table->id();
+                $table->string('code')->unique();
+                $table->unsignedBigInteger('user_id')->index();
+                $table->unsignedBigInteger('lead_id')->nullable()->index();
+                $table->json('meta')->nullable();
+                $table->timestamp('expires_at')->nullable();
+                $table->timestamp('used_at')->nullable();
+                $table->timestamps();
+                $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            });
+        }
     }
 
     /**
