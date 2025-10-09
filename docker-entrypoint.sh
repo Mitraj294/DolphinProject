@@ -11,20 +11,22 @@ until pg_isready -h "$DB_HOST" -U "$DB_USERNAME" -d "$DB_DATABASE" 2>/dev/null; 
 done
 echo "Database is ready!"
 
-# Clear caches
+# Run migrations FIRST (before cache operations)
+echo "Running migrations..."
+php artisan migrate --force --no-interaction
+
+# Clear caches (safe to do after migrations)
+echo "Clearing caches..."
 php artisan config:clear
-php artisan cache:clear
+php artisan cache:clear || echo "Cache table not ready yet, skipping..."
 php artisan view:clear
 php artisan route:clear
 
-# Cache configuration
+# Cache configuration for production
+echo "Caching configuration..."
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
-
-# Run migrations
-echo "Running migrations..."
-php artisan migrate --force --no-interaction
 
 # Set up Passport
 echo "Setting up Laravel Passport..."
