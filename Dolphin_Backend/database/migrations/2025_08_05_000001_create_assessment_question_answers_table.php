@@ -8,18 +8,27 @@ return new class extends Migration {
         if (! Schema::hasTable('assessment_question_answers')) {
             Schema::create('assessment_question_answers', function (Blueprint $table) {
                 $table->id();
-                $table->unsignedBigInteger('assessment_id');
-                $table->unsignedBigInteger('organization_assessment_question_id');
-                $table->unsignedBigInteger('assessment_question_id');
-                $table->unsignedBigInteger('member_id');
-                $table->unsignedBigInteger('group_id');
+
+                // The assessment this answer belongs to
+                $table->foreignId('assessment_id')->constrained('assessments')->onDelete('cascade');
+
+                // The organization-level question template (static question text)
+                $table->foreignId('organization_assessment_question_id')->constrained('organization_assessment_questions')->onDelete('cascade');
+
+                // Optional link to the assessment-specific question entry. Nullable because
+                // older rows or certain flows may not have an assessment_question record.
+                $table->foreignId('assessment_question_id')->nullable()->constrained('assessment_question')->onDelete('cascade');
+
+                // The member who answered (if applicable)
+                $table->foreignId('member_id')->constrained('members')->onDelete('cascade');
+
+                // The group this answer applies to; make nullable to allow member-only answers
+                $table->foreignId('group_id')->nullable()->constrained('groups')->onDelete('cascade');
+
                 $table->text('answer');
                 $table->timestamps();
-                $table->foreign('assessment_id')->references('id')->on('assessments')->onDelete('cascade');
-                $table->foreign('organization_assessment_question_id')->references('id')->on('organization_assessment_questions')->onDelete('cascade');
-                $table->foreign('assessment_question_id')->references('id')->on('assessment_question')->onDelete('cascade');
-                $table->foreign('member_id')->references('id')->on('members')->onDelete('cascade');
-                $table->foreign('group_id')->references('id')->on('groups')->onDelete('cascade');
+
+                // Unique per assessment/question/member/group combination
                 $table->unique(['assessment_id', 'organization_assessment_question_id', 'member_id', 'group_id'], 'aqa_unique');
             });
         }
