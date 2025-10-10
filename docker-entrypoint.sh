@@ -5,9 +5,11 @@ echo "Starting Dolphin Backend on Render..."
 
 # Wait for database to be ready
 echo "Waiting for database..."
-until pg_isready -h "$DB_HOST" -U "$DB_USERNAME" -d "$DB_DATABASE" 2>/dev/null; do
+DB_PORT=${DB_PORT:-3306}
+until timeout 1 bash -c "cat < /dev/null > /dev/tcp/$DB_HOST/$DB_PORT" 2>/dev/null; do
+  echo "$DB_HOST:$DB_PORT - no response"
   echo "Database is unavailable - sleeping"
-  sleep 2
+  sleep 5
 done
 echo "Database is ready!"
 
