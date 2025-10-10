@@ -8,18 +8,54 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration {
     public function up(): void
     {
-        // 1) Ensure any textual role values in members are turned into rows in member_roles
-        $members = DB::table('members')
+        // If the members table or the legacy column doesn't exist, nothing to do.
+        if (!Schema::hasTable('members') || !Schema::hasColumn('members', 'member_role')) {
+            return;
+        }
+
+        // If either the member_roles table or the pivot table doesn't exist, drop the legacy column and exit.
+        if (!Schema::hasTable('member_roles') || !Schema::hasTable('member_member_role')) {
+            Schema::table('members', function (Blueprint $table) {
+                if (Schema::hasColumn('members', 'member_role')) {
+                    $table->dropColumn('member_role');
+                }
+            });
+            return;
+        }
+
+        // Migrate legacy textual role values into the normalized tables.
+        $this->migrateLegacyRolesToPivot();
+    }
+
+    /**
+     * Return members that have a non-empty legacy member_role value.
+     * Extracted to reduce cognitive complexity in up().
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    protected function getMembersWithLegacyRole()
+    {
+        return DB::table('members')
             ->select('id', 'member_role')
             ->whereNotNull('member_role')
             ->where('member_role', '<>', '')
             ->get();
+    }
 
+    /**
+     * Do the actual migration of role names into member_roles and pivot.
+     */
+    protected function migrateLegacyRolesToPivot(): void
+    {
+        $members = $this->getMembersWithLegacyRole();
         $roleNameToId = [];
 
         foreach ($members as $m) {
             $name = trim((string) $m->member_role);
-            if ($name === '') continue;
+            if ($name === '') {
+                continue;
+            }
+
             if (!isset($roleNameToId[$name])) {
                 $existing = DB::table('member_roles')->where('name', $name)->first();
                 if ($existing) {
@@ -32,12 +68,14 @@ return new class extends Migration {
                     ]);
                 }
             }
-            // insert into pivot if not already present
+
             $roleId = $roleNameToId[$name];
+
             $exists = DB::table('member_member_role')
                 ->where('member_id', $m->id)
                 ->where('member_role_id', $roleId)
                 ->exists();
+
             if (!$exists) {
                 DB::table('member_member_role')->insert([
                     'member_id' => $m->id,
@@ -48,7 +86,7 @@ return new class extends Migration {
             }
         }
 
-        // 2) Drop the legacy member_role column from members
+        // Drop the legacy column once migration is attempted.
         Schema::table('members', function (Blueprint $table) {
             if (Schema::hasColumn('members', 'member_role')) {
                 $table->dropColumn('member_role');
