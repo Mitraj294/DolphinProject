@@ -6,37 +6,30 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        // Create pivot tables (created through helper to keep complexity low)
+        $this->createPivot('announcement_organization', 'announcement_id', 'organization_id', 'announcements', 'organizations');
+        $this->createPivot('announcement_admin', 'announcement_id', 'admin_id', 'announcements', 'users');
+        $this->createPivot('announcement_group', 'announcement_id', 'group_id', 'announcements', 'groups');
+    }
 
-    
+    protected function createPivot(string $pivot, string $left, string $right, string $leftTable, string $rightTable): void
+    {
+        if (Schema::hasTable($pivot)) {
+            return;
+        }
 
-        // Create pivot tables
-        if (! Schema::hasTable('announcement_organization')) {
-            Schema::create('announcement_organization', function (Blueprint $table) {
-                $table->id();
-                $table->unsignedBigInteger('announcement_id');
-                $table->unsignedBigInteger('organization_id');
-                $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
-                $table->foreign('organization_id')->references('id')->on('organizations')->onDelete('cascade');
-            });
-        }
-        if (! Schema::hasTable('announcement_admin')) {
-            Schema::create('announcement_admin', function (Blueprint $table) {
-                $table->id();
-                $table->unsignedBigInteger('announcement_id');
-                $table->unsignedBigInteger('admin_id');
-                $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
-                $table->foreign('admin_id')->references('id')->on('users')->onDelete('cascade');
-            });
-        }
-        if (! Schema::hasTable('announcement_group')) {
-            Schema::create('announcement_group', function (Blueprint $table) {
-                $table->id();
-                $table->unsignedBigInteger('announcement_id');
-                $table->unsignedBigInteger('group_id');
-                $table->foreign('announcement_id')->references('id')->on('announcements')->onDelete('cascade');
-                $table->foreign('group_id')->references('id')->on('groups')->onDelete('cascade');
-            });
-        }
+        Schema::create($pivot, function (Blueprint $table) use ($left, $right, $leftTable, $rightTable) {
+            $table->id();
+            $table->unsignedBigInteger($left);
+            $table->unsignedBigInteger($right);
+
+            if (Schema::hasTable($leftTable)) {
+                $table->foreign($left)->references('id')->on($leftTable)->onDelete('cascade');
+            }
+            if (Schema::hasTable($rightTable)) {
+                $table->foreign($right)->references('id')->on($rightTable)->onDelete('cascade');
+            }
+        });
     }
 
     public function down(): void

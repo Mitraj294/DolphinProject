@@ -12,8 +12,10 @@ return new class extends Migration {
                 // The assessment this answer belongs to
                 $table->foreignId('assessment_id')->constrained('assessments')->onDelete('cascade');
 
-                // The organization-level question template (static question text)
-                $table->foreignId('organization_assessment_question_id')->constrained('organization_assessment_questions')->onDelete('cascade');
+            // The organization-level question template (static question text)
+            $table->unsignedBigInteger('organization_assessment_question_id');
+            $table->foreign('organization_assessment_question_id', 'aqa_org_q_id_fk')
+                ->references('id')->on('organization_assessment_questions')->onDelete('cascade');
 
                 // Optional link to the assessment-specific question entry. Nullable because
                 // older rows or certain flows may not have an assessment_question record.

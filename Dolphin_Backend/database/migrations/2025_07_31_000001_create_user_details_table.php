@@ -20,9 +20,9 @@ return new class extends Migration
                 $table->string('organization_name')->nullable();
                 $table->string('organization_size')->nullable();
                 $table->string('address')->nullable();
-                $table->unsignedBigInteger('country_id')->nullable()->after('address');
-                $table->unsignedBigInteger('state_id')->nullable()->after('country_id');
-                $table->unsignedBigInteger('city_id')->nullable()->after('state_id');
+                $table->unsignedBigInteger('country_id')->nullable();
+                $table->unsignedBigInteger('state_id')->nullable();
+                $table->unsignedBigInteger('city_id')->nullable();
                 // foreign keys will be added if referenced tables exist at runtime
                 $table->string('zip')->nullable();
                 $table->timestamps();

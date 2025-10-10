@@ -11,8 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (! Schema::hasTable('announcements')) {
+            return;
+        }
+
         Schema::table('announcements', function (Blueprint $table) {
-            $table->timestamp('dispatched_at')->nullable()->after('scheduled_at');
+            $table->timestamp('dispatched_at')->nullable();
         });
     }
 

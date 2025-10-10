@@ -34,8 +34,25 @@ class AddSoftDeletesAndNullableUserId extends Migration
                     }
                     if (Schema::hasColumn($table, 'user_id')) {
                         // make user_id nullable so we can dissociate on soft-delete
+                        // but avoid changing columns that are part of a primary key
                         try {
-                            $tableBlueprint->unsignedBigInteger('user_id')->nullable()->change();
+                            $connection = Schema::getConnection();
+                            $sm = $connection->getDoctrineSchemaManager();
+                            $indexes = collect($sm->listTableIndexes($table));
+                            $isPartOfPrimary = false;
+                            foreach ($indexes as $idx) {
+                                if ($idx->isPrimary()) {
+                                    $cols = $idx->getColumns();
+                                    if (in_array('user_id', $cols, true)) {
+                                        $isPartOfPrimary = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (! $isPartOfPrimary) {
+                                $tableBlueprint->unsignedBigInteger('user_id')->nullable()->change();
+                            }
                         } catch (\Exception $e) {
                            Log::error('Error making user_id nullable', [
                                'error' => $e->getMessage()

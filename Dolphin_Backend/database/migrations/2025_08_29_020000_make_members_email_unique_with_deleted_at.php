@@ -42,7 +42,21 @@ return new class extends Migration
         Schema::table('members', function (Blueprint $table) {
             // Add composite unique index on (email, deleted_at) if not already present
             // Use a safe name 'members_email_deleted_at_unique'
-            $table->unique(['email', 'deleted_at'], 'members_email_deleted_at_unique');
+            $conn = Schema::getConnection();
+            $driver = $conn->getDriverName();
+            $hasComposite = false;
+            try {
+                if ($driver === 'mysql') {
+                    $res = DB::select("SHOW INDEX FROM `members` WHERE Key_name = 'members_email_deleted_at_unique'");
+                    $hasComposite = !empty($res);
+                }
+            } catch (\Exception $e) {
+                $hasComposite = false;
+            }
+
+            if (! $hasComposite) {
+                $table->unique(['email', 'deleted_at'], 'members_email_deleted_at_unique');
+            }
         });
     }
 
