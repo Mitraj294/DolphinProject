@@ -33,7 +33,7 @@ php artisan view:cache
 # Set up Passport
 echo "Setting up Laravel Passport..."
 php artisan passport:keys --force 2>/dev/null || echo "Passport keys already exist"
-php artisan passport:install --force || echo "Passport already installed"
+php artisan passport:install --force --no-interaction || echo "Passport already installed"
 
 # Create storage link
 php artisan storage:link 2>/dev/null || echo "Storage link already exists"

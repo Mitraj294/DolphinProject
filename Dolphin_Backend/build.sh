@@ -28,7 +28,7 @@ php artisan migrate --force --no-interaction
 # Install Laravel Passport if not already installed
 echo "Setting up Laravel Passport..."
 php artisan passport:keys --force || echo "Passport keys already exist"
-php artisan passport:install --force || echo "Passport already installed"
+php artisan passport:install --force --no-interaction || echo "Passport already installed"
 
 # Create storage symlink
 echo "Creating storage symlink..."
