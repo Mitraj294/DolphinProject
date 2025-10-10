@@ -8,6 +8,13 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // This migration is MySQL-specific for aligning with local dolphin_db
+        // PostgreSQL doesn't need these changes as it was created from scratch
+        $driver = DB::connection()->getDriverName();
+        if ($driver !== 'mysql') {
+            return; // Skip for non-MySQL databases
+        }
+
         if (!Schema::hasTable('users')) {
             return;
         }
@@ -86,6 +93,12 @@ return new class extends Migration
 
     public function down(): void
     {
+        // This migration is MySQL-specific
+        $driver = DB::connection()->getDriverName();
+        if ($driver !== 'mysql') {
+            return; // Skip for non-MySQL databases
+        }
+
         if (!Schema::hasTable('users')) {
             return;
         }
