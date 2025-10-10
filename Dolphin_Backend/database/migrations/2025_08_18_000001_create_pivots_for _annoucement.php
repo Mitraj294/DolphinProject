@@ -6,13 +6,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
-        // Rename notifications table to announcements
-        Schema::rename('notifications', 'announcements');
 
-        // Remove organization_ids, admin_ids, group_ids columns
-        Schema::table('announcements', function (Blueprint $table) {
-            $table->dropColumn(['organization_ids', 'admin_ids', 'group_ids']);
-        });
+    
 
         // Create pivot tables
         if (! Schema::hasTable('announcement_organization')) {
