@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -15,7 +16,10 @@ return new class extends Migration
                 // Verify no NULLs before altering
                 $nullCount = DB::table('assessment_question_answers')->whereNull('assessment_question_id')->count();
                 if ($nullCount === 0) {
-                    DB::statement('ALTER TABLE `assessment_question_answers` MODIFY `assessment_question_id` bigint unsigned NOT NULL');
+                    // Use Schema builder for cross-database compatibility
+                    Schema::table('assessment_question_answers', function (Blueprint $table) {
+                        $table->unsignedBigInteger('assessment_question_id')->nullable(false)->change();
+                    });
                 }
             } catch (\Exception $e) {
                 // Log but don't fail - column may already be NOT NULL
@@ -27,7 +31,10 @@ return new class extends Migration
     {
         if (Schema::hasTable('assessment_question_answers') && Schema::hasColumn('assessment_question_answers', 'assessment_question_id')) {
             try {
-                DB::statement('ALTER TABLE `assessment_question_answers` MODIFY `assessment_question_id` bigint unsigned NULL');
+                // Use Schema builder for cross-database compatibility
+                Schema::table('assessment_question_answers', function (Blueprint $table) {
+                    $table->unsignedBigInteger('assessment_question_id')->nullable()->change();
+                });
             } catch (\Exception $e) {
                 // Best-effort rollback
             }

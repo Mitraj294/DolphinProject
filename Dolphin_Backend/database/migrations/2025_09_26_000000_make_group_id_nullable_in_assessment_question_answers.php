@@ -1,19 +1,41 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // Use raw SQL to avoid requiring doctrine/dbal for column modification.
-        DB::statement('ALTER TABLE `assessment_question_answers` MODIFY `group_id` bigint unsigned NULL');
+        // Check if table and column exist before modifying
+        if (!Schema::hasTable('assessment_question_answers')) {
+            return;
+        }
+
+        if (!Schema::hasColumn('assessment_question_answers', 'group_id')) {
+            return;
+        }
+
+        // Use Laravel's Schema builder for cross-database compatibility
+        Schema::table('assessment_question_answers', function (Blueprint $table) {
+            $table->unsignedBigInteger('group_id')->nullable()->change();
+        });
     }
 
     public function down(): void
     {
+        if (!Schema::hasTable('assessment_question_answers')) {
+            return;
+        }
+
+        if (!Schema::hasColumn('assessment_question_answers', 'group_id')) {
+            return;
+        }
+
         // Revert to NOT NULL. Be careful: this will fail if NULLs exist.
-        DB::statement('ALTER TABLE `assessment_question_answers` MODIFY `group_id` bigint unsigned NOT NULL');
+        Schema::table('assessment_question_answers', function (Blueprint $table) {
+            $table->unsignedBigInteger('group_id')->nullable(false)->change();
+        });
     }
 };
