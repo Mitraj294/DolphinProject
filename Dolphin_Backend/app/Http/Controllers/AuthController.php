@@ -320,10 +320,39 @@ class AuthController extends Controller
 
     private function issueToken(Request $request)
     {
+        // Determine client id/secret: prefer config, otherwise fall back to DB lookup
+        $clientId = config('passport.password_client_id');
+        $clientSecret = config('passport.password_client_secret');
+
+        if (empty($clientId) || empty($clientSecret)) {
+            try {
+                $row = DB::table('oauth_clients')
+                    ->whereJsonContains('grant_types', 'password')
+                    ->orWhereRaw("JSON_CONTAINS(grant_types, '\"password\"')")
+                    ->limit(1)
+                    ->first();
+
+                if ($row) {
+                    $clientId = $clientId ?: $row->id;
+                    $clientSecret = $clientSecret ?: $row->secret;
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to lookup oauth password client from DB', ['error' => $e->getMessage()]);
+            }
+        }
+
+        if (empty($clientId) || empty($clientSecret)) {
+            Log::error('Password grant client id/secret missing. Cannot issue OAuth token.');
+            return response()->json([
+                'error' => 'server_error',
+                'error_description' => 'OAuth client_id or client_secret not configured on server.'
+            ], 500);
+        }
+
         $proxy = Request::create('/oauth/token', 'POST', [
             'grant_type' => 'password',
-            'client_id' => config('passport.password_client_id'),
-            'client_secret' => config('passport.password_client_secret'),
+            'client_id' => $clientId,
+            'client_secret' => $clientSecret,
             'username' => $request->email,
             'password' => $request->password,
             'scope' => '',
