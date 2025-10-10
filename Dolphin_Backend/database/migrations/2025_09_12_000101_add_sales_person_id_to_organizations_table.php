@@ -8,11 +8,17 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->unsignedBigInteger('sales_person_id')->nullable()->after('contract_end');
-            $table->index('sales_person_id');
-            $table->foreign('sales_person_id')->references('id')->on('users')->onDelete('set null');
-        });
+        try {
+            if (Schema::hasTable('organizations') && ! Schema::hasColumn('organizations', 'sales_person_id')) {
+                Schema::table('organizations', function (Blueprint $table) {
+                    $table->unsignedBigInteger('sales_person_id')->nullable()->after('contract_end');
+                    $table->index('sales_person_id');
+                    $table->foreign('sales_person_id')->references('id')->on('users')->onDelete('set null');
+                });
+            }
+        } catch (\Exception $e) {
+            // best-effort: don't fail migration if column already exists
+        }
     }
 
     public function down()

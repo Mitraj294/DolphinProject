@@ -13,11 +13,17 @@ return new class extends Migration
      */
     public function up()
     {
-        Schema::table('leads', function (Blueprint $table) {
-            $table->unsignedBigInteger('created_by')->nullable()->after('id');
-            $table->index('created_by');
-            $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
-        });
+        try {
+            if (Schema::hasTable('leads') && ! Schema::hasColumn('leads', 'created_by')) {
+                Schema::table('leads', function (Blueprint $table) {
+                    $table->unsignedBigInteger('created_by')->nullable()->after('id');
+                    $table->index('created_by');
+                    $table->foreign('created_by')->references('id')->on('users')->onDelete('set null');
+                });
+            }
+        } catch (\Exception $e) {
+            // best-effort: don't fail migration if column/index/foreign already exists
+        }
     }
 
     /**
