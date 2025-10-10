@@ -15,6 +15,10 @@ return new class extends Migration
             return;
         }
 
+        if (Schema::hasColumn('announcements', 'dispatched_at')) {
+            return;
+        }
+
         Schema::table('announcements', function (Blueprint $table) {
             $table->timestamp('dispatched_at')->nullable();
         });
