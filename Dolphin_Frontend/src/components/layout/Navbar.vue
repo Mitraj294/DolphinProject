@@ -425,7 +425,8 @@ export default {
         const config = token
           ? { headers: { Authorization: `Bearer ${token}` } }
           : {};
-        const res = await axios.get('/api/notifications/unread', config);
+  const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
+  const res = await axios.get(`${API_BASE_URL}/api/notifications/unread`, config);
         let unread = 0;
         if (res && res.data) {
           if (Array.isArray(res.data)) unread = res.data.length;

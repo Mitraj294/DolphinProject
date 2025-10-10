@@ -670,7 +670,7 @@ export default {
         console.log('Sending payload:', payload);
         console.log('Member roles array:', payload.member_role);
 
-        const response = await axios.put(
+        const response = await axios.patch(
           `${API_BASE_URL}/api/members/${this.editMember.id}`,
           payload,
           {

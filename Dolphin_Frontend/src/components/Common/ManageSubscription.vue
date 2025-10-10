@@ -109,6 +109,7 @@ export default {
       subscriptionEnd: null,
       userName: null,
       loading: true,
+      isSubscribed: false,
       hasBillingHistory: false,
     };
   },

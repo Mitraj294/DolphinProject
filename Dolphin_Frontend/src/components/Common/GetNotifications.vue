@@ -230,8 +230,10 @@ export default {
     async fetchNotifications() {
       try {
         const config = this._getAuthHeaders();
-        const endpoint = this._getNotificationEndpoint();
-        const response = await this._fetchDataWithFallback(endpoint, config);
+  const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
+  const endpoint = this._getNotificationEndpoint();
+  const fullEndpoint = endpoint.startsWith('/api/') ? `${API_BASE_URL}${endpoint}` : endpoint;
+  const response = await this._fetchDataWithFallback(fullEndpoint, config);
         const notificationsArr = this._extractNotifications(response);
 
         const storedUserId = storage.get('userId') || storage.get('user_id');
@@ -288,7 +290,8 @@ export default {
           err.response.status === 403 &&
           endpoint !== '/api/notifications/user'
         ) {
-          return axios.get('/api/notifications/user', config);
+          const API_BASE_URL = process.env.VUE_APP_API_BASE_URL || '';
+          return axios.get(`${API_BASE_URL}/api/notifications/user`, config);
         }
         throw err;
       }

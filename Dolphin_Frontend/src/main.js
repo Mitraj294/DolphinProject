@@ -11,6 +11,7 @@ import { fetchSubscriptionStatus } from './services/subscription';
 import storage from './services/storage';
 import tokenMonitor from './services/tokenMonitor';
 import { loadRuntimeEnv } from './runtime-env';
+import installIgnoreExtensionErrors from '@/boot/ignoreExtensionErrors';
 
 import './services/tokenInterceptor';
 
@@ -33,6 +34,8 @@ import Calendar from 'primevue/calendar';
 import Button from 'primevue/button';
 async function bootstrap() {
   await loadRuntimeEnv();
+  // Install in-page guard to suppress noisy browser extension errors (non-fatal)
+  try { installIgnoreExtensionErrors(); } catch (e) { console.warn('Could not install extension error filter', e); }
   const app = createApp(App);
 
   // Install PrimeVue and its services

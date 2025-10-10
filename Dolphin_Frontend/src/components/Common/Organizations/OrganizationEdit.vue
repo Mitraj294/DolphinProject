@@ -640,7 +640,7 @@ export default {
 
         const payload = mapFormToPayload(this.form);
 
-        await axios.put(
+        await axios.patch(
           `${API_BASE_URL}/api/organizations/${this.orgId}`,
           payload,
           {
