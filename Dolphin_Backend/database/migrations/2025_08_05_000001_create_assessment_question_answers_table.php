@@ -17,9 +17,8 @@ return new class extends Migration {
             $table->foreign('organization_assessment_question_id', 'aqa_org_q_id_fk')
                 ->references('id')->on('organization_assessment_questions')->onDelete('cascade');
 
-                // Optional link to the assessment-specific question entry. Nullable because
-                // older rows or certain flows may not have an assessment_question record.
-                $table->foreignId('assessment_question_id')->nullable()->constrained('assessment_question')->onDelete('cascade');
+                // Link to the assessment-specific question entry. Make NOT NULL to match dolphin_db
+                $table->foreignId('assessment_question_id')->constrained('assessment_question')->onDelete('cascade');
 
                 // The member who answered (if applicable)
                 $table->foreignId('member_id')->constrained('members')->onDelete('cascade');

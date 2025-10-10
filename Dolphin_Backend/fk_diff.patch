@@ -1,0 +1,22 @@
+--- fk_dolphin_db.txt	2025-10-10 11:33:09.918851121 +0530
++++ fk_dolphin_db_test.txt	2025-10-10 11:33:16.610101519 +0530
+@@ -1,9 +1,5 @@
+ announcement_admin	admin_id	users	id	announcement_admin_admin_id_foreign
+-announcement_admin	announcement_id	announcements	id	announcement_admin_announcement_id_foreign
+-announcement_group	announcement_id	announcements	id	announcement_group_announcement_id_foreign
+ announcement_group	group_id	groups	id	announcement_group_group_id_foreign
+-announcement_organization	announcement_id	announcements	id	announcement_organization_announcement_id_foreign
+-announcement_organization	organization_id	organizations	id	announcement_organization_organization_id_foreign
+ answers	user_id	users	id	answers_user_id_foreign
+ assessment_question	assessment_id	assessments	id	assessment_question_assessment_id_foreign
+ assessment_question	question_id	organization_assessment_questions	id	assessment_question_question_id_foreign
+@@ -25,9 +21,6 @@
+ scheduled_emails	group_id	groups	id	scheduled_emails_group_id_foreign
+ scheduled_emails	member_id	members	id	scheduled_emails_member_id_foreign
+ subscriptions	user_id	users	id	subscriptions_user_id_foreign
+-user_details	city_id	cities	id	user_details_city_id_foreign
+-user_details	country_id	countries	id	user_details_country_id_foreign
+-user_details	state_id	states	id	user_details_state_id_foreign
+ user_details	user_id	users	id	user_details_user_id_foreign
+ user_roles	role_id	roles	id	user_roles_role_id_foreign
+ user_roles	user_id	users	id	user_roles_user_id_foreign

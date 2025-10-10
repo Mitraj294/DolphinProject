@@ -17,19 +17,9 @@ return new class extends Migration
                 $table->string('organization_name');
                 // prefer explicit organization_size column naming for consistency with user_details
                 $table->string('organization_size')->nullable();
-                $table->string('source')->nullable();
-                $table->string('address1')->nullable();
-                $table->string('address2')->nullable();
-                $table->unsignedBigInteger('country_id')->nullable();
-                $table->unsignedBigInteger('state_id')->nullable();
-                $table->unsignedBigInteger('city_id')->nullable();
-                $table->string('zip')->nullable();
-                // foreign keys will be added if referenced tables exist at runtime
+                // keep core organization columns only (match dolphin_db canonical schema)
                 $table->date('contract_start')->nullable();
                 $table->date('contract_end')->nullable();
-                $table->string('main_contact')->nullable();
-                $table->string('admin_email')->nullable();
-                $table->string('admin_phone')->nullable();
                 $table->date('last_contacted')->nullable();
                 $table->integer('certified_staff')->nullable();
                 $table->unsignedBigInteger('user_id');

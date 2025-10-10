@@ -1,0 +1,513 @@
+== TABLE: announcement_admin ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+announcement_id                | bigint unsigned                | NO    | NULL       |           
+admin_id                       | bigint unsigned                | NO    | NULL       |           
+
+== TABLE: announcement_group ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+announcement_id                | bigint unsigned                | NO    | NULL       |           
+group_id                       | bigint unsigned                | NO    | NULL       |           
+
+== TABLE: announcement_organization ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+announcement_id                | bigint unsigned                | NO    | NULL       |           
+organization_id                | bigint unsigned                | NO    | NULL       |           
+
+== TABLE: announcements ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+body                           | text                           | NO    | NULL       |           
+sender_id                      | bigint unsigned                | YES   | NULL       |           
+scheduled_at                   | timestamp                      | YES   | NULL       |           
+dispatched_at                  | timestamp                      | YES   | NULL       |           
+sent_at                        | timestamp                      | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: answers ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+user_id                        | bigint unsigned                | YES   | NULL       |           
+question                       | varchar(255)                   | NO    | NULL       |           
+answer                         | text                           | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: assessment_answer_links ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+assessment_id                  | bigint unsigned                | NO    | NULL       |           
+member_id                      | bigint unsigned                | NO    | NULL       |           
+token                          | varchar(255)                   | NO    | NULL       |           
+completed                      | tinyint(1)                     | NO    | 0          |           
+completed_at                   | timestamp                      | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: assessment_answer_tokens ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+assessment_id                  | bigint unsigned                | NO    | NULL       |           
+member_id                      | bigint unsigned                | NO    | NULL       |           
+group_id                       | bigint unsigned                | YES   | NULL       |           
+token                          | varchar(255)                   | NO    | NULL       |           
+expires_at                     | timestamp                      | YES   | NULL       |           
+used                           | tinyint(1)                     | NO    | 0          |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: assessment_question ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+assessment_id                  | bigint unsigned                | NO    | NULL       |           
+question_id                    | bigint unsigned                | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: assessment_question_answers ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+assessment_id                  | bigint unsigned                | NO    | NULL       |           
+organization_assessment_question_id | bigint unsigned                | NO    | NULL       |           
+assessment_question_id         | bigint unsigned                | NO    | NULL       |           
+member_id                      | bigint unsigned                | NO    | NULL       |           
+group_id                       | bigint unsigned                | YES   | NULL       |           
+answer                         | text                           | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: assessment_schedules ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+assessment_id                  | bigint unsigned                | NO    | NULL       |           
+date                           | date                           | YES   | NULL       |           
+time                           | time                           | YES   | NULL       |           
+group_ids                      | json                           | YES   | NULL       |           
+member_ids                     | json                           | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: assessments ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+user_id                        | bigint unsigned                | YES   | NULL       |           
+organization_id                | bigint unsigned                | YES   | NULL       |           
+name                           | varchar(255)                   | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: cache ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+key                            | varchar(255)                   | NO    | NULL       |           
+value                          | mediumtext                     | NO    | NULL       |           
+expiration                     | int                            | NO    | NULL       |           
+
+== TABLE: cache_locks ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+key                            | varchar(255)                   | NO    | NULL       |           
+owner                          | varchar(255)                   | NO    | NULL       |           
+expiration                     | int                            | NO    | NULL       |           
+
+== TABLE: cities ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+name                           | varchar(255)                   | NO    | NULL       |           
+state_id                       | mediumint unsigned             | NO    | NULL       |           
+country_id                     | mediumint unsigned             | NO    | NULL       |           
+created_at                     | timestamp                      | NO    | 2014-01-01 |           
+updated_at                     | timestamp                      | NO    | CURRENT_TI | DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+== TABLE: countries ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+name                           | varchar(100)                   | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | NO    | CURRENT_TI | DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+== TABLE: failed_jobs ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+uuid                           | varchar(255)                   | NO    | NULL       |           
+connection                     | text                           | NO    | NULL       |           
+queue                          | text                           | NO    | NULL       |           
+payload                        | longtext                       | NO    | NULL       |           
+exception                      | longtext                       | NO    | NULL       |           
+failed_at                      | timestamp                      | NO    | CURRENT_TI | DEFAULT_GENERATED
+
+== TABLE: group_member ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+group_id                       | bigint unsigned                | NO    | NULL       |           
+member_id                      | bigint unsigned                | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: groups ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+organization_id                | bigint unsigned                | YES   | NULL       |           
+user_id                        | bigint unsigned                | YES   | NULL       |           
+name                           | varchar(255)                   | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: guest_links ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+code                           | varchar(255)                   | NO    | NULL       |           
+user_id                        | bigint unsigned                | NO    | NULL       |           
+lead_id                        | bigint unsigned                | YES   | NULL       |           
+meta                           | json                           | YES   | NULL       |           
+expires_at                     | timestamp                      | YES   | NULL       |           
+used_at                        | timestamp                      | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: job_batches ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | varchar(255)                   | NO    | NULL       |           
+name                           | varchar(255)                   | NO    | NULL       |           
+total_jobs                     | int                            | NO    | NULL       |           
+pending_jobs                   | int                            | NO    | NULL       |           
+failed_jobs                    | int                            | NO    | NULL       |           
+failed_job_ids                 | longtext                       | NO    | NULL       |           
+options                        | mediumtext                     | YES   | NULL       |           
+cancelled_at                   | int                            | YES   | NULL       |           
+created_at                     | int                            | NO    | NULL       |           
+finished_at                    | int                            | YES   | NULL       |           
+
+== TABLE: jobs ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+queue                          | varchar(255)                   | NO    | NULL       |           
+payload                        | longtext                       | NO    | NULL       |           
+attempts                       | tinyint unsigned               | NO    | NULL       |           
+reserved_at                    | int unsigned                   | YES   | NULL       |           
+available_at                   | int unsigned                   | NO    | NULL       |           
+created_at                     | int unsigned                   | NO    | NULL       |           
+
+== TABLE: jobs_backup ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | 0          |           
+queue                          | varchar(255)                   | NO    | NULL       |           
+payload                        | longtext                       | NO    | NULL       |           
+attempts                       | tinyint unsigned               | NO    | NULL       |           
+reserved_at                    | int unsigned                   | YES   | NULL       |           
+available_at                   | int unsigned                   | NO    | NULL       |           
+created_at                     | int unsigned                   | NO    | NULL       |           
+
+== TABLE: leads ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+created_by                     | bigint unsigned                | YES   | NULL       |           
+first_name                     | varchar(255)                   | NO    | NULL       |           
+last_name                      | varchar(255)                   | NO    | NULL       |           
+email                          | varchar(255)                   | NO    | NULL       |           
+phone                          | varchar(255)                   | YES   | NULL       |           
+find_us                        | varchar(255)                   | YES   | NULL       |           
+organization_name              | varchar(255)                   | YES   | NULL       |           
+organization_size              | varchar(255)                   | YES   | NULL       |           
+address                        | varchar(255)                   | YES   | NULL       |           
+country_id                     | bigint unsigned                | YES   | NULL       |           
+state_id                       | bigint unsigned                | YES   | NULL       |           
+city_id                        | bigint unsigned                | YES   | NULL       |           
+zip                            | varchar(255)                   | YES   | NULL       |           
+notes                          | text                           | YES   | NULL       |           
+status                         | varchar(255)                   | NO    | Lead Stage |           
+assessment_sent_at             | timestamp                      | YES   | NULL       |           
+registered_at                  | timestamp                      | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: member_member_role ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+member_id                      | bigint unsigned                | NO    | NULL       |           
+member_role_id                 | bigint unsigned                | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: member_roles ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+name                           | varchar(255)                   | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: members ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+organization_id                | bigint unsigned                | YES   | NULL       |           
+user_id                        | bigint unsigned                | YES   | NULL       |           
+first_name                     | varchar(255)                   | NO    | NULL       |           
+last_name                      | varchar(255)                   | NO    | NULL       |           
+email                          | varchar(255)                   | NO    | NULL       |           
+phone                          | varchar(255)                   | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: migrations ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | int unsigned                   | NO    | NULL       | auto_increment
+migration                      | varchar(255)                   | NO    | NULL       |           
+batch                          | int                            | NO    | NULL       |           
+
+== TABLE: notifications ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | char(36)                       | NO    | NULL       |           
+type                           | varchar(255)                   | NO    | NULL       |           
+notifiable_type                | varchar(255)                   | NO    | NULL       |           
+notifiable_id                  | bigint unsigned                | NO    | NULL       |           
+data                           | text                           | NO    | NULL       |           
+read_at                        | timestamp                      | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: oauth_access_tokens ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | char(80)                       | NO    | NULL       |           
+user_id                        | bigint unsigned                | YES   | NULL       |           
+client_id                      | char(36)                       | NO    | NULL       |           
+name                           | varchar(255)                   | YES   | NULL       |           
+scopes                         | text                           | YES   | NULL       |           
+revoked                        | tinyint(1)                     | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+expires_at                     | datetime                       | YES   | NULL       |           
+
+== TABLE: oauth_auth_codes ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | char(80)                       | NO    | NULL       |           
+user_id                        | bigint unsigned                | NO    | NULL       |           
+client_id                      | char(36)                       | NO    | NULL       |           
+scopes                         | text                           | YES   | NULL       |           
+revoked                        | tinyint(1)                     | NO    | NULL       |           
+expires_at                     | datetime                       | YES   | NULL       |           
+
+== TABLE: oauth_clients ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | char(36)                       | NO    | NULL       |           
+owner_type                     | varchar(255)                   | YES   | NULL       |           
+owner_id                       | bigint unsigned                | YES   | NULL       |           
+name                           | varchar(255)                   | NO    | NULL       |           
+secret                         | varchar(255)                   | YES   | NULL       |           
+provider                       | varchar(255)                   | YES   | NULL       |           
+redirect_uris                  | text                           | NO    | NULL       |           
+grant_types                    | text                           | NO    | NULL       |           
+revoked                        | tinyint(1)                     | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: oauth_device_codes ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | char(80)                       | NO    | NULL       |           
+user_id                        | bigint unsigned                | YES   | NULL       |           
+client_id                      | char(36)                       | NO    | NULL       |           
+user_code                      | char(8)                        | NO    | NULL       |           
+scopes                         | text                           | NO    | NULL       |           
+revoked                        | tinyint(1)                     | NO    | NULL       |           
+user_approved_at               | datetime                       | YES   | NULL       |           
+last_polled_at                 | datetime                       | YES   | NULL       |           
+expires_at                     | datetime                       | YES   | NULL       |           
+
+== TABLE: oauth_refresh_tokens ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | char(80)                       | NO    | NULL       |           
+access_token_id                | char(80)                       | NO    | NULL       |           
+revoked                        | tinyint(1)                     | NO    | NULL       |           
+expires_at                     | datetime                       | YES   | NULL       |           
+
+== TABLE: organization_assessment_questions ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+text                           | varchar(255)                   | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: organizations ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+organization_name              | varchar(255)                   | YES   | NULL       |           
+organization_size              | varchar(255)                   | YES   | NULL       |           
+contract_start                 | date                           | YES   | NULL       |           
+contract_end                   | date                           | YES   | NULL       |           
+sales_person_id                | bigint unsigned                | YES   | NULL       |           
+last_contacted                 | datetime                       | YES   | NULL       |           
+certified_staff                | int                            | YES   | NULL       |           
+user_id                        | bigint unsigned                | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: password_reset_tokens ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+email                          | varchar(255)                   | NO    | NULL       |           
+token                          | varchar(255)                   | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: questions ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+question                       | varchar(255)                   | NO    | NULL       |           
+options                        | json                           | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: roles ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+name                           | varchar(255)                   | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: scheduled_emails ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+assessment_id                  | bigint unsigned                | YES   | NULL       |           
+group_id                       | bigint unsigned                | YES   | NULL       |           
+member_id                      | bigint unsigned                | YES   | NULL       |           
+recipient_email                | varchar(255)                   | NO    | NULL       |           
+subject                        | varchar(255)                   | NO    | NULL       |           
+body                           | text                           | NO    | NULL       |           
+send_at                        | datetime                       | YES   | NULL       |           
+sent                           | tinyint(1)                     | NO    | 0          |           
+sent_at                        | timestamp                      | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: sessions ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | varchar(255)                   | NO    | NULL       |           
+user_id                        | bigint unsigned                | YES   | NULL       |           
+ip_address                     | varchar(45)                    | YES   | NULL       |           
+user_agent                     | text                           | YES   | NULL       |           
+payload                        | longtext                       | NO    | NULL       |           
+last_activity                  | int                            | NO    | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: states ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+name                           | varchar(255)                   | NO    | NULL       |           
+country_id                     | mediumint unsigned             | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | NO    | CURRENT_TI | DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+
+== TABLE: subscriptions ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+user_id                        | bigint unsigned                | YES   | NULL       |           
+stripe_subscription_id         | varchar(255)                   | YES   | NULL       |           
+stripe_customer_id             | varchar(255)                   | YES   | NULL       |           
+plan                           | varchar(255)                   | YES   | NULL       |           
+status                         | varchar(255)                   | YES   | NULL       |           
+payment_method                 | varchar(255)                   | YES   | NULL       |           
+default_payment_method_id      | varchar(255)                   | YES   | NULL       |           
+payment_method_type            | varchar(255)                   | YES   | NULL       |           
+payment_method_brand           | varchar(255)                   | YES   | NULL       |           
+payment_method_last4           | varchar(255)                   | YES   | NULL       |           
+payment_date                   | datetime                       | YES   | NULL       |           
+subscription_start             | datetime                       | YES   | NULL       |           
+subscription_end               | datetime                       | YES   | NULL       |           
+amount                         | decimal(10,2)                  | YES   | NULL       |           
+receipt_url                    | varchar(255)                   | YES   | NULL       |           
+invoice_number                 | varchar(255)                   | YES   | NULL       |           
+description                    | text                           | YES   | NULL       |           
+customer_name                  | varchar(255)                   | YES   | NULL       |           
+customer_email                 | varchar(255)                   | YES   | NULL       |           
+customer_country               | varchar(255)                   | YES   | NULL       |           
+meta                           | json                           | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: user_details ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+user_id                        | bigint unsigned                | YES   | NULL       |           
+phone                          | varchar(255)                   | YES   | NULL       |           
+find_us                        | varchar(255)                   | YES   | NULL       |           
+address                        | varchar(255)                   | YES   | NULL       |           
+country_id                     | bigint unsigned                | YES   | NULL       |           
+state_id                       | bigint unsigned                | YES   | NULL       |           
+city_id                        | bigint unsigned                | YES   | NULL       |           
+zip                            | varchar(255)                   | YES   | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: user_roles ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+user_id                        | bigint unsigned                | NO    | NULL       |           
+role_id                        | bigint unsigned                | NO    | NULL       |           
+created_at                     | timestamp                      | YES   | NULL       |           
+updated_at                     | timestamp                      | YES   | NULL       |           
+deleted_at                     | timestamp                      | YES   | NULL       |           
+
+== TABLE: users ==
+Field                          | Type                           | Null  | Default    | Extra     
+-----------------------------------------------------------------------------------------------
+id                             | bigint unsigned                | NO    | NULL       | auto_increment
+organization_id                | bigint unsigned                | YES   | NULL       |           
+first_name                     | varchar(255)                   | NO    | NULL       |           
+last_name                      | varchar(255)                   | YES   | NULL       |           
+email                          | varchar(255)                   | NO    | NULL       |           
+password                       | varchar(255)                   | NO    | NULL       |           
+remember_token                 | varchar(100)                   | YES   | NULL       |           
+created_at                     | datetime                       | YES   | NULL       |           
+updated_at                     | datetime                       | YES   | NULL       |           
+deleted_at                     | datetime                       | YES   | NULL       |           
+

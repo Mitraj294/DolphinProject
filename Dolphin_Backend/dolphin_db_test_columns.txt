@@ -308,6 +308,7 @@ subscriptions	amount	decimal(10,2)	YES	NULL
 subscriptions	receipt_url	varchar(255)	YES	NULL	
 subscriptions	invoice_number	varchar(255)	YES	NULL	
 subscriptions	description	text	YES	NULL	
+subscriptions	meta	json	YES	NULL	
 subscriptions	customer_name	varchar(255)	YES	NULL	
 subscriptions	customer_email	varchar(255)	YES	NULL	
 subscriptions	customer_country	varchar(255)	YES	NULL	

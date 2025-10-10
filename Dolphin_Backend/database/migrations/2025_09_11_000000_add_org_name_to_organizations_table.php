@@ -15,6 +15,10 @@ return new class extends Migration
      */
     public function up()
     {
+        // By default, avoid adding optional organization columns so migrations produce the canonical dolphin_db schema.
+        if (env('ALLOW_ADD_ORG_COLUMNS') !== '1') {
+            return;
+        }
         Schema::table('organizations', function (Blueprint $table) {
             if (!Schema::hasColumn('organizations', 'organization_name')) {
                 $table->string('organization_name')->nullable()->after('user_id');

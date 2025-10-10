@@ -15,10 +15,15 @@ class CreateUsersTable extends Migration
                 $table->string('last_name')->nullable();
                 $table->string('email')->unique();
                 $table->string('password');
-                $table->string('role')->default('user');
+                // role was present in some environments; keep schema aligned with dolphin_db (no role column)
                 $table->string('phone')->nullable();
-                $table->timestamps();
-                $table->softDeletes();
+
+                // Use DATETIME columns for created_at/updated_at to match dolphin_db
+                $table->dateTime('created_at')->nullable();
+                $table->dateTime('updated_at')->nullable();
+
+                // soft delete as DATETIME to match existing dolphin_db representation
+                $table->dateTime('deleted_at')->nullable();
             });
         }
     }
