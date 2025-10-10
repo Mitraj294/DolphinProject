@@ -319,10 +319,17 @@ class AuthController extends Controller
 
 
     private function issueToken(Request $request)
+
     {
         // Determine client id/secret: prefer config, otherwise fall back to DB lookup
         $clientId = config('passport.password_client_id');
         $clientSecret = config('passport.password_client_secret');
+
+        // If env-provided secret looks like a bcrypt hash, do not use it as plaintext.
+        if (!empty($clientSecret) && is_string($clientSecret) && preg_match('/^\$2[aby]\$/', $clientSecret)) {
+            Log::warning('PASSPORT_PASSWORD_CLIENT_SECRET appears to be a hashed value; ignoring env secret.', ['client_id' => $clientId]);
+            $clientSecret = null;
+        }
 
         if (empty($clientId) || empty($clientSecret)) {
             try {
@@ -334,7 +341,19 @@ class AuthController extends Controller
 
                 if ($row) {
                     $clientId = $clientId ?: $row->id;
-                    $clientSecret = $clientSecret ?: $row->secret;
+
+                    // If the DB-stored secret looks like a bcrypt/hash (starts with $2y$/$2a$/$2b$)
+                    // it's not the plaintext secret and cannot be passed as-is to /oauth/token.
+                    // Don't attempt to use the hashed value as the client_secret. Prefer env config.
+                    if (empty($clientSecret) && !empty($row->secret)) {
+                        if (is_string($row->secret) && preg_match('/^\$2[aby]\$/', $row->secret)) {
+                            Log::warning('Found hashed oauth client secret in DB; cannot use as plaintext for token requests.', ['client_id' => $row->id]);
+                            // leave $clientSecret empty so we return a clear error below
+                            $clientSecret = null;
+                        } else {
+                            $clientSecret = $row->secret;
+                        }
+                    }
                 }
             } catch (\Exception $e) {
                 Log::warning('Failed to lookup oauth password client from DB', ['error' => $e->getMessage()]);
@@ -342,10 +361,12 @@ class AuthController extends Controller
         }
 
         if (empty($clientId) || empty($clientSecret)) {
-            Log::error('Password grant client id/secret missing. Cannot issue OAuth token.');
+            Log::error('Password grant client id/secret missing or unusable. Cannot issue OAuth token.', ['client_id' => $clientId]);
+
+            // Provide an actionable error to the operator so they can fix deployment config.
             return response()->json([
                 'error' => 'server_error',
-                'error_description' => 'OAuth client_id or client_secret not configured on server.'
+                'error_description' => 'OAuth password client_id or client_secret not available. Set PASSPORT_PASSWORD_CLIENT_ID and PASSPORT_PASSWORD_CLIENT_SECRET in environment or recreate a password grant client with a known secret.'
             ], 500);
         }
 
