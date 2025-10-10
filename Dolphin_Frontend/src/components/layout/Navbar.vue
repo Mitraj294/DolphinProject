@@ -928,7 +928,7 @@ export default {
   .navbar-page {
     font-size: 18px;
     line-height: 24px;
-    max-width: 180px;
+  
   }
 }
 
