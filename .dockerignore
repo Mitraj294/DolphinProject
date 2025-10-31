@@ -33,7 +33,6 @@ Dolphin_Backup/
 /node_modules/
 /package.json
 /package-lock.json
-/eslint.config.mjs
 
 # Scripts
 start-dev.sh
