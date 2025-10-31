@@ -1,10 +1,8 @@
 {
   "dependencies": {
-    "@tinymce/tinymce-vue": "^4.0.7",
     "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.3",
-    "pg": "^8.16.3",
-    "tinymce": "^8.0.2"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
     "globals": "^16.4.0",
